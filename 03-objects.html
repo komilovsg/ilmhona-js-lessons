@@ -1,0 +1,1931 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Урок 3 · Объекты — Ilmhona</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%230e7a55%27/%3E%3Ctext x=%2716%27 y=%2723%27 font-family=%27Arial%27 font-weight=%27700%27 font-size=%2720%27 fill=%27white%27 text-anchor=%27middle%27%3EI%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+/* схема вложенных объектов (только для этого урока) */
+.nest { font: 14px/1.7 var(--mono); min-width: 320px; }
+.nest-box { margin: 6px 0 6px 18px; padding: 8px 12px; border: 1px dashed var(--line); border-radius: 10px; background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.nest > .nest-box { margin-left: 0; }
+.nest-box.arr { background: color-mix(in srgb, var(--gold) 8%, transparent); }
+.nest-title { font-weight: 700; color: var(--accent); }
+.nest-box.arr > .nest-title { color: var(--gold); }
+.nest .path { color: var(--ink-3); font-size: 12.5px; margin-left: 8px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="01-functions.html"><span class="brand-mark">I</span><span>Ilmhona <small>· Frontend + ИИ</small></span></a>
+  <nav class="lessons">
+    <a href="01-functions.html">1. Функции</a>
+    <a href="02-arrays.html">2. Массивы</a>
+    <a href="03-objects.html" aria-current="page">3. Объекты</a>
+  </nav>
+  <div class="progress"><span>Решено <b data-solved>0</b>/<b data-total>0</b></span><div class="progress-bar"><i></i></div></div>
+</header>
+<div class="layout">
+  <aside class="toc"></aside>
+  <main>
+    <section class="hero">
+      <p class="kicker">Урок 3 · JavaScript</p>
+      <h1>Объекты</h1>
+      <p class="lead">В прошлом уроке мы научились хранить списки: покупки, оценки, города. Массив отлично подходит, когда вещей много и они однотипные. Но как описать <b>одну</b> вещь, у которой много разных свойств — студента, товар, заказ такси? Для этого в JavaScript есть объекты. Почти всё, что приходит с сервера и показывается на сайте, — это объекты и массивы объектов. Сегодня соберём всё вместе: функции, массивы и объекты — и научимся ставить ИИ точные задачи на этом языке.</p>
+      <ul class="goals">
+        <li>Создавать объекты, читать, менять, добавлять и удалять их свойства</li>
+        <li>Работать с вложенными данными и массивами объектов — как в настоящих ответах сервера</li>
+        <li>Писать методы объекта и понимать, на что указывает <code>this</code></li>
+        <li>Быстро доставать данные деструктуризацией и делать копии через <code>...</code></li>
+        <li>Превращать объекты в JSON и обратно, безопасно читать данные от сервера</li>
+        <li>Писать для ИИ точные промпты на языке JS и проверять его ответы</li>
+      </ul>
+    </section>
+
+    <!-- ===================================================== 01 -->
+    <section class="topic" id="what-is-object">
+      <h2 data-toc="Что такое объект"><span class="num">01</span> Что такое объект и зачем он нужен</h2>
+      <p>Вспомним массив: <code>["нон", "чой", "самбуса"]</code>. Это <b>список однотипных вещей</b>, и к каждой мы обращаемся по номеру — индексу. А теперь попробуем описать одного студента: имя, возраст, город, курс. Можно и массивом:</p>
+
+      <div class="cols">
+        <div class="col bad"><b>Массивом — неудобно</b>
+          <p>Что лежит в <code>student[2]</code>? Нужно помнить порядок. Перепутали местами — получили ошибку, которую трудно заметить.</p>
+<pre class="code">
+const student = ["Фарход", 20, "Душанбе", "Frontend"];
+console.log(student[2]); // а это что? город? курс?
+</pre>
+        </div>
+        <div class="col good"><b>Объектом — понятно</b>
+          <p>У каждого значения есть <b>название</b>. Читаешь код — и сразу понятно, что где лежит.</p>
+<pre class="code">
+const student = { name: "Фарход", age: 20, city: "Душанбе", course: "Frontend" };
+console.log(student.city); // сразу видно: город
+</pre>
+        </div>
+      </div>
+
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Вспомните паспорт или анкету при поступлении в Ilmhona. Там нет «строки номер 3» — там есть поля с названиями: «Фамилия», «Дата рождения», «Город». У каждого поля есть <b>название</b> и <b>содержимое</b>. Объект устроен точно так же: это набор пар «название → значение».</p>
+      </div>
+
+      <dl class="terms">
+        <dt>Объект</dt><dd>Набор пар «ключ: значение» в фигурных скобках <code>{ }</code>. Описывает одну вещь со многими свойствами.</dd>
+        <dt>Свойство</dt><dd>Одна пара внутри объекта, например <code>city: "Душанбе"</code>. Как одно поле в анкете.</dd>
+        <dt>Ключ</dt><dd>Название свойства (<code>city</code>). Всегда строка, даже если пишем без кавычек.</dd>
+        <dt>Значение</dt><dd>То, что хранится под ключом (<code>"Душанбе"</code>). Может быть чем угодно: число, строка, массив, другой объект, функция.</dd>
+      </dl>
+
+      <h3>Массив или объект?</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ситуация</th><th>Что выбрать</th><th>Пример</th></tr></thead>
+        <tbody>
+          <tr><td>Много однотипных вещей, важен порядок</td><td><b>Массив</b> <code>[ ]</code></td><td>оценки за месяц, список покупок, города маршрута</td></tr>
+          <tr><td>Одна вещь с названными характеристиками</td><td><b>Объект</b> <code>{ }</code></td><td>анкета студента, паспорт, карточка товара, профиль в Telegram</td></tr>
+          <tr><td>Много однотипных вещей, у каждой есть свойства</td><td><b>Массив объектов</b></td><td>список товаров магазина, студенты группы (тема 02)</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Как создать объект</h3>
+      <p>Объект пишут в фигурных скобках. Внутри — свойства через запятую. Каждое свойство: ключ, двоеточие, значение. Такая запись называется <b>литерал объекта</b>.</p>
+      <figure class="diagram">
+        <div class="anatomy">const student = { <span class="part p2" data-label="ключ">name</span>: <span class="part p3" data-label="значение">"Фарход"</span>, <span class="part p2" data-label="ключ">age</span>: <span class="part p3" data-label="значение">20</span> };</div>
+        <figcaption>Ключ и значение разделяет двоеточие <code>:</code>, а свойства между собой — запятая <code>,</code></figcaption>
+      </figure>
+<pre class="code" data-run>
+const student = {
+  name: "Фарход",
+  age: 20,
+  city: "Душанбе",
+  isStudent: true
+};
+
+console.log(student);        // → { name: "Фарход", age: 20, city: "Душанбе", isStudent: true }
+console.log(typeof student); // → object
+
+const empty = {};            // пустой объект — тоже объект
+console.log(empty);          // → {}
+</pre>
+
+      <h3>Как прочитать свойство: точка и квадратные скобки</h3>
+      <p>Есть два способа. <b>Через точку</b> — <code>student.name</code> — самый частый и короткий. <b>Через квадратные скобки</b> — <code>student["name"]</code> — нужен в двух случаях:</p>
+      <ul>
+        <li>в ключе есть пробел или дефис: <code>product["старая цена"]</code>, <code>product["made-in"]</code>;</li>
+        <li>имя ключа лежит в переменной: <code>product[field]</code>.</li>
+      </ul>
+<pre class="code" data-run>
+const product = {
+  title: "Казан",
+  price: 250,
+  "made-in": "Таджикистан",
+  "старая цена": 300
+};
+
+console.log(product.title);          // → Казан
+console.log(product["price"]);       // → 250
+console.log(product["made-in"]);     // → Таджикистан
+console.log(product["старая цена"]); // → 300
+
+// ключ лежит в переменной
+const field = "title";
+console.log(product[field]);  // → Казан
+console.log(product.field);   // → undefined (ищет ключ с именем "field")
+</pre>
+      <p>Последняя строка — частая ошибка. <code>product.field</code> ищет свойство, которое буквально называется <code>field</code>. А <code>product[field]</code> сначала берёт значение переменной (<code>"title"</code>) и уже потом ищет такой ключ.</p>
+
+      <h3>Нет такого свойства — получаем undefined</h3>
+<pre class="code" data-run>
+const user = { name: "Мадина" };
+
+console.log(user.age);    // → undefined
+console.log(user.length); // → undefined (у объекта нет length, как у массива)
+</pre>
+      <p>Ошибки нет: JavaScript просто говорит «тут ничего нет». Ошибка будет, если попытаться взять свойство <b>у самого undefined</b>, например <code>user.address.city</code>. Как защититься — разберём в теме 02.</p>
+
+      <h3>Изменить, добавить, удалить</h3>
+      <p>Объект можно менять после создания. Присвоили значение существующему ключу — изменили. Новому ключу — добавили. Оператор <code>delete</code> удаляет свойство. А оператор <code>in</code> проверяет, есть ли ключ.</p>
+<pre class="code" data-run>
+const order = { dish: "Оши палав", price: 30 };
+
+order.price = 35;      // изменить: ключ price уже был
+order.drink = "Чой";   // добавить: ключа drink не было
+console.log(order);    // → { dish: "Оши палав", price: 35, drink: "Чой" }
+
+delete order.drink;    // удалить
+console.log(order);    // → { dish: "Оши палав", price: 35 }
+
+console.log("price" in order); // → true
+console.log("drink" in order); // → false
+</pre>
+
+      <div class="callout"><b>Важно: const и объекты</b>
+        <p><code>const</code> запрещает <b>переприсвоить</b> переменную — положить в неё другой объект. Но менять <b>содержимое</b> объекта можно. Представьте: на коробке приклеена наклейка «card». Наклейку на другую коробку не переклеишь, а вот вещи внутри коробки менять можно.</p>
+      </div>
+<pre class="code" data-run>
+const card = { owner: "Зарина", balance: 100 };
+
+card.balance = 150;          // можно: меняем содержимое
+console.log(card.balance);   // → 150
+
+// card = { owner: "Зарина", balance: 0 };  // нельзя: TypeError, const не переприсваивается
+</pre>
+
+      <h3>Короткая запись свойств</h3>
+      <p>Часто значения уже лежат в переменных с такими же именами. Тогда вместо <code>{ name: name, age: age }</code> можно написать просто <code>{ name, age }</code>. Это одно и то же.</p>
+<pre class="code" data-run>
+const name = "Нилуфар";
+const age = 18;
+const city = "Бохтар";
+
+const student = { name, age, city };
+console.log(student); // → { name: "Нилуфар", age: 18, city: "Бохтар" }
+
+// функция-«фабрика»: принимает данные, возвращает объект
+const makeStudent = (name, city) =&gt; ({ name, city, course: "Frontend + ИИ" });
+console.log(makeStudent("Далер", "Куляб")); // → { name: "Далер", city: "Куляб", course: "Frontend + ИИ" }
+</pre>
+      <div class="callout warn"><b>Ловушка: стрелочная функция возвращает объект</b>
+        <p>Обратите внимание на круглые скобки: <code>() =&gt; ({ ... })</code>. Без них JavaScript решит, что <code>{</code> — это начало тела функции, а не объект, и функция вернёт <code>undefined</code>.</p>
+      </div>
+
+      <h3>Как перебрать все свойства</h3>
+      <p>У массива есть <code>for...of</code> и методы. Объект напрямую так перебрать нельзя, но есть три помощника, которые превращают объект в массив:</p>
+      <ul>
+        <li><code>Object.keys(obj)</code> — массив ключей;</li>
+        <li><code>Object.values(obj)</code> — массив значений;</li>
+        <li><code>Object.entries(obj)</code> — массив пар <code>[ключ, значение]</code>.</li>
+      </ul>
+<pre class="code" data-run>
+const grades = { html: 5, css: 4, js: 5 };
+
+console.log(Object.keys(grades));    // → ["html", "css", "js"]
+console.log(Object.values(grades));  // → [5, 4, 5]
+console.log(Object.entries(grades)); // → [["html", 5], ["css", 4], ["js", 5]]
+
+// сколько свойств в объекте
+console.log(Object.keys(grades).length); // → 3
+
+// средняя оценка: values + reduce из прошлого урока
+const sum = Object.values(grades).reduce((total, g) =&gt; total + g, 0);
+console.log(sum / Object.keys(grades).length); // → 4.666666666666667
+</pre>
+      <p>Чаще всего перебирают пары через <code>for...of</code> по <code>Object.entries</code>. Запись <code>const [subject, grade]</code> раскладывает пару на две переменные — подробно разберём это в теме 05, а пока просто запомните форму.</p>
+<pre class="code" data-run>
+const grades = { html: 5, css: 4, js: 5 };
+
+for (const [subject, grade] of Object.entries(grades)) {
+  console.log(`${subject}: ${grade}`);
+}
+// → html: 5
+// → css: 4
+// → js: 5
+</pre>
+      <p>Есть и старый способ — цикл <code>for...in</code>. Он перебирает <b>ключи</b>, а значение берём через квадратные скобки:</p>
+<pre class="code" data-run>
+const grades = { html: 5, css: 4, js: 5 };
+
+for (const key in grades) {
+  console.log(key, grades[key]);
+}
+// → html 5
+// → css 4
+// → js 5
+</pre>
+
+      <div class="callout warn"><b>Частые ошибки</b>
+        <p>1) <code>grades.key</code> внутри <code>for...in</code> — ищет ключ «key». Нужно <code>grades[key]</code>.<br>
+        2) <code>obj.length</code> — у объекта нет длины. Используйте <code>Object.keys(obj).length</code>.<br>
+        3) <code>{ name = "Фарход" }</code> — внутри литерала ставят двоеточие, а не <code>=</code>.<br>
+        4) Забыли запятую между свойствами — <code>SyntaxError</code>.</p>
+      </div>
+      <div class="callout ai"><b>ИИ-подсказка</b>
+        <p>Если не уверены, объект нужен или массив, опишите данные ИИ словами: «я храню 30 студентов, у каждого имя, город и оценки — как лучше организовать данные в JS?». Хороший ответ — массив объектов. Но решение принимайте сами: вы теперь знаете правило.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Начнём с анкеты, потом поработаем с карточкой товара, а в конце посчитаем голоса — объект как «счётчик».</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Анкета студента Ilmhona</h4><span class="level easy">лёгкая</span></header>
+          <p>Создайте объект <code>student</code> со свойствами: <code>name</code> — «Мадина», <code>age</code> — 19, <code>city</code> — «Худжанд», <code>course</code> — «Frontend + ИИ». Выведите первую строку через точку, вторую — через квадратные скобки. Затем добавьте свойство <code>phone</code> со значением <code>"+992 92 555 11 22"</code> и выведите, сколько всего свойств в анкете.</p>
+<pre class="code" data-run>
+// 1. Создайте объект student
+
+
+// 2. Выведите: Мадина, 19 лет, Худжанд  (через точку)
+
+
+// 3. Выведите: Курс: Frontend + ИИ  (через student["..."])
+
+
+// 4. Добавьте phone и выведите количество свойств
+
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Мадина, 19 лет, Худжанд
+Курс: Frontend + ИИ
+Свойств в анкете: 5</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Для строки удобно использовать шаблонную строку: <code>`${student.name}, ...`</code>. Добавить свойство — значит просто присвоить: <code>student.phone = ...</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Количество свойств: <code>Object.___(student).length</code>. Помните, что <code>student.length</code> вернёт <code>undefined</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Карточка товара на Корвоне</h4><span class="level mid">средняя</span></header>
+          <p>Продавец на Корвоне обновляет карточку казана. Не создавайте объект заново — меняйте существующий <code>product</code>: уменьшите цену на 30 сомони (используйте текущую цену, а не пишите 290 вручную), добавьте <code>category</code> со значением «Посуда», удалите свойство <code>inStock</code>. Затем выведите объект, проверьте через <code>in</code>, остался ли ключ <code>inStock</code>, и выведите все свойства в формате <code>ключ: значение</code>.</p>
+<pre class="code" data-run>
+const product = { title: "Казан 10 л", price: 320, inStock: true };
+
+// 1. Скидка 30 сомони
+
+
+// 2. Добавьте category
+
+
+// 3. Удалите inStock
+
+
+// 4. Выведите product, проверку "inStock" in product и все пары ключ: значение
+
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{ title: "Казан 10 л", price: 290, category: "Посуда" }
+false
+title: Казан 10 л
+price: 290
+category: Посуда</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Уменьшить на 30: <code>product.price = product.price - 30</code> (или короче <code>-=</code>). Удалить: оператор <code>delete</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для вывода пар: <code>for (const [key, value] of Object.___(product)) { ... }</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Что заказать на обед?</h4><span class="level hard">сложная</span></header>
+          <p>Группа голосует, что заказать из чайханы. Напишите функцию <code>countVotes(votes)</code>, которая принимает массив голосов и возвращает объект-счётчик: ключ — блюдо, значение — сколько раз за него проголосовали. Затем выведите объект, количество разных блюд и победителя (блюдо с наибольшим числом голосов).</p>
+<pre class="code" data-run>
+const votes = [
+  "оши палав", "самбуса", "курутоб", "оши палав", "самбуса",
+  "оши палав", "шакароб", "курутоб", "оши палав"
+];
+
+function countVotes(votes) {
+  const result = {};
+  // ваш код здесь: пройдите по votes и увеличивайте счётчик result[блюдо]
+  return result;
+}
+
+const counts = countVotes(votes);
+console.log(counts);
+
+// выведите количество блюд и победителя
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{ "оши палав": 4, самбуса: 2, курутоб: 2, шакароб: 1 }
+Блюд в голосовании: 4
+Победитель: оши палав (4 голоса)</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Ключ лежит в переменной (<code>dish</code>), поэтому только квадратные скобки: <code>result[dish]</code>. Если такого ключа ещё нет, его значение — <code>undefined</code>, и сначала нужно положить туда 1.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри цикла: <code>if (dish in result) { result[dish] = ___ } else { result[dish] = ___ }</code>. Для победителя заведите <code>let bestDish = ""; let bestCount = 0;</code> и пройдите по <code>Object.entries(counts)</code>, запоминая максимум.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 02 -->
+    <section class="topic" id="nested">
+      <h2 data-toc="Вложенность"><span class="num">02</span> Вложенность: объекты в объектах, массивы объектов</h2>
+      <p>Значением свойства может быть что угодно — в том числе <b>другой объект</b> или <b>массив</b>. Так и выглядят настоящие данные: у пользователя есть адрес (объект), список навыков (массив), а у группы — массив студентов, каждый из которых — объект.</p>
+
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Папка «Группа FE-07» в шкафу. В ней лежит листок с именем ментора и ещё одна папка «Студенты». В папке «Студенты» — анкеты, каждая на своём листке. Чтобы найти город второго студента, вы открываете: группа → папка студентов → вторая анкета → поле «Город». В коде путь записывается точно так же: <code>group.students[1].city</code>.</p>
+      </div>
+
+<pre class="code" data-run>
+const user = {
+  name: "Шахром",
+  age: 22,
+  address: {               // объект внутри объекта
+    city: "Худжанд",
+    street: "ул. Камоли Худжанди"
+  },
+  skills: ["HTML", "CSS"]  // массив внутри объекта
+};
+
+console.log(user.address.city);   // → Худжанд
+console.log(user.skills[0]);      // → HTML
+console.log(user.skills.length);  // → 2
+
+user.address.zip = "735700";      // добавили свойство во вложенный объект
+user.skills.push("JavaScript");   // методы массива работают как обычно
+console.log(user.skills);         // → ["HTML", "CSS", "JavaScript"]
+</pre>
+
+      <h3>Массив объектов — самая частая форма данных</h3>
+      <p>Когда сайт запрашивает у сервера список товаров, студентов или заказов, почти всегда приходит <b>массив объектов</b>. Вот как выглядит группа студентов:</p>
+      <figure class="diagram">
+        <div class="nest">
+          <div class="nest-box"><div class="nest-title">group { }</div>
+            <div>name: "FE-07"</div>
+            <div class="nest-box"><div class="nest-title">mentor { }<span class="path">group.mentor</span></div>
+              <div>name: "Далер" <span class="path">group.mentor.name</span></div>
+            </div>
+            <div class="nest-box arr"><div class="nest-title">students [ ]<span class="path">group.students</span></div>
+              <div class="nest-box"><div class="nest-title">[0] { }</div>name: "Фарход", city: "Душанбе"</div>
+              <div class="nest-box"><div class="nest-title">[1] { }<span class="path">group.students[1]</span></div>name: "Мадина" <span class="path">group.students[1].name</span></div>
+            </div>
+          </div>
+        </div>
+        <figcaption>Зелёные рамки — объекты (берём по ключу через точку), жёлтая — массив (берём по индексу в скобках)</figcaption>
+      </figure>
+<pre class="code" data-run>
+const group = {
+  name: "FE-07",
+  mentor: { name: "Далер" },
+  students: [
+    { name: "Фарход", city: "Душанбе" },
+    { name: "Мадина", city: "Худжанд" }
+  ]
+};
+
+console.log(group.mentor.name);       // → Далер
+console.log(group.students[1].name);  // → Мадина
+console.log(group.students.length);   // → 2
+</pre>
+      <h3>Как читать длинный путь</h3>
+      <ol class="steps">
+        <li><b><code>group</code></b> — берём весь объект группы.</li>
+        <li><b><code>.students</code></b> — достаём из него свойство students. Это массив.</li>
+        <li><b><code>[1]</code></b> — у массива берём элемент с индексом 1 — второй объект.</li>
+        <li><b><code>.name</code></b> — у этого объекта берём имя: <code>"Мадина"</code>.</li>
+      </ol>
+      <div class="callout tip"><b>Совет</b>
+        <p>Если путь не работает, выводите его по частям: <code>console.log(group)</code>, потом <code>console.log(group.students)</code>, потом <code>console.log(group.students[1])</code>. Сразу увидите, на каком шаге данные не такие, как вы ждали.</p>
+      </div>
+
+      <h3>Методы массивов + объекты</h3>
+      <p>Всё, что вы выучили в прошлом уроке, отлично работает с массивом объектов. В колбэк приходит <b>целый объект</b>, и мы берём у него нужное свойство.</p>
+<pre class="code" data-run>
+const products = [
+  { id: 1, title: "Ковёр", price: 900, category: "дом" },
+  { id: 2, title: "Казан", price: 320, category: "кухня" },
+  { id: 3, title: "Пиала", price: 15, category: "кухня" },
+  { id: 4, title: "Чайник", price: 120, category: "кухня" }
+];
+
+const titles = products.map(p =&gt; p.title);
+console.log(titles); // → ["Ковёр", "Казан", "Пиала", "Чайник"]
+
+const kitchen = products.filter(p =&gt; p.category === "кухня");
+console.log(kitchen.length); // → 3
+
+const cheap = products.find(p =&gt; p.price &lt; 100);
+console.log(cheap); // → { id: 3, title: "Пиала", price: 15, category: "кухня" }
+
+const total = products.reduce((sum, p) =&gt; sum + p.price, 0);
+console.log(total); // → 1355
+
+const hasExpensive = products.some(p =&gt; p.price &gt; 500);
+console.log(hasExpensive); // → true
+</pre>
+      <p>А теперь цепочка: «все товары для кухни дороже 100 сомони — в виде строк для витрины», и сортировка по цене. Сортируем копию (<code>slice()</code>), чтобы не испортить исходный массив.</p>
+<pre class="code" data-run>
+const products = [
+  { id: 1, title: "Ковёр", price: 900, category: "дом" },
+  { id: 2, title: "Казан", price: 320, category: "кухня" },
+  { id: 3, title: "Пиала", price: 15, category: "кухня" },
+  { id: 4, title: "Чайник", price: 120, category: "кухня" }
+];
+
+const showcase = products
+  .filter(p =&gt; p.category === "кухня" &amp;&amp; p.price &gt; 100)
+  .map(p =&gt; `${p.title} — ${p.price} сомони`);
+console.log(showcase); // → ["Казан — 320 сомони", "Чайник — 120 сомони"]
+
+const byPrice = products.slice().sort((a, b) =&gt; a.price - b.price);
+console.log(byPrice.map(p =&gt; p.title)); // → ["Пиала", "Чайник", "Казан", "Ковёр"]
+console.log(products[0].title);         // → Ковёр (исходный порядок цел)
+</pre>
+      <div class="callout warn"><b>Ловушка: find возвращает тот же объект, а не копию</b>
+        <p>Если изменить то, что вернул <code>find</code>, изменится и объект внутри массива. Это не копия, а ещё одна «ссылка» на тот же объект.</p>
+      </div>
+<pre class="code" data-run>
+const products = [{ title: "Казан", price: 320 }, { title: "Пиала", price: 15 }];
+
+const kazan = products.find(p =&gt; p.title === "Казан");
+kazan.price = 280;
+
+console.log(products[0].price); // → 280 (изменился и в массиве!)
+</pre>
+
+      <h3>Безопасный доступ: <code>?.</code></h3>
+      <p>Данные от сервера не всегда полные. У одного пользователя есть адрес, у другого — нет. Если взять свойство у <code>undefined</code>, программа упадёт с ошибкой <code>TypeError</code>, и весь код ниже не выполнится:</p>
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+const users = [
+  { name: "Далер", address: { city: "Куляб" } },
+  { name: "Сабрина" }   // адреса нет
+];
+
+console.log(users[0].address.city); // → Куляб
+console.log(users[1].address.city); // TypeError: адрес undefined, у него нет city
+console.log("Эта строка уже не выполнится");
+</pre>
+      <p>Оператор <b>опциональной цепочки</b> <code>?.</code> говорит: «если слева <code>undefined</code> или <code>null</code> — дальше не иди, просто верни <code>undefined</code>». А оператор <code>??</code> позволяет подставить значение по умолчанию, если слева <code>undefined</code> или <code>null</code>. Их часто используют вместе.</p>
+<pre class="code" data-run>
+const users = [
+  { name: "Далер", address: { city: "Куляб" } },
+  { name: "Сабрина" }
+];
+
+console.log(users[1].address?.city);  // → undefined (без ошибки)
+console.log(users[1].address?.city ?? "город не указан"); // → город не указан
+
+for (const u of users) {
+  console.log(`${u.name}: ${u.address?.city ?? "—"}`);
+}
+// → Далер: Куляб
+// → Сабрина: —
+
+// ?. работает и с массивами
+const empty = [];
+console.log(empty[0]?.name); // → undefined
+</pre>
+      <div class="callout warn"><b>Не ставьте ?. везде подряд</b>
+        <p><code>?.</code> нужен там, где данные <b>по-настоящему могут отсутствовать</b> (необязательное поле, пустой ответ). Если свойство обязательно должно быть, а его нет — лучше получить ошибку и найти баг, чем молча показать пустоту.</p>
+      </div>
+      <div class="callout ai"><b>ИИ-подсказка</b>
+        <p>Когда просите ИИ обработать данные, вставляйте в промпт пример объекта — 2–3 элемента массива. Без примера ИИ гадает, как называются поля (<code>name</code> или <code>title</code>? <code>price</code> или <code>cost</code>?), и пишет код под выдуманные данные.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Три задачи с настоящими «ответами сервера»: бронь отеля, группа студентов и заказы такси, где данных иногда не хватает.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Бронь отеля в Хороге</h4><span class="level easy">лёгкая</span></header>
+          <p>Пришла бронь отеля. Достаньте данные по путям и выведите пять строк, как в образце. Сумму к оплате посчитайте из <code>nights</code> и <code>pricePerNight</code>, количество услуг и последнюю услугу берите из массива (не пишите числа и слова вручную).</p>
+<pre class="code" data-run>
+const booking = {
+  id: "HRG-2041",
+  guest: { name: "Рустам", phone: "+992 93 777 00 11" },
+  hotel: { name: "Памир Лодж", city: "Хорог", stars: 3 },
+  nights: 3,
+  pricePerNight: 450,
+  services: ["завтрак", "трансфер", "экскурсия"]
+};
+
+// ваш код здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Бронь HRG-2041
+Гость: Рустам, +992 93 777 00 11
+Отель: Памир Лодж (Хорог), 3★
+Услуг: 3, первая — завтрак, последняя — экскурсия
+К оплате: 1350 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Путь к имени гостя: <code>booking.guest.name</code>. К городу: <code>booking.hotel.city</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Последний элемент массива: <code>booking.services[booking.services.length - ___]</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Группа FE-07</h4><span class="level mid">средняя</span></header>
+          <p>Ментор хочет быстрый отчёт по группе. Выведите: строку о группе и менторе; имя второго студента в списке; массив имён студентов из Душанбе; балл Нилуфар (найдите её через <code>find</code>); средний балл группы.</p>
+<pre class="code" data-run>
+const group = {
+  name: "FE-07",
+  mentor: { name: "Далер", telegram: "@daler_js" },
+  students: [
+    { name: "Фарход", city: "Душанбе", score: 87 },
+    { name: "Мадина", city: "Худжанд", score: 94 },
+    { name: "Шахром", city: "Душанбе", score: 72 },
+    { name: "Нилуфар", city: "Бохтар", score: 90 },
+    { name: "Абдулло", city: "Душанбе", score: 65 }
+  ]
+};
+
+// 1. Группа FE-07, ментор Далер (@daler_js)
+// 2. Второй в списке: ...
+// 3. Массив имён из Душанбе
+// 4. Нилуфар: ...
+// 5. Средний балл группы: ...
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Группа FE-07, ментор Далер (@daler_js)
+Второй в списке: Мадина
+["Фарход", "Шахром", "Абдулло"]
+Нилуфар: 90
+Средний балл группы: 81.6</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Имена из Душанбе — цепочка из двух методов: сначала отобрать (<code>filter</code>), потом превратить объекты в имена (<code>map</code>).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Средний балл: <code>group.students.reduce((sum, s) =&gt; sum + s.___, 0) / group.students.___</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Заказы такси: где водитель?</h4><span class="level hard">сложная</span></header>
+          <p>Приложение такси получает заказы. У некоторых водитель ещё не найден (<code>driver</code> равен <code>null</code> или его вовсе нет), у некоторых не указана машина. Напишите функцию <code>describeOrder(order)</code>, которая возвращает строку для одного заказа (см. образец). Программа не должна падать с ошибкой. Затем выведите строки для всех заказов и посчитайте, у скольких заказов водитель есть.</p>
+<pre class="code" data-run>
+const orders = [
+  { id: 101, from: "Шохмансур", to: "Ирам", driver: { name: "Шахром", car: { model: "Toyota Prius", number: "1234 AA 01" } } },
+  { id: 102, from: "Корвон", to: "проспект Рудаки", driver: null },
+  { id: 103, from: "Варзоб", to: "Душанбе", driver: { name: "Абдулло" } },
+  { id: 104, from: "Аэропорт", to: "Шохмансур" }
+];
+
+function describeOrder(order) {
+  // ваш код здесь
+}
+
+// выведите describeOrder для каждого заказа и строку "С водителем: ..."
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Заказ 101: Шахром, Toyota Prius (1234 AA 01)
+Заказ 102: водитель ещё не найден
+Заказ 103: Абдулло, машина не указана
+Заказ 104: водитель ещё не найден
+С водителем: 2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала проверьте, есть ли водитель: <code>if (!order.driver?.name) return ...</code>. Затем — есть ли машина: <code>order.driver.car?.model</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Подсчёт: <code>orders.filter(o =&gt; o.driver?.___).length</code>. <code>?.</code> спокойно работает и с <code>null</code>, и с отсутствующим свойством.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 03 -->
+    <section class="topic" id="methods">
+      <h2 data-toc="Методы объекта"><span class="num">03</span> Методы объекта</h2>
+      <p>Значением свойства может быть и <b>функция</b>. Такая функция внутри объекта называется <b>методом</b>. Свойства описывают, <i>какой</i> объект (имя, цена, город), а методы — <i>что он умеет делать</i> (поздороваться, посчитать сумму, применить скидку).</p>
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Чайник: у него есть свойства — цвет, объём, сколько воды налито. И есть кнопка «вскипятить» — это действие. В объекте свойства — это данные, а методы — это кнопки, которые что-то делают.</p>
+      </div>
+      <dl class="terms">
+        <dt>Метод</dt><dd>Функция, которая лежит в свойстве объекта.</dd>
+        <dt>Вызов метода</dt><dd>Запись <code>объект.метод()</code> — со скобками! Без скобок вы просто получите саму функцию, но не запустите её.</dd>
+      </dl>
+<pre class="code" data-run>
+const chaikhana = {
+  name: "Рохат",
+  city: "Душанбе",
+  greet: function () {
+    console.log("Хуш омадед в чайхану!");
+  }
+};
+
+chaikhana.greet();                  // → Хуш омадед в чайхану!
+console.log(typeof chaikhana.greet); // → function
+</pre>
+      <h3>Короткая запись метода</h3>
+      <p>Слово <code>function</code> и двоеточие можно опустить: <code>greet() { ... }</code>. Это современная запись, её вы будете видеть чаще всего. Методы, как обычные функции, принимают параметры и возвращают значения через <code>return</code>.</p>
+<pre class="code" data-run>
+const calc = {
+  add(a, b) {
+    return a + b;
+  },
+  multiply(a, b) {
+    return a * b;
+  },
+  percent(sum, p) {
+    return sum * p / 100;
+  }
+};
+
+console.log(calc.add(25, 17));      // → 42
+console.log(calc.multiply(4, 12));  // → 48
+console.log(calc.percent(300, 15)); // → 45
+</pre>
+
+      <h3>Вы уже давно пользуетесь методами</h3>
+      <p>Каждый раз, когда вы ставили точку и скобки, вы вызывали метод встроенного объекта. <code>console</code> — это объект, а <code>log</code> — его метод! <code>Math</code> — объект с математическими методами. Строки и массивы тоже имеют методы.</p>
+<pre class="code" data-run>
+console.log(typeof console);     // → object
+console.log(typeof console.log); // → function
+
+console.log(Math.round(4.6));    // → 5
+console.log(Math.max(3, 9, 4));  // → 9
+
+const city = "хорог";
+console.log(city.toUpperCase()); // → ХОРОГ
+
+const cart = ["нон"];
+cart.push("чой");                // push — метод массива
+console.log(cart);               // → ["нон", "чой"]
+</pre>
+      <p>Так что <code>arr.push(...)</code> и <code>calc.add(...)</code> — одна и та же идея: у объекта есть свойство-функция, и мы его вызываем через точку.</p>
+
+      <div class="cols">
+        <div class="col bad"><b>Забыли скобки</b>
+          <p>Метод не запустился — вывелась сама функция.</p>
+<pre class="code">
+console.log(calc.add);   // ƒ add() — это функция, а не результат
+chaikhana.greet;         // ничего не произошло
+</pre>
+        </div>
+        <div class="col good"><b>Со скобками</b>
+          <p>Метод выполнился и вернул результат.</p>
+<pre class="code">
+console.log(calc.add(2, 3)); // 5
+chaikhana.greet();           // Хуш омадед в чайхану!
+</pre>
+        </div>
+      </div>
+
+      <h3>Метод, которому нужны данные объекта</h3>
+      <p>Часто методу нужны другие свойства того же объекта. Пока можно обратиться к ним по имени переменной:</p>
+<pre class="code" data-run>
+const chaikhana = {
+  name: "Рохат",
+  open: "07:00",
+  info() {
+    return `Чайхана «${chaikhana.name}», открыта с ${chaikhana.open}`;
+  }
+};
+
+console.log(chaikhana.info()); // → Чайхана «Рохат», открыта с 07:00
+</pre>
+      <p>Это работает, но неудобно: если переименовать переменную или захотеть такой же метод в другом объекте — всё сломается. Для этого есть специальное слово <code>this</code> — следующая тема.</p>
+      <div class="callout warn"><b>Частые ошибки</b>
+        <p>1) Вызов без скобок: <code>obj.method</code> вместо <code>obj.method()</code>.<br>
+        2) Опечатка в имени: <code>calc.Add()</code> → <code>TypeError: calc.Add is not a function</code>. Регистр букв важен.<br>
+        3) Забыли <code>return</code> — метод вернёт <code>undefined</code>, хотя внутри всё посчитал.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Собираем свои «инструменты» в объекты — так же, как устроены <code>Math</code> и <code>console</code>.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Объект-приветствие</h4><span class="level easy">лёгкая</span></header>
+          <p>Создайте объект <code>greeter</code> с тремя методами (короткой записью): <code>hello(name)</code> возвращает приветствие, <code>bye(name)</code> — прощание, <code>isMorning(hour)</code> возвращает <code>true</code>, если час меньше 12. Методы должны <b>возвращать</b> значения, а выводит их <code>console.log</code> снаружи.</p>
+<pre class="code" data-run>
+const greeter = {
+  // ваш код здесь
+};
+
+console.log(greeter.hello("Нилуфар"));
+console.log(greeter.hello("Далер"));
+console.log(greeter.bye("Нилуфар"));
+console.log(greeter.isMorning(9));
+console.log(greeter.isMorning(15));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Ассалому алейкум, Нилуфар!
+Ассалому алейкум, Далер!
+Хайр, Нилуфар! Рахмат, что пришли.
+true
+false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Короткая запись: <code>hello(name) { return ...; },</code> — не забудьте запятую между методами.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для <code>isMorning</code> не нужен <code>if</code>: сравнение <code>hour &lt; 12</code> уже даёт <code>true</code> или <code>false</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Набор инструментов для текста</h4><span class="level mid">средняя</span></header>
+          <p>Создайте объект <code>textTools</code> с методами: <code>capitalize(word)</code> — делает первую букву заглавной; <code>countWords(text)</code> — считает слова (они разделены одним пробелом); <code>initials(fullName)</code> — возвращает инициалы с точками.</p>
+<pre class="code" data-run>
+const textTools = {
+  // ваш код здесь
+};
+
+console.log(textTools.capitalize("душанбе"));
+console.log(textTools.capitalize("хорог"));
+console.log(textTools.countWords("Ассалому алейкум дорогие студенты"));
+console.log(textTools.initials("Мадина Рахимова"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Душанбе
+Хорог
+4
+М. Р.</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первая буква — <code>word[0]</code>, остаток — <code>word.slice(1)</code>. Чтобы разбить текст на слова, используйте <code>text.split(" ")</code> — получится массив.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Инициалы: <code>fullName.split(" ").map(part =&gt; ___ + ".").join(" ")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Библиотека: Айни, Рудаки, Фирдавси</h4><span class="level hard">сложная</span></header>
+          <p>Допишите методы объекта <code>library</code>. <code>byAuthor(author)</code> — массив названий книг автора; <code>availableTitles()</code> — названия книг, которые есть в наличии; <code>oldest()</code> — объект самой старой книги; <code>addBook(book)</code> — добавляет книгу и возвращает новое количество книг. Внутри методов обращайтесь к книгам через <code>library.books</code> (в следующей теме узнаем способ лучше).</p>
+<pre class="code" data-run>
+const library = {
+  name: "Библиотека Ilmhona",
+  books: [
+    { title: "Шахнаме", author: "Фирдавси", year: 1010, available: true },
+    { title: "Бухара", author: "Айни", year: 1949, available: false },
+    { title: "Мать вина", author: "Рудаки", year: 933, available: true },
+    { title: "Рабы", author: "Айни", year: 1935, available: true },
+    { title: "Одина", author: "Айни", year: 1924, available: false }
+  ],
+  // ваши методы здесь
+};
+
+console.log(library.byAuthor("Айни"));
+console.log(library.availableTitles());
+const old = library.oldest();
+console.log(`Самая старая: ${old.title}, ${old.year}`);
+console.log(`Книг в библиотеке: ${library.addBook({ title: "Смерть ростовщика", author: "Айни", year: 1939, available: true })}`);
+console.log(library.byAuthor("Айни"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>["Бухара", "Рабы", "Одина"]
+["Шахнаме", "Мать вина", "Рабы"]
+Самая старая: Мать вина, 933
+Книг в библиотеке: 6
+["Бухара", "Рабы", "Одина", "Смерть ростовщика"]</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>byAuthor</code> и <code>availableTitles</code> — это <code>filter</code>, а потом <code>map</code> по названию. Помните: <code>push</code> возвращает новую длину массива — это как раз нужно для <code>addBook</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Самая старая книга: <code>library.books.reduce((oldest, b) =&gt; (b.year &lt; oldest.year ? ___ : ___), library.books[0])</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 04 -->
+    <section class="topic" id="this">
+      <h2 data-toc="this"><span class="num">04</span> this — «этот объект»</h2>
+      <p>Внутри метода часто нужно сказать: «возьми имя <b>этого</b> объекта». Для этого есть слово <code>this</code>. Правило, которое нужно запомнить:</p>
+      <div class="callout"><b>Главное правило</b>
+        <p><code>this</code> — это объект, который стоит <b>перед точкой</b> в момент вызова метода. Вызвали <code>student.introduce()</code> — значит внутри <code>this</code> равен <code>student</code>.</p>
+      </div>
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Слово «я». Когда Фарход говорит «я из Душанбе», «я» — это Фарход. Когда ту же фразу говорит Мадина, «я» — это Мадина. Фраза одна, а смысл зависит от того, <b>кто говорит</b>. <code>this</code> — это «я» для метода: зависит от того, у какого объекта метод вызвали.</p>
+      </div>
+<pre class="code" data-run>
+const student = {
+  name: "Манижа",
+  city: "Истаравшан",
+  introduce() {
+    console.log(`Салом! Я ${this.name} из города ${this.city}`);
+  }
+};
+
+student.introduce(); // → Салом! Я Манижа из города Истаравшан
+
+student.city = "Душанбе"; // переехала
+student.introduce(); // → Салом! Я Манижа из города Душанбе
+</pre>
+      <ol class="steps">
+        <li><b>Вызов <code>student.introduce()</code>.</b> JavaScript смотрит, что стоит слева от точки, — это <code>student</code>.</li>
+        <li><b><code>this = student</code>.</b> На время этого вызова <code>this</code> указывает на объект student.</li>
+        <li><b><code>this.name</code></b> — это то же самое, что <code>student.name</code>, то есть <code>"Манижа"</code>.</li>
+        <li><b>Метод всегда берёт свежие данные.</b> Поменяли <code>city</code> — следующий вызов уже покажет новый город.</li>
+      </ol>
+
+      <h3>Методы меняют объект через this</h3>
+<pre class="code" data-run>
+const counter = {
+  count: 0,
+  increment() {
+    this.count++;
+  },
+  reset() {
+    this.count = 0;
+  },
+  show() {
+    console.log(`Счётчик: ${this.count}`);
+  }
+};
+
+counter.increment();
+counter.increment();
+counter.increment();
+counter.show();  // → Счётчик: 3
+counter.reset();
+counter.show();  // → Счётчик: 0
+</pre>
+
+      <h3>Одна функция — разные объекты</h3>
+      <p>Вот где <code>this</code> по-настоящему полезен. Одну и ту же функцию можно положить в несколько объектов — и каждый раз <code>this</code> будет тем объектом, у которого её вызвали.</p>
+<pre class="code" data-run>
+function sayHi() {
+  console.log(`Ассалому алейкум, я ${this.name}`);
+}
+
+const farhod = { name: "Фарход", sayHi };
+const zarina = { name: "Зарина", sayHi };
+
+farhod.sayHi(); // → Ассалому алейкум, я Фарход
+zarina.sayHi(); // → Ассалому алейкум, я Зарина
+</pre>
+
+      <h3>Ловушка 1: стрелочная функция как метод</h3>
+      <p>У стрелочной функции <b>нет своего <code>this</code></b>. Она берёт <code>this</code> снаружи — оттуда, где её написали, а не от объекта перед точкой. Поэтому как метод с <code>this</code> она не работает:</p>
+<pre class="code" data-run>
+const user = {
+  name: "Рустам",
+  hello: () =&gt; {
+    console.log(this === user); // стрелочная: this взят снаружи объекта
+  },
+  hi() {
+    console.log(this === user); // обычный метод: this — объект перед точкой
+  }
+};
+
+user.hello(); // → false
+user.hi();    // → true
+</pre>
+      <p>Если бы внутри <code>hello</code> было <code>this.name</code>, вы получили бы не «Рустам», а пустоту или <code>undefined</code>. Зато стрелочная функция идеальна <b>внутри</b> метода — например, как колбэк для <code>map</code>: она возьмёт <code>this</code> у метода, а значит, у объекта.</p>
+<pre class="code" data-run>
+const shop = {
+  discount: 10,
+  prices: [100, 250, 40],
+  withDiscount() {
+    // стрелочный колбэк берёт this из метода withDiscount, то есть shop
+    return this.prices.map(p =&gt; p - p * this.discount / 100);
+  }
+};
+
+console.log(shop.withDiscount()); // → [90, 225, 36]
+</pre>
+      <div class="callout tip"><b>Правило на каждый день</b>
+        <p>Метод объекта пишем короткой записью <code>method() { }</code>. Колбэки внутри метода (<code>map</code>, <code>filter</code>, <code>reduce</code>) — стрелочными. Тогда <code>this</code> всегда будет тем, чем нужно.</p>
+      </div>
+
+      <h3>Ловушка 2: метод «оторвали» от объекта</h3>
+      <p>Если сохранить метод в отдельную переменную и вызвать её, перед точкой уже <b>ничего нет</b>. В строгом режиме (<code>"use strict"</code> — он включён в нашем запуске кода и во всех современных проектах) <code>this</code> становится <code>undefined</code>, и обращение <code>this.name</code> падает:</p>
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+const user = {
+  name: "Рустам",
+  introduce() {
+    console.log(`Я ${this.name}`);
+  }
+};
+
+user.introduce();          // → Я Рустам
+const f = user.introduce;  // взяли функцию без объекта
+f();                       // TypeError: this — undefined, у него нет name
+</pre>
+      <p>Как исправить: вызывать через объект — <code>user.introduce()</code>, или обернуть в стрелочную функцию: <code>const f = () =&gt; user.introduce();</code>. Так часто бывает, когда метод передают в другую функцию, например <code>setTimeout(user.introduce, 1000)</code> — там тоже потеряется <code>this</code>.</p>
+<pre class="code" data-run>
+const user = {
+  name: "Рустам",
+  introduce() {
+    console.log(`Я ${this.name}`);
+  }
+};
+
+const f = () =&gt; user.introduce(); // обёртка: внутри вызов снова через точку
+f(); // → Я Рустам
+</pre>
+      <p class="muted">Для управления <code>this</code> есть ещё методы <code>bind</code>, <code>call</code> и <code>apply</code> — например, <code>user.introduce.bind(user)</code> навсегда «привязывает» объект. Мы разберём их позже, сейчас достаточно правила «объект перед точкой».</p>
+      <div class="callout ai"><b>ИИ-подсказка</b>
+        <p>ИИ иногда пишет методы стрелочными функциями «для краткости» — и <code>this</code> ломается. Увидели <code>method: () =&gt; { ... this ... }</code> в ответе ИИ — сразу просите переписать на <code>method() { }</code>.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Учимся писать методы с <code>this</code> и находить две главные ловушки.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Преподаватель представляется</h4><span class="level easy">лёгкая</span></header>
+          <p>Допишите объекту <code>teacher</code> метод <code>introduce()</code>, который выводит фразу через <code>this</code>, и метод <code>changeSubject(newSubject)</code>, который меняет предмет. Затем создайте объект <code>teacher2</code> с именем «Сабрина», предметом «CSS» и <b>тем же самым</b> методом <code>introduce</code> (возьмите его из <code>teacher</code>, не пишите заново).</p>
+<pre class="code" data-run>
+const teacher = {
+  name: "Далер",
+  subject: "JavaScript",
+  // ваши методы здесь
+};
+
+teacher.introduce();
+teacher.changeSubject("React");
+teacher.introduce();
+
+// создайте teacher2 и вызовите teacher2.introduce()
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Меня зовут Далер, я веду JavaScript
+Меня зовут Далер, я веду React
+Меня зовут Сабрина, я веду CSS</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри методов используйте <code>this.name</code> и <code>this.subject</code>, а не <code>teacher.name</code> — иначе <code>teacher2</code> будет говорить чужим именем.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const teacher2 = { name: "Сабрина", subject: "CSS", introduce: teacher.___ };</code> — без скобок, мы берём саму функцию.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Банковская карта</h4><span class="level mid">средняя</span></header>
+          <p>Сделайте объект карты (вымышленный учебный пример). Методы: <code>deposit(amount)</code> — пополнить баланс и записать в <code>history</code> строку вида <code>"+200"</code>; <code>pay(shop, amount)</code> — если денег хватает, списать, записать <code>"-320 Корвон"</code> и вывести сообщение об оплате, иначе вывести отказ и ничего не списывать; <code>report()</code> — вывести итог. Все методы работают через <code>this</code>.</p>
+<pre class="code" data-run>
+const card = {
+  owner: "Манижа",
+  balance: 500,
+  history: [],
+  // ваши методы здесь
+};
+
+card.pay("Корвон", 320);
+card.deposit(200);
+card.pay("Чайхана Рохат", 85);
+card.pay("Такси", 500);
+card.report();
+console.log(card.history);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Оплата в Корвон: 320 сомони. Остаток: 180
+Пополнение: +200. Баланс: 380
+Оплата в Чайхана Рохат: 85 сомони. Остаток: 295
+Недостаточно средств для Такси: нужно 500, на карте 295
+Манижа: баланс 295 сомони, операций: 3
+["-320 Корвон", "+200", "-85 Чайхана Рохат"]</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>pay</code> сначала проверка: <code>if (amount &gt; this.balance) { ...; return; }</code>. Ранний <code>return</code> выходит из метода, и списание ниже не выполнится.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Запись в историю: <code>this.history.push(`-${amount} ${shop}`)</code>. Количество операций — длина <code>this.history</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Найдите две ошибки с this</h4><span class="level hard">сложная</span></header>
+          <p>Этот код такси-водителя написан с двумя ошибками, связанными с <code>this</code>. Сначала запустите его и прочитайте ошибку. Найдите обе проблемы и исправьте их (менять можно только способ объявления метода и способ вызова). Затем создайте второго водителя <code>taxi2</code> — «Шахром», 0 поездок, 0 заработано — с теми же методами, взятыми из <code>taxi</code>, добавьте ему поездку за 30 сомони и выведите его <code>info()</code>.</p>
+<pre class="code" data-run>
+const taxi = {
+  driver: "Абдулло",
+  trips: 0,
+  earned: 0,
+  addTrip: (price) =&gt; {
+    this.trips++;
+    this.earned += price;
+  },
+  info() {
+    return `${this.driver}: поездок ${this.trips}, заработано ${this.earned} сомони`;
+  }
+};
+
+taxi.addTrip(25);
+taxi.addTrip(40);
+taxi.addTrip(18);
+
+const showInfo = taxi.info;
+console.log(showInfo());
+
+// создайте taxi2 здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Абдулло: поездок 3, заработано 83 сомони
+Шахром: поездок 1, заработано 30 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первая ошибка — в том, <b>как</b> объявлен <code>addTrip</code>: у такой функции нет своего <code>this</code>. Вторая — в том, как вызывается <code>info</code>: что стоит перед точкой при вызове <code>showInfo()</code>?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>addTrip(price) { ... }</code> и <code>console.log(taxi.___())</code>. Для второго водителя: <code>addTrip: taxi.addTrip, info: taxi.info</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 05 -->
+    <section class="topic" id="destructuring">
+      <h2 data-toc="Деструктуризация"><span class="num">05</span> Деструктуризация</h2>
+      <p><b>Деструктуризация</b> — короткий способ «разложить» объект или массив по отдельным переменным. Вместо трёх строк <code>const name = user.name; const age = user.age; ...</code> — одна.</p>
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Вы пришли с базара с пакетом: дыня, нон, гранат. Можно каждый раз лезть в пакет — «пакет, дай дыню». А можно сразу разложить: дыню на стол, нон в хлебницу, гранат в вазу. Деструктуризация — это и есть «разложить содержимое по местам», чтобы дальше брать сразу.</p>
+      </div>
+
+      <h3>Из объекта: по именам ключей</h3>
+<pre class="code" data-run>
+const user = { name: "Зарина", age: 21, city: "Пенджикент" };
+
+// по-старому
+const userCity = user.city;
+
+// деструктуризация: берём ключи name и age в одноимённые переменные
+const { name, age } = user;
+
+console.log(name, age);  // → Зарина 21
+console.log(userCity);   // → Пенджикент
+</pre>
+      <p>Слева от <code>=</code> фигурные скобки означают не «создать объект», а «достать из объекта». Имена переменных должны совпадать с ключами, порядок не важен.</p>
+
+      <h3>Переименование и значения по умолчанию</h3>
+<pre class="code" data-run>
+const user = { name: "Зарина", age: 21, city: "Пенджикент" };
+
+// name: userName — «возьми ключ name, но назови переменную userName»
+const { name: userName } = user;
+console.log(userName); // → Зарина
+
+// значение по умолчанию — если ключа нет (undefined)
+const { country = "Таджикистан", city = "Душанбе" } = user;
+console.log(country); // → Таджикистан (ключа не было)
+console.log(city);    // → Пенджикент (ключ был — default не нужен)
+</pre>
+      <div class="callout tip"><b>Как запомнить двоеточие</b>
+        <p>В деструктуризации <code>{ откуда: куда }</code>: слева от двоеточия — ключ объекта, справа — имя новой переменной. А <code>=</code> — значение по умолчанию.</p>
+      </div>
+
+      <h3>Вложенная деструктуризация</h3>
+<pre class="code" data-run>
+const order = {
+  id: 77,
+  customer: { name: "Фарход", phone: "+992 90 111 22 33" },
+  address: { city: "Душанбе", street: "проспект Рудаки, 45" }
+};
+
+const { id, customer: { name }, address: { street } } = order;
+console.log(id, name, street); // → 77 Фарход проспект Рудаки, 45
+
+// customer и address тут — только «путь», переменных с такими именами нет
+</pre>
+
+      <h3>Из массива: по позиции</h3>
+      <p>Для массива используются квадратные скобки, и переменные берутся <b>по порядку</b>, а не по именам.</p>
+<pre class="code" data-run>
+const route = ["Душанбе", "Варзоб", "Искандеркуль"];
+
+const [start, stop, finish] = route;
+console.log(start);  // → Душанбе
+console.log(finish); // → Искандеркуль
+
+// пропустить элемент — просто запятая
+const [, , lake] = route;
+console.log(lake);   // → Искандеркуль
+
+// поменять две переменные местами
+let first = "чой";
+let second = "шакароб";
+[first, second] = [second, first];
+console.log(first, second); // → шакароб чой
+</pre>
+
+      <h3>В параметрах функции</h3>
+      <p>Самое частое применение: функция принимает объект и сразу раскладывает его. Видно, какие поля ей нужны, и можно задать значения по умолчанию.</p>
+<pre class="code" data-run>
+function showProduct({ title, price, currency = "сомони" }) {
+  console.log(`${title}: ${price} ${currency}`);
+}
+
+showProduct({ title: "Гранат", price: 15 });   // → Гранат: 15 сомони
+showProduct({ title: "Черешня", price: 3, currency: "$" }); // → Черешня: 3 $
+
+// в колбэках массивов
+const fruits = [{ title: "Дыня", price: 12 }, { title: "Виноград", price: 18 }];
+console.log(fruits.map(({ title }) =&gt; title)); // → ["Дыня", "Виноград"]
+
+// и в переборе пар объекта — теперь понятно, что тут происходит
+for (const [fruit, kg] of Object.entries({ зардолу: 3, гранат: 2 })) {
+  console.log(`${fruit} — ${kg} кг`);
+}
+// → зардолу — 3 кг
+// → гранат — 2 кг
+</pre>
+
+      <div class="callout"><b>Почему это повсюду в React</b>
+        <p>Во frontend-фреймворке React, который вы будете изучать, компонент получает данные как объект — и почти всегда его сразу деструктурируют. А хук <code>useState</code> возвращает массив из двух элементов, который раскладывают по позициям. Пока просто узнайте знакомую форму:</p>
+      </div>
+<pre class="code" data-title="Так это выглядит в React (запускать не нужно)">
+function ProductCard({ title, price }) {          // деструктуризация объекта
+  const [count, setCount] = useState(0);          // деструктуризация массива
+  // ...
+}
+</pre>
+
+      <div class="callout warn"><b>Частые ошибки</b>
+        <p>1) Опечатка в имени: <code>const { nmae } = user</code> — получите <code>undefined</code>, ошибки не будет.<br>
+        2) Деструктуризация из <code>undefined</code>: <code>const { name } = undefined</code> → <code>TypeError</code>.<br>
+        3) Переменная уже объявлена: <code>const { name } = user</code>, когда <code>name</code> уже есть выше → <code>SyntaxError: ... has already been declared</code>. Используйте переименование.<br>
+        4) Значение по умолчанию срабатывает только для <code>undefined</code>, а не для <code>null</code> или <code>0</code>.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Раскладываем погоду, витрину магазина и сложный ответ сервера с бронью.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Погода в Душанбе</h4><span class="level easy">лёгкая</span></header>
+          <p>Одной строкой деструктуризации достаньте <code>city</code>, <code>temp</code> и <code>sky</code>. Отдельной строкой достаньте <code>wind</code> под именем <code>windSpeed</code> и <code>humidity</code> со значением по умолчанию 25 (в объекте её нет). Используйте только новые переменные, без <code>weather.</code> в выводе.</p>
+<pre class="code" data-run>
+const weather = { city: "Душанбе", temp: 31, wind: 4, sky: "ясно" };
+
+// ваш код здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Душанбе: +31°C, ясно
+Ветер: 4 м/с
+Влажность: 25%</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первая строка: <code>const { city, temp, sky } = weather;</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Вторая: <code>const { wind: ___, humidity = ___ } = weather;</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Витрина магазина сувениров</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>finalPrice({ price, discount = 0 })</code>, которая возвращает цену со скидкой в процентах, и функцию <code>formatProduct({ title, price, discount = 0 })</code>, которая возвращает строку для витрины. Если скидки нет, в скобках ничего не пишем. Выведите все товары и итоговую сумму всех цен со скидкой.</p>
+<pre class="code" data-run>
+const products = [
+  { title: "Ковёр 2×3", price: 900, discount: 15 },
+  { title: "Чайный сервиз", price: 240 },
+  { title: "Сюзане", price: 600, discount: 10 },
+  { title: "Пиалы, 6 шт.", price: 60 }
+];
+
+// ваш код здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Ковёр 2×3: 765 сомони (скидка 15%)
+Чайный сервиз: 240 сомони
+Сюзане: 540 сомони (скидка 10%)
+Пиалы, 6 шт.: 60 сомони
+Итого: 1605 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Цена со скидкой: <code>price - price * discount / 100</code>. Если <code>discount</code> не передан, сработает значение по умолчанию 0 — и цена не изменится.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри <code>formatProduct</code> вызовите <code>finalPrice({ price, discount })</code>. Итог: <code>products.reduce((sum, p) =&gt; sum + finalPrice(___), 0)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Ответ сервера с бронью</h4><span class="level hard">сложная</span></header>
+          <p>Сервер прислал глубоко вложенный ответ. <b>Одним выражением деструктуризации</b> достаньте: <code>id</code>; имя гостя под именем <code>guestName</code>; даты въезда и выезда в переменные <code>checkIn</code> и <code>checkOut</code>; город отеля под именем <code>hotelCity</code>; тип первой комнаты под именем <code>roomType</code>; и <code>breakfast</code> из <code>booking</code> со значением по умолчанию <code>false</code>. Затем выведите четыре строки.</p>
+<pre class="code" data-run>
+const response = {
+  status: "ok",
+  data: {
+    booking: {
+      id: 7781,
+      guest: { firstName: "Сабрина", lastName: "Назарова" },
+      dates: ["2026-10-12", "2026-10-15"],
+      hotel: { name: "Памир Лодж", city: "Хорог" },
+      rooms: [
+        { type: "двухместный", price: 520 },
+        { type: "одноместный", price: 380 }
+      ]
+    }
+  }
+};
+
+// const { data: { booking: { ... } } } = response;
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Бронь №7781 · Сабрина
+Хорог: с 2026-10-12 по 2026-10-15
+Первая комната: двухместный
+Завтрак включён: false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Идите по пути шаг за шагом: <code>data</code> → <code>booking</code> → внутри перечисляйте нужное через запятую. Для гостя: <code>guest: { firstName: guestName }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Даты — это массив: <code>dates: [checkIn, checkOut]</code>. Первая комната — массив объектов: <code>rooms: [{ type: ___ }]</code>. Город: <code>hotel: { city: ___ }</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 06 -->
+    <section class="topic" id="spread-rest">
+      <h2 data-toc="Spread и rest"><span class="num">06</span> Spread и rest: три точки <code>...</code></h2>
+      <p>Три точки <code>...</code> в JavaScript работают в двух ролях. <b>Spread</b> («распаковка») раскладывает массив или объект на отдельные элементы. <b>Rest</b> («остаток») наоборот собирает отдельные элементы в массив или объект. Запись одна, а смысл зависит от места.</p>
+
+      <h3>Spread для массивов</h3>
+<pre class="code" data-run>
+const fruits = ["зардолу", "гранат"];
+const more = ["дыня", "виноград"];
+
+// объединить
+const all = [...fruits, ...more];
+console.log(all); // → ["зардолу", "гранат", "дыня", "виноград"]
+
+// добавить элемент в начало или конец, не меняя исходный массив
+const withCherry = ["черешня", ...fruits];
+console.log(withCherry); // → ["черешня", "зардолу", "гранат"]
+
+// разложить массив в аргументы функции
+const prices = [12, 45, 7];
+console.log(Math.max(...prices)); // → 45
+</pre>
+
+      <h3>Копия или ссылка?</h3>
+      <p>Очень важная вещь. Знак <code>=</code> <b>не копирует</b> массив или объект — он даёт второе имя тому же самому. Настоящая копия — через spread.</p>
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p><code>const b = a</code> — это второй ключ от той же квартиры: переставили диван — увидят оба хозяина. <code>const b = [...a]</code> — это новая квартира с такой же мебелью: в одной меняете что угодно, другая остаётся прежней.</p>
+      </div>
+<pre class="code" data-run>
+const fruits = ["зардолу", "гранат"];
+
+const same = fruits;      // НЕ копия — то же самое
+same.push("дыня");
+console.log(fruits);      // → ["зардолу", "гранат", "дыня"] (испортили!)
+
+const copy = [...fruits]; // настоящая копия
+copy.push("виноград");
+console.log(fruits);      // → ["зардолу", "гранат", "дыня"] (не изменился)
+console.log(copy);        // → ["зардолу", "гранат", "дыня", "виноград"]
+</pre>
+
+      <h3>Spread для объектов</h3>
+      <p>С объектами — так же: копировать, объединять и «менять одно поле» в копии. Если ключ встречается дважды, побеждает <b>последний</b>.</p>
+<pre class="code" data-run>
+const user = { name: "Далер", age: 20, city: "Куляб" };
+
+// копия с изменённым полем
+const older = { ...user, age: 21 };
+console.log(user.age, older.age); // → 20 21
+
+// объединить два объекта
+const contacts = { phone: "+992 91 000 11 22", telegram: "@daler" };
+const full = { ...user, ...contacts };
+console.log(Object.keys(full)); // → ["name", "age", "city", "phone", "telegram"]
+
+// порядок важен: последний побеждает
+const wrong = { age: 21, ...user };
+console.log(wrong.age); // → 20 (age из user перезаписал 21)
+</pre>
+
+      <h3>Почему frontend любит новые копии</h3>
+      <p>Во frontend (и особенно в React) принято <b>не менять</b> старые данные, а создавать новые копии с изменениями. Это называется <b>неизменяемость</b> (immutability). Зачем? Программа сравнивает старые данные с новыми: если объект тот же самый (вы его просто поправили), она решает, что ничего не изменилось, и не обновляет экран. Новая копия — чёткий сигнал: «данные изменились, перерисуй».</p>
+<pre class="code" data-run>
+const addToCart = (cart, item) =&gt; [...cart, item];
+const updateQty = (item, qty) =&gt; ({ ...item, qty });
+
+const cart = [{ title: "Нон", qty: 2 }];
+const newCart = addToCart(cart, { title: "Чой", qty: 1 });
+
+console.log(cart.length, newCart.length); // → 1 2
+console.log(updateQty(cart[0], 5));       // → { title: "Нон", qty: 5 }
+console.log(cart[0]);                     // → { title: "Нон", qty: 2 }
+</pre>
+
+      <div class="callout warn"><b>Ловушка: копия поверхностная</b>
+        <p>Spread копирует только <b>первый уровень</b>. Вложенные объекты и массивы не копируются — копия и оригинал продолжают делить их.</p>
+      </div>
+<pre class="code" data-run>
+const student = { name: "Абдулло", address: { city: "Турсунзаде" } };
+
+const copy = { ...student };
+copy.name = "Абдулло К.";          // первый уровень — копия, оригинал цел
+copy.address.city = "Душанбе";     // вложенный объект — общий!
+
+console.log(student.name);         // → Абдулло
+console.log(student.address.city); // → Душанбе (баг!)
+
+// правильно: копируем и вложенный уровень
+const student2 = { name: "Мадина", address: { city: "Худжанд" } };
+const moved = { ...student2, address: { ...student2.address, city: "Душанбе" } };
+console.log(student2.address.city, moved.address.city); // → Худжанд Душанбе
+</pre>
+      <p>Полную (глубокую) копию можно сделать через <code>structuredClone</code> — разберём в теме 07.</p>
+
+      <h3>Rest: собрать «всё остальное»</h3>
+      <p>В параметрах функции <code>...</code> собирает все переданные аргументы в <b>массив</b>. Так можно написать функцию, которая принимает сколько угодно чисел.</p>
+<pre class="code" data-run>
+function sum(...nums) {
+  console.log(nums); // это обычный массив
+  return nums.reduce((total, n) =&gt; total + n, 0);
+}
+
+console.log(sum(10, 20, 5)); // → [10, 20, 5]
+                             // → 35
+console.log(sum());          // → []
+                             // → 0
+
+// rest после обычных параметров: первый — отдельно, остальные — в массив
+function order(customer, ...dishes) {
+  console.log(`${customer} заказал(а): ${dishes.length} блюда`);
+}
+order("Зарина", "курутоб", "самбуса", "чой"); // → Зарина заказал(а): 3 блюда
+</pre>
+      <p>В деструктуризации rest собирает «остаток» объекта или массива. Очень удобно, чтобы <b>убрать</b> лишние поля — например, пароль перед отправкой данных на экран.</p>
+<pre class="code" data-run>
+const account = { login: "madina", password: "12345", email: "m@mail.tj", city: "Худжанд" };
+
+const { password, ...safeUser } = account;
+console.log(safeUser); // → { login: "madina", email: "m@mail.tj", city: "Худжанд" }
+
+const [winner, ...others] = ["Фарход", "Зарина", "Рустам"];
+console.log(winner); // → Фарход
+console.log(others); // → ["Зарина", "Рустам"]
+</pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th></th><th>Spread — распаковывает</th><th>Rest — собирает</th></tr></thead>
+        <tbody>
+          <tr><td>Где стоит</td><td>Справа от <code>=</code>, внутри <code>[ ]</code> или <code>{ }</code>, в аргументах при вызове</td><td>В параметрах функции, слева от <code>=</code> в деструктуризации</td></tr>
+          <tr><td>Что делает</td><td>Массив/объект → отдельные элементы</td><td>Отдельные элементы → массив/объект</td></tr>
+          <tr><td>Пример</td><td><code>[...a, ...b]</code>, <code>{ ...user, age: 21 }</code>, <code>Math.max(...nums)</code></td><td><code>function f(...args)</code>, <code>const { password, ...rest } = user</code></td></tr>
+          <tr><td>Ограничение</td><td>Можно несколько раз в одном выражении</td><td>Только один раз и только <b>в конце</b></td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout warn"><b>Частые ошибки</b>
+        <p>1) Думать, что <code>=</code> копирует массив или объект.<br>
+        2) Rest не в конце: <code>function f(...items, last)</code> → <code>SyntaxError</code>.<br>
+        3) Забыть, что копия поверхностная, и менять вложенный объект «копии».<br>
+        4) <code>{ age: 21, ...user }</code> вместо <code>{ ...user, age: 21 }</code> — новое значение перезаписывается старым.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Собираем меню, обновляем профиль без мутаций и прячем секретные данные.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Меню чайханы</h4><span class="level easy">лёгкая</span></header>
+          <p>Через spread создайте <code>fullMenu</code>: сначала все блюда завтрака, потом обеда, в конце «шакароб». Создайте <code>specials</code>: «курутоб», а за ним все блюда обеда. Исходные массивы меняться не должны. Выведите <code>fullMenu</code>, <code>specials</code>, <code>lunch</code> и количество блюд в полном меню.</p>
+<pre class="code" data-run>
+const breakfast = ["чой", "нон", "каймак"];
+const lunch = ["оши палав", "самбуса"];
+
+// ваш код здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>["чой", "нон", "каймак", "оши палав", "самбуса", "шакароб"]
+["курутоб", "оши палав", "самбуса"]
+["оши палав", "самбуса"]
+Всего блюд: 6</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри квадратных скобок можно смешивать spread и обычные элементы: <code>[...a, "x"]</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const specials = ["курутоб", ___];</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Профиль без мутаций</h4><span class="level mid">средняя</span></header>
+          <p>Напишите две функции, которые <b>не меняют</b> исходный объект, а возвращают новый: <code>moveTo(profile, city)</code> — профиль с другим городом; <code>addSkill(profile, skill)</code> — профиль, где <code>skills</code> — <b>новый</b> массив с добавленным навыком. Последняя строка проверяет, что массивы навыков действительно разные.</p>
+<pre class="code" data-run>
+const profile = { username: "@madina_fe", city: "Худжанд", skills: ["HTML", "CSS"] };
+
+// ваши функции здесь
+
+const p2 = moveTo(profile, "Душанбе");
+const p3 = addSkill(p2, "JavaScript");
+console.log(profile);
+console.log(p3);
+console.log(profile.skills === p3.skills);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{ username: "@madina_fe", city: "Худжанд", skills: ["HTML", "CSS"] }
+{
+  username: "@madina_fe",
+  city: "Душанбе",
+  skills: ["HTML", "CSS", "JavaScript"]
+}
+false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>moveTo</code> — одна строка: копия объекта и новое значение <code>city</code> после неё.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>({ ...profile, skills: [...profile.___, skill] })</code>. Если сделать <code>profile.skills.push(skill)</code>, вы измените исходный массив — последняя строка покажет <code>true</code>, а первая — лишний навык.</p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Доставка, секреты и очередь</h4><span class="level hard">сложная</span></header>
+          <p>Напишите три функции. <code>total(deliveryFee, ...prices)</code> — сумма доставки и всех цен (цен может быть сколько угодно, даже ноль). <code>hideSecrets(account)</code> — новый объект без <code>password</code> и <code>pin</code> (через rest в деструктуризации). <code>nextInQueue(queue)</code> — строка о первом в очереди и количестве ожидающих; разложите массив прямо в параметрах функции.</p>
+<pre class="code" data-run>
+const account = { login: "rustam92", password: "qwerty", pin: "4321", name: "Рустам", city: "Бохтар" };
+const queue = ["Зарина", "Далер", "Манижа", "Фарход"];
+
+// ваши функции здесь
+
+console.log(total(10, 30, 28, 7));
+console.log(total(15));
+console.log(hideSecrets(account));
+console.log(account.password);
+console.log(nextInQueue(queue));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>75
+15
+{ login: "rustam92", name: "Рустам", city: "Бохтар" }
+qwerty
+Первый в очереди: Зарина, ждут: 3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>total</code> параметр <code>prices</code> — массив, его удобно сложить через <code>reduce</code> с начальным значением.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const { password, pin, ...rest } = account;</code> внутри <code>hideSecrets</code>. Для очереди: <code>function nextInQueue([first, ...___]) { ... }</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 07 -->
+    <section class="topic" id="json">
+      <h2 data-toc="JSON"><span class="num">07</span> JSON: как данные путешествуют</h2>
+      <p>Сервер и браузер — это разные программы, часто на разных компьютерах. Объект JavaScript нельзя «передать по проводу» как есть: по сети передаётся <b>текст</b>. Поэтому придумали <b>JSON</b> (JavaScript Object Notation) — текстовый формат для обмена данными. Он выглядит почти как объект JS, но это <b>строка</b>.</p>
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Вы переезжаете из Худжанда в Душанбе. Шкаф целиком в машину не влезет — вы его разбираете, упаковываете в коробки с инструкцией, а на новом месте собираете обратно. <code>JSON.stringify</code> — «разобрать и упаковать» объект в строку. <code>JSON.parse</code> — «собрать обратно» объект из строки.</p>
+      </div>
+      <p>Где вы встретите JSON:</p>
+      <ul>
+        <li><b>Ответы сервера.</b> Погода, список товаров, заказы — всё приходит строкой JSON, которую нужно превратить в объект.</li>
+        <li><b>localStorage</b> — хранилище в браузере. Оно умеет хранить <b>только строки</b>, поэтому объекты кладут туда в виде JSON.</li>
+        <li><b>Файлы настроек</b> проектов, например <code>package.json</code>.</li>
+      </ul>
+<pre class="code" data-title="Так выглядит JSON">
+{
+  "name": "Мадина",
+  "age": 19,
+  "isStudent": true,
+  "skills": ["HTML", "CSS"],
+  "address": { "city": "Худжанд" },
+  "phone": null
+}
+</pre>
+      <h3>Правила JSON строже, чем у объекта JS</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Что</th><th>Объект JS</th><th>JSON</th></tr></thead>
+        <tbody>
+          <tr><td>Ключи</td><td>можно без кавычек: <code>name</code></td><td>только в двойных кавычках: <code>"name"</code></td></tr>
+          <tr><td>Строки</td><td><code>"..."</code>, <code>'...'</code>, <code>`...`</code></td><td>только <code>"..."</code></td></tr>
+          <tr><td>Значения</td><td>что угодно, включая функции и <code>undefined</code></td><td>строка, число, <code>true</code>/<code>false</code>, <code>null</code>, массив, объект</td></tr>
+          <tr><td>Запятая после последнего</td><td>можно</td><td>нельзя</td></tr>
+          <tr><td>Комментарии</td><td>можно</td><td>нельзя</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>JSON.stringify: объект → строка</h3>
+<pre class="code" data-run>
+const order = { id: 501, dish: "Курутоб", price: 28, paid: true, extras: ["нон", "чой"] };
+
+const json = JSON.stringify(order);
+console.log(json); // → {"id":501,"dish":"Курутоб","price":28,"paid":true,"extras":["нон","чой"]}
+console.log(typeof order, typeof json); // → object string
+console.log(json.length); // → 73 (это просто строка из 73 символов)
+</pre>
+      <p>Чтобы JSON было удобно читать человеку, передайте ещё два аргумента: <code>JSON.stringify(obj, null, 2)</code>. Третий аргумент — сколько пробелов в отступе, второй пока всегда <code>null</code>.</p>
+<pre class="code" data-run>
+const weather = { city: "Хорог", temp: 18, wind: 6 };
+console.log(JSON.stringify(weather, null, 2));
+// {
+//   "city": "Хорог",
+//   "temp": 18,
+//   "wind": 6
+// }
+</pre>
+      <p>Функции и <code>undefined</code> в JSON не попадают — они просто пропадают:</p>
+<pre class="code" data-run>
+const user = { name: "Нилуфар", age: undefined, greet() { return "Салом"; } };
+console.log(JSON.stringify(user)); // → {"name":"Нилуфар"}
+</pre>
+
+      <h3>JSON.parse: строка → объект</h3>
+<pre class="code" data-run>
+const text = '{"city":"Душанбе","temp":31,"sunny":true}';
+
+console.log(text.temp);   // → undefined (у строки нет свойства temp!)
+
+const weather = JSON.parse(text);
+console.log(typeof text, typeof weather); // → string object
+console.log(weather.temp + 1); // → 32
+console.log(weather.city);     // → Душанбе
+</pre>
+
+      <h3>Ошибки разбора и try/catch</h3>
+      <p>Если строка — не правильный JSON (одинарные кавычки, лишняя запятая, обрезанный ответ), <code>JSON.parse</code> выбрасывает ошибку <code>SyntaxError</code>, и программа останавливается. Чтобы этого не было, используют конструкцию <code>try...catch</code>:</p>
+      <ol class="steps">
+        <li><b><code>try { ... }</code></b> — «попробуй выполнить». Если всё хорошо, блок <code>catch</code> пропускается.</li>
+        <li><b><code>catch (error) { ... }</code></b> — «если внутри try что-то упало, приходи сюда». В <code>error</code> лежит объект ошибки, у него есть <code>name</code> и <code>message</code>.</li>
+        <li><b>Программа продолжает работать</b> со следующей строки после <code>catch</code>.</li>
+      </ol>
+<pre class="code" data-run>
+const bad = "{'city': 'Хорог'}"; // одинарные кавычки — это не JSON
+
+try {
+  const data = JSON.parse(bad);
+  console.log(data.city);
+} catch (error) {
+  console.log("Не удалось прочитать данные");  // → Не удалось прочитать данные
+  console.log(error.name);                      // → SyntaxError
+}
+
+console.log("Программа работает дальше");       // → Программа работает дальше
+</pre>
+
+      <h3>Сохранение в localStorage</h3>
+      <p>localStorage хранит данные в браузере даже после перезагрузки страницы — например, корзину или тему оформления. Он принимает только строки, поэтому без JSON никак. Этот код запускайте у себя в проекте: во встроенном окошке запуска localStorage может быть недоступен.</p>
+<pre class="code" data-title="Код для вашего проекта">
+const cart = [{ id: 1, title: "Нон", qty: 3 }, { id: 4, title: "Мёд", qty: 1 }];
+
+// сохранить: объект → строка
+localStorage.setItem("cart", JSON.stringify(cart));
+
+// прочитать: строка → объект. Если ключа нет, getItem вернёт null
+const saved = JSON.parse(localStorage.getItem("cart")) ?? [];
+console.log(saved.length); // 2
+</pre>
+      <div class="callout warn"><b>Частая ошибка: забыли stringify</b>
+        <p>Если положить объект в localStorage без <code>JSON.stringify</code>, он превратится в бесполезную строку <code>"[object Object]"</code>, и данные пропадут.</p>
+      </div>
+<pre class="code" data-run>
+const cart = { id: 1, qty: 3 };
+console.log(String(cart));         // → [object Object]  (вот что сохранится без JSON)
+console.log(JSON.stringify(cart)); // → {"id":1,"qty":3}
+</pre>
+
+      <h3>Глубокая копия</h3>
+      <p>Помните ловушку поверхностной копии из темы 06? Есть два способа сделать <b>полную</b> копию со всеми вложенными объектами:</p>
+<pre class="code" data-run>
+const original = { name: "Шахром", address: { city: "Бохтар" }, skills: ["HTML"] };
+
+const copy1 = JSON.parse(JSON.stringify(original)); // старый способ
+const copy2 = structuredClone(original);            // современный способ
+
+copy1.address.city = "Душанбе";
+copy2.skills.push("CSS");
+
+console.log(original.address.city); // → Бохтар (не изменился)
+console.log(original.skills);       // → ["HTML"]
+</pre>
+      <p class="muted">У JSON-способа есть минус: он теряет функции и <code>undefined</code>. <code>structuredClone</code> аккуратнее, но функции тоже не копирует (выдаст ошибку). Для обычных данных — объектов, массивов, строк и чисел — подходят оба.</p>
+
+      <h3>Реальный пример: погода в Душанбе</h3>
+      <p>Так примерно выглядит ответ сервиса погоды. Мы превращаем строку в объект, достаём нужное деструктуризацией и ищем самый жаркий день.</p>
+<pre class="code" data-run>
+const response = `{
+  "city": "Душанбе",
+  "current": { "temp": 33, "wind": 3, "description": "солнечно" },
+  "forecast": [
+    { "day": "Пн", "max": 34, "min": 19 },
+    { "day": "Вт", "max": 36, "min": 21 },
+    { "day": "Ср", "max": 31, "min": 18 }
+  ]
+}`;
+
+const data = JSON.parse(response);
+const { city, current: { temp, description }, forecast } = data;
+
+console.log(`${city}: ${temp}°C, ${description}`); // → Душанбе: 33°C, солнечно
+
+const hottest = forecast.reduce((best, d) =&gt; (d.max &gt; best.max ? d : best), forecast[0]);
+console.log(`Самый жаркий день: ${hottest.day} (${hottest.max}°C)`); // → Самый жаркий день: Вт (36°C)
+
+const nights = forecast.map(({ day, min }) =&gt; `${day}: ${min}°`);
+console.log(nights); // → ["Пн: 19°", "Вт: 21°", "Ср: 18°"]
+</pre>
+      <div class="callout ai"><b>ИИ-подсказка</b>
+        <p>Если <code>JSON.parse</code> ругается, а строка длинная — вставьте её в чат с ИИ и попросите: «найди, где здесь нарушены правила JSON, и покажи исправленную строку». Но потом обязательно проверьте исправленную строку сами через <code>JSON.parse</code>.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Упаковываем данные в JSON, разбираем прогноз погоды и учимся не падать на сломанных данных.</p>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Упаковать дыню</h4><span class="level easy">лёгкая</span></header>
+          <p>Превратите объект <code>fruit</code> в JSON-строку <code>json</code>. Выведите саму строку, её тип, а затем красивую версию с отступом в 2 пробела.</p>
+<pre class="code" data-run>
+const fruit = { name: "Дыня", from: "Бохтар", price: 12, weightKg: 3, fresh: true };
+
+// ваш код здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"name":"Дыня","from":"Бохтар","price":12,"weightKg":3,"fresh":true}
+string
+{
+  "name": "Дыня",
+  "from": "Бохтар",
+  "price": 12,
+  "weightKg": 3,
+  "fresh": true
+}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Тип узнаём оператором <code>typeof</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Красивая версия: <code>JSON.stringify(fruit, ___, 2)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Прогноз для Худжанда</h4><span class="level mid">средняя</span></header>
+          <p>Сервер прислал строку с прогнозом. Превратите её в объект и выведите: город; массив дней, когда максимум выше 30°; среднюю максимальную температуру за 5 дней.</p>
+<pre class="code" data-run>
+const response = '{"city":"Худжанд","days":[{"day":"Пн","max":29},{"day":"Вт","max":33},{"day":"Ср","max":35},{"day":"Чт","max":30},{"day":"Пт","max":27}]}';
+
+// ваш код здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Город: Худжанд
+Жаркие дни: ["Вт", "Ср"]
+Средняя температура: 30.8°C</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала <code>const data = JSON.parse(response);</code> — дальше работаете с <code>data.days</code> как с обычным массивом объектов. Обратите внимание: 30 — это не «выше 30».</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Жаркие дни: <code>filter</code>, потом <code>map(d =&gt; d.___)</code>. Вывод массива рядом с текстом: <code>console.log("Жаркие дни:", hot)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-3">
+          <header><span class="task-num">ЗАДАЧА 7.3</span><h4>Сообщения чата и «хранилище»</h4><span class="level hard">сложная</span></header>
+          <p>Часть сообщений пришла повреждённой. Напишите <code>safeParse(str)</code>: возвращает объект или <code>null</code>, если строка — не JSON (используйте <code>try...catch</code>). Выведите каждое сообщение или пометку о повреждении (номер считайте с 1), затем сколько прочитано. Во второй части объект <code>storage</code> изображает localStorage (хранит только строки): напишите <code>save(key, value)</code> и <code>load(key)</code>, где <code>load</code> использует <code>safeParse</code>.</p>
+<pre class="code" data-run>
+const messages = [
+  '{"from":"Фарход","text":"Салом!"}',
+  "{'from':'Мадина','text':'Рахмат'}",
+  '{"from":"Далер","text":"Хуш омадед",}',
+  '{"from":"Зарина","text":"Дарс соат 18:00"}'
+];
+
+function safeParse(str) {
+  // ваш код здесь
+}
+
+// часть 1: выведите сообщения и "Прочитано: ... из ..."
+
+
+// часть 2
+const storage = {};
+// function save(key, value) { ... }
+// function load(key) { ... }
+
+// save("draft", { to: "Мадина", text: "Завтра в 10" });
+// console.log(typeof storage.draft);
+// console.log(load("draft").text);
+// console.log(load("missing"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Фарход: Салом!
+Сообщение 2 повреждено
+Сообщение 3 повреждено
+Зарина: Дарс соат 18:00
+Прочитано: 2 из 4
+string
+Завтра в 10
+null</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>try</code> верните результат <code>JSON.parse(str)</code>, в <code>catch</code> — <code>null</code>. <code>JSON.parse(undefined)</code> тоже выбрасывает ошибку, поэтому <code>load("missing")</code> сам вернёт <code>null</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для номеров перебирайте через <code>for (let i = 0; i &lt; messages.length; i++)</code> и выводите <code>i + 1</code>. <code>save</code>: <code>storage[key] = JSON.___(value)</code>; <code>load</code>: <code>return safeParse(storage[key])</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 08 -->
+    <section class="topic" id="final">
+      <h2 data-toc="Итоговая практика"><span class="num">08</span> Итоговая практика</h2>
+      <p>Пора соединить всё, что вы знаете за три урока: функции, массивы с методами, объекты, деструктуризацию, spread и JSON. Такие задачи — это уже маленькие кусочки настоящих приложений: магазина, журнала оценок, сервиса такси.</p>
+      <ol class="steps">
+        <li><b>Посмотрите на форму данных.</b> Что это: массив объектов? Объект с массивом внутри? Выведите один элемент через <code>console.log</code>.</li>
+        <li><b>Разбейте задачу на шаги.</b> «Отобрать → посчитать → отсортировать → вывести». Каждый шаг — один метод или маленькая функция.</li>
+        <li><b>Проверяйте после каждого шага.</b> Написали <code>filter</code> — выведите результат, и только потом пишите <code>map</code>.</li>
+        <li><b>Не портите исходные данные.</b> Перед <code>sort</code> делайте копию <code>[...arr]</code>, вместо изменения объекта — <code>{ ...obj, поле: значение }</code>.</li>
+      </ol>
+
+      <div class="practice">
+        <h3>Практика: большие задачи</h3>
+        <p>Не торопитесь. Решайте по шагам и проверяйте промежуточные результаты.</p>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Корзина интернет-магазина</h4><span class="level easy">лёгкая</span></header>
+          <p>Есть каталог товаров и корзина, где для каждого товара указан только <code>id</code> и количество. Для каждой позиции корзины найдите товар в каталоге и выведите строку чека. Затем выведите сумму. Доставка 15 сомони, но бесплатно, если сумма от 150 сомони. В конце — сумма к оплате.</p>
+<pre class="code" data-run>
+const products = [
+  { id: 1, title: "Нон", price: 4 },
+  { id: 2, title: "Чой кабуд, 100 г", price: 18 },
+  { id: 3, title: "Зардолу сушёный, 1 кг", price: 45 },
+  { id: 4, title: "Мёд горный, 0.5 кг", price: 70 }
+];
+const cart = [
+  { id: 1, qty: 3 },
+  { id: 3, qty: 2 },
+  { id: 4, qty: 1 }
+];
+
+// ваш код здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Нон × 3 = 12 сомони
+Зардолу сушёный, 1 кг × 2 = 90 сомони
+Мёд горный, 0.5 кг × 1 = 70 сомони
+Сумма: 172 сомони
+Доставка: бесплатно
+К оплате: 172 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Для каждой позиции: <code>const product = products.find(p =&gt; p.id === item.___);</code>. Удобно сначала сделать массив строк чека через <code>map</code>: <code>{ title, price, qty, sum }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сумма — <code>reduce</code> по корзине. Доставка: <code>const delivery = sum &gt;= 150 ? 0 : 15;</code>, а для текста — ещё одна проверка: <code>delivery === 0 ? "бесплатно" : ___</code>.</p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Рейтинг группы Ilmhona</h4><span class="level mid">средняя</span></header>
+          <p>У каждого студента массив оценок за три проекта. Создайте <b>новый</b> массив <code>withAverage</code>, где у каждого студента есть ещё поле <code>average</code> — средний балл, округлённый до одного знака после точки. Выведите рейтинг по убыванию среднего, лучшего студента и средний балл группы по всем оценкам (тоже с одним знаком). Последняя строка проверяет, что исходный массив не изменился.</p>
+<pre class="code" data-run>
+const students = [
+  { name: "Фарход", city: "Душанбе", scores: [85, 90, 78] },
+  { name: "Мадина", city: "Худжанд", scores: [95, 88, 92] },
+  { name: "Рустам", city: "Куляб", scores: [70, 65, 80] },
+  { name: "Зарина", city: "Душанбе", scores: [88, 94, 91] },
+  { name: "Шахром", city: "Истаравшан", scores: [60, 75, 72] }
+];
+
+// ваш код здесь
+
+console.log("average" in students[0]);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1. Мадина — 91.7
+2. Зарина — 91
+3. Фарход — 84.3
+4. Рустам — 71.7
+5. Шахром — 69
+Лучший студент: Мадина (Худжанд)
+Средний балл группы: 81.5
+false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Округление до одного знака: <code>Math.round(x * 10) / 10</code>. Новый объект с дополнительным полем: <code>students.map(s =&gt; ({ ...s, average: ___ }))</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Рейтинг: <code>[...withAverage].sort((a, b) =&gt; b.average - a.average)</code>, номер места — индекс + 1 (второй параметр колбэка). Средний по группе: сначала соберите все оценки в один массив через spread, например в <code>reduce</code>: <code>(all, s) =&gt; [...all, ...s.scores]</code>.</p></details>
+        </article>
+
+        <article class="task" id="t8-3">
+          <header><span class="task-num">ЗАДАЧА 8.3</span><h4>Отчёт сервиса такси</h4><span class="level hard">сложная</span></header>
+          <p>Сервер прислал JSON-строку с заказами за день. Превратите её в массив, оставьте только выполненные (<code>status === "done"</code>), посчитайте выручку. Соберите объект-сводку по водителям: для каждого — сумма и количество поездок. Выведите водителей по убыванию суммы. В конце найдите самую дорогую выполненную поездку и выведите её, разложив объект деструктуризацией.</p>
+<pre class="code" data-run>
+const serverResponse = `[
+  {"id": 1, "driver": "Шахром", "from": "Шохмансур", "to": "Ирам", "price": 22, "status": "done"},
+  {"id": 2, "driver": "Абдулло", "from": "Корвон", "to": "Аэропорт", "price": 35, "status": "done"},
+  {"id": 3, "driver": "Шахром", "from": "Варзоб", "to": "Сино", "price": 60, "status": "cancelled"},
+  {"id": 4, "driver": "Далер", "from": "проспект Рудаки", "to": "Шохмансур", "price": 18, "status": "done"},
+  {"id": 5, "driver": "Абдулло", "from": "Ирам", "to": "Корвон", "price": 25, "status": "done"},
+  {"id": 6, "driver": "Шахром", "from": "Аэропорт", "to": "Сино", "price": 40, "status": "done"}
+]`;
+
+// ваш код здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Выполнено заказов: 5 из 6
+Выручка: 140 сомони
+Шахром: 62 сомони, поездок: 2
+Абдулло: 60 сомони, поездок: 2
+Далер: 18 сомони, поездок: 1
+Самая дорогая: Аэропорт → Сино, 40 сомони (Шахром)</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сводка по водителям — объект, где ключ — имя: <code>{ Шахром: { sum: 62, trips: 2 }, ... }</code>. Собирайте его циклом по выполненным заказам, как счётчик голосов в задаче 1.3. Чтобы отсортировать, превратите его в массив через <code>Object.entries</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сортировка пар: <code>Object.entries(stats).sort((a, b) =&gt; b[1].sum - a[1].sum)</code>, а в цикле — <code>for (const [driver, { sum, trips }] of ___)</code>. Самая дорогая — <code>reduce</code> с начальным значением <code>done[0]</code>, затем <code>const { from, to, price, driver } = ___;</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 09 -->
+    <section class="topic" id="ai-tips">
+      <h2 data-toc="Лайфхаки с ИИ"><span class="num">09</span> Лайфхаки: как писать код быстрее с ИИ</h2>
+      <p>За три урока вы выучили словарь, на котором говорит фронтенд: функции, массивы, методы, объекты. Теперь вы можете не просто «просить ИИ сделать сайт», а <b>ставить точные задачи и проверять ответы</b>. Именно этим хороший разработчик с ИИ отличается от человека, который копирует код наугад.</p>
+
+      <h3>1. Говорите на языке JS</h3>
+      <p>Чем точнее вы называете структуры и методы, тем точнее ответ. Сравните:</p>
+<div class="prompt bad-prompt">Сделай чтобы показывались товары которые дешёвые и посчитай сколько всего</div>
+<div class="prompt good-prompt">Есть массив объектов products с полями title (строка) и price (число, в сомони).
+Напиши стрелочную функцию cheapSummary(products), которая:
+1) через filter оставляет товары с price меньше 100;
+2) через map превращает их в строки вида "Пиала — 15 сомони";
+3) через reduce (с начальным значением 0) считает сумму их цен.
+Верни объект { lines, total }. Исходный массив не изменяй.</div>
+      <p>Во втором промпте нет ни одного лишнего слова, но ИИ уже не может ошибиться в форме ответа: вы назвали данные, методы, имя функции и формат результата.</p>
+
+      <h3>2. Давайте ИИ форму данных</h3>
+      <p>Вставляйте <b>пример данных</b> (2–3 объекта, а не 500) и <b>точный ожидаемый вывод</b>. Это самый сильный приём: ИИ видит и вход, и выход.</p>
+<div class="prompt good-prompt">Данные:
+const orders = [
+  { id: 1, driver: "Шахром", price: 22, status: "done" },
+  { id: 2, driver: "Абдулло", price: 35, status: "cancelled" }
+];
+Нужно получить ровно такой вывод в консоль:
+Шахром: 22 сомони
+Итого: 22 сомони
+Отменённые заказы не считаем.</div>
+
+      <h3>3. Генерируйте тестовые данные</h3>
+      <p>Не тратьте время на ручной набор 15 товаров. ИИ отлично генерирует данные — особенно если сразу указать поля, типы и местный контекст.</p>
+<div class="prompt">Сгенерируй JSON-массив из 15 товаров для интернет-магазина в Душанбе.
+Поля: id (число от 1), title (строка на русском: продукты, посуда, сувениры), price (целое число в сомони от 3 до 900), category (одна из: "продукты", "кухня", "сувениры"), inStock (true/false).
+Сделай 3 товара с inStock: false и хотя бы 2 товара дороже 500.
+Ответ — только валидный JSON, без комментариев.</div>
+      <p>Просьба про «3 товара с false» и «2 дороже 500» — не случайна: так в данных точно будут случаи, на которых проверяется ваш код.</p>
+
+      <h3>4. Просите объяснить построчно и предсказать вывод</h3>
+      <p>Получили код — попросите: «объясни каждую строку на русском и напиши, что выведет console.log». Затем нажмите <b>▶ Запустить</b> и сравните. Если ИИ предсказал неверно — значит, он сам не до конца понимает код, и доверять ему без проверки нельзя.</p>
+
+      <h3>5. Рефакторинг — с условием «не меняя поведение»</h3>
+<div class="prompt good-prompt">Перепиши этот код через стрелочные функции, деструктуризацию в параметрах и методы массивов вместо for. Поведение и вывод в консоль менять нельзя. После кода покажи, что именно ты изменил, списком.
+[ваш код]</div>
+      <p>После рефакторинга запустите старый и новый код на одних и тех же данных: вывод должен совпасть символ в символ.</p>
+
+      <h3>6. Отладка: код + точный текст ошибки + что ожидали</h3>
+<div class="prompt bad-prompt">не работает почему</div>
+<div class="prompt good-prompt">Код ниже падает с ошибкой:
+TypeError: Cannot read properties of undefined (reading 'name')
+Ожидал, что выведется "Я Рустам".
+Объясни причину простыми словами и покажи минимальное исправление, не переписывая всё.
+[ваш код]</div>
+
+      <h3>7. Просите крайние случаи</h3>
+      <p>Код, который работает на «хороших» данных, может упасть на реальных. Добавляйте в промпт: «проверь, что будет, если массив пустой; если у объекта нет поля <code>address</code>; если <code>price</code> равен <code>undefined</code>». Или попросите ИИ: «напиши 5 вызовов функции с крайними случаями и ожидаемым результатом для каждого».</p>
+
+      <h3>8. Типичные ошибки ИИ, которые вы теперь поймаете сами</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Что видите в ответе ИИ</th><th>В чём проблема</th><th>Как исправить</th></tr></thead>
+        <tbody>
+          <tr><td><code>arr.sort(...)</code> прямо по исходным данным</td><td><code>sort</code> меняет исходный массив</td><td><code>[...arr].sort(...)</code></td></tr>
+          <tr><td><code>reduce((sum, p) =&gt; sum + p.price)</code></td><td>Нет начального значения — первым <code>sum</code> станет объект, и выйдет <code>"[object Object]..."</code></td><td><code>reduce(..., 0)</code></td></tr>
+          <tr><td><code>method: () =&gt; { this.x }</code></td><td>У стрелочной функции нет своего <code>this</code></td><td><code>method() { this.x }</code></td></tr>
+          <tr><td><code>var</code></td><td>Устаревшее объявление, странная область видимости</td><td><code>const</code>, а где нужно менять — <code>let</code></td></tr>
+          <tr><td><code>user.address.city</code> для необязательных данных</td><td>Упадёт, если адреса нет</td><td><code>user.address?.city ?? "—"</code></td></tr>
+          <tr><td><code>arr.sum()</code>, <code>obj.length</code>, <code>arr.findAll()</code></td><td>Выдуманные методы — таких нет</td><td>Проверьте в документации (MDN) или запуском</td></tr>
+          <tr><td><code>const copy = obj</code> «для копии»</td><td>Это ссылка, а не копия</td><td><code>{ ...obj }</code> или <code>structuredClone(obj)</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>9. Главное правило</h3>
+      <div class="callout warn"><b>Не вставляйте код, который не можете объяснить</b>
+        <p>Если вы не можете сказать, что делает каждая строка, — вы не сможете исправить её, когда она сломается. Двигайтесь маленькими шагами: <b>одна функция за раз</b>. Попросили — прочитали — запустили — поняли — только потом следующая.</p>
+      </div>
+
+      <h3>Универсальный шаблон промпта</h3>
+      <p>Скопируйте и заполняйте под свою задачу. Пять блоков закрывают почти все причины плохих ответов.</p>
+<div class="prompt">Контекст: я изучаю JavaScript (функции, массивы, объекты). Пишу [что за проект: магазин / журнал оценок / ...].
+
+Данные (пример):
+[вставьте 2–3 объекта или кусок JSON]
+
+Задача: напиши функцию [имя]([параметры]), которая [что делает по шагам]. Ожидаемый результат для примера выше: [точный вывод].
+
+Ограничения: только const/let, стрелочные функции, методы массивов (filter/map/find/reduce), деструктуризация там, где уместно. Не изменяй исходные данные. Без библиотек. Учти крайние случаи: пустой массив, отсутствующее поле.
+
+Формат ответа: сначала код, потом объяснение по шагам на русском, потом 3 примера вызова с ожидаемым выводом.</div>
+
+      <div class="practice">
+        <h3>Практика с ИИ</h3>
+        <p>В этих задачах главное — не получить код, а <b>проверить</b> его. Результат сверяйте кнопкой «Запустить».</p>
+
+        <article class="task" id="t9-1">
+          <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Промпт, который работает с первого раза</h4><span class="level easy">лёгкая</span></header>
+          <p>По универсальному шаблону составьте промпт, чтобы ИИ написал функцию <code>groupByCity(students)</code>: она возвращает объект, где ключ — город, значение — массив имён студентов из этого города. Требования в промпте: через <code>reduce</code>, не менять исходный массив, для пустого массива вернуть <code>{}</code>. Вставьте ответ ИИ в код ниже и запустите. Если вывод не совпал — не исправляйте руками, а уточните промпт.</p>
+<pre class="code" data-run>
+const students = [
+  { name: "Фарход", city: "Душанбе" },
+  { name: "Мадина", city: "Худжанд" },
+  { name: "Шахром", city: "Душанбе" },
+  { name: "Нилуфар", city: "Бохтар" },
+  { name: "Далер", city: "Худжанд" }
+];
+
+// вставьте сюда функцию groupByCity от ИИ
+
+console.log(groupByCity(students));
+console.log(groupByCity([]));
+console.log(students.length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{
+  Душанбе: ["Фарход", "Шахром"],
+  Худжанд: ["Мадина", "Далер"],
+  Бохтар: ["Нилуфар"]
+}
+{}
+5</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Вставьте в промпт массив <code>students</code> целиком и ожидаемый результат — так ИИ увидит точную форму входа и выхода.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Проверьте ответ ИИ глазами: есть ли у <code>reduce</code> начальное значение <code>{}</code>? Нет ли <code>var</code>? Сможете ли вы объяснить каждую строку? Если нет — попросите ИИ объяснить построчно.</p></details>
+        </article>
+
+        <article class="task" id="t9-2">
+          <header><span class="task-num">ЗАДАЧА 9.2</span><h4>ИИ ищет баги, вы — проверяете</h4><span class="level mid">средняя</span></header>
+          <p>В этом коде три ошибки — все из таблицы «Типичные ошибки ИИ». Сначала попробуйте найти их сами. Потом отправьте код ИИ с промптом в стиле пункта 6 (код + что выводится + что ожидали) и сравните: нашёл ли он все три? Объяснил ли причину каждой? Исправьте код и добейтесь ожидаемого вывода. Порядок товаров внутри <code>shop.products</code> должен остаться исходным.</p>
+<pre class="code" data-run>
+const shop = {
+  name: "Корвон-онлайн",
+  products: [
+    { title: "Дыня", price: 12 },
+    { title: "Гранат", price: 9 },
+    { title: "Виноград", price: 15 }
+  ],
+  cheapestFirst: () =&gt; {
+    return this.products.sort((a, b) =&gt; a.price - b.price);
+  },
+  total() {
+    return this.products.reduce((sum, p) =&gt; sum + p.price);
+  }
+};
+
+console.log(shop.cheapestFirst().map(p =&gt; p.title));
+console.log(shop.products[0].title);
+console.log(shop.total());
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>["Гранат", "Дыня", "Виноград"]
+Дыня
+36</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Ошибки проявляются по очереди: исправите первую (код перестанет падать) — увидите вторую и третью. Смотрите на: как объявлен метод, что делает <code>sort</code> с исходным массивом, с чего начинает <code>reduce</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Если ИИ нашёл только одну-две ошибки, напишите ему: «после твоего исправления <code>shop.products[0].title</code> выводит "Гранат", а должен "Дыня". Почему?» — и проверьте, понял ли он причину.</p></details>
+        </article>
+
+        <article class="task" id="t9-3">
+          <header><span class="task-num">ЗАДАЧА 9.3</span><h4>Сгенерируйте данные и проверьте функцию</h4><span class="level hard">сложная</span></header>
+          <p>Напишите функцию <code>libraryReport(books)</code> (сами или с ИИ — но объяснить её должны вы), которая выводит: всего книг, сколько в наличии, объект «автор → количество книг» и самую толстую книгу. Сначала добейтесь точного вывода на маленькой контрольной выборке <code>sample</code>. Затем попросите ИИ сгенерировать JSON-массив из 15 книг таджикских и персидских классиков (Айни, Рудаки, Фирдавси, Хайям, Саади, Джами) с полями <code>title</code>, <code>author</code>, <code>year</code>, <code>pages</code>, <code>available</code> — причём попросите сделать одну книгу без поля <code>pages</code>. Вставьте строку в <code>generated</code> и убедитесь, что функция не падает и считает правильно.</p>
+<pre class="code" data-run>
+const sample = [
+  { title: "Шахнаме", author: "Фирдавси", year: 1010, pages: 980, available: true },
+  { title: "Одина", author: "Айни", year: 1924, pages: 120, available: false },
+  { title: "Рабы", author: "Айни", year: 1935, pages: 450, available: true }
+];
+
+function libraryReport(books) {
+  // ваш код здесь
+}
+
+libraryReport(sample);
+
+// const generated = `вставьте сюда JSON от ИИ`;
+// libraryReport(JSON.parse(generated));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Всего книг: 3
+В наличии: 2
+По авторам: { Фирдавси: 1, Айни: 2 }
+Самая толстая: Шахнаме (980 стр.)
+
+Для generated: 4 такие же строки без ошибок; «Всего книг: 15»,
+сумма чисел в объекте «По авторам» тоже равна 15,
+книга без pages не ломает поиск самой толстой.</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Подсчёт по авторам — тот же приём «объект-счётчик», что в задаче 1.3. Для книги без <code>pages</code> используйте <code>b.pages ?? 0</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Как проверить ответ ИИ: посчитайте вручную 2–3 значения в сгенерированных данных (например, сколько книг Айни) и сравните с выводом. Если ИИ прислал JSON с комментариями или запятой в конце — <code>JSON.parse</code> упадёт: попросите «только валидный JSON».</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== итоги -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Итоги">Итоги урока</h2>
+      <ul>
+        <li><b>Объект</b> — одна вещь с названными свойствами: <code>{ name: "Фарход", age: 20 }</code>. Массив — список однотипных вещей. Массив объектов — самая частая форма данных.</li>
+        <li>Чтение: <code>obj.key</code> или <code>obj["key"]</code> (ключ с пробелом или в переменной: <code>obj[field]</code>). Нет свойства → <code>undefined</code>.</li>
+        <li>Изменить/добавить: <code>obj.key = value</code>. Удалить: <code>delete obj.key</code>. Проверить: <code>"key" in obj</code>. Объект в <code>const</code> менять можно, переприсвоить нельзя.</li>
+        <li>Короткая запись: <code>{ name, age }</code>. Стрелочная функция возвращает объект в скобках: <code>() =&gt; ({ ... })</code>.</li>
+        <li>Перебор: <code>Object.keys / values / entries</code> + <code>for (const [key, value] of Object.entries(obj))</code>. Число свойств: <code>Object.keys(obj).length</code>.</li>
+        <li>Вложенность: <code>group.students[1].name</code>. Необязательные данные: <code>user.address?.city ?? "—"</code>.</li>
+        <li>Метод — функция в объекте: <code>greet() { }</code>, вызов со скобками <code>obj.greet()</code>.</li>
+        <li><code>this</code> — объект перед точкой при вызове. Методы с <code>this</code> — не стрелочные; колбэки внутри метода — стрелочные. Оторванный метод теряет <code>this</code>.</li>
+        <li>Деструктуризация: <code>const { name: userName, city = "Душанбе" } = user</code>, <code>const [first, , third] = arr</code>, <code>function f({ title, price })</code>.</li>
+        <li>Spread распаковывает: <code>[...a, ...b]</code>, <code>{ ...user, age: 21 }</code> — новая копия (поверхностная!). Rest собирает: <code>function sum(...nums)</code>, <code>const { password, ...safe } = user</code>.</li>
+        <li>JSON — текст для обмена данными: <code>JSON.stringify(obj, null, 2)</code> и <code>JSON.parse(str)</code> внутри <code>try...catch</code>. localStorage хранит только строки. Глубокая копия — <code>structuredClone(obj)</code>.</li>
+        <li>С ИИ: называйте методы и структуры, давайте пример данных и точный вывод, просите крайние случаи, проверяйте запуском. Не вставляйте код, который не можете объяснить.</li>
+      </ul>
+    </section>
+
+    <nav class="pager">
+      <a class="prev" href="02-arrays.html"><span>← Предыдущий урок</span>Массивы и методы</a>
+      <a class="next" href="01-functions.html"><span>Повторить блок →</span>К началу блока</a>
+    </nav>
+  </main>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>
