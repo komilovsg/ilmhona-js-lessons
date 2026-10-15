@@ -1,0 +1,1857 @@
+<style>
+/* схема всплытия: вложенные рамки (только для этого урока) */
+.bub { display: grid; gap: 10px; font: 700 13px var(--mono); max-width: 520px; margin: 0 auto; }
+.bub .lvl { border: 2px solid var(--line); border-radius: 12px; padding: 10px 14px 14px; background: var(--paper); }
+.bub .lvl > .lbl { display: block; margin-bottom: 8px; color: var(--ink-2); }
+.bub .l1 { border-color: var(--blue); } .bub .l1 > .lbl { color: var(--blue); }
+.bub .l2 { border-color: var(--gold); } .bub .l2 > .lbl { color: var(--gold); }
+.bub .l3 { border-color: var(--accent); } .bub .l3 > .lbl { color: var(--accent); }
+.bub-flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; font: 700 13px var(--mono); margin-top: 14px; }
+.bub-flow span { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); }
+.bub-flow .down { color: var(--blue); } .bub-flow .hit { color: var(--accent); border-color: var(--accent); } .bub-flow .up { color: var(--gold); }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 9 · DOM ва интерфейс</p>
+      <h1>Ҳодисаҳо</h1>
+      <p class="lead">Саҳифае, ки танҳо маълумотро нишон медиҳад, плакат аст. Сайти зинда <b>ҷавоб медиҳад</b>: тугмаи «В корзину» маҳсулотро илова мекунад, майдони ҷустуҷӯ рӯйхатро фавран филтр мекунад, шакли дархост саҳифаро аз нав бор намекунад. Паси ҳар як чунин вокуниш ҳодиса истодааст. Имрӯз шумо «шунидани» кликҳо, воридкунӣ ва ирсоли шаклҳоро меомӯзед — ва рӯйхати воқеан интерактивӣ месозед, мисли барномаҳое, ки ҳар рӯз истифода мебаред.</p>
+      <ul class="goals">
+        <li>Ба ҳодисаҳо тавассути <code>addEventListener</code> обуна шудан ва тавассути <code>removeEventListener</code> обунаро бекор кардан</li>
+        <li>Объекти ҳодисаро хондан: <code>type</code>, <code>target</code>, <code>currentTarget</code>, <code>key</code>, <code>value</code></li>
+        <li>Амали пешфарзии браузерро тавассути <code>preventDefault</code> боздоштан (истинодҳо, шаклҳо, клавишаҳои тез)</li>
+        <li>Болоравӣ (bubbling) ва фурӯравиро (capturing) фаҳмидан ва идора кардан</li>
+        <li>Як коркардкунандаро барои бисёр элементҳо навиштан — вакилкунии ҳодисаҳо бо <code>closest</code> ва <code>data-*</code></li>
+        <li>Хаторо барои ЗС чунон тавсиф кардан, ки ӯ аз бори аввал кӯмак расонад</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Бо ин саҳифа чӣ тавр кор кардан лозим</b>
+      <p>Коди дар заминаи торик бо тугмаи <b>▶ Запустить</b> — зинда аст: онро тағйир диҳед ва натиҷаро дар консол бубинед. Блокҳо бо ҷадвалҳои <b>index.html / style.css / script.js</b> — саҳифаҳои хурданд: дар зери код <b>пешнамоиш</b> пайдо мешавад, ки дар он воқеан клик кардан ва чоп кардан мумкин аст. Ишораҳои вазифаҳо пинҳон шудаанд — аввал 15 дақиқа худатон кӯшиш кунед.</p>
+      <p><b>Муҳим дар бораи вазифаҳо.</b> Корбар бо муш клик мекунад, аммо санҷиши вазифаҳо худкор аст ва бояд ҳар дафъа як натиҷаи якхела диҳад. Бинобар ин дар вазифаҳо кликҳо ва воридкуниро худи код «иҷро мекунад»: <code>button.click()</code>, <code>input.dispatchEvent(...)</code>. Барои коркардкунандаи шумо ин аз клики воқеӣ фарқ надорад.</p>
+    </div>
+
+    <!-- ===================================================== 01 -->
+    <section class="topic" id="events-intro">
+      <h2 data-toc="Ҳодиса чист"><span class="num">01</span> Ҳодиса чист ва addEventListener</h2>
+      <p>То даме ки шумо кодро аз боло ба поён менависед, он як маротиба иҷро мешавад ва тамом мегардад. Аммо корбар чизеро <b>баъдтар ва ғайричашмдошт</b> анҷом медиҳад: клик мекунад, тугмаро мезанад, матн ворид мекунад, саҳифаро варақ мезанад. Браузер ҳар як чунин амалро мушоҳида мекунад ва <b>ҳодиса</b> месозад — сигнали «чизе рӯй дод». Вазифаи мо — пешакӣ гуфтан: «агар чунин ҳодиса дар чунин элемент рӯй диҳад — ин функсияро иҷро кун».</p>
+
+      <div class="callout analogy"><b>Муқоиса аз ҳаёт</b>
+        <p>Дар болои дари чойхона зангӯлача овезон аст. То даме ки касе намедарояд — хомӯшӣ, пешхизмат ба кори худ банд аст. Аммо ҳамин ки дарро кушоянд — зангӯлача садо медиҳад ва пешхизмат барои истиқболи меҳмон меравад. Шумо <b>пешакӣ мувофиқа кардед</b>: «садо дод — ба сӯи дар рав». Ҳодиса — садои зангӯлача, коркардкунанда — амалҳои пешхизмат, ва <code>addEventListener</code> — худи мувофиқа.</p>
+      </div>
+
+      <dl class="terms">
+        <dt>Ҳодиса</dt><dd>Сигнал аз браузер: <code>click</code>, <code>input</code>, <code>submit</code>, <code>keydown</code>… Ҳар ҳодиса навъ дорад — сатр бо ном.</dd>
+        <dt>Коркардкунанда</dt><dd>Функсияе, ки ҳангоми рӯй додани ҳодиса иҷро мешавад. Инчунин <i>handler</i> ё <i>listener</i> («шунаванда») мегӯянд.</dd>
+        <dt>Обуна</dt><dd>Пайвасти «элемент + навъи ҳодиса + функсия». Як маротиба анҷом дода мешавад, аммо ҳар қадар маротиба кор мекунад.</dd>
+      </dl>
+
+      <h3>Обуна чӣ тавр менамояд</h3>
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p2" data-label="элемент">button</span><span class="part p1" data-label="метод">.addEventListener</span>(<span class="part p3" data-label="тип события">"click"</span>, <span class="part p4" data-label="обработчик">greet</span>);
+        </div>
+        <figcaption>Кадом элементро мешунавем → «обуна шав» → ба кадом ҳодиса → чиро даъват кардан</figcaption>
+      </figure>
+
+      <p>Бигзор бо мисоли зинда бубинем. Мо тугма месозем, ба клик обуна мешавем ва тугмаро аз код бо ду даъвати <code>click()</code> «мезанем»:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="buy"&gt;Купить&lt;/button&gt;`;
+const buy = document.querySelector("#buy");
+
+function onBuy() {
+  console.log("Спасибо за покупку!");
+}
+
+buy.addEventListener("click", onBuy);
+console.log("Обработчик навешен, клика ещё не было");
+
+buy.click();   // клики барномавӣ — гӯё бо муш зананд
+buy.click();
+</pre>
+      <p>Диққат диҳед: коркардкунанда дар лаҳзаи <code>addEventListener</code> <b>иҷро намешавад</b>. Он танҳо ба ёд гирифта мешавад ва интизор мешавад. Ҳар клик онро аз нав даъват мекунад.</p>
+
+      <h3>Воқеан кӯшиш кунед</h3>
+      <p><b>▶ Запустить</b>-ро пахш кунед, баъд дар пешнамоиш ба тугма клик кунед. Матни коркардкунандаро иваз кунед ё кӯшиш кунед, ки ҳисобкунак фавран ба 5 афзояд.</p>
+
+      <div class="playground" data-mode="dom" data-title="Ҳисобкунаки кликҳо">
+<pre class="code" data-lang="html">
+&lt;button id="like"&gt;❤ Нравится&lt;/button&gt;
+&lt;p&gt;Лайков: &lt;b id="count"&gt;0&lt;/b&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+button { font: inherit; padding: 8px 16px; border-radius: 10px; border: 1px solid #d0d5dd; background: #fff; cursor: pointer; }
+button:active { transform: scale(.97); }
+</pre>
+<pre class="code" data-lang="js">
+const like = document.querySelector("#like");
+const count = document.querySelector("#count");
+let likes = 0;
+
+like.addEventListener("click", () =&gt; {
+  likes++;
+  count.textContent = likes;
+  console.log("Лайков уже: " + likes);
+});
+</pre>
+      </div>
+
+      <h3>Се роҳи овехтани коркардкунанда</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Роҳ</th><th>Чӣ тавр менамояд</th><th>Кай истифода мебаранд</th></tr></thead>
+        <tbody>
+          <tr><td>Атрибут дар HTML</td><td><code>&lt;button onclick="buy()"&gt;</code></td><td>Истифода намебарем: аломатгузорӣ ва кодро омехта мекунад, санҷиш душвор аст</td></tr>
+          <tr><td>Хосият</td><td><code>btn.onclick = function () {…}</code></td><td>Танҳо дар мисолҳои оддӣ: <b>фақат як</b> коркардкунандаро овехтан мумкин аст</td></tr>
+          <tr><td><code>addEventListener</code></td><td><code>btn.addEventListener("click", fn)</code></td><td><b>Ҳамеша.</b> Коркардкунандаҳо метавонанд ҳар қадар бошанд, онҳоро метавон гирифт</td></tr>
+        </tbody>
+      </table></div>
+
+      <p>Фарқи асосӣ вақте намоён мешавад, ки коркардкунандаҳо якчанд мебошанд. Хосияти <code>onclick</code> як функсияро нигоҳ медорад — таъини навбатӣ пештараро нест мекунад. Аммо <code>addEventListener</code> онҳоро ба рӯйхат илова мекунад ва онҳо <b>бо тартиби илова шудан</b> кор мекунанд:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="b"&gt;Кнопка&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+b.onclick = () =&gt; console.log("onclick №1");
+b.onclick = () =&gt; console.log("onclick №2");   // аввалиро нест кард!
+
+b.addEventListener("click", () =&gt; console.log("слушатель №1"));
+b.addEventListener("click", () =&gt; console.log("слушатель №2"));
+
+b.click();
+</pre>
+
+      <div class="callout warn"><b>Хатои маъмул: қавсҳо баъди номи функсия</b>
+        <p>Ба <code>addEventListener</code> <b>худи функсия</b> дода мешавад, на натиҷаи даъвати он. Қавсҳои <code>()</code> функсияро худи ҳозир даъват мекунанд — ва коркардкунанда он чизе мегардад, ки функсия баргардонд (одатан <code>undefined</code>).</p>
+      </div>
+<pre class="code" data-run data-title="Хатои маъмул: функсия фавран даъват шуд, на бо клик">
+document.body.innerHTML = `&lt;button id="b"&gt;Кнопка&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+function hello() {
+  console.log("Салом!");
+}
+
+b.addEventListener("click", hello());   // ✖ қавсҳо: «Салом!» фавран, як маротиба чоп мешавад
+console.log("Клика ещё не было, а салом уже прозвучал");
+b.click();   // аммо ба клик касе ҷавоб намедиҳад
+</pre>
+      <p>Агар лозим бошад, ки маълумоти худро ба коркардкунанда диҳед, даъватро ба функсияи тирчадор печонед: <code>b.addEventListener("click", () =&gt; hello("Мадина"))</code>.</p>
+
+      <h3>Гирифтани коркардкунанда ва як маротиба кор кардан</h3>
+      <p>Обунаро бекор кардан мумкин аст: <code>removeEventListener</code> бо <b>ҳамон</b> параметрҳо. Бинобар ин функсияро дар тағйирёбанда нигоҳ доштан лозим аст — тирчаи беном-ро гирифтан намешавад, зеро он функсияи «дигар» мебошад.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="b"&gt;Талон&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+function takeTicket() {
+  console.log("Ваш талон выдан");
+  b.removeEventListener("click", takeTicket);   // ҳамон элемент, навъ ва функсия
+}
+
+b.addEventListener("click", takeTicket);
+b.click();
+b.click();   // хомӯшӣ — коркардкунанда гирифта шуд
+console.log("Второй клик ничего не сделал");
+</pre>
+      <p>Барои ҳолати «як маротиба кор кардан» роҳи кӯтоҳ ҳаст — аргументи сеюм бо танзимот. Браузер худаш коркардкунандаро баъди аввалин кор кардан мегирад:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="b"&gt;Приз&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+b.addEventListener("click", () =&gt; console.log("Вы получили приз!"), { once: true });
+
+b.click();
+b.click();
+b.click();
+</pre>
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/introduction-browser-events" target="_blank" rel="noopener">learn.javascript.ru — Введение в браузерные события</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/EventTarget/addEventListener" target="_blank" rel="noopener">MDN — addEventListener</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+        <p>Дар ҳамаи вазифаҳо тугмаро код «мезанад» — шумо бояд коркардкунанда нависед.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Зангӯлача дар чойхона</h4><span class="level easy">осон</span></header>
+          <p>Дар болои дари чойхона зангӯлача овезон аст — тугмаи <code>#bell</code>. Ба клики он чунон обуна шавед, ки ҳар дафъа «Динь-динь!» чоп шавад. Се меҳмон даромад — се садо.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="bell"&gt;Дверь&lt;/button&gt;`;
+const bell = document.querySelector("#bell");
+
+// коди шумо инҷо
+
+bell.click();
+bell.click();
+bell.click();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Динь-динь!
+Динь-динь!
+Динь-динь!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Усули <code>bell.addEventListener(навъ, функсия)</code> лозим аст. Навъи ҳодиса — сатри <code>"click"</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>bell.addEventListener("click", () =&gt; { console.log("…"); });</code> — функсияи тирчадор бевосита дар аргумент.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Хаторо ёб: салом пеш аз вақт</h4><span class="level easy">осон</span></header>
+          <p>Интизор мерафт, ки «Салом, Мадина!» <b>ду маротиба — барои ҳар клик як маротиба</b> ва баъди сатри «Кнопка готова» чоп шавад. Ҳоло ҳама чиз дигар аст: як хаторо ёбед ва ислоҳ кунед.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="hi"&gt;Поздороваться&lt;/button&gt;`;
+const hi = document.querySelector("#hi");
+
+function sayHello() {
+  console.log("Салом, Мадина!");
+}
+
+hi.addEventListener("click", sayHello());
+
+console.log("Кнопка готова");
+hi.click();
+hi.click();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Кнопка готова
+Салом, Мадина!
+Салом, Мадина!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Онро чун ҳаст иҷро кунед ва ба тартиби сатрҳо нигоҳ кунед: салом пеш аз клик пайдо шуд. Пас функсия дар лаҳзаи обуна даъват шудааст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Қавсҳои гирдро баъди <code>sayHello</code> дар <code>addEventListener</code> нест кунед: браузер худаш функсияро ҳангоми клик даъват мекунад.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Тартибро пешгӯӣ кун</h4><span class="level easy">осон</span></header>
+          <p>Инак чор коркардкунанда дар як тугма. Яке аз онҳо дигареро нест мекунад. Дар массиви <code>prediction</code> нависед, ки баъди як клик кадом ҳарфҳо ва <b>бо кадом тартиб</b> ба <code>actual</code> меафтанд. Кодро фавран иҷро накунед — аввал фикр кунед. Ҷавоб ба экран чоп намешавад: консол танҳо хабар медиҳад, ки шумо дуруст пешгӯӣ кардед ё не.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="b"&gt;Кнопка&lt;/button&gt;`;
+const b = document.querySelector("#b");
+const actual = [];
+
+b.onclick = () =&gt; actual.push("A");
+b.onclick = () =&gt; actual.push("B");
+b.addEventListener("click", () =&gt; actual.push("C"));
+b.addEventListener("click", () =&gt; actual.push("D"));
+b.click();
+
+const prediction = [];   // ҳарфҳоро дар сатрҳо нависед, масалан ["X", "Y"]
+
+console.log(prediction.join(" ") === actual.join(" ") ? "Прогноз верный" : "Прогноз неверный");
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Прогноз верный</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Таъини дуюми <code>b.onclick = …</code> бо аввалин чӣ мекунад? Оё дар ин «ҷой» як функсия мемонад?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Барои санҷиши худ, <code>console.log(actual.join(" "))</code>-ро муваққатан пеш аз сатри охирин илова кунед. Аммо аввал пешгӯӣ кунед!</p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ВАЗИФАИ 1.4</span><h4>Ҳадди кликҳо</h4><span class="level mid">миёна</span></header>
+          <p>Акция: танҳо се клики аввал «таҳфиф» мегиранд. Коркардкунандаи <code>onClick</code>-ро ба итмом расонед: он ҳисобкунакро зиёд мекунад, «Клик 1», «Клик 2», «Клик 3» чоп мекунад, ва дар клики сеюм иловатан «Лимит исчерпан, обработчик снят» чоп мекунад ва <b>худро мегирад</b>. Минбаъд тугма хомӯш аст (код онро панҷ маротиба мезанад).</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="promo"&gt;Скидка&lt;/button&gt;`;
+const promo = document.querySelector("#promo");
+let count = 0;
+
+function onClick() {
+  // коди шумо инҷо
+}
+
+promo.addEventListener("click", onClick);
+
+for (let i = 0; i &lt; 5; i++) {
+  promo.click();
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Клик 1
+Клик 2
+Клик 3
+Лимит исчерпан, обработчик снят</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар дохили функсия: <code>count++</code>, баъд <code>console.log("Клик " + count)</code>, баъд <code>if (count === 3) { … }</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Гирифтани коркардкунанда: <code>promo.removeEventListener("click", onClick);</code> — функсия дар мо дар тағйирёбанда бо номи <code>onClick</code> аст, бинобар ин гирифтани он мумкин аст.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 02 -->
+    <section class="topic" id="event-object">
+      <h2 data-toc="Объекти ҳодиса"><span class="num">02</span> Объекти ҳодиса</h2>
+      <p>Вақте браузер коркардкунандаи шуморо даъват мекунад, ба он <b>як аргумент</b> — объекти ҳодисаро медиҳад. Одатан онро <code>event</code>, <code>evt</code> ё мухтасар <code>e</code> меноманд. Дар он ҳама чизе, ки дар бораи рӯйдод маълум аст, ҷой дорад: аз кадом навъ аст, дар кадом элемент рӯй дод, муш дар куҷо буд, кадом клавиша зада шуд.</p>
+
+      <div class="callout analogy"><b>Муқоиса аз ҳаёт</b>
+        <p>Диспетчери маршрутка дар журнал сабт мекунад: «<b>чӣ</b> шуд (савор шудан), <b>дар куҷо</b> (бекати «Шохмансур»), <b>соати чанд</b>, <b>кӣ</b> савор шуд». Объекти ҳодиса — ҳамин гуна варақаи журнал аст. Агар хоҳед тафсилотро бидонед — ба он нигоҳ кунед.</p>
+      </div>
+
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="pay" class="btn"&gt;Оплатить&lt;/button&gt;`;
+const pay = document.querySelector("#pay");
+
+pay.addEventListener("click", (event) =&gt; {
+  console.log("Тип события:", event.type);
+  console.log("Элемент:", event.target.id);
+  console.log("Тег:", event.target.tagName);
+  console.log("Это Event?", event instanceof Event);
+});
+
+pay.click();
+</pre>
+
+      <h3>Хосиятҳои аз ҳама муфид</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Хосият</th><th>Чӣ медиҳад</th><th>Мисол</th></tr></thead>
+        <tbody>
+          <tr><td><code>event.type</code></td><td>Навъи ҳодиса ба шакли сатр</td><td><code>"click"</code>, <code>"input"</code></td></tr>
+          <tr><td><code>event.target</code></td><td>Элементе, ки дар он ҳодиса <b>рух дод</b></td><td>Тугма ё нишона дар дохили он</td></tr>
+          <tr><td><code>event.currentTarget</code></td><td>Элементе, ки коркардкунандаи шумо дар он <b>овезон</b> аст</td><td>Ҳамон, ки барои он <code>addEventListener</code> даъват шуд</td></tr>
+          <tr><td><code>event.clientX / clientY</code></td><td>Координатаҳои муш дар тиреза (дар ҳодисаҳои муш)</td><td><code>120</code>, <code>45</code></td></tr>
+          <tr><td><code>event.key</code></td><td>Кадом клавиша зада шуд (дар ҳодисаҳои клавиатура)</td><td><code>"Enter"</code>, <code>"a"</code>, <code>"Escape"</code></td></tr>
+          <tr><td><code>event.target.value</code></td><td>Матн дар майдони воридкунӣ (дар <code>input</code>)</td><td><code>"Душанбе"</code></td></tr>
+          <tr><td><code>event.preventDefault()</code></td><td>Бекор кардани амали пешфарзии браузер</td><td>Бахши 04</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Муш ва клавиатура</h3>
+      <p>«Тугмаро задан»-ро аз код чӣ тавр иҷро кардан мумкин? Ҳодисаро дастӣ месозем ва бо усули <code>dispatchEvent</code> ба элемент мефиристем. Мо дар вазифаҳо ҳамин тавр амал мекунем — барои коркардкунандаи шумо ин ба задани воқеӣ монанд аст.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="field" placeholder="Введите имя"&gt;`;
+const field = document.querySelector("#field");
+
+field.addEventListener("keydown", (e) =&gt; {
+  console.log("Нажата клавиша:", e.key);
+});
+
+field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+field.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+</pre>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;div id="map" style="width:300px;height:200px"&gt;Карта&lt;/div&gt;`;
+const map = document.querySelector("#map");
+
+map.addEventListener("click", (e) =&gt; {
+  console.log(`Клик в точке (${e.clientX}, ${e.clientY})`);
+});
+
+map.dispatchEvent(new MouseEvent("click", { clientX: 120, clientY: 45 }));
+</pre>
+
+      <h3>target ва currentTarget: кӣ кор кард ва кӣ мешунавад</h3>
+      <p>Ин ду хосияти гуногун аст ва омехтакунии онҳо яке аз маъмултарин хатоҳост. Бигзор дар дохили тугма нишонаи <code>&lt;b&gt;</code> бошад. Агар ба нишона клик кунанд, пас:</p>
+      <dl class="terms">
+        <dt>target</dt><dd>Элементи аз ҳама чуқур, ки ба он <b>воқеан</b> клик карданд: нишонаи <code>&lt;b&gt;</code>.</dd>
+        <dt>currentTarget</dt><dd>Элементе, ки барои он коркардкунанда <b>даъват шудааст</b>: тугма. Ҳамеша ҳамон, ки шумо барояш <code>addEventListener</code> навиштаед.</dd>
+      </dl>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="cart"&gt;&lt;b id="icon"&gt;🛒&lt;/b&gt; Корзина&lt;/button&gt;`;
+const cart = document.querySelector("#cart");
+const icon = document.querySelector("#icon");
+
+cart.addEventListener("click", (e) =&gt; {
+  console.log("target:", e.target.tagName);
+  console.log("currentTarget:", e.currentTarget.tagName);
+});
+
+icon.click();   // ба нишона дар дохили тугма клик карданд
+cart.click();   // ба худи тугма клик карданд
+</pre>
+      <p>То даме ки элемент як аст, онҳо мувофиқат мекунанд. Аммо ҳамин ки дар дохил элементҳои дарунмонда ҳастанд, <code>target</code> метавонад «чуқуртар» шавад. Ин муҳим аст: дар бахши 06 мо дар ин асос як техникаи томро месозем.</p>
+
+      <div class="callout tip"><b>Аммо this чист?</b>
+        <p>Дар функсияи оддии коркардкунанда <code>this</code> низ ба элементе ишора мекунад, ки коркардкунанда дар он овезон аст — ҳамон ки <code>currentTarget</code>. Дар функсияи тирчадор <code>this</code> дигар аст. Барои ҳадс назадан, ҳамеша <code>event.currentTarget</code>-ро истифода баред — он дар ҳама ҷо яксон кор мекунад.</p>
+      </div>
+
+      <div class="callout warn"><b>Хатои маъмул: хосият на аз ҳамон ҳодиса</b>
+        <p>Маҷмӯи хосиятҳо аз навъи ҳодиса вобаста аст. Клик клавиша надорад, зеро пахши клавиша координатаҳои муш надорад. JavaScript хафа намешавад — он танҳо <code>undefined</code> бармегардонад ва шумо ним соат барои ҷустуҷӯи «хато» сарф мекунед.</p>
+      </div>
+<pre class="code" data-run data-title="Хатои маъмул: клик хосияти key надорад">
+document.body.innerHTML = `&lt;button id="b"&gt;Кнопка&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+b.addEventListener("click", (e) =&gt; {
+  console.log(e.key);        // undefined — клик клавиша надорад
+  console.log(e.clientX);    // аммо координатаҳо ҳастанд (0, зеро клик барномавӣ аст)
+});
+b.click();
+</pre>
+      <p>Агар шубҳа дошта бошед, ки ҳодиса кадом хосиятҳоро дорад, тамоми объектро чоп кунед: <code>console.log(e)</code> — ва дар DevTools нигоҳ кунед.</p>
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/introduction-browser-events#obekt-sobytiya" target="_blank" rel="noopener">learn.javascript.ru — Объект события</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Event/currentTarget" target="_blank" rel="noopener">MDN — Event.currentTarget</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/KeyboardEvent/key" target="_blank" rel="noopener">MDN — KeyboardEvent.key</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Шиносномаи ҳодиса</h4><span class="level easy">осон</span></header>
+          <p>Коркардкунандаи клики тугмаи <code>#pay</code>-ро ба итмом расонед: он се сатр чоп мекунад — навъи ҳодиса, <code>id</code>-и элементи сарчашма ва номи тегаш. Формат — мисли натиҷаи интизоршаванда.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="pay"&gt;Оплатить&lt;/button&gt;`;
+const pay = document.querySelector("#pay");
+
+pay.addEventListener("click", (event) =&gt; {
+  // коди шумо инҷо
+});
+
+pay.click();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Событие: click
+Элемент: pay
+Тег: BUTTON</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Навъ — <code>event.type</code>, элемент — <code>event.target</code>, он хосиятҳои <code>id</code> ва <code>tagName</code> дорад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Сатри қолабӣ: <code>console.log(`Событие: ${event.type}`);</code> — се чунин даъват.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Вокуниш ба клавишаҳо</h4><span class="level mid">миёна</span></header>
+          <p>Дар майдони <code>#msg</code> се клавиша «зада мешавад». Коркардкунандаи <code>keydown</code> бояд чунин вокуниш кунад: <code>Enter</code> → «Отправка», <code>Escape</code> → «Очистка», ҳама дигар → «Нажата клавиша: » ва номи он.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="msg"&gt;`;
+const msg = document.querySelector("#msg");
+
+// коди шумо инҷо
+
+for (const key of ["a", "Enter", "Escape"]) {
+  msg.dispatchEvent(new KeyboardEvent("keydown", { key }));
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Нажата клавиша: a
+Отправка
+Очистка</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Номи клавиша — <code>event.key</code>. Ҳолатҳоро бо <code>if … else if … else</code> ҷудо кардан қулай аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>if (event.key === "Enter") { … } else if (event.key === "Escape") { … } else { console.log("Нажата клавиша: " + event.key); }</code></p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Кӣ кор кард ва кӣ мешунавад</h4><span class="level mid">миёна</span></header>
+          <p>Дар тугмаи <code>#order</code> нишонаи <code>&lt;b id="icon"&gt;</code> ҷой дорад. Ба клик дар <b>тугма</b> обуна шавед ва ду сатр чоп кунед: тегҳои <code>target</code> ва <code>currentTarget</code>. Код ду маротиба «клик мекунад»: аввал ба нишона, баъд ба тугма. Муқоиса кунед, чӣ тағйир ёфт.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="order"&gt;&lt;b id="icon"&gt;🚕&lt;/b&gt; Заказать такси&lt;/button&gt;`;
+const order = document.querySelector("#order");
+const icon = document.querySelector("#icon");
+
+// коди шумо инҷо: коркардкунанда дар order
+
+icon.click();
+console.log("---");
+order.click();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>target: B
+currentTarget: BUTTON
+---
+target: BUTTON
+currentTarget: BUTTON</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Коркардкунанда ба <code>order</code> овехта мешавад — на ба <code>icon</code>. Клик ба нишона худаш ба тугма «боло мебарояд», дар ин бора муфассал дар бахши 05.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>order.addEventListener("click", (e) =&gt; { console.log("target: " + e.target.tagName); console.log("currentTarget: " + e.currentTarget.tagName); });</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 03 -->
+    <section class="topic" id="event-types">
+      <h2 data-toc="Навъҳои ҳодисаҳо"><span class="num">03</span> Кадом ҳодисаҳо ҳастанд</h2>
+      <p>Ҳодисаҳо дар браузер даҳҳо ҳастанд, аммо дар кори ҳаррӯза шумо панҷ-ҳафтои онро истифода мебаред. Инак онҳое, ки дар ҳар лоиҳаи дуюм вомехӯранд:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Ҳодиса</th><th>Кай кор мекунад</th><th>Дар куҷо истифода мебаранд</th></tr></thead>
+        <tbody>
+          <tr><td><code>click</code></td><td>Клики муш, ламси ангушт, Enter дар тугма</td><td>Тугмаҳо, корточкаҳо, меню</td></tr>
+          <tr><td><code>dblclick</code>, <code>contextmenu</code></td><td>Клики дучанда, тугмаи рости муш</td><td>Таҳрир бо клики дучанда, менюи худӣ</td></tr>
+          <tr><td><code>mouseover</code> / <code>mouseout</code></td><td>Муш ба элемент даромад / аз он баромад</td><td>Ишораҳо, равшан кардан</td></tr>
+          <tr><td><code>keydown</code> / <code>keyup</code></td><td>Клавиша зада шуд / раҳо шуд</td><td>Клавишаҳои тез, Enter, Escape</td></tr>
+          <tr><td><code>input</code></td><td><b>Ҳар</b> тағйири матн дар майдон</td><td>Ҷустуҷӯи зинда, ҳисобкунаки аломатҳо</td></tr>
+          <tr><td><code>change</code></td><td>Қимат «собит шуд»: банд интихоб шуд, нишона гузошта шуд, аз майдон баромаданд</td><td>Select, checkbox, radio</td></tr>
+          <tr><td><code>focus</code> / <code>blur</code></td><td>Майдон фокус гирифт / аз даст дод</td><td>Равшан кардани майдон, санҷиш ҳангоми баромадан</td></tr>
+          <tr><td><code>submit</code></td><td>Шакл фиристода мешавад (тугма ё Enter)</td><td>Ҳама шаклҳо — дархостҳо, вуруд, ҷустуҷӯ</td></tr>
+          <tr><td><code>DOMContentLoaded</code></td><td>HTML пурра хонда ва сохта шуд</td><td>Оғози скрипте, ки дар <code>&lt;head&gt;</code> пайваст шудааст</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="callout analogy"><b>Муқоиса аз ҳаёт</b>
+        <p>Шумо дар Telegram паём менависед. Ҳодисаи <code>input</code> — ин «ҳамсӯҳбат чоп мекунад…»: он барои ҳар ҳарф меояд. Аммо <code>change</code> — ин «паём фиристода шуд»: як маротиба меояд, вақте шумо тамом кардед. Барои ҷустуҷӯи зинда <code>input</code> лозим аст, барои интихоби шаҳр аз рӯйхат — <code>change</code>.</p>
+      </div>
+
+      <h3>input: қимати майдон барои ҳар ҳарф</h3>
+      <p>Матнро аз майдон тавассути <code>event.target.value</code> (ё <code>input.value</code>) мехонем. Ин ҳамеша <b>сатр</b> аст, ҳатто агар корбар рақам ворид карда бошад. Барои тақлиди воридкунӣ дар код, <code>value</code>-ро мегузорем ва ҳодисаи <code>input</code>-ро мефиристем:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="name"&gt;`;
+const name = document.querySelector("#name");
+
+name.addEventListener("input", (e) =&gt; {
+  console.log("Сейчас в поле:", e.target.value);
+});
+
+for (const text of ["Ф", "Фа", "Фар", "Фарход"]) {
+  name.value = text;
+  name.dispatchEvent(new Event("input"));
+}
+</pre>
+
+      <h3>change, checkbox ва select</h3>
+      <p>Дар байрақча <code>checked</code>-ро мехонем (<code>true</code>/<code>false</code>), дар рӯйхати кушодашаванда — <code>value</code>-и банди интихобшударо:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;label&gt;&lt;input type="checkbox" id="sugar"&gt; С сахаром&lt;/label&gt;
+  &lt;select id="tea"&gt;&lt;option&gt;Чёрный&lt;/option&gt;&lt;option&gt;Зелёный&lt;/option&gt;&lt;/select&gt;`;
+const sugar = document.querySelector("#sugar");
+const tea = document.querySelector("#tea");
+
+sugar.addEventListener("change", (e) =&gt; console.log("Сахар:", e.target.checked));
+tea.addEventListener("change", (e) =&gt; console.log("Чай:", e.target.value));
+
+sugar.checked = true;
+sugar.dispatchEvent(new Event("change"));
+tea.value = "Зелёный";
+tea.dispatchEvent(new Event("change"));
+</pre>
+
+      <h3>Мисоли зинда: ҷустуҷӯ ва ҳисобкунак</h3>
+      <p><b>▶ Запустить</b>-ро пахш кунед ва дар майдон чоп кунед. Рӯйхат барои ҳар ҳарф филтр мешавад — ин ҳодисаи <code>input</code> дар шакли холис аст.</p>
+      <div class="playground" data-mode="dom" data-title="Ҷустуҷӯи зинда аз рӯи шаҳрҳо">
+<pre class="code" data-lang="html">
+&lt;input id="search" placeholder="Найти город…"&gt;
+&lt;small id="info"&gt;Введите хотя бы букву&lt;/small&gt;
+&lt;ul id="cities"&gt;
+  &lt;li&gt;Душанбе&lt;/li&gt;&lt;li&gt;Худжанд&lt;/li&gt;&lt;li&gt;Бохтар&lt;/li&gt;
+  &lt;li&gt;Куляб&lt;/li&gt;&lt;li&gt;Истаравшан&lt;/li&gt;&lt;li&gt;Хорог&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+input { font: inherit; padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 10px; }
+small { margin-left: 8px; color: #667085; }
+li { padding: 2px 0; }
+</pre>
+<pre class="code" data-lang="js">
+const search = document.querySelector("#search");
+const info = document.querySelector("#info");
+const items = document.querySelectorAll("#cities li");
+
+search.addEventListener("input", (event) =&gt; {
+  const query = event.target.value.trim().toLowerCase();
+  let shown = 0;
+
+  items.forEach((li) =&gt; {
+    const match = li.textContent.toLowerCase().includes(query);
+    li.hidden = !match;          // номувофиқонро пинҳон мекунем
+    if (match) shown++;
+  });
+
+  info.textContent = `Символов: ${query.length}, найдено: ${shown}`;
+  console.log(`Запрос «${query}» → ${shown}`);
+});
+</pre>
+      </div>
+
+      <div class="callout warn"><b>Хатои маъмул: input ва change-ро дар майдони матнӣ омехта мекунанд</b>
+        <p>Дар майдони матнӣ <code>change</code> танҳо вақте кор мекунад, ки шумо <b>аз майдон баромадед</b> ё Enter-ро заданд. Агар ба он ҷустуҷӯи зиндаро овезед, натиҷа «бо таъхир» пайдо мешавад — ва корбар фикр мекунад, ки сайт овезон мешавад. Барои ҷустуҷӯ ва ҳисобкунакҳо <code>input</code>-ро гиред.</p>
+      </div>
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/keyboard-events" target="_blank" rel="noopener">learn.javascript.ru — Клавиатура: keydown и keyup</a> · <a href="https://developer.mozilla.org/ru/docs/Web/Events" target="_blank" rel="noopener">MDN — Справочник событий</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Ҳисобкунаки аломатҳо</h4><span class="level easy">осон</span></header>
+          <p>Барои майдони «О себе» ҳисобкунак созед, мисли анкетаи MakeFirstStep. Барои ҳар ҳодисаи <code>input</code> сатри «Символов: N»-ро чоп кунед, ки N — дарозии матн дар майдон аст.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;textarea id="about"&gt;&lt;/textarea&gt;`;
+const about = document.querySelector("#about");
+
+// коди шумо инҷо
+
+for (const text of ["Привет", "Привет, Душанбе"]) {
+  about.value = text;
+  about.dispatchEvent(new Event("input"));
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Символов: 6
+Символов: 15</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Матн аз майдон — <code>event.target.value</code>. Ин сатр аст, сатрҳо хосияти <code>length</code> доранд.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>about.addEventListener("input", (e) =&gt; console.log("Символов: " + e.target.value.length));</code></p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Ҷустуҷӯи шаҳр дар ҳамон лаҳза</h4><span class="level mid">миёна</span></header>
+          <p>Барои ҳар ҳодисаи <code>input</code> дар майдони <code>#q</code> аз массиви <code>cities</code> шаҳрҳоеро ёбед, ки дар номашон матни воридшуда ҳаст (бе ҳисоби регистр, холигоҳҳои ҳошияҳоро нест кунед). «Запрос «текст»: »-ро ва шаҳрҳоро бо вергул чоп кунед. Агар чизе ёфт нашавад — «ничего не найдено». Дар натиҷа дархост ҳамон тавр навишта мешавад, ки корбар ворид кард, аммо бе холигоҳҳо дар ҳошияҳо.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="q"&gt;`;
+const q = document.querySelector("#q");
+const cities = ["Душанбе", "Худжанд", "Бохтар", "Куляб", "Истаравшан", "Хорог"];
+
+// коди шумо инҷо
+
+for (const text of ["ху", " ХО ", "а", "щ"]) {
+  q.value = text;
+  q.dispatchEvent(new Event("input"));
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Запрос «ху»: Худжанд
+Запрос «ХО»: Хорог
+Запрос «а»: Душанбе, Худжанд, Бохтар, Истаравшан
+Запрос «щ»: ничего не найдено</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аввал дархостро ба тартиб оред: <code>const query = e.target.value.trim();</code>. Барои муқоиса <code>query.toLowerCase()</code> ва <code>city.toLowerCase().includes(…)</code>-ро истифода баред, аммо чоп кунед — <code>query</code>-и аслиро.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>const found = cities.filter(c =&gt; c.toLowerCase().includes(query.toLowerCase()));</code> Баъд <code>found.length ? found.join(", ") : "ничего не найдено"</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Нархи ниҳоӣ бо расонидан</h4><span class="level mid">миёна</span></header>
+          <p>Маҳсулот 100 сомонӣ меарзад. Расонидан пулакӣ аст, агар нишонаи <code>#delivery</code> гузошта шуда бошад: ба Душанбе 10 сомонӣ, ба Хуҷанд 25. Функсияи <code>recalc</code>-ро нависед, ки «Итого: N сомони»-ро чоп мекунад, ва онро ба <code>change</code> ҳам дар рӯйхати шаҳрҳо, ҳам дар байрақча обуна кунед. Коди зерин худаш қиматҳоро чор маротиба «тағйир медиҳад».</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;select id="city"&gt;&lt;option&gt;Душанбе&lt;/option&gt;&lt;option&gt;Худжанд&lt;/option&gt;&lt;/select&gt;
+  &lt;label&gt;&lt;input type="checkbox" id="delivery"&gt; Доставка&lt;/label&gt;`;
+const city = document.querySelector("#city");
+const delivery = document.querySelector("#delivery");
+const price = 100;
+const fees = { "Душанбе": 10, "Худжанд": 25 };
+
+function recalc() {
+  // коди шумо инҷо: ҳисоб кардан ва чоп кардани «Итого: N сомони»
+}
+
+// коди шумо инҷо: обунаҳо ба change
+
+const fire = (el) =&gt; el.dispatchEvent(new Event("change"));
+city.value = "Худжанд"; fire(city);
+delivery.checked = true; fire(delivery);
+city.value = "Душанбе"; fire(city);
+delivery.checked = false; fire(delivery);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Итого: 100 сомони
+Итого: 125 сомони
+Итого: 110 сомони
+Итого: 100 сомони</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар дохили <code>recalc</code> ҳолати ҷориро бевосита аз элементҳо хонед: <code>city.value</code> ва <code>delivery.checked</code>. Арзиши расонидан — <code>fees[city.value]</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>const total = price + (delivery.checked ? fees[city.value] : 0);</code> Обуна: <code>city.addEventListener("change", recalc);</code> ва ҳамин гуна барои <code>delivery</code>. Баъди <code>recalc</code> қавс нест!</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 04 -->
+    <section class="topic" id="prevent-default">
+      <h2 data-toc="preventDefault"><span class="num">04</span> Амали пешфарз: preventDefault</h2>
+      <p>Барои бисёр ҳодисаҳо браузер <b>амали пешфарзии худро</b> дорад. Он баъд аз коркардкунандаҳои шумо иҷро мешавад, агар онро боз надоред:</p>
+      <ul>
+        <li>клик ба истинод <code>&lt;a href&gt;</code> — гузариш ба саҳифаи дигар;</li>
+        <li>ирсоли шакл — аз нав бор шудани саҳифа бо маълумот;</li>
+        <li>клики тугмаи рости муш — менюи контекстӣ;</li>
+        <li><code>Ctrl + S</code> — тирезаи «Захира кардани саҳифа»;</li>
+        <li>фосила дар саҳифа — варақ задан ба поён.</li>
+      </ul>
+      <p>Усули <code>event.preventDefault()</code> ба браузер мегӯяд: «Лозим нест, минбаъд худам». Коди шумо дар ин ҳол мисли пештара кор карда истодааст.</p>
+
+      <div class="callout analogy"><b>Муқоиса аз ҳаёт</b>
+        <p>Шумо ба турникети истгоҳ наздик мешавед ва назоратчӣ мегӯяд: «Истед, аввал чиптаро нишон диҳед». Шумо мехостед гузаред (амали пешфарз), аммо шуморо боздоштанд — ва акнун шумо қарор медиҳед, ки иҷозат диҳед ё не. <code>preventDefault</code> — дасти боло кардаи назоратчӣ: гузариш бекор шуд, аммо боқии корҳо дар толор ба тартиби худ идома меёбанд.</p>
+      </div>
+
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;a id="promo" href="https://example.com/promo"&gt;Акция недели&lt;/a&gt;`;
+const promo = document.querySelector("#promo");
+
+promo.addEventListener("click", (e) =&gt; {
+  e.preventDefault();                       // дар саҳифа мемонем
+  console.log("Переход отменён:", e.defaultPrevented);
+});
+
+promo.click();
+</pre>
+
+      <h3>Ҳолати асосӣ: шакл</h3>
+      <p>Ирсоли шакл ба таври пешфарз <b>саҳифаро аз нав бор мекунад</b>: ҳар чизе ки JavaScript кашида буд, нест мешавад. Бинобар ин қариб ҳар шакл дар сайти муосир чунин коркард мешавад: <code>submit</code>-и шаклро мешунавем (на <code>click</code>-и тугмаро!), <code>preventDefault()</code>-ро иҷро мекунем ва бо маълумот худамон кор мекунем.</p>
+      <p>Чаро маҳз <code>submit</code>, на клик ба тугма? Шаклро бо клавишаи Enter дар майдон фиристодан мумкин аст — клик ба тугма дар ин ҳолат рух намедиҳад, аммо <code>submit</code> ҳамеша кор мекунад. Дар вазифаҳои мо шаклро код «мефиристад»: он ҳодисаи <code>submit</code>-ро бо фармони <code>form.dispatchEvent(new Event("submit", { cancelable: true }))</code> дастӣ пеш мебарад. Коркардкунанда фарқиятро намебинад, ва саҳифа аз нав бор намешавад.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form id="order"&gt;
+    &lt;input id="who" value="Мадина"&gt;
+    &lt;button&gt;Заказать&lt;/button&gt;
+  &lt;/form&gt;`;
+const order = document.querySelector("#order");
+const who = document.querySelector("#who");
+
+order.addEventListener("submit", (e) =&gt; {
+  e.preventDefault();   // бе ин сатр саҳифа аз нав бор мешуд
+  console.log("Заказ для:", who.value);
+});
+
+order.dispatchEvent(new Event("submit", { cancelable: true }));
+who.value = "Фарход";
+order.dispatchEvent(new Event("submit", { cancelable: true }));
+</pre>
+
+      <h3>Худатон кӯшиш кунед</h3>
+      <p><b>▶ Запустить</b>-ро пахш кунед, ном ворид кунед ва Enter ё тугмаро пахш кунед. Саҳифа аз нав бор намешавад, ном ба рӯйхат илова мешавад — ин кори <code>preventDefault</code> аст.</p>
+      <div class="playground" data-mode="dom" data-title="Шакл бе аз нав бор шудан">
+<pre class="code" data-lang="html">
+&lt;form id="join"&gt;
+  &lt;input id="who" placeholder="Ваше имя" autocomplete="off"&gt;
+  &lt;button&gt;Записаться&lt;/button&gt;
+&lt;/form&gt;
+&lt;ol id="people"&gt;&lt;/ol&gt;
+</pre>
+<pre class="code" data-lang="css">
+input, button { font: inherit; padding: 8px 12px; border-radius: 10px; border: 1px solid #d0d5dd; }
+button { background: #fff; cursor: pointer; }
+</pre>
+<pre class="code" data-lang="js">
+const join = document.querySelector("#join");
+const who = document.querySelector("#who");
+const people = document.querySelector("#people");
+
+join.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  const name = who.value.trim();
+  if (name === "") return;           // номи холиро илова намекунем
+
+  const li = document.createElement("li");
+  li.textContent = name;
+  people.append(li);
+  who.value = "";
+  console.log("Записано человек:", people.children.length);
+});
+</pre>
+      </div>
+
+      <h3>Бо stopPropagation омехта накунед</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th></th><th><code>preventDefault()</code></th><th><code>stopPropagation()</code></th></tr></thead>
+        <tbody>
+          <tr><td>Чиро боз медорад</td><td>Амали <b>браузер</b> (гузариш, ирсол…)</td><td>Роҳи минбаъдаи ҳодиса <b>ба боло аз рӯи элементҳо</b></td></tr>
+          <tr><td>Коркардкунандаҳои дигар</td><td>Кор карданро давом медиҳанд</td><td>Дар болои занҷир даъват намешаванд</td></tr>
+          <tr><td>Муфассалтар дар бораи чӣ</td><td>Ин бахш</td><td>Бахши 05</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="callout warn"><b>Хатои маъмул: preventDefault «кор накард»</b>
+        <p>Ду сабаби маъмул. Аввал — шумо коркардкунандаро ба <code>click</code>-и тугма овехтаед, дар ҳоле ки шаклро бо клавишаи Enter ҳам мефиристанд: <code>submit</code>-ро бишнавед. Дуюм — <code>preventDefault</code> на дар ҳама шоха даъват шудааст: масалан, дар дохили <code>if</code>, ва ҳангоми хатои санҷиш пештар <code>return</code> кор кард. Аввал амалро бекор кунед, баъд санҷед.</p>
+      </div>
+<pre class="code" data-run data-title="Хатои маъмул: бекор кардан танҳо дар як шоха">
+document.body.innerHTML = `&lt;form id="f"&gt;&lt;input id="i"&gt;&lt;/form&gt;`;
+const f = document.querySelector("#f");
+const i = document.querySelector("#i");
+
+f.addEventListener("submit", (e) =&gt; {
+  if (i.value === "") {
+    console.log("Пусто!");
+    return;                // ✖ баромадем, бе бекор кардани ирсол
+  }
+  e.preventDefault();
+  console.log("Отправка", i.value);
+});
+
+// ирсоли шакли холиро тақлид мекунем ва мебинем, ки амали браузерро бекор кардем ё не
+const ev = new Event("submit", { cancelable: true });
+f.dispatchEvent(ev);
+console.log("Перезагрузка отменена?", ev.defaultPrevented);
+</pre>
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/default-browser-action" target="_blank" rel="noopener">learn.javascript.ru — Действия браузера по умолчанию</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Event/preventDefault" target="_blank" rel="noopener">MDN — Event.preventDefault</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Истиноди дом</h4><span class="level easy">осон</span></header>
+          <p>Истиноди <code>#promo</code> ба сайти беруна мебарад, аммо мо мехоҳем дар саҳифа бимонем. Ба клик обуна шавед, гузаришро бекор кунед ва ду сатр чоп кунед: «Переход отменён» ва қимати <code>event.defaultPrevented</code> (он бояд <code>true</code> бошад).</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;a id="promo" href="https://example.com"&gt;Скидки&lt;/a&gt;`;
+const promo = document.querySelector("#promo");
+
+// коди шумо инҷо
+
+promo.click();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Переход отменён
+true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Коркардкунандаи клик <code>event</code>-ро мегирад. Усули бекор кардан — <code>event.preventDefault()</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Аввал <code>preventDefault()</code>-ро иҷро кунед, баъд <code>console.log("Переход отменён")</code> ва <code>console.log(event.defaultPrevented)</code>-ро чоп кунед.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Шакли дархост</h4><span class="level mid">миёна</span></header>
+          <p>Коркардкунандаи <code>submit</code>-ро барои шакли дархости курс нависед. Он аз нав бор шуданро бекор мекунад ва номро месанҷад: агар майдони <code>#name</code> холӣ бошад (баъди <code>trim()</code>) — «Введите имя» чоп мекунад, вагарна — «Заявка: имя, телефон». Коди зерин шаклро ду маротиба мефиристад.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form id="apply"&gt;
+    &lt;input id="name"&gt;
+    &lt;input id="phone"&gt;
+    &lt;button&gt;Отправить&lt;/button&gt;
+  &lt;/form&gt;`;
+const apply = document.querySelector("#apply");
+const nameInput = document.querySelector("#name");
+const phoneInput = document.querySelector("#phone");
+
+// коди шумо инҷо
+
+nameInput.value = "Мадина";
+phoneInput.value = "900 11 22 33";
+apply.dispatchEvent(new Event("submit", { cancelable: true }));
+
+nameInput.value = "   ";
+apply.dispatchEvent(new Event("submit", { cancelable: true }));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Заявка: Мадина, 900 11 22 33
+Введите имя</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>submit</code>-и шакли <code>apply</code>-ро бишнавед, на клики тугмаро. Сатри аввали коркардкунанда — <code>event.preventDefault()</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>const name = nameInput.value.trim();</code> Баъд <code>if (name === "") { console.log("Введите имя"); return; }</code> ва чопи дархост бо сатри қолабӣ.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Клавишаҳои тези муҳаррир</h4><span class="level hard">душвор</span></header>
+          <p>Шумо муҳаррири онлайн месозед. Ба <code>keydown</code>-и <code>document</code> обуна шавед ва омезишҳоро коркард кунед: <code>Ctrl + S</code> → «Сохранено», <code>Ctrl + Shift + S</code> → «Сохранить как…», <code>Ctrl + Z</code> → «Отмена». Ин омезишҳо амали пешфарзии браузерро доранд — онро бояд <b>бекор кард</b>. Клавишаҳои дигар (масалан, танҳо <code>a</code>)-ро намерасонем. Ишора: ҳангоми зада будани Shift ҳарф дар <code>event.key</code> бо ҳарфи калон меояд.</p>
+<pre class="code" data-run>
+const press = (key, ctrl, shift) =&gt; {
+  const ev = new KeyboardEvent("keydown", { key, ctrlKey: ctrl, shiftKey: shift, bubbles: true, cancelable: true });
+  document.dispatchEvent(ev);
+  const label = (ctrl ? "Ctrl + " : "") + (shift ? "Shift + " : "") + key;
+  console.log(`${label}: действие по умолчанию ${ev.defaultPrevented ? "отменено" : "работает"}`);
+};
+
+// коди шумо инҷо: обуна ба keydown дар document
+
+press("s", true, false);
+press("S", true, true);
+press("a", false, false);
+press("z", true, false);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Сохранено
+Ctrl + s: действие по умолчанию отменено
+Сохранить как…
+Ctrl + Shift + S: действие по умолчанию отменено
+a: действие по умолчанию работает
+Отмена
+Ctrl + z: действие по умолчанию отменено</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҳодиса хосиятҳои булии <code>event.ctrlKey</code> ва <code>event.shiftKey</code>-ро дорад. Клавишаро ба як регистр оред: <code>const key = event.key.toLowerCase();</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Аввал «борик»-тарин омезишро санҷед: <code>if (event.ctrlKey &amp;&amp; event.shiftKey &amp;&amp; key === "s") { … } else if (event.ctrlKey &amp;&amp; key === "s") { … } else if (event.ctrlKey &amp;&amp; key === "z") { … }</code>. Дар ҳар шоха — <code>event.preventDefault()</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 05 -->
+    <section class="topic" id="bubbling">
+      <h2 data-toc="Болоравӣ"><span class="num">05</span> Болоравӣ ва фурӯравӣ</h2>
+      <p>Агар тугма дар дохили корточка бошад, корточка дар дохили рӯйхат, ва дар <b>ҳар як</b> аз онҳо коркардкунандаи клики худӣ овезон бошад, чӣ мешавад? Ҳар се кор мекунанд — ва бо тартиби хеле муайян. Ҳодиса дар элементе, ки ба он клик карданд, «намеистад»: он <b>дар занҷири падарон сайр мекунад</b>.</p>
+
+      <figure class="diagram">
+        <div class="bub">
+          <div class="lvl l1"><span class="lbl">&lt;ul id="list"&gt; — коркардкунандаи №3</span>
+            <div class="lvl l2"><span class="lbl">&lt;li class="card"&gt; — коркардкунандаи №2</span>
+              <div class="lvl l3"><span class="lbl">&lt;button&gt; — коркардкунандаи №1 (инҷо клик карданд)</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="bub-flow">
+          <span class="down">1. фурӯравӣ ↓ аз боло ба поён</span> <span class="hit">2. ҳадаф: button</span> <span class="up">3. болоравӣ ↑ аз поён ба боло</span>
+        </div>
+        <figcaption>Се марҳилаи роҳи ҳодиса. Коркардкунандаҳои оддӣ дар марҳилаи болоравӣ кор мекунанд: button → li → ul</figcaption>
+      </figure>
+
+      <div class="callout analogy"><b>Муқоиса аз ҳаёт</b>
+        <p>Ҳубобчаи ҳаво дар стакани чой аз таги он ба рӯи об боло меравад ва аз ҳамаи қабатҳо мегузарад. Клик ба тугма низ ҳамин тавр «боло меравад»: аввал ба тугма хабар медиҳад, баъд ба корточка, баъд ба рӯйхат, баъд ба <code>body</code>, <code>document</code>. Ва боз ин ба идораи Душанбе монанд аст: корманд хабарро ба сардори шӯъба мерасонад, ӯ — ба директор, ӯ — ба соҳиб.</p>
+      </div>
+
+      <ol class="steps">
+        <li><b>Фурӯравӣ (capturing).</b> Ҳодиса аз <code>document</code> ба ҳадаф мефурояд. Коркардкунандаҳо дар ин ҷо танҳо дар сурате кор мекунанд, ки шумо махсус хоҳиш карда бошед: <code>{ capture: true }</code>. Кам лозим мешавад.</li>
+        <li><b>Ҳадаф (target).</b> Ҳодиса ба элементе мерасад, ки ба он клик карданд.</li>
+        <li><b>Болоравӣ (bubbling).</b> Ҳодиса боз ба боло то худи <code>document</code> мебарояд. Дар ин марҳила ҳамаи коркардкунандаҳои оддӣ кор мекунанд.</li>
+      </ol>
+
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li id="card"&gt;&lt;button id="btn"&gt;В корзину&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+
+for (const id of ["btn", "card", "list"]) {
+  document.getElementById(id).addEventListener("click", (e) =&gt; {
+    console.log(`сработал ${e.currentTarget.id}, а кликнули по ${e.target.id}`);
+  });
+}
+
+document.getElementById("btn").click();
+</pre>
+      <p>Ба ду чиз диққат диҳед: тартиб <b>аз поён ба боло</b> меравад, ва <code>target</code> дар тамоми роҳ яке ва ҳамон мемонад — ҳамон, ки ба вай клик карданд. Танҳо <code>currentTarget</code> тағйир меёбад.</p>
+
+      <h3>Зинда бинед</h3>
+      <p><b>▶ Запустить</b>-ро пахш кунед ва ба тугмаи дарунӣ, баъд ба чаҳорчӯбаи миёна ва берунӣ клик кунед. Байрақчаро фаъол кунед — ва болоравӣ дар тугма меистад.</p>
+      <div class="playground" data-mode="dom" data-title="Роҳи ҳодиса">
+<pre class="code" data-lang="html">
+&lt;div id="outer" class="box"&gt;outer
+  &lt;div id="middle" class="box"&gt;middle
+    &lt;button id="inner"&gt;inner (нажмите)&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;label&gt;&lt;input type="checkbox" id="stop"&gt; stopPropagation на кнопке&lt;/label&gt;
+&lt;button id="clear"&gt;Очистить журнал&lt;/button&gt;
+&lt;ol id="log"&gt;&lt;/ol&gt;
+</pre>
+<pre class="code" data-lang="css">
+.box { padding: 10px 14px; margin: 6px 0; border: 2px solid #98a2b3; border-radius: 10px; }
+#outer { border-color: #2e90fa; }
+#middle { border-color: #f79009; }
+button { font: inherit; padding: 4px 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const log = document.querySelector("#log");
+const stop = document.querySelector("#stop");
+
+function write(text) {
+  const li = document.createElement("li");
+  li.textContent = text;
+  log.append(li);
+  console.log(text);
+}
+
+for (const id of ["outer", "middle", "inner"]) {
+  document.getElementById(id).addEventListener("click", (event) =&gt; {
+    write(`${event.currentTarget.id} (target: ${event.target.id})`);
+    if (id === "inner" &amp;&amp; stop.checked) event.stopPropagation();
+  });
+}
+
+document.querySelector("#clear").addEventListener("click", (e) =&gt; {
+  log.innerHTML = "";
+  e.stopPropagation();
+});
+</pre>
+      </div>
+
+      <h3>stopPropagation: роҳро қатъ кардан</h3>
+      <p><code>event.stopPropagation()</code> болоравиро қатъ мекунад: падарон ҳодисаро намегиранд. Ҷолиб менамояд, аммо эҳтиёткорона истифода баред. Ҳодисаи қатъшуда ба коди бегона низ намерасад — масалан, ба ҳисобкунаки аналитика дар <code>document</code>, ва шумо муддати дароз мекобед, ки чаро он кликҳоро «гузашта мегузорад». Одатан беҳтар аст дар коркардкунандаи падар <b>санҷид</b>, ки маҳз ба куҷо клик карданд: <code>event.target === event.currentTarget</code>.</p>
+
+      <h3>Фурӯравӣ: { capture: true }</h3>
+      <p>Агар ҳамчун аргументи сеюм <code>true</code> ё <code>{ capture: true }</code> диҳед, коркардкунанда дар марҳилаи <b>фурӯравӣ</b> кор мекунад — пештар аз худи ҳадаф. Ҳамин тавр ҳодисаро то расидан ба поён «пешвоз гирифтан» мумкин аст.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;div id="wrap"&gt;&lt;button id="btn"&gt;Кнопка&lt;/button&gt;&lt;/div&gt;`;
+const wrap = document.querySelector("#wrap");
+const btn = document.querySelector("#btn");
+
+wrap.addEventListener("click", () =&gt; console.log("wrap: всплытие"));
+wrap.addEventListener("click", () =&gt; console.log("wrap: перехват"), { capture: true });
+btn.addEventListener("click", () =&gt; console.log("button: цель"));
+
+btn.click();
+</pre>
+      <p>Тартиб: аввал фурӯравӣ дар <code>wrap</code> (поён рафтан), баъд худи тугма, баъд болоравӣ дар <code>wrap</code>.</p>
+
+      <div class="callout warn"><b>На ҳама чиз боло меравад</b>
+        <p>Ҳодисаҳои <code>focus</code> ва <code>blur</code> боло намераванд (ба ҷои онҳо дар падар <code>focusin</code> / <code>focusout</code>-ро бишнавед), <code>mouseenter</code> ва <code>mouseleave</code> низ — не (<code>mouseover</code> / <code>mouseout</code>-ро гиред). Ғайр аз ин, ҳодисаҳои дастӣ сохташуда ба таври пешфарз боло намераванд: бояд ошкоро <code>new Event("input", { bubbles: true })</code> навишт.</p>
+      </div>
+<pre class="code" data-run data-title="Хатои маъмул: ҳодисаи дастӣ боло намеравад">
+document.body.innerHTML = `&lt;div id="form"&gt;&lt;input id="field"&gt;&lt;/div&gt;`;
+const form = document.querySelector("#form");
+const field = document.querySelector("#field");
+
+form.addEventListener("input", () =&gt; console.log("форма услышала ввод"));
+
+field.dispatchEvent(new Event("input"));                      // ✖ боло намеравад — хомӯшӣ
+console.log("---");
+field.dispatchEvent(new Event("input", { bubbles: true }));   // ✔ боло меравад
+</pre>
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/bubbling-and-capturing" target="_blank" rel="noopener">learn.javascript.ru — Всплытие и погружение</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Event/stopPropagation" target="_blank" rel="noopener">MDN — Event.stopPropagation</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Роҳи кликро пешгӯӣ кун</h4><span class="level easy">осон</span></header>
+          <p>Се элементи дарунмонда, дар ҳар кадом коркардкунандаи худӣ. Дар <code>prediction</code> идентификаторҳоро бо тартибе нависед, ки коркардкунандаҳо баъди клик ба тугмаи аз ҳама дарунии <code>#c</code> кор мекунанд. Консол танҳо «верно» ё «неверно» мегӯяд.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;div id="a"&gt;
+    &lt;div id="b"&gt;
+      &lt;button id="c"&gt;Кнопка&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;`;
+const actual = [];
+
+for (const id of ["a", "b", "c"]) {
+  document.getElementById(id).addEventListener("click", () =&gt; actual.push(id));
+}
+document.getElementById("c").click();
+
+const prediction = [];   // масалан ["x", "y", "z"]
+
+console.log(prediction.join(" ") === actual.join(" ") ? "Прогноз верный" : "Прогноз неверный");
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Прогноз верный</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Схемаро ба ёд оред: ҳодиса аз ҳадаф оғоз мешавад ва боло мебарояд. Ҳадаф дар ин ҷо кист?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Тартиб аз элементи аз ҳама чуқур ба элементи аз ҳама берунӣ меравад. Метавон бо илова кардани муваққатии <code>console.log(actual.join(" "))</code> нигоҳ кард.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Пештар гирифтан</h4><span class="level mid">миёна</span></header>
+          <p>Тугмаи <code>#btn</code> ва печонаки он <code>#wrap</code> аллакай коркардкунандаҳои оддӣ доранд. Яктои дигарро илова кунед — дар печонак, аммо дар марҳилаи <b>фурӯравӣ</b>: он бояд «Перехват: wrap»-ро <b>пеш аз</b> ҳама чоп кунад. Тартиби интизоршаванда дар зер оварда шудааст.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;div id="wrap"&gt;&lt;button id="btn"&gt;Купить&lt;/button&gt;&lt;/div&gt;`;
+const wrap = document.querySelector("#wrap");
+const btn = document.querySelector("#btn");
+
+btn.addEventListener("click", () =&gt; console.log("Кнопка"));
+wrap.addEventListener("click", () =&gt; console.log("Всплытие: wrap"));
+
+// коди шумо инҷо
+
+btn.click();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Перехват: wrap
+Кнопка
+Всплытие: wrap</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Марҳилаи фурӯравӣ бо аргументи сеюми <code>addEventListener</code> фаъол мешавад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>wrap.addEventListener("click", () =&gt; console.log("Перехват: wrap"), { capture: true });</code></p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ВАЗИФАИ 5.3</span><h4>Тирезаи модалӣ худ аз худ баста мешавад</h4><span class="level mid">миёна</span></header>
+          <p>Заминаи хокистарранги <code>#overlay</code> тирезаро бо клик мебандад. Дар дохил худи тирезаи <code>#modal</code> ҷойгир аст. Хато: клик <b>дар дохили тиреза</b> низ онро мебандад, зеро ҳодиса то замина боло меравад. Чунон ислоҳ кунед, ки клик ба тиреза танҳо «Клик внутри окна» чоп кунад, ва клик ба замина — «Окно закрыто».</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;div id="overlay"&gt;
+    &lt;div id="modal"&gt;Вы уверены?&lt;/div&gt;
+  &lt;/div&gt;`;
+const overlay = document.querySelector("#overlay");
+const modal = document.querySelector("#modal");
+
+modal.addEventListener("click", () =&gt; {
+  console.log("Клик внутри окна");
+});
+
+overlay.addEventListener("click", () =&gt; {
+  console.log("Окно закрыто");
+});
+
+modal.click();
+overlay.click();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Клик внутри окна
+Окно закрыто</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Онро чун ҳаст иҷро кунед: «Окно закрыто» ду маротиба чоп мешавад. Бори аввал — баъди клик ба тиреза, аз сабаби болоравӣ.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ду роҳ. Тез: дар коркардкунандаи <code>modal</code> параметри <code>event</code>-ро илова кунед ва <code>event.stopPropagation()</code>-ро иҷро кунед. Эҳтиёткортар: дар коркардкунандаи <code>overlay</code> танҳо ҳангоме бандед, ки <code>event.target === event.currentTarget</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ВАЗИФАИ 5.4</span><h4>Роҳнишони клик</h4><span class="level hard">душвор</span></header>
+          <p>Барои ислоҳи аналитика бояд донист, ки <b>маҳз дар куҷо</b> клик карданд. Ба <code>#shop</code> як коркардкунанда овезед, ки аз <code>event.target</code> тавассути <code>parentElement</code> то <code>#shop</code> (аз ҷумла) боло мебарояд ва роҳро дар формати «тег#id.класс &lt; … &lt; main#shop» чоп мекунад. Агар элемент id ё класс надошта бошад — онҳо навишта намешаванд. Функсияи <code>describe(el)</code> аллакай ҳамчун ҷой барои шумо тайёр шудааст.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;main id="shop"&gt;
+    &lt;article class="card"&gt;
+      &lt;h3 id="title"&gt;Дыня&lt;/h3&gt;
+      &lt;p class="info"&gt;Цена: &lt;b id="price"&gt;12&lt;/b&gt;&lt;/p&gt;
+      &lt;button id="buy"&gt;Купить&lt;/button&gt;
+    &lt;/article&gt;
+  &lt;/main&gt;`;
+const shop = document.querySelector("#shop");
+
+// тег бо ҳарфи хурд + "#id", агар бошад + ".класс", агар бошад
+function describe(el) {
+  // коди шумо инҷо
+}
+
+// коди шумо инҷо: коркардкунандаи клик дар shop
+
+for (const id of ["price", "title", "buy", "shop"]) {
+  document.getElementById(id).click();
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>b#price &lt; p.info &lt; article.card &lt; main#shop
+h3#title &lt; article.card &lt; main#shop
+button#buy &lt; article.card &lt; main#shop
+main#shop</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>describe</code>: <code>el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (el.className ? "." + el.className : "")</code>. Функсияро алоҳида санҷед, ва барои якчанд элемент даъват кунед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Давраи боло рафтан: <code>let el = event.target; const path = []; while (true) { path.push(describe(el)); if (el === shop) break; el = el.parentElement; }</code>, баъд <code>path.join(" &lt; ")</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 06 -->
+    <section class="topic" id="delegation">
+      <h2 data-toc="Вакилкунӣ"><span class="num">06</span> Вакилкунии ҳодисаҳо</h2>
+      <p>Фарз кунем, шумо рӯйхати 50 кор доред ва ҳар кадом тугмаи «Удалить» дорад. Фикри аввал: бо давра гузашта, ба ҳар тугма коркардкунанда овехтан. Ин кор мекунад, аммо се мушкилот ҳаст:</p>
+      <ul>
+        <li><b>Коркардкунандаҳои зиёд.</b> 50 тугма — 50 шунаванда дар хотира. Агар сатрҳо 5000 бошанд-чӣ?</li>
+        <li><b>Элементҳои нав «кар» мешаванд.</b> Корбар кор илова кард — тугмаи нав коркардкунанда надорад, зеро давра пештар кор карда буд.</li>
+        <li><b>Кори изофӣ.</b> Ҳар як элементро бояд обуна кард ва ҳангоми нест кардан — обунаро бекор кард.</li>
+      </ul>
+      <p>Ҳал аз болоравии бахши гузашта истифода мебарад. Клик ба ҳар тугма <b>ба ҳар ҳол боло мебарояд</b> то падари умумӣ — рӯйхат. Пас, <b>як</b> коркардкунанда дар падар кифоя аст: он мефаҳмад, ки маҳз кӣ ҳадаф буд, ва қарор медиҳад, ки чӣ кор кунад. Ин <b>вакилкунӣ</b> номида мешавад — падар ҳодисаҳоро «бо вакилнома» аз номи ҳамаи фарзандон қабул мекунад.</p>
+
+      <div class="callout analogy"><b>Муқоиса аз ҳаёт</b>
+        <p>Дар MakeFirstStep дар назди дари ҳар аудитория посбон нест — як маъмур дар қабулгоҳ ҳаст. Ҳамаи саволҳо ба ӯ меравад: «Аудитория 3 дар куҷост?», «Имрӯз кӣ дарс медиҳад?». Вақте аудиторияи нав мекушоянд, посбони нав киро кардан лозим нест — маъмур аллакай огоҳ аст. Бо вакилкунӣ низ ҳамин тавр: як «маъмур» (падар) ҳамаро хизмат мерасонад, аз ҷумла онҳое, ки баъдтар пайдо мешаванд.</p>
+      </div>
+
+      <h3>Ду равиш паҳлӯ ба паҳлӯ</h3>
+      <div class="cols">
+        <div class="col bad"><b>Коркардкунанда дар ҳар элемент</b>
+<pre class="code">
+for (const btn of list.querySelectorAll("button")) {
+  btn.addEventListener("click", remove);
+}
+// тугмаҳои нав — бе коркардкунанда
+</pre>
+        </div>
+        <div class="col good"><b>Як коркардкунанда дар падар</b>
+<pre class="code">
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button");
+  if (!btn) return;
+  remove(btn);
+});
+// барои тугмаҳои оянда низ кор мекунад
+</pre>
+        </div>
+      </div>
+
+      <h3>Абзори нав: closest</h3>
+      <p>Мушкилот: <code>event.target</code> — элементи аз ҳама чуқур аст, ки ба он клик карданд. Агар дар тугма нишонаи <code>&lt;span&gt;</code> бошад, ҳадаф нишона мешавад, на тугма. Бояд аз ҳадаф ба элементи лозимӣ «боло рафт». Барои ин усули <code>element.closest(selector)</code> ҳаст: он худи элементро месанҷад, баъд падарро, баъд падари падарро — ва аввалин мувофиқро аз рӯи селектори CSS бармегардонад. Агар чунин набошад — <code>null</code>.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li class="item"&gt;&lt;button class="del"&gt;&lt;span class="icon"&gt;✕&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const icon = document.querySelector(".icon");
+
+console.log(icon.closest("button").className);   // del — ба 1 сатҳ боло рафтем
+console.log(icon.closest("li").className);       // item — ба 2 сатҳ
+console.log(icon.closest(".icon") === icon);     // true — аввал худи элемент санҷида мешавад
+console.log(icon.closest("table"));              // null — чунин аҷдод нест
+</pre>
+
+      <h3>Боз як абзор: атрибутҳои data</h3>
+      <p>Чӣ тавр фаҳмидан мумкин аст, ки маҳз кадом тугмаро заданд — «нест кардан» ё «ба интихобшуда»? Ва дар кадом сатр? Аз рӯи матни тугма ҳадс заданӣ нестем-ку. Барои чунин нишонаҳо дар HTML атрибутҳои <code>data-*</code> ҳастанд: шумо худатон ном меандешед, ва дар JS тавассути <code>element.dataset</code> мехонед.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;li data-id="42" data-user-name="Мадина"&gt;&lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;`;
+const li = document.querySelector("li");
+const btn = document.querySelector("button");
+
+console.log(li.dataset.id);          // "42" — ҳамеша сатр!
+console.log(li.dataset.userName);    // data-user-name → userName (camelCase)
+console.log(btn.dataset.action);     // "remove"
+console.log(Number(li.dataset.id) + 1);   // 43 — адад худамон месозем
+</pre>
+
+      <h3>Қолаби вакилкунӣ</h3>
+      <ol class="steps">
+        <li><b>Як коркардкунанда дар падари умумӣ</b> — рӯйхат, ҷадвал, меню.</li>
+        <li><b>Элементи лозимиро ёбед:</b> <code>const btn = event.target.closest("button[data-action]");</code></li>
+        <li><b>Чизе наёфтем — мебароем:</b> <code>if (!btn) return;</code> (клик ба ҷое, ки тугма нест).</li>
+        <li><b>Санҷед, ки тугма дар дохили рӯйхати шумост:</b> <code>if (!list.contains(btn)) return;</code> Вақте лозим аст, ки рӯйхатҳо дар якдигар ҷойгиранд.</li>
+        <li><b>Ба сатр боло равед:</b> <code>const li = btn.closest("li");</code></li>
+        <li><b>Аз рӯи <code>dataset</code> қарор диҳед:</b> <code>if (btn.dataset.action === "remove") li.remove();</code></li>
+      </ol>
+
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li data-id="1"&gt;Нон &lt;button data-action="remove"&gt;&lt;span&gt;✕&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+    &lt;li data-id="2"&gt;Чой &lt;button data-action="remove"&gt;&lt;span&gt;✕&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const list = document.querySelector("#list");
+
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn || !list.contains(btn)) return;
+  const li = btn.closest("li");
+  if (btn.dataset.action === "remove") {
+    console.log("Удаляю №" + li.dataset.id);
+    li.remove();
+  }
+});
+
+list.querySelector("span").click();   // ба нишона дар дохили тугма клик карданд — кор мекунад!
+console.log("Осталось:", list.children.length);
+
+// баъдтар банди нав илова мекунем — коркардкунанда лозим нест
+const newLi = document.createElement("li");
+newLi.dataset.id = 3;
+newLi.innerHTML = `Лагман &lt;button data-action="remove"&gt;&lt;span&gt;✕&lt;/span&gt;&lt;/button&gt;`;
+list.append(newLi);
+newLi.querySelector("button").click();
+console.log("Осталось:", list.children.length);
+</pre>
+
+      <h3>Худатон кӯшиш кунед</h3>
+      <p><b>▶ Запустить</b>-ро пахш кунед. Якчанд бандро нест кунед, баъд бо тугмаи «Добавить пункт» банди нав илова кунед — ва боварӣ ҳосил кунед, ки тугмаи «✕»-и банди нав бе як сатри изофии обуна кор мекунад.</p>
+      <div class="playground" data-mode="dom" data-title="Менюи чойхона">
+<pre class="code" data-lang="html">
+&lt;button id="add"&gt;Добавить пункт&lt;/button&gt;
+&lt;ul id="menu"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Оши палав&lt;/span&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лагман&lt;/span&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+li { padding: 4px 0; }
+button { font: inherit; padding: 2px 10px; border-radius: 8px; border: 1px solid #d0d5dd; background: #fff; cursor: pointer; }
+</pre>
+<pre class="code" data-lang="js">
+const menu = document.querySelector("#menu");
+const dishes = ["Манту", "Самбуса", "Шурпо", "Кабоб"];
+let next = 0;
+
+// ЯК коркардкунанда барои тамоми рӯйхат
+menu.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) return;
+  const li = btn.closest("li");
+  console.log("Убрали:", li.querySelector(".name").textContent);
+  li.remove();
+});
+
+document.querySelector("#add").addEventListener("click", () =&gt; {
+  const li = document.createElement("li");
+  li.innerHTML = `&lt;span class="name"&gt;&lt;/span&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;`;
+  li.querySelector(".name").textContent = dishes[next++ % dishes.length];
+  menu.append(li);
+});
+</pre>
+      </div>
+
+      <div class="callout warn"><b>Хатоҳои маъмули вакилкунӣ</b>
+        <p><b>1. Ба ҷои <code>closest</code> <code>event.target</code>-ро истифода мебаранд.</b> Клик ба нишона дар дохили тугма ҳадафи нишона медиҳад — ва санҷиши <code>target.tagName === "BUTTON"</code> кор намекунад.</p>
+        <p><b>2. Ҳодисаеро вакил мекунанд, ки боло намеравад.</b> <code>focus</code>, <code>blur</code>, <code>mouseenter</code> то падар намерасанд — <code>focusin</code>, <code>focusout</code>, <code>mouseover</code>-ро гиред.</p>
+        <p><b>3. <code>if (!btn) return</code>-ро фаромӯш мекунанд.</b> Клик ба ҷои холии рӯйхат низ коркардкунандаро даъват мекунад, ва <code>btn</code> <code>null</code> мешавад.</p>
+      </div>
+<pre class="code" data-run data-title="Хатои маъмул: клик ба нишона дар дохили тугма мушоҳида нашуд">
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li&gt;Нон &lt;button&gt;&lt;span id="icon"&gt;✕&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const list = document.querySelector("#list");
+
+list.addEventListener("click", (event) =&gt; {
+  if (event.target.tagName === "BUTTON") {          // ✖ ҳадаф — ин SPAN аст
+    console.log("Кнопка нажата");
+  } else {
+    console.log("Цель:", event.target.tagName);     // мо дар ин ҷо мерасем
+  }
+});
+
+document.querySelector("#icon").click();
+</pre>
+      <p>Баръакс ҳам мешавад: вакилкунӣ на ҳамеша ҳалли беҳтарин аст. Агар элемент як бошад (масалан, тугмаи «Войти»), танҳо коркардкунандаро ба он овезед. Вакилкунӣ барои <b>рӯйхатҳо, ҷадвалҳо, менюҳо</b> лозим аст — дар он ҷое, ки элементҳо бисёранд ё илова ва нест карда мешаванд.</p>
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/event-delegation" target="_blank" rel="noopener">learn.javascript.ru — Делегирование событий</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Element/closest" target="_blank" rel="noopener">MDN — Element.closest</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTML/How_to/Use_data_attributes" target="_blank" rel="noopener">MDN — data-атрибуты</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Як шунаванда барои тамоми меню</h4><span class="level easy">осон</span></header>
+          <p>Менюи ошхона — рӯйхати <code>#menu</code> бо се таом. <b>Як</b> коркардкунандаи клик ба худи рӯйхат овезед. Он «Выбрано: название»-ро танҳо дар сурате чоп мекунад, ки ҳадаф банди <code>&lt;li&gt;</code> бошад. Клик ба худи рӯйхат (берун аз бандҳо) бояд нодида гирифта шавад.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;ul id="menu"&gt;&lt;li&gt;Оши палав&lt;/li&gt;&lt;li&gt;Лагман&lt;/li&gt;&lt;li&gt;Манту&lt;/li&gt;&lt;/ul&gt;`;
+const menu = document.querySelector("#menu");
+
+// коди шумо инҷо: як коркардкунанда дар menu
+
+for (const li of menu.children) {
+  li.click();
+}
+menu.click();   // берун аз бандҳо — вокуниш набояд бошад
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Выбрано: Оши палав
+Выбрано: Лагман
+Выбрано: Манту</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Элементе, ки ба он клик карданд, — <code>event.target</code>. Тегашро санҷед: <code>event.target.tagName === "LI"</code>. Барои клик ба худи рӯйхат <code>target</code> <code>UL</code> мешавад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>menu.addEventListener("click", (event) =&gt; { if (event.target.tagName !== "LI") return; console.log("Выбрано: " + event.target.textContent); });</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ВАЗИФАИ 6.2</span><h4>Тугмаҳои «писанд» ва «нест кардан»</h4><span class="level mid">миёна</span></header>
+          <p>Дар рӯйхат се таом ҳаст, ҳар кадом тугмаҳои <code>data-action="like"</code> ва <code>data-action="remove"</code> дорад. <b>Як</b> коркардкунанда барои <code>#list</code> тавассути <code>closest</code> ва <code>dataset</code> нависед. Барои «like» «Нравится: название (№id)», барои «remove» — «Удалено: название (№id)» чоп кунед <b>ва бандро нест кунед</b>. Кликро берун аз тугма нодида гиред. Ном дар <code>.name</code>, id — дар <code>data-id</code>-и <code>&lt;li&gt;</code> аст.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li data-id="1"&gt;&lt;span class="name"&gt;Оши палав&lt;/span&gt; &lt;button data-action="like"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+    &lt;li data-id="2"&gt;&lt;span class="name"&gt;Лагман&lt;/span&gt; &lt;button data-action="like"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+    &lt;li data-id="3"&gt;&lt;span class="name"&gt;Манту&lt;/span&gt; &lt;button data-action="like"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const list = document.querySelector("#list");
+
+// коди шумо инҷо
+
+const press = (id, action) =&gt;
+  document.querySelector(`li[data-id="${id}"] [data-action="${action}"]`).click();
+
+press(2, "like");
+press(3, "remove");
+press(1, "like");
+list.querySelector(".name").click();   // клик ба ном — нодида мегирем
+console.log("Осталось: " + list.children.length);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Нравится: Лагман (№2)
+Удалено: Манту (№3)
+Нравится: Оши палав (№1)
+Осталось: 2</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Оғози коркардкунанда: <code>const btn = event.target.closest("button[data-action]"); if (!btn) return; const li = btn.closest("li");</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ном: <code>li.querySelector(".name").textContent</code>, id: <code>li.dataset.id</code>, амал: <code>btn.dataset.action</code>. Шохаҳои <code>if … else if</code> аз рӯи амал; барои нест кардан — <code>li.remove()</code> баъди чопи сатр.</p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ВАЗИФАИ 6.3</span><h4>Банди нав ҷавоб намедиҳад</h4><span class="level mid">миёна</span></header>
+          <p>Дар меню ба ҳар банд коркардкунандаи худӣ овехта шудааст. Барнома баъдтар банди «Самбуса»-ро илова кард — ва он коркардкунанда надорад, дар ҳоле ки дар консол се сатр интизор аст. Обунаро аз нав нависед: ба ҷои давра <b>як</b> коркардкунанда барои <code>#menu</code>. Кодро дар зери сатри «приложение добавляет пункт» тағйир надиҳед.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;ul id="menu"&gt;&lt;li&gt;Нон&lt;/li&gt;&lt;li&gt;Чой&lt;/li&gt;&lt;/ul&gt;`;
+const menu = document.querySelector("#menu");
+
+// Ҳоло: барои ҳар банд коркардкунанда. Онро бо ЯК коркардкунанда дар menu иваз кунед
+for (const li of menu.querySelectorAll("li")) {
+  li.addEventListener("click", () =&gt; console.log("Заказано: " + li.textContent));
+}
+
+// --- барнома банд илова мекунад (тағйир надиҳед) ---
+const extra = document.createElement("li");
+extra.textContent = "Самбуса";
+menu.append(extra);
+
+for (const li of menu.children) {
+  li.click();
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Заказано: Нон
+Заказано: Чой
+Заказано: Самбуса</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Давраи <code>for</code>-ро бо обунаҳо нест кунед. Ба ҷои он — як сатри <code>menu.addEventListener("click", …)</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар коркардкунанда: <code>const li = event.target.closest("li"); if (!li) return; console.log("Заказано: " + li.textContent);</code></p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ВАЗИФАИ 6.4</span><h4>Сабад бо «+» ва «−»</h4><span class="level hard">душвор</span></header>
+          <p>Сабади мағоза. Ҳар сатри <code>&lt;li&gt;</code> нарх дар <code>data-price</code>, миқдор дар <code>.qty</code> ва се тугма дорад: <code>inc</code> (+1), <code>dec</code> (−1; агар 0 шуд — сатр нест карда мешавад) ва <code>del</code> (сатрро фавран нест кардан). Як коркардкунанда барои <code>#cart</code>. Баъди ҳар амал чоп: «Итого: N сомони», ва агар сабад холӣ бошад — «Корзина пуста». Функсияи <code>press</code> аллакай тайёр аст.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="cart"&gt;
+    &lt;li data-price="4"&gt;&lt;span class="name"&gt;Нон&lt;/span&gt;
+      &lt;button data-action="dec"&gt;−&lt;/button&gt; &lt;b class="qty"&gt;1&lt;/b&gt; &lt;button data-action="inc"&gt;+&lt;/button&gt;
+      &lt;button data-action="del"&gt;✕&lt;/button&gt;&lt;/li&gt;
+    &lt;li data-price="18"&gt;&lt;span class="name"&gt;Чой&lt;/span&gt;
+      &lt;button data-action="dec"&gt;−&lt;/button&gt; &lt;b class="qty"&gt;2&lt;/b&gt; &lt;button data-action="inc"&gt;+&lt;/button&gt;
+      &lt;button data-action="del"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const cart = document.querySelector("#cart");
+
+function printTotal() {
+  // коди шумо инҷо: ҷамъ аз рӯи ҳамаи сатрҳо ё «Корзина пуста»
+}
+
+// коди шумо инҷо: як коркардкунанда дар cart
+
+const press = (name, action) =&gt; {
+  const li = [...cart.children].find((x) =&gt; x.querySelector(".name").textContent === name);
+  li.querySelector(`[data-action="${action}"]`).click();
+};
+
+press("Нон", "inc");
+press("Чой", "dec");
+press("Чой", "dec");
+press("Нон", "del");
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Итого: 44 сомони
+Итого: 26 сомони
+Итого: 8 сомони
+Корзина пуста</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Корро тақсим кунед: <code>printTotal()</code> танҳо аз болои <code>cart.children</code> мегузарад ва <code>Number(li.dataset.price) * Number(li.querySelector(".qty").textContent)</code>-ро ҷамъ мекунад — он дар бораи тугмаҳо чизе намедонад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар коркардкунанда: <code>closest("button[data-action]")</code>, баъд <code>li = btn.closest("li")</code>, <code>qty</code> — элементи <code>li.querySelector(".qty")</code>. Барои <code>dec</code>: <code>qty.textContent = Number(qty.textContent) - 1; if (Number(qty.textContent) === 0) li.remove();</code>. Дар охири ҳар клик — <code>printTotal()</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 07 -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ЗС: тавсифи хато"><span class="num">07</span> Блоки ЗС: хаторо чӣ тавр тавсиф кардан</h2>
+      <p>«Тугма кор намекунад» — ибораи аз ҳама маъмули барномасозони навомӯз. Ва аз ҳама бефоида: на одам, на ЗС намефаҳмад, ки <b>чӣ</b> маҳз вайрон шуд. Ҳодисаҳо машқи олӣ мебошанд, чунки хатоҳо дар онҳо ҳамеша як навъ аст: «интизор будам, ки ҳангоми клик X мешавад, аммо Y рух медиҳад (ё ҳеҷ чиз)». Тавсифи чунин хаторо ёд гиред — ва аз ЗС ҷавоби дақиқ мегиред, ва аксар вақт худатон сабабро меёбед, ҳангоми навиштани тавсиф.</p>
+
+      <div class="callout ai"><b>Қоидаҳои курс дар бораи ЗС — ёдрас мекунем</b>
+        <p>1) Аввал 15 дақиқа худатон кӯшиш мекунед. 2) Коде, ки сатр ба сатр шарҳ дода наметавонед, ворид намекунед — ҳангоми санҷиши вазифаи хонагӣ омӯзгор ҳақ дорад дар бораи ҳар сатр бипурсад. 3) Дар промпт ҳамеша: контекст → вазифа → маҳдудиятҳо → формати ҷавоб → санҷиш.</p>
+      </div>
+
+      <h3>Гузориши заиф ва қавии хато</h3>
+<div class="prompt bad-prompt">тугмаи нест кардан дар рӯйхат кор намекунад, чаро</div>
+<div class="prompt good-prompt">Контекст: JavaScript меомӯзам, рӯйхати харидро бо JS-и холис (DOM, ҳодисаҳо) менависам.
+Хато: интизорам, ки клик ба тугмаи «✕» сатрро аз рӯйхат нест мекунад. Мегирам: танҳо сатри аввал нест мешавад, бандҳои нав умуман нест намешаванд. Дар консол хато нест.
+Коди ҳадди аққал (HTML + JS, 12 сатр):
+[код]
+Чӣ аллакай кӯшиш кардам: console.log(event.target)-ро чоп кардам — ҳангоми клик ба нишона дар дохили тугма он ҷо SPAN аст.
+Формати ҷавоб: 3 фарзияи сабаб аз рӯи эҳтимол, ба ҳар кадом — чӣ тавр санҷидан. Кодро пурра аз нав нанавис.
+Санҷиш: баъди ҷавоб ман худам ҳар фарзияро дар консол месанҷам.</div>
+
+      <h3>Чӣ тавр намунаи ҳадди аққал сохтан</h3>
+      <ol class="steps">
+        <li><b>Қисми мушкилдорро нусха кунед</b> ба файли алоҳида ё ба қуттии санҷиш дар ин саҳифа.</li>
+        <li><b>Ҳама чизи изофиро партоед:</b> услубҳо, компонентҳои ҳамсоя, функсияҳое, ки ба хато дахл надоранд. Баъди ҳар нест кардан санҷед — хато ҳанӯз такрор мешавад?</li>
+        <li><b>Маълумоти воқеиро иваз кунед</b> бо 2–3 элементи оддӣ.</li>
+        <li><b>Се чизро сабт кунед:</b> шумо чӣ мекунед (клик мекунам ба …), чӣ интизор будед, чӣ гирифтед. Хаторо аз консол <b>айнан</b> нусха кунед, бо суханони худ нақл накунед.</li>
+        <li><b>Боз як бор хонед.</b> Аксар вақт хато маҳз дар қадами 2 ёфт мешавад. Ин усули маъруфи «мурғобии резинӣ» аст: вақте мушкилотро бо овоз шарҳ медиҳед, худатон хаторо мебинед.</li>
+      </ol>
+
+      <h3>Қолаби гузориши хато</h3>
+<div class="prompt">Контекст: [лоиҳа чӣ аст, мавзӯъ кадом аст, чӣ аллакай медонам].
+Интизор будам: [чӣ бояд рӯй диҳад].
+Гирифтам: [воқеан чӣ рӯй медиҳад + матни дақиқи хато аз консол].
+Коди ҳадди аққал: [на зиёда аз 20 сатр].
+Чӣ кӯшиш кардам: [1–2 қадами ислоҳ ва чӣ нишон доданд].
+Формати ҷавоб: 3 фарзия аз рӯи эҳтимол, чӣ тавр санҷидани ҳар кадом. Кодро пурра аз нав нанавис.
+Санҷиш: фарзияҳоро навбат месанҷам ва менависам, кадомаш тасдиқ шуд.</div>
+
+      <h3>Вакилкуниро дар коди худ шарҳ додан</h3>
+      <p>Ин сатр аз китобхонаи промптҳои курс аст. Коди рӯйхати худро гузоред ва шарҳ пурсед — аммо санҷед, ки мефаҳмед, <b>чаро</b> <code>event.target</code> кор мекунад:</p>
+<div class="prompt good-prompt">Вакилкунии ҳодисаҳоро дар ин мисол шарҳ деҳ: [код]. Нусхаи ҳадди аққалро тавассути як коркардкунанда дар падар нишон деҳ. Бо суханони оддӣ шарҳ деҳ, ки event.target чист ва чаро дар ин ҷо closest лозим аст. Ҷавоб — қадам ба қадам, аз 15 сатр дарозтар не.</div>
+      <p><b>Санҷиши ҷавоб:</b> ҷавоби ЗС-ро пӯшед ва бо суханони худ ба ҳамсояи миз шарҳ диҳед, ки клик ба тугма чӣ тавр ба рӯйхат мерасад. Намебарояд — бахшҳои 05–06-ро боз хонед.</p>
+
+      <h3>Хатоҳои маъмули ЗС дар ҳодисаҳо</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Дар ҷавоби ЗС чиро мебинед</th><th>Мушкилот дар чист</th><th>Чӣ тавр ислоҳ кардан</th></tr></thead>
+        <tbody>
+          <tr><td><code>onclick="..."</code> бевосита дар HTML</td><td>Аломатгузорӣ ва кодро омехта мекунад, нигоҳубин душвор аст</td><td><code>addEventListener</code> дар файли JS</td></tr>
+          <tr><td>Давра бо обуна ба ҳар <code>li</code> / тугма</td><td>Элементҳои нав бе коркардкунанда мемонанд</td><td>Вакилкунӣ дар падар</td></tr>
+          <tr><td><code>if (e.target.tagName === "BUTTON")</code></td><td>Ба нишона дар дохили тугма кор нахоҳад кард</td><td><code>e.target.closest("button")</code></td></tr>
+          <tr><td><code>list.innerHTML += "&lt;li&gt;…&lt;/li&gt;"</code> дар коркардкунанда</td><td>Тамоми рӯйхатро аз нав месозад: ҳолатҳо ва обунаҳо дар элементҳо гум мешаванд</td><td><code>createElement</code> + <code>append</code></td></tr>
+          <tr><td>Шакл: <code>click</code> дар тугмаи «Отправить»</td><td>Enter дар майдон шаклро бе клик мефиристад</td><td><code>submit</code> дар шакл + <code>preventDefault()</code></td></tr>
+          <tr><td><code>e.stopPropagation()</code> «барои эҳтиёт»</td><td>Коркардкунандаҳои бегонаро дар боло вайрон мекунад (аналитика, бастани меню)</td><td>Санҷиши <code>e.target === e.currentTarget</code></td></tr>
+          <tr><td><code>btn.addEventListener("click", handler())</code></td><td>Функсия фавран даъват мешавад, на бо клик</td><td>Бе қавс: <code>handler</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="practice">
+        <h3>Амалиёт бо ЗС</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Хато: клик ба нишона</h4><span class="level mid">миёна</span></header>
+          <p>Рӯйхати интихобшуда бояд ҳангоми клик ба ситорача «В избранное: название» чоп кунад. Ситорача — ин <code>&lt;span class="icon"&gt;</code> дар дохили тугма. Ҳоло чизе чоп намешавад. Аввал худатон сабабро ёбед (15 дақиқа!). Баъд — дар шарҳи болои код — барои ЗС гузориши хатоеро аз рӯи қолаб (интизор будам / гирифтам / коди ҳадди аққал) тартиб диҳед ва бо фарзияи ЗС муқоиса кунед. Ба чопи интизоршаванда бирасед.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="menu"&gt;
+    &lt;li&gt;&lt;span class="name"&gt;Дыня&lt;/span&gt; &lt;button class="fav"&gt;&lt;span class="icon"&gt;★&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;span class="name"&gt;Гранат&lt;/span&gt; &lt;button class="fav"&gt;&lt;span class="icon"&gt;★&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const menu = document.querySelector("#menu");
+
+menu.addEventListener("click", (event) =&gt; {
+  if (event.target.tagName === "BUTTON") {
+    const name = event.target.parentElement.querySelector(".name").textContent;
+    console.log("В избранное: " + name);
+  }
+});
+
+// корбар ба нишонаи ★ дар дохили тугма клик мекунад
+for (const icon of document.querySelectorAll(".icon")) {
+  icon.click();
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>В избранное: Дыня
+В избранное: Гранат</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ба коркардкунанда <code>console.log(event.target.tagName)</code>-ро илова кунед. Ҳангоми клик ба нишона чӣ мебинед? Оё он ба <code>"BUTTON"</code> баробар аст?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Санҷишро бо <code>const btn = event.target.closest(".fav"); if (!btn) return;</code> иваз кунед, ва номро аз тугма ҷустуҷӯ кунед: <code>btn.closest("li").querySelector(".name").textContent</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Гузориши хаторо ҷамъ кунед</h4><span class="level easy">осон</span></header>
+          <p>Вазъият: скрипт дар <code>&lt;head&gt;</code> пайваст шудааст, аммо тугма дар <code>&lt;body&gt;</code> истодааст. Дар консол хатои <code>TypeError: Cannot read properties of null (reading 'addEventListener')</code>. Гузориши хаторо барои ЗС дар тағйирёбандаи <code>report</code> нависед (ин матн аст, ба ҳеҷ ҷо фиристода намешавад). Блокҳои «Ожидал:», «Получил:», «Что пробовал:», матни дақиқи хато ва коди ҳадди аққал бо <code>addEventListener</code> лозиманд. Дарозӣ — на зиёда аз 600 аломат. Код худаш матни шуморо месанҷад. Дар дохили матн аз нохунакҳои баръакс истифода набаред.</p>
+<pre class="code" data-run>
+const report = `
+`;   // гузориши хаторо байни нохунакҳо нависед
+
+const checks = [
+  ["Есть «Ожидал:»", report.includes("Ожидал:")],
+  ["Есть «Получил:»", report.includes("Получил:")],
+  ["Есть точный текст ошибки", report.includes("Cannot read properties of null")],
+  ["Есть минимальный код", report.includes("addEventListener")],
+  ["Есть «Что пробовал:»", report.includes("Что пробовал:")],
+  ["Не длиннее 600 символов", report.length &lt;= 600]
+];
+for (const [name, ok] of checks) {
+  console.log((ok ? "✔ " : "✖ ") + name);
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>✔ Есть «Ожидал:»
+✔ Есть «Получил:»
+✔ Есть точный текст ошибки
+✔ Есть минимальный код
+✔ Есть «Что пробовал:»
+✔ Не длиннее 600 символов</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Скелет: «Ожидал: … Получил: … Минимальный код: … Что пробовал: …». Ҳар блок — дар сатри нав бевосита дар дохили <code>report</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Хаторо бо суханони худ нақл накунед — онро айнан гузоред. Дар коди ҳадди аққал ду сатр кофист: <code>const btn = document.querySelector("#buy");</code> ва <code>btn.addEventListener("click", () =&gt; console.log("Куплено"));</code>. Фикр кунед, ки агар скрипт пештар аз хондани <code>&lt;body&gt;</code> аз ҷониби браузер иҷро шавад, чӣ мешавад.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 08 -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Амалиёт дар дарс"><span class="num">08</span> Амалиёт дар дарс: рӯйхат бо тугмаҳо</h2>
+      <p>«Харид барои бозор»-ро месозем — рӯйхате, ки дар ҳар банд ду тугма дорад: <b>♥ ба интихобшуда</b> ва <b>✕ нест кардан</b>. Коркардкунанда <b>як</b> аст, барои тамоми рӯйхат. Бо се қадам мегузарем, баъди ҳар кадом <b>▶ Запустить</b>-ро пахш кунед ва бо даст санҷед. Нусха накунед — худатон чоп кунед, ин чанд маротиба беҳтар ба ёд мемонад.</p>
+      <ol class="steps">
+        <li><b>Хабаркашӣ.</b> Як коркардкунанда дар рӯйхат. Мефаҳмем, ки ба кадом тугма ва дар кадом сатр клик карданд.</li>
+        <li><b>Амалҳо.</b> ♥ синфи <code>fav</code>-и сатрро иваз мекунад, ✕ сатрро нест мекунад.</li>
+        <li><b>Ҳисобкунак.</b> Баъди ҳар амал «Всего: N, избранных: M»-ро нав мекунем. Бандҳои нав фавран кор мекунанд.</li>
+      </ol>
+
+      <h3>Қадами 1. Хабаркашӣ</h3>
+      <p>То ҳол чизеро тағйир намедиҳем — танҳо ба консол чоп мекунем, ки аз клик чӣ фаҳмидем. Ба ♥, ба ✕, ба ном ва берун аз тугмаҳо клик кунед.</p>
+      <div class="playground" data-mode="dom" data-title="Қадами 1 · Хабаркашӣ">
+<pre class="code" data-lang="html">
+&lt;h4&gt;Покупки на базар&lt;/h4&gt;
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лук&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+h4 { margin: 0 0 8px; }
+ul { list-style: none; padding: 0; margin: 0; max-width: 340px; }
+li { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+.name { flex: 1; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 8px; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+li.fav [data-action="fav"] { color: #d92d20; }
+#count { color: #667085; font-size: 14px; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) {
+    console.log("Клик мимо кнопок:", event.target.tagName);
+    return;
+  }
+  const li = btn.closest("li");
+  const name = li.querySelector(".name").textContent;
+  console.log(`Кнопка «${btn.dataset.action}» в строке «${name}»`);
+});
+</pre>
+      </div>
+
+      <h3>Қадами 2. Амалҳо</h3>
+      <p>Акнун «хабаркашӣ»-ро бо рафтори воқеӣ иваз мекунем. ♥ синфи <code>fav</code>-и сатрро иваз мекунад (<code>classList.toggle</code> — аз дарси гузашта), ✕ тамоми сатрро нест мекунад.</p>
+      <div class="playground" data-mode="dom" data-title="Қадами 2 · Амалҳо">
+<pre class="code" data-lang="html">
+&lt;h4&gt;Покупки на базар&lt;/h4&gt;
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лук&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+h4 { margin: 0 0 8px; }
+ul { list-style: none; padding: 0; margin: 0; max-width: 340px; }
+li { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+.name { flex: 1; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 8px; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+li.fav [data-action="fav"] { color: #d92d20; }
+#count { color: #667085; font-size: 14px; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) return;                          // клик берун аз тугмаҳо
+
+  const li = btn.closest("li");
+  if (btn.dataset.action === "fav") {
+    li.classList.toggle("fav");              // синф ҳаст — мебардорад, нест — илова мекунад
+  } else if (btn.dataset.action === "remove") {
+    li.remove();
+  }
+});
+</pre>
+      </div>
+
+      <h3>Қадами 3. Ҳисобкунак ва бандҳои нав</h3>
+      <p>Функсияи <code>updateCount</code>-ро илова мекунем ва баъди ҳар тағйир — ва як маротиба дар оғоз — даъват мекунем. Тугмаи «Добавить» банд бо функсияи <code>makeItem</code> месозад. Диққат диҳед: <b>ягон обунаи нав</b> барои бандҳои нав нест — вакилкунӣ ҳама чизро аллакай медонад.</p>
+      <div class="playground" data-mode="dom" data-title="Қадами 3 · Ҳисобкунак">
+<pre class="code" data-lang="html">
+&lt;h4&gt;Покупки на базар&lt;/h4&gt;
+&lt;button id="add"&gt;+ Добавить пункт&lt;/button&gt;
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лук&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+h4 { margin: 0 0 8px; }
+ul { list-style: none; padding: 0; margin: 8px 0; max-width: 340px; }
+li { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+.name { flex: 1; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 8px; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+li.fav [data-action="fav"] { color: #d92d20; }
+#count { color: #667085; font-size: 14px; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+const count = document.querySelector("#count");
+const extras = ["Зира", "Помидоры", "Масло", "Чой"];
+let next = 0;
+
+function updateCount() {
+  const total = list.children.length;
+  const favs = list.querySelectorAll("li.fav").length;
+  count.textContent = `Всего: ${total}, избранных: ${favs}`;
+}
+
+function makeItem(text) {
+  const li = document.createElement("li");
+  li.innerHTML = `&lt;span class="name"&gt;&lt;/span&gt;
+    &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt;
+    &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;`;
+  li.querySelector(".name").textContent = text;   // матн — танҳо тавассути textContent
+  return li;
+}
+
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) return;
+
+  const li = btn.closest("li");
+  if (btn.dataset.action === "fav") li.classList.toggle("fav");
+  else if (btn.dataset.action === "remove") li.remove();
+  updateCount();
+});
+
+document.querySelector("#add").addEventListener("click", () =&gt; {
+  list.append(makeItem(extras[next++ % extras.length]));
+  updateCount();
+});
+
+updateCount();
+</pre>
+      </div>
+
+      <div class="callout tip"><b>Аз амалиёт чиро бояд дар хотир дошт</b>
+        <p>Коркардкунанда танҳо барои «чӣ заданд» масъул аст. Функсияи умумии <code>updateCount</code> танҳо барои «аз нав ҳисоб кардан ва нишон додан» масъул аст. Чунин тақсимот кодро хонданбоб мекунад — ва маҳз он дар лоиҳаҳои калон шуморо интизор аст (дарси 11 — ҳолати барнома).</p>
+      </div>
+
+      <div class="practice">
+        <h3>Амалиёт: худатон ҷамъ кунед</h3>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Рӯйхат бо интихобшуда ва ҳисобкунак</h4><span class="level mid">миёна</span></header>
+          <p>Қадами 3-ро бе ишора такрор кунед, аммо аллакай худатон. Лозиманд: функсияи <code>updateCount</code> (ба <code>#count</code> «Всего: N, избранных: M» менависад), <b>як</b> коркардкунандаи клик дар <code>#list</code> (♥ синфи <code>fav</code>-ро иваз мекунад, ✕ сатрро нест мекунад) ва даъвати <code>updateCount()</code> дар ҷойҳои лозимӣ. Блоки «автотест» дар поён худаш ба тугмаҳо «клик мекунад», аз ҷумла ба банди нав, ки баъдтар илова шудааст, — онро тағйир надиҳед.</p>
+          <div class="playground" data-mode="dom" data-title="Амалиёт · Рӯйхат бо интихобшуда">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лук&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+ul { list-style: none; padding: 0; margin: 0 0 8px; max-width: 340px; }
+li { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+.name { flex: 1; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 8px; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+const count = document.querySelector("#count");
+
+function updateCount() {
+  // коди шумо инҷо
+}
+
+// коди шумо инҷо: ЯК коркардкунандаи клик дар list
+
+updateCount();
+
+// ===== автотест: тағйир надиҳед =====
+{
+  const q = (s) =&gt; document.querySelector(s);
+  const state = () =&gt; console.log(q("#count").textContent);
+
+  q('#list li:nth-child(1) [data-action="fav"]').click();
+  q('#list li:nth-child(3) [data-action="fav"]').click();
+  state();
+  q('#list li:nth-child(2) [data-action="remove"]').click();
+  state();
+  q('#list li:nth-child(1) [data-action="fav"]').click();
+  state();
+  q("#list .name").click();     // клик берун аз тугмаҳо чизеро тағйир намедиҳад
+  q("#list").click();
+  state();
+
+  const li = document.createElement("li");    // банде, ки баъдтар илова шуд
+  li.innerHTML = '&lt;span class="name"&gt;Зира&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;';
+  q("#list").append(li);
+  li.querySelector('[data-action="fav"]').click();
+  state();
+}
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Всего: 3, избранных: 2
+Всего: 2, избранных: 2
+Всего: 2, избранных: 1
+Всего: 2, избранных: 1
+Всего: 3, избранных: 2</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҳисобкунак: <code>list.children.length</code> — ҳамаи сатрҳо, <code>list.querySelectorAll("li.fav").length</code> — интихобшудаҳо. Матн — бо сатри қолабӣ дар <code>count.textContent</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Коркардкунанда: <code>const btn = event.target.closest("button[data-action]"); if (!btn) return;</code>, баъд <code>const li = btn.closest("li");</code> ва ду шоха аз рӯи <code>btn.dataset.action</code>. Дар охири коркардкунанда — <code>updateCount()</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 09 -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">09</span> Вазифаи хонагӣ: рӯйхати интерактивӣ</h2>
+      <p>«Компоненти интерактивӣ»-и худро ба итмом расонед: рӯйхат бо <b>илова</b>, <b>нест кардан</b> ва <b>филтр бо тугмаҳо</b>. Мавзӯъро худатон интихоб кунед: харидҳо, корҳои ҳафта, филмҳо барои тамошо, ҷойҳои дӯстдоштаи Душанбе. Натиҷаи ин вазифаи хонагӣ дар лоиҳаи хурд дар дарси 12 лозим мешавад.</p>
+
+      <h3>Чӣ бояд ҳосил шавад</h3>
+      <ul>
+        <li><b>Шакли илова.</b> Майдон ва тугма; банд ҳам бо клик, ҳам бо Enter илова мешавад (ҳодисаи <code>submit</code>, <code>preventDefault</code>). Баъди илова майдон тоза мешавад.</li>
+        <li><b>Санҷишҳо.</b> Номи холӣ (баъди <code>trim()</code>) ва такроркунӣ (бе ҳисоби регистр) илова намешаванд.</li>
+        <li><b>Тугмаҳо дар ҳар сатр:</b> ♥ — ба интихобшуда (синфи <code>fav</code>), ✕ — нест кардан. Ҳама тавассути <b>як</b> коркардкунанда дар рӯйхат: <code>closest</code> + <code>data-action</code>.</li>
+        <li><b>Филтр.</b> Ду тугмаи «Все» ва «Избранные» (низ бо вакилкунӣ дар контейнери тугмаҳо). Тугмаи интихобшуда равшан шудааст. Филтр баъди илова, нест кардан ва иваз кардани ♥ кор карданро давом медиҳад.</li>
+        <li><b>Ҳисобкунаки</b> «Всего: N, избранных: M».</li>
+        <li><b>Тозагӣ.</b> Дар HTML <code>onclick="…"</code> нест. Ба ҳар <code>li</code> обуна нест. Матни корбар тавассути <code>textContent</code> ворид мешавад, на <code>innerHTML</code>.</li>
+      </ul>
+      <p>Дар зер — тайёрии оғозии қуттии санҷиш бо автотест: он санҷишҳои маъмулиро такрор мекунад (илова, воридкунии холӣ, такроркунӣ, интихобшуда, филтр, нест кардан). Вақте дар консол ҳама мувофиқат кард — нусхаи худро бо мавзӯъ ва услубҳои зебо супоред.</p>
+
+      <div class="practice">
+        <h3>Амалиёт: тайёрӣ барои вазифаи хонагӣ</h3>
+      <article class="task" id="t9-1">
+        <header><span class="task-num">ВАЗИФАИ 9.1</span><h4>Рӯйхати интерактивӣ: илова, нест, филтр</h4><span class="level hard">душвор</span></header>
+        <p>Ҷойи «коди шумо инҷо»-ро пур кунед: шакл, як коркардкунанда дар рӯйхат, яке — дар тугмаҳои филтр, функсияҳои <code>applyFilter</code> ва <code>updateCount</code>. Автотести поёнро тағйир надиҳед.</p>
+        <div class="playground" data-mode="dom" data-title="Вазифаи хонагӣ · Рӯйхати интерактивӣ">
+<pre class="code" data-lang="html">
+&lt;form id="add-form"&gt;
+  &lt;input id="new-item" placeholder="Что купить?" autocomplete="off"&gt;
+  &lt;button&gt;Добавить&lt;/button&gt;
+&lt;/form&gt;
+&lt;div id="filters"&gt;
+  &lt;button data-filter="all" class="on"&gt;Все&lt;/button&gt;
+  &lt;button data-filter="fav"&gt;Избранные&lt;/button&gt;
+&lt;/div&gt;
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+form, #filters { display: flex; gap: 6px; margin-bottom: 8px; }
+input { font: inherit; padding: 6px 10px; border: 1px solid #d0d5dd; border-radius: 8px; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 10px; }
+#filters .on { background: #1d2939; color: #fff; }
+ul { list-style: none; padding: 0; margin: 0 0 8px; max-width: 360px; }
+li { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+li[hidden] { display: none; }
+.name { flex: 1; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#add-form");
+const input = document.querySelector("#new-item");
+const filters = document.querySelector("#filters");
+const list = document.querySelector("#list");
+const count = document.querySelector("#count");
+let currentFilter = "all";
+
+function makeItem(text) {
+  const li = document.createElement("li");
+  li.innerHTML = `&lt;span class="name"&gt;&lt;/span&gt;
+    &lt;button data-action="fav"&gt;♥&lt;/button&gt;
+    &lt;button data-action="remove"&gt;✕&lt;/button&gt;`;
+  li.querySelector(".name").textContent = text;
+  return li;
+}
+
+function updateCount() {
+  // коди шумо инҷо: «Всего: N, избранных: M»
+}
+
+function applyFilter() {
+  // коди шумо инҷо: пинҳон мекунем (li.hidden = true) он чизеро, ки ба currentFilter мувофиқ нест
+}
+
+// коди шумо инҷо:
+// 1) submit-и шакл: preventDefault, trim, холӣ ва такрор (бе ҳисоби регистр) — илова накунед, вагарна append(makeItem(...)) ва тоза кардани майдон
+// 2) ЯК click дар list: ♥ — toggle "fav", ✕ — remove
+// 3) ЯК click дар filters: филтрро дар хотир доштан (data-filter), тугмаро бо синфи "on" равшан кардан
+// баъди ҳар тағйир — applyFilter() ва updateCount()
+
+applyFilter();
+updateCount();
+
+// ===== автотест: тағйир надиҳед =====
+{
+  const q = (s) =&gt; document.querySelector(s);
+  const items = () =&gt; [...document.querySelectorAll("#list li")];
+  const visible = () =&gt; items().filter((li) =&gt; !li.hidden).length;
+  const add = (text) =&gt; {
+    q("#new-item").value = text;
+    q("#add-form").dispatchEvent(new Event("submit", { cancelable: true }));
+  };
+
+  add("Лук");
+  add("   ");
+  add("лук");
+  add("Зира");
+  console.log("Всего: " + items().length);
+  q('#list li:nth-child(1) [data-action="fav"]').click();
+  q('#list li:nth-child(3) [data-action="fav"]').click();
+  console.log("Избранных: " + document.querySelectorAll("#list li.fav").length);
+  q('[data-filter="fav"]').click();
+  console.log("В фильтре «Избранные»: " + visible());
+  q('#list li:nth-child(1) [data-action="fav"]').click();
+  console.log("После снятия: " + visible());
+  q('[data-filter="all"]').click();
+  q('#list li:nth-child(2) [data-action="remove"]').click();
+  console.log("После удаления: " + items().length + ", видно " + visible());
+  console.log("Поле очищено: " + (q("#new-item").value === ""));
+  console.log(q("#count").textContent);
+}
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Всего: 4
+Избранных: 2
+В фильтре «Избранные»: 2
+После снятия: 1
+После удаления: 3, видно 3
+Поле очищено: true
+Всего: 3, избранных: 1</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Аз шакл оғоз кунед: <code>form.addEventListener("submit", (event) =&gt; { event.preventDefault(); … })</code>. Такрор: <code>[...list.querySelectorAll(".name")].some(n =&gt; n.textContent.toLowerCase() === text.toLowerCase())</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>applyFilter</code>: барои ҳар <code>li</code> — <code>li.hidden = currentFilter === "fav" &amp;&amp; !li.classList.contains("fav");</code>. Фаромӯш накунед, ки <code>applyFilter()</code>-ро баъди ♥, ✕ ва илова даъват кунед: вагарна дар филтри «Избранные» дили бардошташуда сатрро пинҳон намекунад.</p></details>
+      </article>
+      </div>
+
+      <h3>Чиро супорид</h3>
+      <ul>
+        <li>Папка бо <code>index.html</code>, <code>style.css</code>, <code>script.js</code> — бо истинод ба репозиторий GitHub ё бо архив ба гурӯҳи Telegram. Номи мавзӯъро дар паём нависед.</li>
+        <li>Скриншоти рӯйхати кор карда истода (бо бандҳои иловашуда, филтри фаъолшуда).</li>
+        <li>Файли <code>prompts.md</code> (ё бахш дар README) бо ду чиз: (1) гузориши хатои шумо барои ЗС аз рӯи қолаби бахши 07 — аз рӯи хатои воқеӣ, ки ба шумо рӯ ба рӯ шуд; (2) як банд: ЗС чӣ маслиҳат дод ва аз он чиро шумо <b>нагирифтед</b> ва чаро.</li>
+      </ul>
+
+      <h3>Чӣ тавр баҳо медиҳем (0–10)</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Меъёр</th><th>Холҳо</th><th>Чиро мебинем</th></tr></thead>
+        <tbody>
+          <tr><td>Шакл</td><td>2</td><td><code>submit</code> + <code>preventDefault</code>, Enter кор мекунад, холӣ ва такрор рад мешаванд, майдон тоза мешавад</td></tr>
+          <tr><td>Вакилкунӣ</td><td>3</td><td>Як коркардкунанда дар рӯйхат, <code>closest</code>, <code>data-action</code>; бандҳои нав бе обунаҳои иловагӣ кор мекунанд</td></tr>
+          <tr><td>Филтр</td><td>2</td><td>«Все» / «Избранные», равшан кардани тугмаи фаъол, филтр баъди тағйирот зинда мемонад</td></tr>
+          <tr><td>Ҳисобкунак</td><td>1</td><td>Ҳамеша ададҳои дурустро нишон медиҳад</td></tr>
+          <tr><td>Тозагии код</td><td>1</td><td>Коркардкунандаҳои inline нестанд, барои воридот <code>textContent</code> ба ҷои <code>innerHTML</code>, номҳои фаҳмо, такрор нест</td></tr>
+          <tr><td>Қисми ЗС</td><td>1</td><td>Гузориши хато аз рӯи қолаб ва таҳлили боинсофонаи ҷавоби ЗС</td></tr>
+        </tbody>
+      </table></div>
+      <p><b>Бонус (ихтиёрӣ, бе хол):</b> клики дучанда ба ном онро иваз мекунад, клавишаи <code>Escape</code> майдонро тоза мекунад, <code>Delete</code> сатри охиринро нест мекунад.</p>
+      <div class="callout warn"><b>Ёдрасӣ</b>
+        <p>Ҳангоми санҷиши вазифаи хонагӣ омӯзгор метавонад хоҳиш кунад, ки ҳар сатрро шарҳ диҳед. Агар шарҳ дода наметавонед, ки клик ба ✕ чӣ тавр ба коркардкунанда дар рӯйхат мерасад, — пеш аз супурдан бахшҳои 05 ва 06-ро аз нав хонед.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== итоги -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Ёддошт">Ёддошти дарс</h2>
+      <ul>
+        <li><b>Ҳодиса</b> — сигнал аз браузер. <b>Коркардкунанда</b> — функсияе, ки мо медиҳем (бе қавс!): <code>el.addEventListener("click", handler)</code>.</li>
+        <li>Коркардкунандаҳо метавонанд бисёр бошанд, онҳо бо тартиби илова шудан кор мекунанд. Гирифтан: <code>removeEventListener</code> (ҳамон функсия лозим аст). Як маротиба: <code>{ once: true }</code>. Хосияти <code>onclick</code> танҳо як коркардкунандаро нигоҳ медорад — истифода намебарем.</li>
+        <li>Коркардкунанда <code>event</code> мегирад: <code>type</code>, <code>target</code> (дар куҷо рух дод), <code>currentTarget</code> (дар куҷо коркардкунанда овезон аст), <code>key</code>, <code>clientX/Y</code>, <code>target.value</code>.</li>
+        <li>Ҳодисаҳои маъмул: <code>click</code>, <code>input</code> (ҳар ҳарф), <code>change</code> (қимат собит шуд), <code>keydown</code>, <code>submit</code>, <code>DOMContentLoaded</code>. Дар байрақча <code>checked</code>-ро мехонем, дар майдон ва рӯйхат — <code>value</code> (сатр).</li>
+        <li>Аз код: <code>el.click()</code>, <code>el.dispatchEvent(new Event("input", { bubbles: true }))</code>, <code>form.dispatchEvent(new Event("submit", { cancelable: true }))</code>. Ҳодисаҳои дастӣ ба таври пешфарз боло намераванд.</li>
+        <li><code>event.preventDefault()</code> амали браузерро бекор мекунад: гузариш аз истинод, аз нав бор шудан ҳангоми <code>submit</code>, <code>Ctrl + S</code>. Шаклҳоро аз рӯи <code>submit</code> мешунавем, на аз рӯи клик ба тугма.</li>
+        <li><b>Болоравӣ:</b> ҳодиса аз ҳадаф ба боло аз болои падарон меравад (button → li → ul → body). <code>target</code> тағйир намеёбад, <code>currentTarget</code> тағйир меёбад. Фурӯравӣ — <code>{ capture: true }</code>, кам лозим аст.</li>
+        <li><code>stopPropagation()</code> болоравиро қатъ мекунад — эҳтиёткорона истифода баред; бештар санҷидани <code>event.target === event.currentTarget</code> кифоя аст.</li>
+        <li><b>Вакилкунӣ:</b> як коркардкунанда дар падар + <code>event.target.closest("селектор")</code> + <code>if (!el) return</code>. Барои элементҳои баъдтар иловашуда кор мекунад. Нишонаҳо дар HTML — <code>data-action</code>, <code>data-id</code>, мехонем <code>el.dataset.action</code>.</li>
+        <li>Боло намераванд: <code>focus</code>, <code>blur</code>, <code>mouseenter</code>, <code>mouseleave</code> — дар падар <code>focusin</code>, <code>focusout</code>, <code>mouseover</code>, <code>mouseout</code>-ро бишнавед.</li>
+        <li>Матни корбар дар DOM — тавассути <code>textContent</code>, на тавассути <code>innerHTML</code>.</li>
+        <li>Бо ЗС: гузориши хато = интизор будам / гирифтам (хато айнан) / коди ҳадди аққал (то 20 сатр) / чӣ кӯшиш кардам / формати ҷавоб. Фарзияҳоро як-як санҷед.</li>
+      </ul>
+    </section>

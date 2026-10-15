@@ -1,0 +1,1825 @@
+<style>
+  /* схема дерева DOM (только для этого урока) */
+  .dom-tree, .dom-tree ul { list-style: none; margin: 0; padding: 0; font: 14px/1.7 var(--mono); }
+  .dom-tree ul { margin-left: 14px; padding-left: 16px; border-left: 2px solid var(--line); }
+  .dom-tree li { margin: 4px 0; }
+  .dom-tree .tag { color: var(--accent); font-weight: 700; }
+  .dom-tree .txt { color: var(--ink-3); font-style: italic; }
+  .dom-tree .note { color: var(--ink-3); font: 12.5px var(--font); margin-left: 8px; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 8 · DOM</p>
+      <h1>DOM: ҷустуҷӯ ва тағйири унсурҳо</h1>
+      <p class="lead">То ҳол JavaScript дар консол зиндагӣ мекард: мо ҳисоб мекардем, филтр мекардем ва матн мебароридем. Имрӯз вай ба саҳифа мебарояд. Феҳристи молҳо, сабад, рӯйхати вазифаҳо, баҳоҳо дар кабинети шахсӣ — ҳамаи инро дар сайтҳои воқеӣ JavaScript мекашад, ки ҷойи лозимиро дар саҳифа меёбад ва онро тағйир медиҳад. Имрӯз шумо саҳифаеро месозед, ки тамоми мундариҷааш аз массив эҷод мешавад.</p>
+      <ul class="goals">
+        <li>Шарҳ додан, ки DOM чист ва аз файли HTML чӣ фарқ дорад</li>
+        <li>Унсурҳоро тавассути <code>querySelector</code> ва <code>querySelectorAll</code> ёфтан</li>
+        <li>Матн, ҳамбандӣ (разметка), классҳо, атрибутҳо ва <code>data-*</code>-ро тағйир додан</li>
+        <li>Унсурҳоро тавассути <code>createElement</code> эҷод кардан, ҷойгир кардан ва нест кардан</li>
+        <li>Рӯйхати кортҳоро аз массиви объектҳо кашидан ва тоза кардан</li>
+        <li>Кори худро бо ЗС тақсим кардан: ӯ ҳамбандӣ ва услубҳоро менависад, шумо — мантиқро</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Бо ин саҳифа чӣ тавр кор кардан лозим</b>
+      <p>Дар ин дарс <b>қуттиҳои реги</b> (песочница) бисёранд. Дар ҳар кадом се ҷадвалча: <code>index.html</code> (ҳамбандӣ), <code>style.css</code> (услубҳо, агар бошанд) ва <code>script.js</code> (коди шумо). <b>▶ Иҷро</b> ё <b>Ctrl + Enter</b>-ро пахш кунед — дар поён саҳифаи зинда пайдо мешавад, ва дар зери он — консол. Вазифаҳо аз рӯи он санҷида мешаванд, ки шумо тавассути <code>console.log</code> чиро баровардед, бинобар ин сатрҳои баромадро дар ҷояшон гузоред. Ишораҳо пинҳонанд: аввал худатон кӯшиш кунед.</p>
+      <p>Як қоидаи қуттии реги: ҳамбандии шумо дар <code>&lt;body&gt;</code> танҳо нест — пас аз он браузер <code>&lt;script&gt;</code>-ҳои хидматиро илова мекунад. Бинобар ин мо мундариҷаро ҳамеша ба як печонак мегузорем ё унсурҳоро бо селектор меҷӯем, на ин ки кӯдакони <code>body</code>-ро ҳисоб кунем.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="dom">
+      <h2 data-toc="DOM чист"><span class="num">01</span> DOM чист</h2>
+
+      <p>Шумо HTML менависед — ин <b>матни</b> оддӣ дар файл аст. Вақте браузер саҳифаро мекушояд, ин матнро мехонад ва аз он <b>дарахти объектҳо</b>-ро месозад. Ин дарахт <b>DOM</b> — Document Object Model, «модели объектии ҳуҷҷат» ном дорад. Ҳар тег ба объект табдил меёбад, ки хосиятҳо (матн, классҳо, андозаҳо) ва методҳо дорад. Маҳз бо ҳамин объектҳо JavaScript кор мекунад.</p>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Файли HTML — <b>менюи чопшуда</b> дар ҷузвдон аст. DOM — <b>дастурхони густурда</b> дар чойхона аст, ки аз рӯи ин меню сохта мешавад. Пешхизмат (JavaScript) метавонад ба дастурхон боз як самбуса гузорад, косаи холиро бардорад ё чойро иваз кунад. Менюи чопшуда дар ҷузвдон аз ин тағйир намеёбад. Саҳифаро навсозӣ кардед — дастурхон аз нав аз рӯи меню густурда мешавад.</p>
+      </div>
+
+      <p>Инак саҳифаи оддӣ ва дарахте, ки аз он ҳосил мешавад:</p>
+
+<pre class="code" data-lang="html" data-title="Файли HTML">
+&lt;body&gt;
+  &lt;h1&gt;Меню&lt;/h1&gt;
+  &lt;ul class="menu"&gt;
+    &lt;li&gt;Самбуса&lt;/li&gt;
+    &lt;li&gt;Курутоб&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/body&gt;
+</pre>
+
+      <figure class="diagram">
+        <ul class="dom-tree">
+          <li><span class="tag">document</span>
+            <ul>
+              <li><span class="tag">body</span>
+                <ul>
+                  <li><span class="tag">h1</span>
+                    <ul><li><span class="txt">«Меню»</span><span class="note">гиреҳи матнӣ</span></li></ul>
+                  </li>
+                  <li><span class="tag">ul.menu</span>
+                    <ul>
+                      <li><span class="tag">li</span> → <span class="txt">«Самбуса»</span></li>
+                      <li><span class="tag">li</span> → <span class="txt">«Курутоб»</span></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+        <figcaption>Тег дар дохили тег — ин «кӯдак» дар дохили «волидайн» аст. Матн низ гиреҳи дарахт аст.</figcaption>
+      </figure>
+
+      <dl class="terms">
+        <dt>document</dt><dd>Решаи тамоми дарахт ва «дари даромад» ба саҳифа. Тавассути он шумо унсурҳоро меҷӯед: <code>document.querySelector(...)</code>.</dd>
+        <dt>Унсур</dt><dd>Объекти мувофиқ ба тег: <code>&lt;h1&gt;</code>, <code>&lt;li&gt;</code>, <code>&lt;div&gt;</code>. Маҳз онҳоро мо меҷӯем, тағйир медиҳем, эҷод мекунем ва нест мекунем.</dd>
+        <dt>Волидайн ва кӯдакон</dt><dd><code>&lt;ul&gt;</code> — волидайни ду <code>&lt;li&gt;</code>. Ду <code>&lt;li&gt;</code> — ҳамсоя (siblings).</dd>
+        <dt>Гиреҳи матнӣ</dt><dd>Порчаи матн дар дохили унсур. Фосилаҳо ва гузаришҳои сатр байни тегҳо — низ гиреҳҳои матнианд.</dd>
+      </dl>
+
+      <h3>DOM-ро бо чашми худ чӣ тавр дидан</h3>
+      <p>Ягон сайтро кушоед, <b>F12</b>-ро пахш кунед ва ба ҷадвалчаи <b>Elements</b> гузаред. Ин маҳз DOM-и зинда аст: шумо дарахтро мебинед, ба унсурҳо клик карда метавонед, матнро бо ду клик тағйир диҳед, тегҳоро кашед — ва саҳифа фавран вокуниш нишон медиҳад. Худи файл ҳангоми ин тағйир намеёбад. Унсури дар Elements интихобшуда дар консол чун <code>$0</code> дастрас аст.</p>
+
+      <h3>Дар дарахт мегардем</h3>
+      <p>Ҳар унсур «тирҳо» ба гиреҳҳои ҳамсоя дорад. Онҳо вақте ба кор меоянд, ки як унсур ёфт шуд ва ба ҳамсояҳо расидан лозим аст:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Хосият</th><th>Чӣ медиҳад</th></tr></thead>
+          <tbody>
+            <tr><td><code>el.parentElement</code></td><td>волидайн</td></tr>
+            <tr><td><code>el.children</code></td><td>ҳамаи кӯдакони-унсурҳо (рӯйхат, он <code>.length</code> дорад)</td></tr>
+            <tr><td><code>el.firstElementChild</code> / <code>el.lastElementChild</code></td><td>кӯдаки аввал ва охирин</td></tr>
+            <tr><td><code>el.nextElementSibling</code> / <code>el.previousElementSibling</code></td><td>ҳамсояи навбатӣ ва пешина</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="Дар дарахт мегардем">
+<pre class="code" data-lang="html">
+&lt;ul class="menu"&gt;
+  &lt;li&gt;Самбуса&lt;/li&gt;
+  &lt;li&gt;Курутоб&lt;/li&gt;
+  &lt;li&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+// body.firstElementChild — унсури аввали ҳамбандии мо, яъне &lt;ul&gt;
+const menu = document.body.firstElementChild;
+
+console.log(menu.tagName);                      // UL
+console.log(menu.children.length);              // 3
+console.log(menu.firstElementChild.textContent); // Самбуса
+console.log(menu.lastElementChild.textContent);  // Шакароб
+
+const second = menu.children[1];                 // кӯдакон мисли массив меистанд: 0, 1, 2
+console.log(second.textContent);                 // Курутоб
+console.log(second.previousElementSibling.textContent); // Самбуса
+console.log(second.parentElement.tagName);       // UL
+</pre>
+</div>
+      <p><code>textContent</code> — матни дохили унсур. Муфассалтар дар бораи он — дар бахши сеюм, ҳоло танҳо истифода баред.</p>
+
+      <div class="callout warn">
+        <b>Хатои маъмул: childNodes ба ҷойи children</b>
+        <p>Хосияти монанди <code>childNodes</code> ҳаст. Он <b>ҳамаи</b> гиреҳҳоро, аз ҷумла фосилаҳо ва гузаришҳои сатр байни тегҳоро бармегардонад. Бинобар ин «кӯдакон» аз он ки бо чашм мебинед, бештар мебароянд. Барои кор бо унсурҳо <code>children</code> ва оилаи <code>...ElementChild</code>, <code>...ElementSibling</code>-ро истифода баред.</p>
+      </div>
+<pre class="code" data-run data-title="childNodes фосилаҳоро низ ҳисоб мекунад">
+const box = document.createElement("div");
+box.innerHTML = `
+  &lt;p&gt;Один&lt;/p&gt;
+  &lt;p&gt;Два&lt;/p&gt;
+`;
+
+console.log(box.children.length);    // → 2 — ду банд
+console.log(box.childNodes.length);  // → 5 — ду банд ва се гиреҳи матнии «холӣ»
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/dom-nodes" target="_blank" rel="noopener">learn.javascript.ru — Дарахти DOM</a> · <a href="https://learn.javascript.ru/dom-navigation" target="_blank" rel="noopener">Ҳаракат дар унсурҳои DOM</a></p>
+
+      <div class="practice">
+        <h3>Амалия: мустаҳкам мекунем</h3>
+        <p>Се вазифа оид ба гардиш дар дарахт. Натиҷа аз рӯи баромад дар консол дар зери қуттии реги санҷида мешавад.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Рӯйхат чанд кӯдак дорад</h4><span class="level easy">осон</span></header>
+          <p>Дар қуттии реги — рӯйхати таомҳо. Ба консол се сатр баровед: рӯйхат чанд кӯдак дорад, матни таоми аввал ва матни охирин.</p>
+<div class="playground" data-mode="dom" data-title="Рӯйхати таомҳо">
+<pre class="code" data-lang="html">
+&lt;ul&gt;
+  &lt;li&gt;Нон&lt;/li&gt;
+  &lt;li&gt;Сомса&lt;/li&gt;
+  &lt;li&gt;Чой&lt;/li&gt;
+  &lt;li&gt;Мева&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.body.firstElementChild; // ин &lt;ul&gt; аст
+
+// 1) рӯйхат чанд кӯдак дорад
+// 2) матни кӯдаки аввал
+// 3) матни кӯдаки охирин
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>4
+Нон
+Мева</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Шумораи кӯдакон — <code>list.children.length</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Кӯдаки аввал — <code>list.firstElementChild</code>, охирин — <code>list.lastElementChild</code>. Матнро тавассути <code>.textContent</code> мегирем. Ҳар қимат — <code>console.log</code>-и алоҳида.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Баромадро пешбинӣ кунед</h4><span class="level easy">осон</span></header>
+          <p><b>Аввал бе иҷрои код</b>, дар дафтар нависед, ки панҷ сатр чиро мебарорад. Баъд иҷро кунед ва муқоиса намоед. Пас аз ин сатри шашумро илова кунед: матни банди «Преподаватель…»-ро баровед, аммо <b>аз охир</b> ҳаракат карда — тавассути <code>group.lastElementChild.previousElementSibling</code>.</p>
+<div class="playground" data-mode="dom" data-title="Гурӯҳи JS-12">
+<pre class="code" data-lang="html">
+&lt;div class="group"&gt;
+  &lt;h2&gt;Группа JS-12&lt;/h2&gt;
+  &lt;p&gt;Преподаватель: Шахром&lt;/p&gt;
+  &lt;p&gt;Студентов: 12&lt;/p&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const group = document.body.firstElementChild;
+const title = group.firstElementChild;
+
+console.log(title.tagName);
+console.log(title.nextElementSibling.textContent);
+console.log(title.nextElementSibling.nextElementSibling.textContent);
+console.log(title.parentElement.tagName);
+console.log(group.children.length);
+
+// сатри шашум — аз они шумо
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>H2
+Преподаватель: Шахром
+Студентов: 12
+DIV
+3
+Преподаватель: Шахром</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Кӯдаки охирини гурӯҳ — банди «Студентов: 12». Ба мо банди пеш аз он лозим аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>console.log(group.lastElementChild.previousElementSibling.textContent);</code></p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Гиреҳҳои изофӣ</h4><span class="level mid">миёна</span></header>
+          <p>Ба консол баровед: рӯйхат чанд <code>childNodes</code> дорад, чанд <code>children</code>, ва баъд матни ҳар шаҳр — ҳар кадом дар сатри худ (<code>for...of</code>-ро бар <code>list.children</code> истифода баред). Фикр кунед, ки фарқ дар ду адади аввал аз куҷо пайдо шуд.</p>
+<div class="playground" data-mode="dom" data-title="Шаҳрҳо">
+<pre class="code" data-lang="html">
+&lt;ul&gt;
+  &lt;li&gt;Душанбе&lt;/li&gt;
+  &lt;li&gt;Худжанд&lt;/li&gt;
+  &lt;li&gt;Бохтар&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.body.firstElementChild;
+
+// childNodes.length
+// children.length
+// давраи for...of бар list.children — матни ҳар шаҳрро баровед
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>7
+3
+Душанбе
+Худжанд
+Бохтар</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Байни тегҳо дар ҳамбандӣ гузаришҳои сатр ва ақибравӣ ҳастанд. Ҳар чунин порча — гиреҳи матнии алоҳида: се то пеш аз <code>&lt;li&gt;</code> ва як то пас аз охирин. Ҳамагӣ 3 унсур + 4 гиреҳи матнӣ = 7.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>for (const li of list.children) { console.log(li.textContent); }</code></p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="find">
+      <h2 data-toc="Ҷустуҷӯи унсурҳо"><span class="num">02</span> Ҷустуҷӯи унсурҳо: querySelector</h2>
+
+      <p>Барои чизеро дар саҳифа тағйир додан, аввал бояд ин «чиз»-ро <b>ёфт</b>. Барои ҷустуҷӯ дар JavaScript-и муосир қариб ҳамеша ду метод кофист. Асосӣ: дар онҳо шумо <b>селектори оддии CSS</b>-ро менависед — ҳамон, ки дар файли услубҳо ҳаст. Забони нав омӯхтан лозим нест.</p>
+
+      <dl class="terms">
+        <dt>document.querySelector(селектор)</dt><dd><b>Аввалин</b> унсури мувофиқро бармегардонад. Агар чизе ёфт нашавад — <code>null</code>.</dd>
+        <dt>document.querySelectorAll(селектор)</dt><dd><b>Рӯйхати ҳамаи</b> унсурҳои мувофиқро (NodeList) бармегардонад. Агар чизе набошад — рӯйхати холӣ, на <code>null</code>.</dd>
+      </dl>
+
+<div class="playground" data-mode="dom" data-title="Бо селекторҳо меҷӯем">
+<pre class="code" data-lang="html">
+&lt;h1 id="title"&gt;Чайхона «Сомон»&lt;/h1&gt;
+&lt;ul class="menu"&gt;
+  &lt;li class="item"&gt;Курутоб&lt;/li&gt;
+  &lt;li class="item"&gt;Оши палав&lt;/li&gt;
+  &lt;li class="item hot"&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const title = document.querySelector("#title");        // аз рӯи id
+const first = document.querySelector(".item");         // аз рӯи класс — аввалини се
+const hot = document.querySelector(".item.hot");       // ду класс якбора
+const all = document.querySelectorAll(".item");        // ҳар се
+
+console.log(title.textContent);   // Чайхона «Сомон»
+console.log(first.textContent);   // Курутоб
+console.log(hot.textContent);     // Шакароб
+console.log(all.length);          // 3
+</pre>
+</div>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Шумо дар Бозори Сабз истодаед ва мегӯед: «Барои ман <b>аввалин</b> чодари зардолуи хушкро ёбед» — ин <code>querySelector</code> аст. Ва «Ба ман <b>ҳамаи</b> чодарҳои зардолуи хушкро нишон диҳед» — ин <code>querySelectorAll</code> аст. Селектор — ин тавсифи шумо аз чодар аст: аз рӯи рақам (<code>#id</code>), аз рӯи лавҳа (<code>.class</code>) ё аз рӯи навъ (<code>li</code>).</p>
+      </div>
+
+      <h3>Кадом селекторҳоро навиштан мумкин аст</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Селектор</th><th>Чиро меёбад</th></tr></thead>
+          <tbody>
+            <tr><td><code>"#title"</code></td><td>унсур бо <code>id="title"</code></td></tr>
+            <tr><td><code>".item"</code></td><td>унсурҳо бо классии <code>item</code></td></tr>
+            <tr><td><code>"li"</code></td><td>ҳамаи тегҳои <code>&lt;li&gt;</code></td></tr>
+            <tr><td><code>".menu li"</code></td><td><code>&lt;li&gt;</code> дар дохили <code>.menu</code> (дар ҳар чуқурӣ)</td></tr>
+            <tr><td><code>".menu &gt; li"</code></td><td><code>&lt;li&gt;</code> — кӯдакони мустақими <code>.menu</code></td></tr>
+            <tr><td><code>"li:first-child"</code>, <code>"li:nth-child(2)"</code></td><td>якум ва дуюм аз рӯи шумора</td></tr>
+            <tr><td><code>"[data-id='17']"</code></td><td>аз рӯи атрибут</td></tr>
+            <tr><td><code>"input[type='text']"</code></td><td>тег ва атрибут якҷоя</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <b>Маслиҳат</b>
+        <p>Агар боварӣ надоред, ки селектор дуруст аст, онро дар DevTools санҷед: дар ҷадвалчаи Elements <b>Ctrl + F</b>-ро пахш кунед ва селекторро гузоред. Браузер ёфтшударо равшан мекунад ва нишон медиҳад, ки чанд мувофиқат ҳаст.</p>
+      </div>
+
+      <h3>NodeList: ба массив монанд аст, аммо массив нест</h3>
+      <p><code>querySelectorAll</code> <b>NodeList</b> бармегардонад. Он <code>.length</code> дорад, ба унсурҳо бо индекс муроҷиат кардан мумкин аст, онро тавассути <code>for...of</code> ва <code>forEach</code> гузаштан мумкин аст. Аммо методҳои <code>map</code>, <code>filter</code> ва <code>reduce</code> надорад. Агар лозим бошанд — ба массиви воқеӣ табдил медиҳем:</p>
+<pre class="code" data-run>
+const box = document.createElement("div");
+box.innerHTML = `&lt;p class="n"&gt;10&lt;/p&gt;&lt;p class="n"&gt;20&lt;/p&gt;&lt;p class="n"&gt;30&lt;/p&gt;`;
+
+const nodes = box.querySelectorAll(".n");
+
+console.log(nodes.length);         // → 3
+console.log(nodes[1].textContent); // → 20
+
+nodes.forEach(p =&gt; console.log("p:", p.textContent));   // forEach ҳаст
+
+const numbers = Array.from(nodes).map(p =&gt; Number(p.textContent)); // map — танҳо дар массив
+// ҳамон чиз: [...nodes].map(...)
+console.log(numbers);              // → [10, 20, 30]
+</pre>
+
+      <h3>На дар тамоми саҳифа, балки дар дохили унсур меҷӯем</h3>
+      <p>Методи <code>querySelector</code> на танҳо дар <code>document</code>, балки дар <b>ҳар унсур</b> ҳам ҳаст. Он гоҳ ҷустуҷӯ танҳо дар дохили он мегузарад. Ин вақте муҳим аст, ки дар саҳифа кортҳои якхелаи бисёр ҳастанд ва нархро <b>маҳз аз ҳамин</b> корт гирифтан лозим аст:</p>
+<div class="playground" data-mode="dom" data-title="Ҷустуҷӯ дар дохили корт">
+<pre class="code" data-lang="html">
+&lt;div class="card"&gt;&lt;span class="name"&gt;Шапка&lt;/span&gt; — &lt;span class="price"&gt;60&lt;/span&gt;&lt;/div&gt;
+&lt;div class="card"&gt;&lt;span class="name"&gt;Шарф&lt;/span&gt; — &lt;span class="price"&gt;45&lt;/span&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const cards = document.querySelectorAll(".card");
+
+for (const card of cards) {
+  const name = card.querySelector(".name").textContent;   // танҳо дар дохили card меҷӯем
+  const price = card.querySelector(".price").textContent;
+  console.log(name + ": " + price);
+}
+</pre>
+</div>
+
+      <p>Методҳои кӯҳна низ ҳастанд: <code>getElementById("title")</code>, <code>getElementsByClassName</code>, <code>getElementsByTagName</code>. Онҳо кор мекунанд, ва шумо онҳоро дар коди бегона вомехӯред, аммо <code>querySelector</code> универсалтар аст — як усулро дар хотир доштан кифоя аст.</p>
+
+      <div class="callout warn">
+        <b>Хатои маъмул: унсур ёфт нашуд (null)</b>
+        <p>Агар <code>querySelector</code> чизеро наёфта бошад, <code>null</code> бармегардонад. Ва <code>null</code> на <code>textContent</code> дорад, на хосиятҳои дигар — машҳуртарин хатои DOM-ро мегирем. Сабабҳо одатан се ҳастанд: хатои имлоӣ дар селектор, нуқта ё решёткаи фаромӯшшуда (<code>"item"</code> ба ҷойи <code>".item"</code>), ё скрипт пештар аз пайдо шудани унсур дар саҳифа оғоз шуд.</p>
+      </div>
+<pre class="code" data-run data-title="Ин код хато медиҳад">
+const price = document.querySelector(".price"); // дар саҳифа чунин унсур нест → null
+console.log(price);                              // → null
+console.log(price.textContent);                  // ✖ TypeError: Cannot read properties of null
+</pre>
+
+      <p>Дар бораи сабаби сеюм: дар лоиҳаи воқеӣ скриптро бо атрибути <code>defer</code> пайваст кунед — он гоҳ он <b>пас аз</b> он иҷро мешавад, ки браузер тамоми дарахтро сохт. Дар қуттиҳои реги дарс ин аллакай барои шумо анҷом дода шудааст.</p>
+<pre class="code" data-lang="html" data-title="index.html — чӣ тавр скриптро дар лоиҳаи воқеӣ пайваст кардан">
+&lt;body&gt;
+  &lt;ul id="list"&gt;&lt;/ul&gt;
+  &lt;script src="script.js" defer&gt;&lt;/script&gt;
+&lt;/body&gt;
+</pre>
+
+      <div class="callout tip">
+        <b>Одат барои тамоми умр</b>
+        <p>Унсурҳои ёфтшударо ба тағйирёбандаҳо <b>як бор</b> дар оғози скрипт гузоред: <code>const list = document.querySelector("#list");</code>. Як унсури якхеларо даҳ бор наҷӯед — код кӯтоҳтар мешавад, ва браузер зудтар.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/searching-elements-dom" target="_blank" rel="noopener">learn.javascript.ru — Ҷустуҷӯ: getElement*, querySelector*</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Document/querySelector" target="_blank" rel="noopener">MDN — querySelector</a></p>
+
+      <div class="practice">
+        <h3>Амалия: мустаҳкам мекунем</h3>
+        <p>Унсурҳоро бо усулҳои гуногун меёбем.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Бо id ва класс ёбед</h4><span class="level easy">осон</span></header>
+          <p>Ба консол се сатр баровед: матни сарлавҳа (онро аз рӯи <code>id</code> ёбед), матни таоми аввал бо классии <code>item</code> ва шумораи ҳамаи таомҳо бо ин класс.</p>
+<div class="playground" data-mode="dom" data-title="Менюи чойхона">
+<pre class="code" data-lang="html">
+&lt;h1 id="title"&gt;Чайхона «Сомон»&lt;/h1&gt;
+&lt;ul class="menu"&gt;
+  &lt;li class="item"&gt;Курутоб&lt;/li&gt;
+  &lt;li class="item"&gt;Оши палав&lt;/li&gt;
+  &lt;li class="item hot"&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+// 1) матни сарлавҳа аз рӯи id
+// 2) матни аввалини .item
+// 3) ҳамагӣ чандто .item
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Чайхона «Сомон»
+Курутоб
+3</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Сарлавҳа: <code>document.querySelector("#title")</code>. Решётка — барои <code>id</code>, нуқта — барои класс.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>.item</code>-и аввал — <code>querySelector(".item")</code>, ҳама — <code>querySelectorAll(".item")</code> ва баъд <code>.length</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Се хатогиро дар селекторҳо ёбед</h4><span class="level mid">миёна</span></header>
+          <p>Код мехоҳад сарлавҳа, шумораи молҳо ва матни моли бо тахфифро барорад, аммо ҳеҷ чиз кор намекунад. Онро иҷро кунед, хаторо дар консол хонед ва <b>се</b> ҷойеро, ки бо рақамҳо қайд шудаанд, ислоҳ кунед. Яктоӣ ислоҳ кунед ва ҳар дафъа иҷро кунед — хатогиҳо навбат ба навбат кушода мешаванд.</p>
+<div class="playground" data-mode="dom" data-title="Сабад (бо хатогиҳо)">
+<pre class="code" data-lang="html">
+&lt;h1 id="title"&gt;Корзина&lt;/h1&gt;
+&lt;ul id="cart"&gt;
+  &lt;li class="item"&gt;Нон — 4&lt;/li&gt;
+  &lt;li class="item"&gt;Молоко — 12&lt;/li&gt;
+  &lt;li class="item sale"&gt;Зардолу — 25&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const title = document.querySelector(".title");   // 1
+const items = document.querySelector(".item");    // 2
+const sale = document.querySelector("#sale");     // 3
+
+console.log(title.textContent);
+console.log(items.length);
+console.log(sale.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Корзина
+3
+Зардолу — 25</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Хатои 1: сарлавҳа на класс, балки <code>id</code> дорад — яъне решётка лозим аст. Хатои 3 — баръакс: <code>sale</code> — класс аст, на <code>id</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Хатои 2: <code>querySelector</code> як унсурро бармегардонад, ва он <code>.length</code> надорад. Барои ҳисоб кардани ҳамаи молҳо <code>querySelectorAll</code> лозим аст.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Нархҳо аз кортҳо</h4><span class="level hard">душвор</span></header>
+          <p>Дар феҳрист чор корт ҳаст. Онҳоро гузаред, аз ҳар кадом нарх ва номро гиред (ҷустуҷӯ <b>дар дохили</b> корт), ҷамъи умумиро ҳисоб кунед ва гаронтаринро ёбед. Нарх дар <code>textContent</code> — сатр аст, онро тавассути <code>Number(...)</code> ба адад табдил диҳед.</p>
+<div class="playground" data-mode="dom" data-title="Феҳрист">
+<pre class="code" data-lang="html">
+&lt;div class="card"&gt;&lt;span class="name"&gt;Шапка&lt;/span&gt; &lt;span class="price"&gt;60&lt;/span&gt;&lt;/div&gt;
+&lt;div class="card"&gt;&lt;span class="name"&gt;Шарф&lt;/span&gt; &lt;span class="price"&gt;45&lt;/span&gt;&lt;/div&gt;
+&lt;div class="card"&gt;&lt;span class="name"&gt;Перчатки&lt;/span&gt; &lt;span class="price"&gt;35&lt;/span&gt;&lt;/div&gt;
+&lt;div class="card"&gt;&lt;span class="name"&gt;Носки&lt;/span&gt; &lt;span class="price"&gt;15&lt;/span&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const cards = document.querySelectorAll(".card");
+
+let total = 0;
+let maxPrice = 0;
+let maxName = "";
+
+// аз болои cards гузаред: name ва price-ро гиред, total, maxPrice, maxName-ро навсозӣ кунед
+
+console.log("Итого: " + total + " сомони");
+console.log("Самый дорогой: " + maxName);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Итого: 155 сомони
+Самый дорогой: Шапка</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Давра <code>for (const card of cards) { ... }</code>. Дар дохил: <code>const price = Number(card.querySelector(".price").textContent);</code> ва сатри ҳамон гуна барои ном.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҷамъ: <code>total += price</code>. Агар <code>price &gt; maxPrice</code> бошад, нархи навро ба <code>maxPrice</code> ва номро ба <code>maxName</code> нависед.</p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="content">
+      <h2 data-toc="Матн ва ҳамбандӣ"><span class="num">03</span> Мундариҷаро тағйир медиҳем: textContent ва innerHTML</h2>
+
+      <p>Унсур ёфт шуд. Акнун он чиро, ки дар дохили он аст, хондан ва иваз кардан мумкин аст. Барои ин ҳар унсур ду хосияти асосӣ дорад. Онҳо монанданд, аммо корҳои гуногун мекунанд — ва фарқ на танҳо барои зебоӣ, балки барои бехатарӣ низ муҳим аст.</p>
+
+      <div class="cols">
+        <div class="col good">
+          <b>textContent — танҳо матн</b>
+          <p><b>Матни оддӣ</b>-ро мехонад ва менависад. Ҳар гуна <code>&lt;</code> ва <code>&gt;</code> оддӣ аломат ҳисоб мешаванд, тегҳо эҷод намешаванд. Зуд ва бехатар.</p>
+        </div>
+        <div class="col bad">
+          <b>innerHTML — матн ва ҳамбандӣ</b>
+          <p><b>Сатри HTML</b>-ро мехонад ва менависад. Тегҳои дохилӣ ба унсурҳои воқеӣ табдил меёбанд. Қудратманд, аммо хатарнок аст, агар дар сатр матни бегона бошад.</p>
+        </div>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="textContent ва innerHTML">
+<pre class="code" data-lang="html">
+&lt;h2 id="dish"&gt;Загрузка…&lt;/h2&gt;
+&lt;div id="box"&gt;Старое содержимое&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const dish = document.querySelector("#dish");
+const box = document.querySelector("#box");
+
+dish.textContent = "Оши палав";            // матнро иваз кардем
+console.log(dish.textContent);              // Оши палав
+
+box.innerHTML = "&lt;b&gt;Цена:&lt;/b&gt; 35 сомони";   // теги &lt;b&gt; унсури воқеӣ мешавад
+console.log(box.children.length);           // 1 — дар дохил &lt;b&gt; пайдо шуд
+console.log(box.innerHTML);                 // &lt;b&gt;Цена:&lt;/b&gt; 35 сомони
+console.log(box.textContent);               // Цена: 35 сомони — танҳо матн, бе тегҳо
+</pre>
+</div>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Тасаввур кунед, ки шумо торт бо навишта фармоиш медиҳед. <code>textContent</code> — вақте ки қаннод дар торт <b>маҳз он чиро, ки шумо гуфтед</b> менависад, ҳатто агар аломатҳои аҷибро гуфта бошед. <code>innerHTML</code> — вақте ки шумо ба қаннод <b>дастур</b> медиҳед: «дар ин ҷо ороиш гузор, ва дар ин ҷо навиштаи ғафс кун». Вай дастурро айнан иҷро мекунад. Агар дастурро шахси бегона навишта бошад — вай метавонад қанноддро водор кунад, ки ҳар чизро кунад.</p>
+      </div>
+
+      <h3>Мехонем ва менависем</h3>
+      <ul>
+        <li><code>el.textContent</code> — тамоми матни дохили унсурро хондан (аз ҷумла тегҳои дарунравӣ, аммо бе худи тегҳо).</li>
+        <li><code>el.textContent = "матни нав"</code> — тамоми мундариҷаро бо як матн иваз кардан.</li>
+        <li><code>el.innerHTML</code> — мундариҷаро якҷоя бо тегҳо чун сатр хондан.</li>
+        <li><code>el.innerHTML = "&lt;b&gt;ғафс&lt;/b&gt;"</code> — мундариҷаро иваз кардан, сатрро чун HTML таҳлил карда.</li>
+      </ul>
+      <p>Боз <code>innerText</code> ҳаст: вай CSS-ро ба назар мегирад ва матни пинҳонро нишон намедиҳад. Барои кори оддӣ <code>textContent</code>-ро гиред — вай соддатар ва пешбинишавандатар аст.</p>
+
+      <h3>Чаро innerHTML хатарнок аст</h3>
+      <p>Фарз мекунем, дар сайти шумо корбар шарҳ менависад, ва шумо онро тавассути <code>innerHTML</code> ба саҳифа ҷойгир мекунед. Агар ба ҷойи «Курси аъло!» ӯ теги махсус омодакардаи <code>&lt;img&gt;</code>-ро бо коди пинҳонӣ нависад — браузер ин унсурро эҷод мекунад ва коди бегонаро <b>дар саҳифаҳои дигар боздидкунандагон</b> иҷро мекунад. Чунин ҳамла <b>XSS</b> номида мешавад ва аз маъмултарин ҳамлаҳо дар веб мебошад.</p>
+      <div class="callout warn">
+        <b>Қоидаи бехатарӣ</b>
+        <p>Ҳар чизе, ки аз корбар, аз шакл, аз сатри суроға ё аз API-и берунӣ омад, тавассути <b>textContent</b> ҷойгир кунед. <code>innerHTML</code> — танҳо барои ҳамбандие, ки худатон навиштаед (ё ЗС, ва шумо онро санҷидед). Бинед, фарқ чӣ гуна менамояд:</p>
+      </div>
+<pre class="code" data-run>
+const comment = "Круто! &lt;b&gt;Пять звёзд&lt;/b&gt;";      // тасаввур мекунем, ки инро корбар ворид кард
+
+const safe = document.createElement("div");
+safe.textContent = comment;          // матн матн монд
+console.log(safe.children.length);   // → 0 — ягон теги нав пайдо нашуд
+
+const risky = document.createElement("div");
+risky.innerHTML = comment;           // сатр чун HTML таҳлил шуд
+console.log(risky.children.length);  // → 1 — теги воқеии &lt;b&gt; пайдо шуд
+</pre>
+
+      <h3>Қапқон: += барои innerHTML</h3>
+      <p>Навишти <code>list.innerHTML += "&lt;li&gt;…&lt;/li&gt;"</code> чун «ба охир илова кардан» менамояд, аммо дар асл браузер <b>тамоми рӯйхатро хароб мекунад ва аз нав ҷамъ мекунад</b>. Ҳамаи унсурҳои қаблан ёфтшуда дар тағйирёбандаҳои шумо пайванд бо саҳифаро гум мекунанд.</p>
+<pre class="code" data-run data-title="Ҳангоми += барои innerHTML чӣ рӯй медиҳад">
+const list = document.createElement("ul");
+list.innerHTML = "&lt;li&gt;Нон&lt;/li&gt;";
+
+const first = list.firstElementChild;     // банди аввалро дар хотир гирифтем
+list.innerHTML += "&lt;li&gt;Чой&lt;/li&gt;";         // «илова кардем» дуюмро
+
+console.log(list.children.length);             // → 2
+console.log(first === list.firstElementChild); // → false — ин аллакай унсури дигар, нав аст!
+console.log(list.contains(first));             // → false — банди кӯҳна партофта шуд
+</pre>
+      <p>Дар бахши 5 шумо мефаҳмед, ки унсурҳоро бе чунин таъсири иловагӣ чӣ тавр илова кардан мумкин — тавассути <code>createElement</code> ва <code>append</code>.</p>
+
+      <h3>Рӯйхатро бо сатр ҷамъ мекунем</h3>
+      <p>Агар ҳамбандиро худатон менависед, ва додаҳо бехатаранд (массиви шумо, на воридоти корбар), қулай аст, ки HTML-ро бо сатрҳои қолабӣ ва методҳои массив, ки шумо аллакай медонед, ҷамъ кунед:</p>
+<pre class="code" data-run>
+const dishes = ["Самбуса", "Курутоб", "Шакароб"];
+
+const html = dishes.map(d =&gt; `&lt;li&gt;${d}&lt;/li&gt;`).join("");
+console.log(html);   // → &lt;li&gt;Самбуса&lt;/li&gt;&lt;li&gt;Курутоб&lt;/li&gt;&lt;li&gt;Шакароб&lt;/li&gt;
+
+const menu = document.createElement("ul");
+menu.innerHTML = html;
+console.log(menu.children.length); // → 3
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/basic-dom-node-properties" target="_blank" rel="noopener">learn.javascript.ru — Хосиятҳои гиреҳҳои DOM</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Node/textContent" target="_blank" rel="noopener">MDN — textContent</a></p>
+
+      <div class="practice">
+        <h3>Амалия: мустаҳкам мекунем</h3>
+        <p>Мундариҷаро мехонем ва менависем.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Сарлавҳа ва нарх</h4><span class="level easy">осон</span></header>
+          <p>Саҳифа ҷойхолиҳои «Загрузка…»-ро нишон медиҳад. Матни сарлавҳаро ба <code>Курутоб</code>, ва матни нархро ба <code>35 сомони</code> тавассути <code>textContent</code> иваз кунед. Пас аз ивазкунӣ ҳарду матнро ба консол баровед.</p>
+<div class="playground" data-mode="dom" data-title="Корти таом">
+<pre class="code" data-lang="html">
+&lt;h1 id="title"&gt;Загрузка…&lt;/h1&gt;
+&lt;p class="price"&gt;0 сомони&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="js">
+const title = document.querySelector("#title");
+const price = document.querySelector(".price");
+
+// матнҳоро иваз кунед
+
+console.log(title.textContent);
+console.log(price.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Курутоб
+35 сомони</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Навиштан ба хосият — таъини оддӣ аст: <code>title.textContent = "...";</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ду сатр байни ҷустуҷӯ ва <code>console.log</code>: <code>title.textContent = "Курутоб";</code> ва <code>price.textContent = "35 сомони";</code></p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Баровардани бехатари ном</h4><span class="level mid">миёна</span></header>
+          <p>Сатри <code>userName</code> — ин «воридоти корбар» аст. Онро ба блоки <code>#a</code> тавассути <code>innerHTML</code>, ва ба блоки <code>#b</code> — тавассути <code>textContent</code> гузоред. Ба preview нигоҳ кунед: дар кадом блок тегҳо намоёнанд? Консол фарқро тасдиқ мекунад.</p>
+<div class="playground" data-mode="dom" data-title="Ду ҷойгиркунӣ">
+<pre class="code" data-lang="html">
+&lt;div id="a"&gt;&lt;/div&gt;
+&lt;div id="b"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const userName = "Ali &lt;b&gt;Pro&lt;/b&gt;";
+const a = document.querySelector("#a");
+const b = document.querySelector("#b");
+
+// ба a — тавассути innerHTML, ба b — тавассути textContent
+
+console.log(a.children.length);
+console.log(b.children.length);
+console.log(b.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>1
+0
+Ali &lt;b&gt;Pro&lt;/b&gt;</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҳар блок — як сатри таъин: <code>a.innerHTML = userName;</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Блоки дуюм — айнан ҳамин тавр, аммо хосияти <code>textContent</code>. Дар <code>#a</code> теги воқеии <code>&lt;b&gt;</code> пайдо мешавад (1 кӯдак), дар <code>#b</code> — оддӣ матн бо қавсайни кунҷии намоён (0 кӯдак).</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Меню тавассути map ва join</h4><span class="level mid">миёна</span></header>
+          <p>Сатри HTML-ро аз массиви <code>dishes</code> ҷамъ кунед: ҳар таом — <code>&lt;li&gt;</code>. <code>map</code> ва <code>join("")</code>-ро истифода баред. Сатрро ба <code>#menu</code> тавассути <code>innerHTML</code> нависед ва ба консол шумораи кӯдакон ва худи ҳамбандиро баровед.</p>
+<div class="playground" data-mode="dom" data-title="Меню аз массив">
+<pre class="code" data-lang="html">
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const dishes = ["Самбуса", "Курутоб", "Шакароб"];
+const menu = document.querySelector("#menu");
+
+// сатрро ҷамъ кунед ва ба menu гузоред
+
+console.log(menu.children.length);
+console.log(menu.innerHTML);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>3
+&lt;li&gt;Самбуса&lt;/li&gt;&lt;li&gt;Курутоб&lt;/li&gt;&lt;li&gt;Шакароб&lt;/li&gt;</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>map</code> ҳар таомро ба сатр бо тегҳо табдил медиҳад, <code>join("")</code> онҳоро бе фосила мечаспонад. Қолаб: <code>`&lt;li&gt;${d}&lt;/li&gt;`</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>menu.innerHTML = dishes.map(d =&gt; `&lt;li&gt;${d}&lt;/li&gt;`).join("");</code></p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="classes">
+      <h2 data-toc="Классҳо, услубҳо, атрибутҳо"><span class="num">04</span> Классҳо, услубҳо ва атрибутҳо</h2>
+
+      <p>Намуди зоҳирии унсур қариб ҳамеша дар CSS муайян мешавад. JavaScript набояд саҳифаро худаш ранг кунад, кори он — <b>ба кор андохтан ва хомӯш кардани классҳои тайёр</b> аст. Шумо дар CSS менависед, ки <code>.hot</code> чӣ гуна менамояд, ва дар JS танҳо қарор медиҳед, ки кай онро ба унсур диҳед. Ҳамин тавр код тоза мемонад, ва тарроҳӣ дар як ҷой тағйир меёбад.</p>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Класс — ин <b>нишони шахсӣ</b> дар курс аст: бейҷи «омӯзгор», «донишҷӯ», «меҳмон». Бейҷро як бор ихтироъ карданд, тарроҳиро тасдиқ карданд. Посбон (JS) ба ҳар кас бейҷи нав намекашад, балки танҳо тайёрро <b>медиҳад</b> ё <b>мегирад</b>. Додан — <code>add</code>, гирифтан — <code>remove</code>, ба муқобил иваз кардан — <code>toggle</code>.</p>
+      </div>
+
+      <h3>classList: классҳоро идора мекунем</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Метод</th><th>Чӣ мекунад</th></tr></thead>
+          <tbody>
+            <tr><td><code>el.classList.add("hot")</code></td><td>классро илова мекунад (агар аллакай бошад — чизе рӯй намедиҳад)</td></tr>
+            <tr><td><code>el.classList.remove("old")</code></td><td>классро мебарорад</td></tr>
+            <tr><td><code>el.classList.toggle("open")</code></td><td>бошад — мебарорад, набошад — илова мекунад</td></tr>
+            <tr><td><code>el.classList.contains("hot")</code></td><td><code>true</code> ё <code>false</code> бармегардонад</td></tr>
+            <tr><td><code>el.classList.replace("old", "new")</code></td><td>як классро бо дигаре иваз мекунад</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="«Гарм»-ро равшан мекунем">
+<pre class="code" data-lang="html">
+&lt;ul class="menu"&gt;
+  &lt;li class="item"&gt;Самбуса&lt;/li&gt;
+  &lt;li class="item"&gt;Курутоб&lt;/li&gt;
+  &lt;li class="item"&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+.item { padding: 6px 10px; margin: 4px 0; border-radius: 8px; background: #eef1f6; list-style: none; }
+.hot  { background: #ffd9a8; font-weight: 700; }
+.hot::after { content: " 🔥"; }
+</pre>
+<pre class="code" data-lang="js">
+const items = document.querySelectorAll(".item");
+
+items[1].classList.add("hot");                 // бейҷи «hot»-ро ба Курутоб додем
+console.log(items[1].className);               // item hot
+console.log(items[1].classList.contains("hot")); // true
+console.log(items[0].classList.contains("hot")); // false
+
+items[1].classList.toggle("hot");              // буд — хомӯш шуд
+console.log(items[1].className);               // item
+</pre>
+</div>
+
+      <div class="callout warn">
+        <b>Хатои маъмул: className = "…" ҳамаи классҳоро пок мекунад</b>
+        <p>Хосияти <code>className</code> <b>тамоми сатри</b> классҳоро нигоҳ медорад. Агар ба он қимати нав нависед, ҳамаи классҳои пешина нест мешаванд. Барои илова ва нест кардан <code>classList</code>-ро истифода баред.</p>
+      </div>
+<pre class="code" data-run>
+const el = document.createElement("div");
+el.className = "card sale";
+
+el.className = "hot";                 // «card» ва «sale»-ро пок кардем!
+console.log(el.className);            // → hot
+
+el.className = "card sale";
+el.classList.add("hot");              // дуруст: ба мавҷудҳо илова кардем
+console.log(el.className);            // → card sale hot
+</pre>
+
+      <h3>style: усули зуд, аммо дағал</h3>
+      <p>Тавассути <code>el.style.хосият</code> услубро мустақиман барои унсур додан мумкин аст. Номҳои хосиятҳо бо <b>camelCase</b> навишта мешаванд: <code>background-color</code> ба <code>backgroundColor</code> табдил меёбад, ва қиматҳо — ҳамеша сатрҳо:</p>
+<div class="playground" data-mode="dom" data-title="el.style">
+<pre class="code" data-lang="html">
+&lt;p id="note"&gt;Скидка до конца недели&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="js">
+const note = document.querySelector("#note");
+
+note.style.color = "white";
+note.style.backgroundColor = "tomato";   // camelCase!
+note.style.padding = "8px 12px";
+note.style.borderRadius = "8px";
+
+console.log(note.style.color);           // white
+</pre>
+</div>
+      <p><b>Қоида:</b> агар услуб муддати дароз ё барои якчанд унсур лозим бошад — класс эҷод кунед. <code>style</code>-ро барои қиматҳое монед, ки дар код ҳисоб карда мешаванд (бари навори боркунӣ, мавқеъ). Ҳамин тавр JS бо тарроҳӣ омехта намешавад, ва ёрдамчии ЗС ба шумо осонтар кумак мекунад.</p>
+
+      <h3>Атрибутҳо: getAttribute, setAttribute ва хосиятҳо</h3>
+      <p>Атрибутҳо — он чизе ҳастанд, ки дар теги кушоянда навишта мешавад: <code>href</code>, <code>src</code>, <code>alt</code>, <code>disabled</code>, <code>data-id</code>. Онҳоро бо ду усул хондан ва тағйир додан мумкин аст:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Усул</th><th>Мисол</th><th>Кай истифода бурдан</th></tr></thead>
+          <tbody>
+            <tr><td>Методҳо</td><td><code>el.getAttribute("href")</code>, <code>el.setAttribute("href", "…")</code>, <code>el.removeAttribute("disabled")</code>, <code>el.hasAttribute("disabled")</code></td><td>универсалӣ, барои ҳама атрибутҳо мувофиқ аст, аз ҷумла <code>data-*</code></td></tr>
+            <tr><td>Хосиятҳо</td><td><code>input.value</code>, <code>button.disabled = true</code>, <code>el.hidden = true</code>, <code>img.src</code>, <code>a.href</code></td><td>барои атрибутҳои стандартӣ — кӯтоҳтар ва қулайтар</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>data-атрибутҳо: додаҳои худӣ дар ҳамбандӣ</h3>
+      <p>Мехоҳед ба унсур додаҳои худро «пайваст» кунед — масалан, id-и мол ё нархи онро? Барои ин атрибутҳое ихтироъ шудаанд, ки бо <code>data-</code> оғоз мешаванд. Дар JS онҳо тавассути <code>el.dataset</code> дастраванд, ва ном пас аз <code>data-</code> ба хосият табдил меёбад:</p>
+<div class="playground" data-mode="dom" data-title="dataset">
+<pre class="code" data-lang="html">
+&lt;button id="buy" data-id="17" data-price="35" data-product-name="Курутоб"&gt;Купить&lt;/button&gt;
+</pre>
+<pre class="code" data-lang="js">
+const buy = document.querySelector("#buy");
+
+console.log(buy.dataset.id);            // "17"  — ҳамеша сатр!
+console.log(buy.dataset.price);         // "35"
+console.log(buy.dataset.productName);   // data-product-name → productName
+console.log(Number(buy.dataset.price) * 2); // 70 — барои ҳисобҳо ба адад табдил медиҳем
+
+buy.dataset.price = "40";               // навиштан низ тавассути dataset
+console.log(buy.getAttribute("data-price")); // 40 — атрибут дар ҳамбандӣ тағйир ёфт
+
+buy.disabled = true;                    // хосияти disabled — тугма хокистарӣ ва ғайрифаъол аст
+console.log(buy.hasAttribute("disabled")); // true
+</pre>
+</div>
+
+      <div class="callout warn">
+        <b>Қапқон: ҳама чиз дар dataset — сатр аст</b>
+        <p><code>dataset.price</code> <code>"35"</code>-ро бармегардонад, на <code>35</code>-ро. Чунин қиматҳоро ҷамъ кардан хатарнок аст: <code>"35" + "5"</code> <code>"355"</code> медиҳад. Пеш аз ҳисобҳо ҳамеша тавассути <code>Number(...)</code> ба адад табдил диҳед.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/styles-and-classes" target="_blank" rel="noopener">learn.javascript.ru — Услубҳо ва классҳо</a> · <a href="https://learn.javascript.ru/dom-attributes-and-properties" target="_blank" rel="noopener">Атрибутҳо ва хосиятҳо</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Element/classList" target="_blank" rel="noopener">MDN — classList</a></p>
+
+      <div class="practice">
+        <h3>Амалия: мустаҳкам мекунем</h3>
+        <p>Классҳо, услубҳо ва атрибутҳо дар амал.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Бейҷҳо дар меню</h4><span class="level easy">осон</span></header>
+          <p>Ба таоми «Курутоб» класси <code>hot</code>-ро илова кунед, ва аз «Шакароб» класси <code>old</code>-ро бардоред. Баъд <code>className</code>-и ҳар бандро баровед — яктоӣ дар як сатр.</p>
+<div class="playground" data-mode="dom" data-title="Меню бо бейҷҳо">
+<pre class="code" data-lang="html">
+&lt;ul class="menu"&gt;
+  &lt;li class="item"&gt;Самбуса&lt;/li&gt;
+  &lt;li class="item"&gt;Курутоб&lt;/li&gt;
+  &lt;li class="item old"&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+.item { padding: 6px 10px; margin: 4px 0; border-radius: 8px; background: #eef1f6; list-style: none; }
+.hot { background: #ffd9a8; font-weight: 700; }
+.old { opacity: .5; text-decoration: line-through; }
+</pre>
+<pre class="code" data-lang="js">
+const items = document.querySelectorAll(".item");
+
+// items[1] — «Курутоб»: класси hot-ро илова кунед
+// items[2] — «Шакароб»: класси old-ро бардоред
+
+for (const item of items) {
+  console.log(item.className);
+}
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>item
+item hot
+item</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>classList.add("...")</code> ва <code>classList.remove("...")</code>-ро истифода баред, на <code>className =</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>items[1].classList.add("hot");</code> ва <code>items[2].classList.remove("old");</code></p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Панел: toggle ва contains</h4><span class="level easy">осон</span></header>
+          <p>Панел аз аввал классҳои <code>panel open</code> дорад. Бо тартиб иҷро кунед: 1) баровед, ки класси <code>open</code> ҳаст ё не; 2) <code>open</code>-ро иваз кунед ва боз баровед, ки ҳаст ё не; 3) <code>open</code>-ро баръакс иваз кунед, бо ивазкунӣ класси <code>dark</code>-ро илова кунед ва <code>className</code>-ро баровед.</p>
+<div class="playground" data-mode="dom" data-title="Панел">
+<pre class="code" data-lang="html">
+&lt;div id="panel" class="panel open"&gt;Меню&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const panel = document.querySelector("#panel");
+
+// 1) panel.classList.contains("open")-ро баровед
+// 2) toggle("open") ва боз contains-ро баровед
+// 3) боз як бор toggle("open"), toggle("dark") ва panel.className-ро баровед
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>true
+false
+panel open dark</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Пас аз <code>toggle("open")</code>-и аввал класс нахоҳад буд (<code>false</code>), пас аз дуюм — он ба охири рӯйхати классҳо бармегардад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Қадами сеюм: <code>panel.classList.toggle("open"); panel.classList.toggle("dark"); console.log(panel.className);</code> Тартиби классҳо — аз рӯи тартиби иловашавӣ.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Истинод ва тугмаи харид</h4><span class="level mid">миёна</span></header>
+          <p>Чор амалро иҷро кунед ва натиҷаи ҳар кадомро баровед: 1) <code>href</code>-и истинодро ба <code>https://makefirststep.tj</code> иваз кунед ва онро тавассути <code>getAttribute</code> баровед; 2) нархро аз <code>data-price</code>, ки ба 2 зарб шудааст (ҳамчун адад), баровед; 3) <code>data-id</code>-ро ба <code>18</code> тавассути <code>dataset</code> иваз кунед ва қиматро тавассути <code>getAttribute("data-id")</code> баровед; 4) тугмаро ғайрифаъол кунед ва <code>hasAttribute("disabled")</code>-ро баровед.</p>
+<div class="playground" data-mode="dom" data-title="Истинод ва тугма">
+<pre class="code" data-lang="html">
+&lt;a id="link" href="https://example.com"&gt;Сайт&lt;/a&gt;
+&lt;button id="buy" data-id="17" data-price="35"&gt;Купить&lt;/button&gt;
+</pre>
+<pre class="code" data-lang="js">
+const link = document.querySelector("#link");
+const buy = document.querySelector("#buy");
+
+// 1) setAttribute("href", ...) ва getAttribute("href")-ро баровед
+// 2) Number(buy.dataset.price) * 2-ро баровед
+// 3) buy.dataset.id = "18" ва getAttribute("data-id")-ро баровед
+// 4) buy.disabled = true ва hasAttribute("disabled")-ро баровед
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>https://makefirststep.tj
+70
+18
+true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>link.setAttribute("href", "https://makefirststep.tj");</code> — бо аргументи аввал номи атрибут, бо дуюм қимат.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Хосияти <code>disabled</code> дар тугма — мантиқӣ аст: <code>buy.disabled = true;</code>. Пас аз ин атрибути <code>disabled</code> дар ҳамбандӣ пайдо мешавад, ва <code>hasAttribute</code> <code>true</code> бармегардонад.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ВАЗИФАИ 4.4</span><h4>Светофори нархҳо</h4><span class="level hard">душвор</span></header>
+          <p>Ҳар корт <code>data-price</code> дорад. Кортҳоро гузаред: агар нарх <b>50 ва зиёдтар</b> бошад — класси <code>expensive</code>-ро илова кунед, агар <b>аз 20 камтар</b> — класси <code>sale</code>-ро, вагарна чизе накунед. <code>className</code>-и ҳар кортро баровед, ва баъд шумораи кортҳоро бо класси <code>expensive</code> (тавассути <code>querySelectorAll</code>).</p>
+<div class="playground" data-mode="dom" data-title="Светофори нархҳо">
+<pre class="code" data-lang="html">
+&lt;div class="card" data-price="60"&gt;Шапка&lt;/div&gt;
+&lt;div class="card" data-price="45"&gt;Шарф&lt;/div&gt;
+&lt;div class="card" data-price="35"&gt;Перчатки&lt;/div&gt;
+&lt;div class="card" data-price="15"&gt;Носки&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.card { display: inline-block; padding: 10px 14px; margin: 4px; border: 2px solid #ccd3df; border-radius: 10px; }
+.expensive { border-color: #c98a00; background: #fff3d6; }
+.sale { border-color: #1a9a5a; background: #dff6e8; }
+</pre>
+<pre class="code" data-lang="js">
+const cards = document.querySelectorAll(".card");
+
+for (const card of cards) {
+  const price = Number(card.dataset.price);
+  // классҳои лозимиро илова кунед
+
+  console.log(card.className);
+}
+
+// чанд корт бо класси expensive
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>card expensive
+card
+card
+card sale
+1</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар дохили давра ду <code>if</code> лозим аст: <code>if (price &gt;= 50) card.classList.add("expensive");</code> ва ҳамон гуна барои <code>price &lt; 20</code>. <code>Number(...)</code>-ро фаромӯш накунед — шумо онро аллакай доред.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар охир: <code>console.log(document.querySelectorAll(".expensive").length);</code></p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="create">
+      <h2 data-toc="Эҷод ва нест кардан"><span class="num">05</span> Унсурҳоро эҷод ва нест мекунем</h2>
+
+      <p>То ҳол мо танҳо он чиро меёфтем ва тағйир медодем, ки дар HTML навишта шудааст. Аммо дар сайти воқеӣ, масалан мағозаи интернетӣ, рӯйхати молҳо аз додаҳо меояд, ва ҳамбандӣ барои он пешакӣ навишта намешавад. Унсурҳоро бояд <b>аз код эҷод кард</b>. Ин се қадам аст:</p>
+
+      <ol class="steps">
+        <li><b>Эҷод кардем</b> — <code>document.createElement("li")</code>. Унсур «дар анбор» пайдо шуд: он вуҷуд дорад, аммо дар саҳифа ҳоло намоён нест.</li>
+        <li><b>Танзим кардем</b> — матн, классҳо, атрибутҳоро додем: <code>li.textContent = "Самбуса"</code>, <code>li.classList.add("item")</code>.</li>
+        <li><b>Ҷойгир кардем</b> — <code>parent.append(li)</code>. Танҳо пас аз ин он дар саҳифа пайдо мешавад.</li>
+      </ol>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Бозор. Фурӯшанда мол аз халта мебарорад (<code>createElement</code>), нархнома мечаспонад (танзим) ва танҳо баъд ба пештахта мегузорад (<code>append</code>). То даме ки мол дар халта аст, харидорон онро намебинанд. Хатои аз ҳама маъмули навомӯз — ду қадами аввалро иҷро кардан ва дар бораи пештахта фаромӯш кардан.</p>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="Эҷод кардем, танзим кардем, ҷойгир кардем">
+<pre class="code" data-lang="html">
+&lt;h2&gt;Сегодня в меню&lt;/h2&gt;
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+.item { padding: 6px 10px; margin: 4px 0; border-radius: 8px; background: #eef1f6; list-style: none; }
+</pre>
+<pre class="code" data-lang="js">
+const menu = document.querySelector("#menu");
+
+const li = document.createElement("li");   // 1. эҷод кардем
+li.textContent = "Оши палав";              // 2. танзим кардем
+li.classList.add("item");
+menu.append(li);                           // 3. ҷойгир кардем — акнун он дар саҳифа аст
+
+console.log(menu.children.length);         // 1
+</pre>
+</div>
+
+      <h3>Ба куҷо ҷойгир кардан</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Метод</th><th>Унсур ба куҷо меафтад</th></tr></thead>
+          <tbody>
+            <tr><td><code>parent.append(el)</code></td><td>ба <b>охир</b>-и волидайн</td></tr>
+            <tr><td><code>parent.prepend(el)</code></td><td>ба <b>оғоз</b>-и волидайн</td></tr>
+            <tr><td><code>ref.before(el)</code></td><td>пеш аз унсури <code>ref</code>, дар як сатҳ бо он</td></tr>
+            <tr><td><code>ref.after(el)</code></td><td>пас аз унсури <code>ref</code></td></tr>
+            <tr><td><code>el.remove()</code></td><td>унсурро аз саҳифа нест мекунад</td></tr>
+            <tr><td><code>el.cloneNode(true)</code></td><td>нусха эҷод мекунад (бо мундариҷа, агар <code>true</code> бошад)</td></tr>
+            <tr><td><code>parent.replaceChildren()</code></td><td><b>ҳамаи</b> кӯдаконро нест мекунад. Бо аргументҳо — кӯдаконро бо додашудаҳо иваз мекунад</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><code>append</code> якчанд унсурро якбора гирифта метавонад: <code>card.append(title, price)</code>. Агар сатр дода шавад, он чун <b>матн</b> (на чун HTML) ҷойгир мешавад, бинобар ин ин бехатар аст.</p>
+
+<div class="playground" data-mode="dom" data-title="Навбат: ҷойгир ва нест мекунем">
+<pre class="code" data-lang="html">
+&lt;ol id="queue"&gt;
+  &lt;li&gt;Рустам&lt;/li&gt;
+  &lt;li class="gone"&gt;Мадина&lt;/li&gt;
+  &lt;li&gt;Фарход&lt;/li&gt;
+&lt;/ol&gt;
+</pre>
+<pre class="code" data-lang="js">
+const queue = document.querySelector("#queue");
+
+function person(name) {
+  const li = document.createElement("li");
+  li.textContent = name;
+  return li;
+}
+
+queue.querySelector(".gone").remove();       // Мадина рафт
+queue.prepend(person("Нилуфар"));            // VIP — ба оғоз
+queue.append(person("Далер"));               // оддӣ — ба охир
+queue.children[1].after(person("Сабрина"));  // пас аз Рустам (вай акнун дуюм аст)
+
+console.log(Array.from(queue.children, li =&gt; li.textContent).join(", "));
+// Нилуфар, Рустам, Сабрина, Фарход, Далер
+</pre>
+</div>
+
+      <h3>Унсур нусха намешавад, балки кӯч мебандад</h3>
+      <p>Як унсур наметавонад дар ду ҷойи дарахт бошад. Агар унсури аллакай мавҷударо ба ҷойи дигар ҷойгир кунед, он <b>кӯч мебандад</b>, ва дар ҷойи кӯҳна нопадид мешавад. Нусха лозим аст — <code>cloneNode(true)</code>-ро кунед.</p>
+<pre class="code" data-run>
+const a = document.createElement("ul");
+const b = document.createElement("ul");
+
+const li = document.createElement("li");
+li.textContent = "Самбуса";
+a.append(li);
+
+b.append(li);                        // аз a ба b кӯч баст
+console.log(a.children.length, b.children.length);  // → 0 1
+
+a.append(li.cloneNode(true));        // нусха ҳам дар он ҷо, ҳам дар ин ҷо мемонад
+console.log(a.children.length, b.children.length);  // → 1 1
+</pre>
+
+      <h3>createElement ё innerHTML?</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>createElement + append</th><th>innerHTML бо сатр</th></tr></thead>
+          <tbody>
+            <tr><td><b>Навишта мешавад</b></td><td>дарозтар</td><td>кӯтоҳтар, ба HTML-и воқеӣ монанд</td></tr>
+            <tr><td><b>Бехатарӣ</b></td><td>матн ҳамеша тавассути <code>textContent</code> — бехатар</td><td>хатарнок, агар дар сатр матни бегона бошад</td></tr>
+            <tr><td><b>Истинодҳои кӯҳна ба унсурҳо</b></td><td>нигоҳ дошта мешаванд</td><td>ҳангоми <code>+=</code> ва аз нав навиштан вайрон мешаванд</td></tr>
+            <tr><td><b>Кай интихоб кардан</b></td><td>додаҳои корбар ва API, вақте ки унсур дар тағйирёбанда лозим аст</td><td>қолаби статикӣ, ки худатон навиштаед</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Дар ин дарс мо бо роҳи бехатар меравем: <b>createElement</b>. Вай каме дарозтар аст, аммо меомӯзонад, ки сохтори саҳифаро чун дарахт бинем — ва маҳз ин баъдтар дар React ба кор меояд.</p>
+
+      <div class="callout warn">
+        <b>Хатои маъмул: ҷойгир карданро фаромӯш карданд</b>
+        <p>Унсурро эҷод кардан — маънои нишон додани онро надорад. Бе <code>append</code> (ё <code>prepend</code>, <code>before</code>, <code>after</code>) вай «дар халта» мемонад. Агар дар саҳифа чизе пайдо нашуд, ва хатоҳо нестанд, — аввал санҷед, ки ҷойгиркунӣ дар ҳақиқат даъват мешавад.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/modifying-document" target="_blank" rel="noopener">learn.javascript.ru — Тағйири ҳуҷҷат</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Document/createElement" target="_blank" rel="noopener">MDN — createElement</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren" target="_blank" rel="noopener">MDN — replaceChildren</a></p>
+
+      <div class="practice">
+        <h3>Амалия: мустаҳкам мекунем</h3>
+        <p>Эҷод мекунем, ҷойгир мекунем, ҷой иваз мекунем, нест мекунем.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Унсури аввал</h4><span class="level easy">осон</span></header>
+          <p><code>&lt;li&gt;</code>-ро бо матни <code>Самбуса</code> эҷод кунед ва ба рӯйхати <code>#menu</code> ҷойгир кунед. Шумораи кӯдакони рӯйхат ва матни онро баровед.</p>
+<div class="playground" data-mode="dom" data-title="Менюи холӣ">
+<pre class="code" data-lang="html">
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const menu = document.querySelector("#menu");
+
+// li эҷод кунед, матнро диҳед, ба menu ҷойгир кунед
+
+console.log(menu.children.length);
+console.log(menu.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>1
+Самбуса</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Се қадам: <code>createElement("li")</code>, баъд <code>textContent</code>, баъд <code>menu.append(...)</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>const li = document.createElement("li"); li.textContent = "Самбуса"; menu.append(li);</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Се банд бо давра</h4><span class="level easy">осон</span></header>
+          <p>Барои ҳар таом аз массив <code>&lt;li&gt;</code>-ро бо класси <code>item</code> эҷод кунед ва ба <code>#menu</code> ҷойгир кунед. Шумораи бандҳо, матни охирин ва класси аввалро баровед.</p>
+<div class="playground" data-mode="dom" data-title="Меню бо давра">
+<pre class="code" data-lang="html">
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const dishes = ["Нон", "Сомса", "Чой"];
+const menu = document.querySelector("#menu");
+
+// давра аз болои dishes: li эҷод кунед, матн, класси item, ҷойгир кунед
+
+console.log(menu.children.length);
+console.log(menu.lastElementChild.textContent);
+console.log(menu.firstElementChild.className);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>3
+Чой
+item</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Бадани давра <code>for (const dish of dishes) { ... }</code> ҳамон се қадамро дорад, ки дар вазифаи 5.1, илова <code>li.classList.add("item")</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Эҷоди <code>li</code>-и нав бояд <b>дар дохили</b> давра бошад — барои ҳар банд унсури худ.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ВАЗИФАИ 5.3</span><h4>Навбат дар бонк</h4><span class="level mid">миёна</span></header>
+          <p>Чор амалро бо навбат иҷро кунед: 1) касеро, ки класси <code>old</code> дорад, нест кунед; 2) <code>Зарина</code>-ро ба худи оғоз гузоред; 3) <code>Далер</code>-ро фавран пас аз <code>Алии</code> гузоред; 4) <code>Нилуфар</code>-ро ба охир илова кунед. Функсияи ёридиҳандаи <code>make</code> аллакай ҳаст.</p>
+<div class="playground" data-mode="dom" data-title="Навбат">
+<pre class="code" data-lang="html">
+&lt;ul id="line"&gt;
+  &lt;li&gt;Алия&lt;/li&gt;
+  &lt;li class="old"&gt;Бахром&lt;/li&gt;
+  &lt;li&gt;Умар&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const line = document.querySelector("#line");
+const alia = line.firstElementChild;
+
+function make(text) {
+  const li = document.createElement("li");
+  li.textContent = text;
+  return li;
+}
+
+// 1) .old-ро нест кунед
+// 2) prepend: Зарина
+// 3) after: Далер пас аз alia
+// 4) append: Нилуфар
+
+console.log(Array.from(line.children, li =&gt; li.textContent).join(", "));
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Зарина, Алия, Далер, Умар, Нилуфар</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Амали аввал: <code>.old</code>-ро тавассути <code>querySelector</code> ёбед ва аз он <code>remove()</code>-ро даъват кунед. «Пас аз Алия» — ин метод аз худи <code>alia</code> аст: <code>alia.after(...)</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>line.querySelector(".old").remove(); line.prepend(make("Зарина")); alia.after(make("Далер")); line.append(make("Нилуфар"));</code></p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ВАЗИФАИ 5.4</span><h4>Кӯч баст ё нусха шуд</h4><span class="level hard">душвор</span></header>
+          <p>Аввал ду адади сатрҳои якуми баромадро <b>пешбинӣ кунед</b> — пас аз ҳар амал дар рӯйхатҳои чап ва рости чанд унсур хоҳад буд. Баъд иҷро кунед. Сипас кодро пурра кунед: клон пеш аз ҷойгиркунӣ бояд матни <code>Курутоб (копия)</code>-ро гирад (ба матни клон <code>" (копия)"</code>-ро илова кунед), ва дар охир матни унсури охирини рӯйхати ростро баровед.</p>
+<div class="playground" data-mode="dom" data-title="Ду рӯйхат">
+<pre class="code" data-lang="html">
+&lt;ul id="left"&gt;
+  &lt;li&gt;Самбуса&lt;/li&gt;
+  &lt;li&gt;Курутоб&lt;/li&gt;
+  &lt;li&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul id="right"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const left = document.querySelector("#left");
+const right = document.querySelector("#right");
+
+right.append(left.firstElementChild);                      // кӯч бастан
+console.log(left.children.length, right.children.length);
+
+const clone = left.firstElementChild.cloneNode(true);
+// ба матни клон " (копия)"-ро илова кунед
+right.append(clone);
+console.log(left.children.length, right.children.length);
+
+// матни унсури охирини рӯйхати ростро баровед
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>2 1
+2 2
+Курутоб (копия)</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>append</code>-и аввал «Самбуса»-ро <b>интиқол медиҳад</b> — дар чап 2 мемонад, дар рост 1. Дуюм <b>нусха</b>-ро ҷойгир мекунад — дар чап боз 2, дар рост 2.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>clone.textContent += " (копия)";</code> пеш аз ҷойгиркунӣ, ва дар охир — <code>console.log(right.lastElementChild.textContent);</code></p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="render">
+      <h2 data-toc="Рендери рӯйхат аз массив"><span class="num">06</span> Рендер: аз массив ба кортҳо</h2>
+
+      <p>Акнун ҳар чизеро, ки медонед, ҳамроҳ мекунем. Дар дарсҳои 6 ва 7 шумо бо массивҳои объектҳо кор кардед — феҳристҳои молҳо, донишҷӯён, фармоишҳо. Акнун ин додаҳоро <b>кашидан</b> мумкин аст. Калимаи <b>рендер</b> (render) маҳз маънои «аз додаҳо он чиро, ки дар экран намоён аст, сохтан»-ро дорад. Тарҳ ҳамеша як аст:</p>
+
+      <ol class="steps">
+        <li><b>Додаҳо</b> — массиви объектҳо: <code>const products = [{ title: "Нон", price: 4 }, …]</code>. Ин сарчашмаи асосии ҳақиқат аст.</li>
+        <li><b>Функсияи-фабрика</b> <code>createCard(product)</code> — як объектро мегирад ва унсури тайёрро <b>бармегардонад</b>.</li>
+        <li><b>Функсияи рендер</b> <code>render(items)</code> — контейнерро тоза мекунад ва ба он кортҳоро барои тамоми массив ҷойгир мекунад.</li>
+        <li><b>Даъват</b> <code>render(products)</code> — саҳифа кашида шуд. Массивро тағйир додед — боз <code>render</code>-ро даъват кардед.</li>
+      </ol>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Оши палав дар тӯй. Дастур ва рӯйхати меҳмонон — ин <b>додаҳо</b> мебошанд. Ошпаз — <b>функсияи-фабрика</b>: дар вуруд биринҷ ва гӯшт, дар хуруҷ як пурсон. Ва пешхизмат — <b>render</b>: аз тамоми рӯйхати меҳмонон мегузарад, пеши ҳар кас пурсон мегузорад. Меҳмони нав омад — дастурро тағйир додан лозим нест, танҳо боз як пурсон аз рӯи ҳамон дастур.</p>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="Рендери феҳрист + тугмаи тоза кардан">
+<pre class="code" data-lang="html">
+&lt;button id="clear"&gt;Очистить&lt;/button&gt;
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 12px; }
+.card { border: 2px solid #ccd3df; border-radius: 12px; padding: 10px 12px; }
+.card h3 { margin: 0 0 4px; font-size: 16px; }
+.price { margin: 0; color: #1a7f4e; font-weight: 700; }
+.empty { color: #6b7488; }
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Самбуса", price: 5 },
+  { title: "Курутоб", price: 35 },
+  { title: "Шакароб", price: 15 },
+  { title: "Чапан", price: 450 }
+];
+
+const catalog = document.querySelector("#catalog");
+const clearBtn = document.querySelector("#clear");
+
+// фабрика: як объект → як унсур
+function createCard(product) {
+  const card = document.createElement("article");
+  card.className = "card";
+
+  const title = document.createElement("h3");
+  title.textContent = product.title;
+
+  const price = document.createElement("p");
+  price.className = "price";
+  price.textContent = `${product.price} сомони`;
+
+  card.append(title, price);
+  return card;
+}
+
+// рендер: тамоми массив → контейнер
+function render(items) {
+  const cards = items.map(createCard);   // массиви унсурҳо
+  catalog.replaceChildren(...cards);     // кӯҳнаро бардоштем, навро ҷойгир кардем
+}
+
+render(products);
+console.log("карточек:", catalog.children.length);
+
+// тугмаи «Очистить»: onclick — «вақте пахш кунанд, инро иҷро кун» (муфассал — дар дарси оянда)
+clearBtn.onclick = () =&gt; catalog.replaceChildren();
+</pre>
+</div>
+      <p>Иҷро кунед, баъд тугмаи «Очистить»-ро дар preview пахш кунед — кортҳо нопадид мешаванд. Нарх тағйир диҳед ё ба массив боз як мол илова кунед, боз иҷро кунед: саҳифа худаш аз нав кашида мешавад. <b>Додаҳоро тағйир медиҳем — саҳифа аз паси онҳо меравад.</b></p>
+
+      <h3>Render-ро аз рӯи қисмҳо ҷудо мекунем</h3>
+      <dl class="terms">
+        <dt>items.map(createCard)</dt><dd><code>map</code> ҳар молро ба <code>createCard</code> медиҳад ва унсурҳои баргардонидашударо ба массиви нав ҷамъ мекунад.</dd>
+        <dt>...cards</dt><dd>Оператори spread аз дарси гузашта: массиви унсурҳоро ба аргументҳои <code>replaceChildren(card1, card2, …)</code> «мерезад».</dd>
+        <dt>replaceChildren(…)</dt><dd>Аввал <b>ҳамаи</b> кӯдакони кӯҳнаро мебарорад, баъд навҳоро ҷойгир мекунад. Бинобар ин <code>render</code>-и такрорӣ кортҳоро дубора намекунад.</dd>
+        <dt>replaceChildren()</dt><dd>Бе аргументҳо — контейнерро оддӣ тоза мекунад. Ин маҳз «тугмаи тоза кардан» аст.</dd>
+      </dl>
+
+      <div class="callout tip">
+        <b>Тугма ҳоло «ба ҳалолӣ» кор мекунад</b>
+        <p>Сатри <code>clearBtn.onclick = …</code> — нигоҳи аввал ба <b>ҳодисаҳо</b> аст. Ҳоло онро чун «вақте ки тугмаро пахш кунанд — инро иҷро кун» дар хотир доред. Ҳодисаҳоро пурра (<code>addEventListener</code>, объекти ҳодиса, делегатсия) мо дар дарси оянда ҷудо мекунем. Барои вазифаи хонагӣ ин сатр кифоя аст.</p>
+      </div>
+
+      <h3>Ҳолати холӣ</h3>
+      <p>Корбар чӣ мебинад, агар аз рӯи филтраш чизе ёфт нашавад? Саҳифаи холии сафед — гӯё сайт вайрон шудааст. Рендери хуб ҳамеша массиви холиро коркард мекунад:</p>
+<pre class="code" data-lang="js" data-title="render бо ҳолати холӣ">
+function render(items) {
+  if (items.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "Ничего не найдено";
+    catalog.replaceChildren(empty);
+    return;                              // баромади барвақт — мисли дарс дар бораи функсияҳо
+  }
+  catalog.replaceChildren(...items.map(createCard));
+}
+</pre>
+
+      <div class="callout warn">
+        <b>Ду хатои маъмули рендер</b>
+        <p><b>1.</b> Кортҳоро бе тоза кардани контейнер ҷойгир кардан: ҳар <code>render</code>-и нав молҳоро ба кӯҳнаҳо илова мекунад, ва рӯйхат мерӯяд. <code>replaceChildren</code>-ро истифода баред.</p>
+        <p><b>2.</b> Унсурро <b>берун аз</b> функсия ё берун аз давра эҷод кардан: <code>const card = document.createElement(…)</code> як бор ва баъд борҳо <code>append(card)</code>. Унсур як аст — яъне вай кӯч мебандад, ва дар натиҷа дар саҳифа як корт мемонад (бахши 5-ро ба ёд оред).</p>
+      </div>
+
+      <h3>Ҳамон рендер бо сатр</h3>
+      <p>Варианти кӯтоҳ бо сатри қолабӣ низ ҷоиз аст, агар додаҳо аз они шумо ва бехатар бошанд. Муқоиса кунед — натиҷа якхела аст:</p>
+<pre class="code" data-lang="js" data-title="Варианти бо сатр (танҳо барои додаҳои худӣ, бехатар)">
+function render(items) {
+  catalog.innerHTML = items
+    .map(p =&gt; `&lt;article class="card"&gt;&lt;h3&gt;${p.title}&lt;/h3&gt;&lt;p class="price"&gt;${p.price} сомони&lt;/p&gt;&lt;/article&gt;`)
+    .join("");
+}
+</pre>
+      <p>Аммо агар <code>title</code> метавонад аз корбар ё аз сервери бегона ояд — танҳо <code>createElement</code> ва <code>textContent</code>.</p>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/modifying-document" target="_blank" rel="noopener">learn.javascript.ru — Тағйири ҳуҷҷат</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren" target="_blank" rel="noopener">MDN — replaceChildren</a></p>
+
+      <div class="practice">
+        <h3>Амалия: мустаҳкам мекунем</h3>
+        <p>Чор вазифа аз сода ба мураккаб: аз як функсияи-фабрика то гурӯҳбандӣ аз рӯи категорияҳо.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Фабрикаи бандҳо</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>createItem(product)</code>-ро пурра кунед: он <code>&lt;li&gt;</code>-ро бо матни намуди <code>Нон — 4 сомони</code> эҷод мекунад ва онро <b>бармегардонад</b>. Рендер дар охир аллакай навишта шудааст.</p>
+<div class="playground" data-mode="dom" data-title="Рӯйхати харид">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Нон", price: 4 },
+  { title: "Молоко", price: 12 },
+  { title: "Зардолу", price: 25 },
+  { title: "Мёд", price: 80 }
+];
+const list = document.querySelector("#list");
+
+function createItem(product) {
+  // li эҷод кунед, матнро диҳед, li-ро баргардонед
+}
+
+list.replaceChildren(...products.map(createItem));
+
+console.log(list.children.length);
+console.log(list.firstElementChild.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>4
+Нон — 4 сомони</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Функсия бояд бо <code>return li;</code> анҷом ёбад — вагарна <code>map</code> массиви <code>undefined</code>-ро ҷамъ мекунад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>li.textContent = `${product.title} — ${product.price} сомони`;</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ВАЗИФАИ 6.2</span><h4>Ҳолати холӣ</h4><span class="level mid">миёна</span></header>
+          <p>Функсияи <code>render(items)</code>-ро нависед: он <code>#catalog</code>-ро тоза мекунад; агар массив холӣ бошад — банди <code>&lt;p class="empty"&gt;Ничего не найдено&lt;/p&gt;</code>-ро ҷойгир мекунад; вагарна — яктоӣ <code>&lt;div class="card"&gt;</code> бо номи мол. Бо се маҷмӯи додаҳо санҷед.</p>
+<div class="playground" data-mode="dom" data-title="Феҳрист бо ҳолати холӣ">
+<pre class="code" data-lang="html">
+&lt;div id="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Нон", price: 4 },
+  { title: "Чапан", price: 450 },
+  { title: "Пиала", price: 30 }
+];
+const catalog = document.querySelector("#catalog");
+
+function render(items) {
+  // коди шумо
+}
+
+render(products);
+console.log(catalog.children.length);
+
+render(products.filter(p =&gt; p.price &lt; 50));
+console.log(catalog.children.length);
+
+render(products.filter(p =&gt; p.price &gt; 1000));
+console.log(catalog.children.length);
+console.log(catalog.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>3
+2
+1
+Ничего не найдено</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Функсияро бо санҷиши <code>if (items.length === 0)</code> ва <code>return</code>-и барвақт оғоз кунед. Коди боқимонда танҳо барои массиви ғайрихолӣ мешавад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар ҳарду шоха <code>catalog.replaceChildren(...)</code>-ро истифода баред: дар холӣ — бо як банд, дар оддӣ — бо массиви кортҳо тавассути <code>items.map</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ВАЗИФАИ 6.3</span><h4>Корт бо қайди «дар мавҷуд нест»</h4><span class="level mid">миёна</span></header>
+          <p><code>createCard({ title, price, inStock })</code>-ро пурра кунед: дар дохили <code>&lt;article class="card"&gt;</code> <code>&lt;h3&gt;</code> бо ном ва <code>&lt;p class="price"&gt;</code> бо матни <code>60 сомони</code> мемонанд. Агар мол дар мавҷуд набошад, ба корт боз класси <code>out</code> лозим аст. Деструктуризатсия дар параметрҳо — мисли дарс дар бораи объектҳо.</p>
+<div class="playground" data-mode="dom" data-title="Феҳрист бо мавҷудият">
+<pre class="code" data-lang="html">
+&lt;div id="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.card { display: inline-block; border: 2px solid #ccd3df; border-radius: 12px; padding: 8px 12px; margin: 4px; }
+.card h3 { margin: 0; font-size: 16px; }
+.out { opacity: .45; border-style: dashed; }
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Шапка", price: 60, inStock: true },
+  { title: "Шарф", price: 45, inStock: true },
+  { title: "Перчатки", price: 35, inStock: false },
+  { title: "Носки", price: 15, inStock: true }
+];
+const catalog = document.querySelector("#catalog");
+
+function createCard({ title, price, inStock }) {
+  // коди шумо — card-ро баргардонед
+}
+
+catalog.replaceChildren(...products.map(createCard));
+
+console.log(catalog.querySelectorAll(".card").length);
+console.log(catalog.querySelectorAll(".out").length);
+console.log(catalog.querySelector(".price").textContent);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>4
+1
+60 сомони</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Тарҳ ҳамон аст, ки дар мисоли боло: <code>card</code>, <code>h3</code>, <code>p.price</code>, баъд <code>card.append(h3, p)</code> ва <code>return card</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>if (!inStock) card.classList.add("out");</code> — пеш аз <code>return</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ВАЗИФАИ 6.4</span><h4>Гурӯҳбандӣ аз рӯи категорияҳо</h4><span class="level hard">душвор</span></header>
+          <p>Молҳоро аз рӯи бахшҳо нишон диҳед: барои ҳар категория <code>&lt;section&gt;</code>-ро бо сарлавҳаи <code>&lt;h3&gt;</code> (номи категория) ва рӯйхати <code>&lt;ul&gt;</code> эҷод кунед, ки дар он ҳар мол — <code>&lt;li&gt;</code> аст. Аввал массивро тавассути <code>reduce</code> ба объекти «категория → массиви номҳо» гурӯҳбандӣ кунед, баъд DOM-ро аз <code>Object.entries(groups)</code> созед. Тартиби бахшҳо — тартиби пайдошавии аввали категория.</p>
+<div class="playground" data-mode="dom" data-title="Феҳрист аз рӯи бахшҳо">
+<pre class="code" data-lang="html">
+&lt;div id="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Нон", category: "Продукты" },
+  { title: "Зардолу", category: "Продукты" },
+  { title: "Пиала", category: "Кухня" },
+  { title: "Чапан", category: "Сувениры" },
+  { title: "Тюбетейка", category: "Сувениры" }
+];
+const catalog = document.querySelector("#catalog");
+
+// 1) groups = { Продукты: ["Нон", "Зардолу"], Кухня: ["Пиала"], ... } тавассути reduce
+// 2) барои ҳар ҷуфти [category, titles] section &gt; h3 + ul &gt; li эҷод кунед
+// 3) ҳамаи section-ҳоро ба catalog ҷойгир кунед
+
+const sections = catalog.querySelectorAll("section");
+console.log(sections.length);
+for (const section of sections) {
+  console.log(section.querySelector("h3").textContent + ": " + section.querySelectorAll("li").length);
+}
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>3
+Продукты: 2
+Кухня: 1
+Сувениры: 2</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Гурӯҳбандӣ: <code>products.reduce((acc, p) =&gt; { if (!acc[p.category]) acc[p.category] = []; acc[p.category].push(p.title); return acc; }, {})</code>. Қимати оғозӣ — объекти холӣ.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Давра <code>for (const [category, titles] of Object.entries(groups))</code>. Дар дохил <code>section</code>, <code>h3</code> (матн — <code>category</code>), <code>ul</code> эҷод кунед; барои ҳар ном аз <code>titles</code> — <code>li</code>. <code>section</code>-и ҷамъшуда — <code>catalog.append(section)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ЗС: тақсими меҳнат"><span class="num">07</span> Тақсими меҳнат: ЗС ҳамбандиро менависад, шумо — мантиқро</h2>
+
+      <p>DOM — ҷойи беҳтарин аст, то меомӯзед, ки бо ЗС дуруст кор кунед. Ҳамбандӣ ва CSS — кори ҳаҷман калон, аммо якмонанд: ЗС онро зуд ва одатан хуб иҷро мекунад. Аммо мантиқ — кадом додаҳо, бо кадом тартиб, дар ҳолати рӯйхати холӣ чӣ кардан — ин аст, ки шумо бояд то сатри охирин фаҳмед. Бинобар ин дар курси мо қоида чунин аст:</p>
+
+      <div class="callout ai">
+        <b>Қоидаи дарси 8</b>
+        <p><b>ЗС HTML ва CSS менависад. Мантиқи JavaScript-ро худатон менависед.</b> Аввал 15 дақиқа худатон кӯшиш мекунед, ва танҳо баъд бо промпт ба ЗС меравед. Кодеро, ки сатр ба сатр шарҳ дода наметавонед, ҷойгир накунед.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ба ЗС медиҳем</th><th>Худамон мекунем</th></tr></thead>
+          <tbody>
+            <tr><td>Ҳамбандии корт, шакл, сарлавҳаи саҳифа</td><td>Сохтори додаҳо (молро кадом майдонҳо доранд)</td></tr>
+            <tr><td>CSS: тӯр, рангҳо, фосилаҳо, мутобиқшавӣ</td><td>Функсияҳои <code>createCard</code> ва <code>render</code></td></tr>
+            <tr><td>Додаҳои санҷишӣ (массиви 10 мол)</td><td>Санҷиш: додаҳо воқеънамо, навъҳо дурустанд</td></tr>
+            <tr><td>Шарҳи методи ношинос</td><td>Қарор, ки кадом метод ва кай татбиқ кардан</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Маълумоти кӯтоҳ: BEM — номҳои классҳо бе бесаранҷомӣ</h3>
+      <p>Вақте ки ЗС ҳамбандӣ мекунад, хоҳиш кунед, ки классҳоро аз рӯи <b>BEM</b> ном гузорад. Ин мувофиқа дар бораи номҳост, то аз рӯи класс фавран маълум шавад, ки ин чист:</p>
+      <dl class="terms">
+        <dt>Блок</dt><dd>Ҷузъи мустақил: <code>product-card</code>.</dd>
+        <dt>Унсур</dt><dd>Қисми блок, бо ду зерхат: <code>product-card__title</code>, <code>product-card__price</code>.</dd>
+        <dt>Модификатор</dt><dd>Варианти блок, бо ду тире: <code>product-card--out</code> («дар мавҷуд нест»). Дар JS онро тавассути <code>classList</code> фаъол ва хомӯш мекунанд — ҳамон гуфтугӯ дар бораи бейҷҳо аз бахши 4.</dd>
+      </dl>
+
+      <h3>Промпт барои қолаби HTML</h3>
+      <p>Ду дархости ба ЗС-ро муқоиса кунед. Якум — чунон ки навомӯзон мекунанд. Дуюм — аз рӯи формулаи курс: замина → вазифа → маҳдудиятҳо → формати ҷавоб → санҷиш.</p>
+<div class="prompt bad-prompt">корти молро бисоз</div>
+<div class="prompt good-prompt">Замина: ман JavaScript меомӯзам, мағозаи таълимии интернетиро бо HTML/CSS/JS-и тоза бе китобхонаҳо месозам. Ба ман танҳо ҳамбандӣ лозим аст — JavaScript-ро худам менависам. Вазифа: қолаби HTML-и як корти молро (ном, нарх, тугмаи «В корзину») ва CSS барои он, илова CSS барои тӯри мутобиқшавандаи чунин кортҳо (grid) бисоз. Маҳдудиятҳо: классҳо аз рӯи BEM (product-card, product-card__title, product-card__price, product-card__btn, модификатори product-card--out барои моле, ки дар мавҷуд нест). Бе JavaScript, бе услубҳои inline, бе onclick, бе тасвирҳо ва ҳарфҳои берунӣ. Мавзӯи равшан, кунҷҳои мудаввар. Формати ҷавоб: ду блоки код — HTML ва CSS. Пас аз онҳо — рӯйхати классҳо ва маънои ҳар кадом, дар се то панҷ сатр. Санҷиш: нависед, ки кадом унсурҳои қолабро ман бояд аз JavaScript пур кунам.</div>
+      <p>ЗС аз промпти дуюм чӣ мегирад? Стек, сатҳ, ҳудудҳо («JavaScript нанавис»), номҳои мушаххаси классҳо, формати ҷавоб ва хоҳиши худро санҷидан. Ва ба шумо мантиқ мемонад — ва шумо дақиқ медонед, ки он ба кадом классҳо такя мекунад.</p>
+
+      <h3>ЗС чӣ ҷавоб дода метавонист — ва онро чӣ тавр ба код табдил додан</h3>
+      <p>Фарз мекунем, ЗС чунин ҳамбандии як кортро баргардонд:</p>
+<pre class="code" data-lang="html" data-title="Ҷавоби ЗС: HTML">
+&lt;article class="product-card"&gt;
+  &lt;h3 class="product-card__title"&gt;Название товара&lt;/h3&gt;
+  &lt;p class="product-card__price"&gt;0 сомони&lt;/p&gt;
+  &lt;button class="product-card__btn"&gt;В корзину&lt;/button&gt;
+&lt;/article&gt;
+</pre>
+      <p>Вазифаи шумо — ин кортро даҳ маротиба нусха кардан не, балки <b>онро як бор дар функсия тавсиф кардан</b> аст. Ҳар теги қолаб ба се сатр табдил меёбад: эҷод кардем, танзим кардем, ҷойгир кардем.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Дар қолаби ЗС</th><th>Дар функсияи createCard-и шумо</th></tr></thead>
+          <tbody>
+            <tr><td><code>&lt;article class="product-card"&gt;</code></td><td><code>createElement("article")</code> + <code>className = "product-card"</code></td></tr>
+            <tr><td><code>&lt;h3 class="product-card__title"&gt;Название&lt;/h3&gt;</code></td><td><code>createElement("h3")</code>, класс, <code>textContent = product.title</code></td></tr>
+            <tr><td><code>&lt;p class="product-card__price"&gt;</code></td><td><code>createElement("p")</code>, класс, <code>textContent = product.price + " сомони"</code></td></tr>
+            <tr><td><code>&lt;button class="product-card__btn"&gt;</code></td><td><code>createElement("button")</code>, класс, <code>textContent = "В корзину"</code></td></tr>
+            <tr><td>дарунравӣ: ҳама дар дохили <code>article</code></td><td><code>card.append(title, price, btn)</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="Қолаб аз ЗС + createCard-и шумо">
+<pre class="code" data-lang="html">
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+/* ин CSS — «ҷавоби ЗС»: мо онро намениварем, балки танҳо пайваст мекунем */
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.product-card { border: 2px solid #ccd3df; border-radius: 14px; padding: 12px; background: #fff; }
+.product-card__title { margin: 0 0 6px; font-size: 17px; }
+.product-card__price { margin: 0 0 10px; color: #1a7f4e; font-weight: 700; }
+.product-card__btn { border: 0; border-radius: 8px; padding: 6px 12px; background: #1c2230; color: #fff; cursor: pointer; }
+.product-card--out { opacity: .5; border-style: dashed; }
+</pre>
+<pre class="code" data-lang="js">
+// ва ин JS — қисми шумо
+const products = [
+  { title: "Самбуса", price: 5, inStock: true },
+  { title: "Курутоб", price: 35, inStock: true },
+  { title: "Чайник", price: 85, inStock: false }
+];
+const catalog = document.querySelector("#catalog");
+
+function createCard(product) {
+  const card = document.createElement("article");
+  card.className = "product-card";
+  if (!product.inStock) card.classList.add("product-card--out");
+
+  const title = document.createElement("h3");
+  title.className = "product-card__title";
+  title.textContent = product.title;
+
+  const price = document.createElement("p");
+  price.className = "product-card__price";
+  price.textContent = `${product.price} сомони`;
+
+  const btn = document.createElement("button");
+  btn.className = "product-card__btn";
+  btn.textContent = "В корзину";
+
+  card.append(title, price, btn);
+  return card;
+}
+
+catalog.replaceChildren(...products.map(createCard));
+console.log(catalog.children.length);
+</pre>
+</div>
+
+      <h3>Ҷавоби ЗС-ро месанҷем: феҳристи санҷиш</h3>
+      <ul>
+        <li>Оё дар ҷавоб <code>&lt;script&gt;</code>, <code>onclick="…"</code>, услубҳои inline <code>style="…"</code> ҳастанд? Шумо бе онҳо хоҳиш карда будед — яъне мебарорем.</li>
+        <li>Оё номҳои классҳо бо онҳое, ки шумо дар JS истифода мебаред, мувофиқ меоянд? Як ҳарфи изофӣ — ва <code>querySelector</code> <code>null</code> бармегардонад.</li>
+        <li>Оё тегҳо мувофиқанд: <code>article</code> барои корт, <code>h3</code> барои ном, <code>button</code> барои тугма (на <code>div</code> бо клик)?</li>
+        <li>Оё тасвирҳо ва ҳарфҳои берунӣ нестанд, ки бор намешаванд?</li>
+        <li>Агар ЗС <code>innerHTML</code>-ро бо ҷойгиркунии додаҳо пешниҳод кард — пурсед, ки ин бехатар аст ё не, ва ба <code>textContent</code> аз нав нависед.</li>
+        <li>Оё ЗС методҳои вуҷуднадоштаро ихтироъ накардааст? Ношиносро дар MDN санҷед.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>«Тамоми рендерро бинавис» хоҳиш накунед</b>
+        <p>Агар аз ЗС хоҳиш кунед, ки <code>createCard</code> ва <code>render</code>-ро нависад, вай кори коддорро дар панҷ сония менависад — ва шумо чизе намеомӯзед. Ҳангоми санҷиши вазифаи хонагӣ омӯзгор метавонад хоҳиш кунад, ки ҳар сатрро шарҳ диҳед. Роҳи хуби истифодаи ЗС барои мантиқ: аввал варианти худро нависед, баъд хоҳиш кунед «<i>сатр ба сатр шарҳ деҳ, ки коди ман чӣ мекунад, ва 2 ҷойро ном бар, ки дар онҳо вайрон мешавад</i>».</p>
+      </div>
+
+<div class="prompt">Инак функсияи createCard-и ман: [код]. Сатр ба сатр шарҳ деҳ, ки вай чӣ мекунад. Чизеро аз нав нанавис. Дар охир ду ҳолати канориро ном бар, ки дар онҳо вай вайрон мешавад (масалан, майдони price нест).</div>
+
+      <div class="practice">
+        <h3>Амалия бо ЗС</h3>
+        <p>Як вазифа оид ба санҷиши коди бегона, як — оид ба навиштани промпти худ.</p>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Коди ЗС-ро санҷед</h4><span class="level mid">миёна</span></header>
+          <p>Шумо аз ЗС хоҳиш кардед, ки феҳристро бикашад. Вай коди зерро баргардонд. Дар он <b>се хато</b> ҳаст. Талабҳо: дар саҳифа <b>ду</b> корт бояд бошад; дар ҳар кадом — сарлавҳа бо ном ва банди <code>.price</code> бо матни намуди <code>450 сомони</code>. Хатоҳоро яктоӣ ёбед ва ислоҳ кунед, кодро аз нав иҷро карда. Аввал хаторо дар консол хонед.</p>
+<div class="playground" data-mode="dom" data-title="Коди ЗС (бо хатоҳо)">
+<pre class="code" data-lang="html">
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Чапан", price: 450 },
+  { title: "Тюбетейка", price: 120 }
+];
+
+const catalog = document.querySelector(".catalogue");
+const card = document.createElement("article");
+card.className = "card";
+
+products.forEach(p =&gt; {
+  card.innerHTML = `&lt;h3&gt;${p.title}&lt;/h3&gt;&lt;p class="price"&gt;${p.price}&lt;/p&gt;`;
+  catalog.append(card);
+});
+
+console.log(catalog.children.length);
+console.log(catalog.firstElementChild.querySelector("h3").textContent);
+console.log(catalog.firstElementChild.querySelector(".price").textContent);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>2
+Чапан
+450 сомони</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Хатои якум фавран намоён аст: дар консол <code>null</code>. Селекторро бо классии контейнер дар HTML муқоиса кунед. Дуюм: ба ёд оред, ки вақте як унсури якхеларо якчанд маротиба ҷойгир мекунанд, чӣ мешавад. Сеюм — дар матни нарх: аз рӯи талабҳо чӣ намерасад?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Селектор бояд <code>".catalog"</code> бошад. Эҷоди <code>card</code>-ро бояд ба <b>дохили</b> <code>forEach</code> гузаронд, то барои ҳар мол унсури худ бошад. Дар сатри қолабии нарх <code>сомони</code>-ро пас аз <code>${p.price}</code> илова кунед.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Промпти худро тартиб диҳед</h4><span class="level easy">осон</span></header>
+          <p>Аз рӯи формулаи курс промпт барои ЗС тартиб диҳед: HTML ва CSS-и корти <b>курси MakeFirstStep</b> (ном, давомнокӣ, нарх, тугмаи «Записаться»). Ҳатмист: BEM, бе JavaScript, бе услубҳои inline, ҷавоб — ду блоки код. Онро ба ЗС фиристед, ҷавобро аз рӯи феҳристи санҷиши боло санҷед ва промптро ба файли <code>prompt.txt</code> захира кунед — он барои вазифаи хонагӣ муфид мешавад.</p>
+          <p class="muted">Барои ин вазифа санҷиши худкор нест: онро ҳангоме иҷрошуда қайд кунед, ки промпт тартиб дода шуда, ва ҷавоб аз рӯи ҳамаи бандҳои феҳристи санҷиш санҷида шудааст.</p>
+          <details class="hint"><summary>Ишора 1</summary><p>Аз рӯи формула гузаред: замина (лоиҳа, сатҳ), вазифа (як), маҳдудиятҳо (BEM, бе JS), формат (ду блоки код), санҷиш (чӣ аз JS пур кардан).</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Промптро аз ин бахш гиред ва молро ба курс иваз кунед: майдонҳои <code>title</code>, <code>duration</code>, <code>price</code>, тугмаи «Записаться».</p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Амалия дар дарс"><span class="num">08</span> Амалия дар дарс: феҳристи кортҳоро ҷамъ мекунем</h2>
+
+      <p>Вақти он расид, ки ҳамаро якҷоя ҷамъ кунем. Мақсад: саҳифаи мағоза, ки дар он <b>10 корт аз массив кашида мешавад</b>, ва тугмаи «Очистить» ҳамаи онҳоро мебарорад. Ҳамбандӣ ва услубҳоро мо аз ЗС гирифтем (онҳо аллакай дар қуттиҳои реги зер ҳастанд), мантиқро шумо менависед — қадам ба қадам.</p>
+
+      <ol class="steps">
+        <li><b>Додаҳо.</b> Массиви 10 объектро эҷод кунед: <code>title</code>, <code>price</code>, <code>category</code>, <code>inStock</code>, <code>rating</code>. Дар ҳаёти воқеӣ чунин додаҳоро аз ЗС хоҳиш кардан мумкин аст (дарси 7) — аммо 2–3 объектро бо чашм санҷидан ба ҳар ҳол лозим аст.
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Самбуса", price: 5, category: "Еда", inStock: true, rating: 4.9 },
+  // ... боз 9 мол
+];
+</pre></li>
+        <li><b>Ёфтани контейнер ва тугма</b> — як бор, дар оғози скрипт.
+<pre class="code" data-lang="js">
+const catalog = document.querySelector("#catalog");
+const clearBtn = document.querySelector("#clear");
+</pre></li>
+        <li><b>Фабрикаи корт.</b> Функсияи <code>createCard(product)</code>: <code>article</code>, <code>h3</code>, <code>p</code>-ро эҷод мекунад, классҳоро аз рӯи BEM ва матнро тавассути <code>textContent</code> танзим мекунад, тавассути <code>append</code> ҷамъ мекунад ва кортро бармегардонад. Барои моли дар мавҷуднабуда — модификатори <code>product-card--out</code>.</li>
+        <li><b>Рендер.</b> Функсияи <code>render(items)</code>: <code>catalog.replaceChildren(...items.map(createCard))</code>.</li>
+        <li><b>Даъват.</b> <code>render(products)</code> — ва ба саҳифа нигоҳ кунед.</li>
+        <li><b>Тугмаи тоза кардан.</b> <code>clearBtn.onclick = () =&gt; catalog.replaceChildren();</code></li>
+        <li><b>Санҷиш:</b> баровардани шумораи кортҳо ба консол — пеш аз тоза кардан, пас аз он ва пас аз рендери такрорӣ.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Чӣ тавр қадам ба қадам рафтан</b>
+        <p>Пас аз ҳар қадам <b>▶ Иҷро</b>-ро пахш кунед ва ба preview нигоҳ кунед. Ҳамаро якбора нанависед: агар дар қадами 3 корт пайдо нашуд, шумо дақиқ медонед, ки дар куҷо ҷустан. Ин ҳамон усул аст, ки дар «Тақсими меҳнат»-и бахши 7: қадамҳои хурд, санҷиш пас аз ҳар кадом.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Амалия: мағозаи «Бозор»</h3>
+        <p>Ду вазифа: аввал саҳифаи пурра, баъд беҳсозиҳо. Дар қуттии реги ҳамбандӣ ва CSS аз ЗС аллакай ҳаст; додаҳо низ тайёранд.</p>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Феҳристи 10 корт ва тугмаи тоза кардан</h4><span class="level mid">миёна</span></header>
+          <p><code>createCard</code>, <code>render</code> ва тугмаи тоза карданро аз рӯи қадамҳои боло пурра кунед. Коди санҷишӣ дар поён худаш тугмаро бо методи <code>click()</code> «пахш мекунад». Он мебарорад: чанд корт шуд, чандто аз онҳо «нет в наличии» ҳастанд, пас аз тоза кардан чанд ва пас аз рендери такрорӣ чанд.</p>
+<div class="playground" data-mode="dom" data-title="Мағозаи «Бозор»: феҳрист">
+<pre class="code" data-lang="html">
+&lt;header class="shop__head"&gt;
+  &lt;h2 class="shop__title"&gt;Магазин «Бозор»&lt;/h2&gt;
+  &lt;button id="clear" class="shop__btn"&gt;Очистить&lt;/button&gt;
+&lt;/header&gt;
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+/* CSS аз ЗС — тайёр */
+.shop__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.shop__title { margin: 0; font-size: 20px; }
+.shop__btn { border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.product-card { position: relative; border: 2px solid #ccd3df; border-radius: 14px; padding: 10px 12px; background: #fff; }
+.product-card__title { margin: 0 0 4px; font-size: 16px; }
+.product-card__price { margin: 0; color: #1a7f4e; font-weight: 700; }
+.product-card__badge { position: absolute; top: -8px; right: 8px; background: #c98a00; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+.product-card--out { opacity: .5; border-style: dashed; }
+.product-card--hit { border-color: #c98a00; }
+.shop__stats { color: #6b7488; margin: 0 0 12px; }
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Самбуса", price: 5, category: "Еда", inStock: true, rating: 4.9 },
+  { title: "Курутоб", price: 35, category: "Еда", inStock: true, rating: 4.8 },
+  { title: "Шакароб", price: 15, category: "Еда", inStock: true, rating: 4.2 },
+  { title: "Оши палав", price: 30, category: "Еда", inStock: false, rating: 4.7 },
+  { title: "Нон", price: 4, category: "Еда", inStock: true, rating: 4.5 },
+  { title: "Чапан", price: 450, category: "Одежда", inStock: true, rating: 4.8 },
+  { title: "Тюбетейка", price: 120, category: "Одежда", inStock: true, rating: 4.6 },
+  { title: "Пиала", price: 30, category: "Кухня", inStock: true, rating: 4.4 },
+  { title: "Чайник", price: 85, category: "Кухня", inStock: false, rating: 4.1 },
+  { title: "Шарф", price: 45, category: "Одежда", inStock: true, rating: 4.3 }
+];
+
+const catalog = document.querySelector("#catalog");
+const clearBtn = document.querySelector("#clear");
+
+function createCard(product) {
+  // article.product-card &gt; h3.product-card__title + p.product-card__price
+  // агар дар мавҷуд нест — класси product-card--out-ро илова кунед
+}
+
+function render(items) {
+  // catalog-ро тоза кунед ва кортҳоро ҷойгир кунед
+}
+
+// тугмаи тоза кардан тавассути onclick
+
+// --- санҷиш (нест накунед) ---
+render(products);
+console.log(catalog.children.length);
+console.log(catalog.querySelectorAll(".product-card--out").length);
+clearBtn.click();
+console.log(catalog.children.length);
+render(products);
+console.log(catalog.children.length);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>10
+2
+0
+10</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Агар дар саҳифа холӣ аст, ва хатоҳо нестанд — санҷед, ки <code>createCard</code> бо <code>return card;</code> анҷом меёбад, ва <code>render</code> дар ҳақиқат натиҷаро ба <code>catalog</code> ҷойгир мекунад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>render</code> — як сатр: <code>catalog.replaceChildren(...items.map(createCard));</code> Тугма: <code>clearBtn.onclick = () =&gt; catalog.replaceChildren();</code></p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Хитҳо ва ҳисобкунак</h4><span class="level hard">душвор</span></header>
+          <p>Феҳрист аллакай кор мекунад. Онро беҳтар кунед: 1) ба молҳои дорои рейтинги <b>4.8 ва боло</b> класси <code>product-card--hit</code> ва нишони <code>&lt;span class="product-card__badge"&gt;Хит&lt;/span&gt;</code>-ро ба дохили корт илова кунед; 2) пас аз ҳар <code>render</code> дар <code>#stats</code> сатри намуди <code>Хитов: 3 из 10</code>-ро нишон диҳед (шумораи умумӣ — ин <code>items.length</code>, хитҳоро аз рӯи массиви <code>items</code> ҳисоб кунед). Нишонро танҳо тавассути <code>createElement</code> ҷойгир кунед.</p>
+<div class="playground" data-mode="dom" data-title="Мағозаи «Бозор»: хитҳо">
+<pre class="code" data-lang="html">
+&lt;header class="shop__head"&gt;
+  &lt;h2 class="shop__title"&gt;Магазин «Бозор»&lt;/h2&gt;
+  &lt;button id="clear" class="shop__btn"&gt;Очистить&lt;/button&gt;
+&lt;/header&gt;
+&lt;p id="stats" class="shop__stats"&gt;&lt;/p&gt;
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.shop__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.shop__title { margin: 0; font-size: 20px; }
+.shop__btn { border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px 10px; }
+.product-card { position: relative; border: 2px solid #ccd3df; border-radius: 14px; padding: 10px 12px; background: #fff; }
+.product-card__title { margin: 0 0 4px; font-size: 16px; }
+.product-card__price { margin: 0; color: #1a7f4e; font-weight: 700; }
+.product-card__badge { position: absolute; top: -8px; right: 8px; background: #c98a00; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+.product-card--out { opacity: .5; border-style: dashed; }
+.product-card--hit { border-color: #c98a00; }
+.shop__stats { color: #6b7488; margin: 0 0 12px; }
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Самбуса", price: 5, category: "Еда", inStock: true, rating: 4.9 },
+  { title: "Курутоб", price: 35, category: "Еда", inStock: true, rating: 4.8 },
+  { title: "Шакароб", price: 15, category: "Еда", inStock: true, rating: 4.2 },
+  { title: "Оши палав", price: 30, category: "Еда", inStock: false, rating: 4.7 },
+  { title: "Нон", price: 4, category: "Еда", inStock: true, rating: 4.5 },
+  { title: "Чапан", price: 450, category: "Одежда", inStock: true, rating: 4.8 },
+  { title: "Тюбетейка", price: 120, category: "Одежда", inStock: true, rating: 4.6 },
+  { title: "Пиала", price: 30, category: "Кухня", inStock: true, rating: 4.4 },
+  { title: "Чайник", price: 85, category: "Кухня", inStock: false, rating: 4.1 },
+  { title: "Шарф", price: 45, category: "Одежда", inStock: true, rating: 4.3 }
+];
+
+const catalog = document.querySelector("#catalog");
+const clearBtn = document.querySelector("#clear");
+const stats = document.querySelector("#stats");
+
+function createCard(product) {
+  const card = document.createElement("article");
+  card.className = "product-card";
+  if (!product.inStock) card.classList.add("product-card--out");
+
+  const title = document.createElement("h3");
+  title.className = "product-card__title";
+  title.textContent = product.title;
+
+  const price = document.createElement("p");
+  price.className = "product-card__price";
+  price.textContent = `${product.price} сомони`;
+
+  card.append(title, price);
+  // 1) барои rating &gt;= 4.8: класси product-card--hit ва span.product-card__badge «Хит»
+  return card;
+}
+
+function render(items) {
+  catalog.replaceChildren(...items.map(createCard));
+  // 2) stats.textContent = "Хитов: N из M"
+}
+
+clearBtn.onclick = () =&gt; catalog.replaceChildren();
+
+render(products);
+console.log(catalog.querySelectorAll(".product-card--hit").length);
+console.log(stats.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>3
+Хитов: 3 из 10</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Шарти <code>product.rating &gt;= 4.8</code> дар дохили <code>createCard</code>: классро тавассути <code>classList</code> илова кунед, <code>span</code> эҷод кунед, класс ва матнро диҳед ва онро ба корт тавассути <code>card.append(...)</code> ҷойгир кунед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҳисобкунак: <code>const hits = items.filter(p =&gt; p.rating &gt;= 4.8).length;</code> ва <code>stats.textContent = `Хитов: ${hits} из ${items.length}`;</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">09</span> Вазифаи хонагӣ</h2>
+
+      <p><b>Мавзӯъ:</b> «Саҳифаи аз JS ҷамъшуда». Саҳифаи феҳристи худро ҷамъ кунед: тамоми мундариҷа аз массив пайдо мешавад, ва дар файли HTML ягон корт нест.</p>
+
+      <h3>Чӣ кор кардан лозим</h3>
+      <ul>
+        <li>☐ <b>Додаҳо.</b> Массиви на камтар аз <b>10 объект</b> дар мавзӯи интихоби шумо: мағоза, менюи чойхона, курсҳои MakeFirstStep, маршруткаҳои Душанбе, филмҳо. Ҳар объект на камтар аз 4 майдон дорад, ки дар байни онҳо <code>title</code> ва майдони мантиқӣ (масалан, <code>inStock</code>) ҳаст.</li>
+        <li>☐ <b>Ҳамбандӣ аз ЗС.</b> Қолаби HTML ва CSS аз рӯи промпт бо формулаи курс гирифта шудааст. Промпт дар файли <code>prompt.txt</code> нигоҳ дошта шудааст. Классҳо — аз рӯи BEM.</li>
+        <li>☐ <b>createCard(item).</b> Функсияи алоҳида, ки тавассути <code>createElement</code> кортро ҷамъ мекунад ва онро бармегардонад. Тамоми матн — тавассути <code>textContent</code>.</li>
+        <li>☐ <b>render(items).</b> Функсияи алоҳида: контейнерро тавассути <code>replaceChildren</code> тоза мекунад ва кортҳоро ҷойгир мекунад. Барои массиви холӣ «Ҳеҷ чиз ёфт нашуд»-ро нишон медиҳад.</li>
+        <li>☐ <b>Тугмаи тоза кардан.</b> Тугмаи «Тоза кардан» ҳамаи кортҳоро мебарорад (тавассути <code>onclick</code>, чун дар дарс). Бонус: тугмаи «Ҳамаро нишон деҳ» онҳоро бармегардонад.</li>
+        <li>☐ <b>Ҳисобкунак.</b> Матни «Нишон дода шуд: N» дар дохили <code>render</code> навсозӣ мешавад.</li>
+        <li>☐ <b>Модификатор.</b> Кортҳое, ки майдони мантиқӣ барояшон дурӯғ аст, класси иловагӣ (<code>--out</code>, <code>--sold</code> ва ғ.) тавассути <code>classList</code> мегиранд, ва CSS онҳоро ҷудо мекунад.</li>
+        <li>☐ <b>Бонус.</b> <code>render</code>-ро бо массиви филтршуда (масалан, танҳо арзонҳо) даъват кунед — оддӣ бо сатр дар код, бе тугмаҳо. Тугмаҳои-филтр дар дарси оянда мешаванд.</li>
+      </ul>
+
+      <div class="callout ai">
+        <b>Қоидаҳои кор бо ЗС дар ин вазифаи хонагӣ</b>
+        <p>ЗС-ро барои ҳамбандӣ, CSS ва додаҳои санҷишӣ истифода бурдан мумкин аст. Мантиқро (<code>createCard</code>, <code>render</code>, тоза кардан, ҳисобкунак) худатон менависед. Ҳангоми санҷиш омӯзгор метавонад хоҳиш кунад, ки ҳар сатри JS-и шуморо шарҳ диҳед. Агар натавонед — баҳо паст мешавад.</p>
+      </div>
+
+      <h3>Чӣ супурдан лозим</h3>
+      <ul>
+        <li>Се файл: <code>index.html</code>, <code>style.css</code>, <code>script.js</code> ва файли <code>prompt.txt</code> бо промпте, ки аз рӯи он ЗС ҳамбандиро сохт.</li>
+        <li>Скриншоти саҳифа бо 10 корт ва скриншот пас аз пахши «Тоза кардан».</li>
+        <li>Ду-се ҷумла дар чати гурӯҳ: чӣ аз ҳама душвор баромад ва пас аз санҷиши коди ЗС чиро ислоҳ кардед.</li>
+      </ul>
+
+      <h3>Чӣ тавр баҳо медиҳем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Меъёр</th><th>Баллҳо</th></tr></thead>
+          <tbody>
+            <tr><td>На камтар аз 10 корт аз массив кашида мешавад, дар HTML нестанд</td><td>3</td></tr>
+            <tr><td><code>createCard</code> ва <code>render</code> — функсияҳои алоҳида, <code>render</code> бе такрорҳо даъват мешавад</td><td>1</td></tr>
+            <tr><td>Тугмаи тоза кардан кор мекунад</td><td>1</td></tr>
+            <tr><td>Ҳисобкунак ва ҳолати холӣ</td><td>1</td></tr>
+            <tr><td>Модификатори класс тавассути <code>classList</code> ва услуб барои он</td><td>1</td></tr>
+            <tr><td>Ҷойгиркунии бехатар: додаҳо тавассути <code>textContent</code>, на <code>innerHTML</code></td><td>1</td></tr>
+            <tr><td>Коди тоза: номҳои бомаъно, нусхабардории бесарусомон нест, унсурҳои ёфтшуда дар тағйирёбандаҳо</td><td>1</td></tr>
+            <tr><td>Промпт аз рӯи формула дар <code>prompt.txt</code> ва қобилияти шарҳ додани код</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <b>Маслиҳат: аз куҷо оғоз кардан</b>
+        <p>Аввал <b>дастӣ</b> дар HTML як кортро нависед ва ба он ноил шавед, ки он зебо аст. Баъд онро аз HTML баред ва дар <code>createCard</code> аз нав сохтед — ин тавр шумо дақиқ медонед, ки кадом сохтор лозим аст. Пас аз ҳар қадам <code>console.log</code> ва ҷадвалчаи Elements-ро дар DevTools истифода баред, то бинед, ки кодатон дар асл чиро сохт.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Хулоса"><span class="num">✓</span> Хулосаи дарс</h2>
+      <ul>
+        <li><b>DOM</b> — дарахти зиндаи объектҳо, ки браузер аз HTML месозад. JavaScript бо он тавассути <code>document</code> кор мекунад. Файли HTML ҳангоми ин тағйир намеёбад.</li>
+        <li><b>Ҳаракат:</b> <code>parentElement</code>, <code>children</code>, <code>firstElementChild</code>, <code>lastElementChild</code>, <code>nextElementSibling</code>, <code>previousElementSibling</code>. <code>childNodes</code> фосилаҳоро низ ҳисоб мекунад.</li>
+        <li><b>Ҷустуҷӯ:</b> <code>querySelector(sel)</code> — унсури аввал ё <code>null</code>; <code>querySelectorAll(sel)</code> — NodeList (барои <code>map</code> — <code>Array.from</code>). Дар дохили унсур ҷустан мумкин аст: <code>card.querySelector(".price")</code>.</li>
+        <li><b>Матн ва ҳамбандӣ:</b> <code>textContent</code> — матни бехатар; <code>innerHTML</code> — ҳамбандӣ, танҳо барои додаҳои худӣ. Матни бегона — ҳамеша <code>textContent</code>. <code>+=</code> барои <code>innerHTML</code> истинодҳои кӯҳнаро вайрон мекунад.</li>
+        <li><b>Классҳо:</b> <code>classList.add / remove / toggle / contains</code>. <code>className =</code> ҳамаро пок мекунад. Тарроҳӣ — дар классҳои CSS, на дар <code>el.style</code>.</li>
+        <li><b>Атрибутҳо:</b> <code>getAttribute / setAttribute / removeAttribute / hasAttribute</code>; хосиятҳои <code>value</code>, <code>disabled</code>, <code>hidden</code>; додаҳои худӣ — <code>data-*</code> ва <code>el.dataset.name</code> (ҳамеша сатр).</li>
+        <li><b>Эҷод:</b> <code>createElement</code> → танзим кардан → <code>append / prepend / before / after</code>. Нест кардан — <code>el.remove()</code>, тоза кардан — <code>parent.replaceChildren()</code>, нусха — <code>cloneNode(true)</code>. Унсур нусха намешавад, балки кӯч мебандад.</li>
+        <li><b>Рендер:</b> додаҳо (массив) → <code>createCard(item)</code> унсурро бармегардонад → <code>render(items)</code> <code>replaceChildren(...items.map(createCard))</code>-ро иҷро мекунад. Ҳамеша массиви холиро коркард кунед.</li>
+        <li><b>Бо ЗС:</b> ЗС HTML ва CSS менависад (BEM, бе JS ва услубҳои inline), шумо — мантиқро. Номҳои классҳо, бехатарии ҷойгиркунӣ ва методҳои ихтироъшударо санҷед. Кодеро, ки шарҳ дода наметавонед, ҷойгир накунед.</li>
+      </ul>
+    </section>

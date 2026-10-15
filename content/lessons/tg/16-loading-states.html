@@ -1,0 +1,1880 @@
+<style>
+  /* схема четырёх состояний и таймлайн debounce (только для этого урока) */
+  .states4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; text-align: left; }
+  .states4 .st { border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--paper); }
+  .states4 .st > .ttl { display: block; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+  .states4 .st > .sub { display: block; font-size: 14px; color: var(--ink-3); margin-bottom: 8px; }
+  .states4 .st > code { display: block; margin: 2px 0; white-space: normal; }
+  .states4 .loading { border-color: var(--blue); }  .states4 .loading > .ttl { color: var(--blue); }
+  .states4 .empty   { border-color: var(--gold); }  .states4 .empty > .ttl { color: var(--gold); }
+  .states4 .error   { border-color: var(--red); }   .states4 .error > .ttl { color: var(--red); }
+  .states4 .success { border-color: var(--accent); } .states4 .success > .ttl { color: var(--accent); }
+  .tline { display: grid; gap: 6px; font: 600 14px var(--mono); }
+  .tline .row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: center; }
+  .tline .row > span:first-child { color: var(--ink-3); }
+  .tline .bar { position: relative; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 6%, transparent); border: 1px solid var(--line); }
+  .tline .tick { position: absolute; top: 3px; bottom: 3px; width: 4px; border-radius: 2px; background: var(--ink-3); }
+  .tline .fire { position: absolute; top: 2px; bottom: 2px; width: 6px; border-radius: 3px; background: var(--accent); }
+  .tline .gap { position: absolute; top: 11px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--gold) 70%, transparent); }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 16 · Async ва API</p>
+      <h1>Ҳолатҳои боркунӣ, хато, debounce</h1>
+      <p class="lead">Шумо аллакай маълумотро аз сервери воқеӣ гирифта метавонед. Аммо дар сайти воқеӣ интернет гоҳо суст аст, сервер — дастнорас, корбар бошад — бетоқат: вай дар сатри ҷустуҷӯ тезтар менависад, нисбат ба он ки ҷавобҳо меоянд. Имрӯз мо ба барнома меомӯзонем, ки дар ҳар кадом аз ин вазъиятҳо шоиста рафтор кунад: боркуниро нишон диҳад, хаторо шарҳ диҳад, серверро бо дархостҳо пур накунад ва нолозимро бекор кунад.</p>
+      <ul class="goals">
+        <li>Чор ҳолати экранро фарқ кардан: боркунӣ, хато, холӣ, маълумот — ва ҳар якро кашидан</li>
+        <li><code>response.ok</code>-ро санҷидан ва «сервер бо хато ҷавоб дод»-ро бо «шабака нест» омехта накардан</li>
+        <li>Skeleton сохтан — ҷойгузинҳои хокистарӣ дар ҷои мазмуни ояндаи — бо CSS-и пок</li>
+        <li><code>debounce</code>-ро аз сифр навиштан ва шарҳ додан, ки он тавассути closure ва таймер чӣ тавр кор мекунад</li>
+        <li>Дархостро тавассути <code>AbortController</code> бекор кардан ва ҷавобҳои кӯҳнашударо нишон надодан</li>
+        <li>Тағйиротеро, ки агенти ЗС (Cursor) якбора ба якчанд файл ворид мекунад, хондан ва санҷидан</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Бо ин саҳифа чӣ тавр кор кардан лозим</b>
+      <p>Коди дар заминаи торик бо тугмаи <b>▶ Иҷро кардан</b> зинда аст: онро тағйир диҳед ва натиҷаро дар консол бинед. Дар ин дарс «сервер» дар мисолҳо <b>атайин суст</b> аст ва рост дар код сохта шудааст (тавассути <code>Promise</code> ва <code>setTimeout</code>), барои ҳамин натиҷа ҳамеша якхела аст ва аз интернети шумо вобаста нест; баъд аз иҷро як сония интизор шавед — сатрҳо дар консол ба навбат пайдо мешаванд. Мисолҳо бо API-и воқеӣ низ ҳастанд, аммо вазифаҳои санҷидашаванда бе шабака кор мекунанд. Дар ҷое ки равзанаи пешнамоиш ҳаст — ин саҳифаи хурд аст: дар тарафи чап код, дар тарафи рост натиҷа. Ишораҳо зери қулфак 🔒 пинҳонанд: аввал худатон кӯшиш кунед.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="states">
+      <h2 data-toc="Чор ҳолат"><span class="num">01</span> Чор ҳолати экран</h2>
+
+      <p>Тасаввур кунед, ки шумо барномаи таксиро кушодед ва «Фармоиш додан»-ро пахш кардед. Чӣ мебинед? Чархаки «мошин меҷӯем». Агар дар наздикӣ мошин набошад — паёми «Мошини холӣ нест, баъдтар кӯшиш кунед». Агар интернет гум шавад — «Пайвастшавӣ нест» ва тугмаи «Такрор кардан». Ва танҳо агар ҳама чиз хуб бошад — корти ронанда. <b>Як экран, чор тасвири гуногун</b> — вобаста ба он ки ҳоло бо маълумот чӣ мегузарад.</p>
+
+      <p>Навомӯзон одатан танҳо тасвири охиринро мекашанд — «маълумот омад». Се тасвири дигарро фаромӯш мекунанд. Дар натиҷа бо интернети суст корбар ба саҳифаи холӣ менигарад ва гумон мекунад, ки сайт вайрон шудааст. Касбӣ ҳар чорро фикр мекунад:</p>
+
+      <figure class="diagram">
+        <div class="states4">
+          <div class="st loading"><span class="ttl">loading</span><span class="sub">дархост рафт, ҷавоб ҳанӯз нест</span><code>чархак ё skeleton</code></div>
+          <div class="st error"><span class="ttl">error</span><span class="sub">чизе хато рафт</span><code>матни фаҳмо + «Такрор кардан»</code></div>
+          <div class="st empty"><span class="ttl">empty</span><span class="sub">ҷавоб омад, аммо холӣ аст</span><code>«Ничего не найдено»</code></div>
+          <div class="st success"><span class="ttl">success</span><span class="sub">ҷавоб омад, маълумот ҳаст</span><code>рӯйхат, кортҳо, ҷадвал</code></div>
+        </div>
+        <figcaption>Чор ҳолати экране, ки маълумоти серверро нишон медиҳад. Плюс «idle» — лаҳзаи оғоз, вақте ҳанӯз чизе дархост нашудааст</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо ба чойхона омада, курутоб фармоиш додед. Пешхизмати хуб хомӯшона намеистад: «Тайёр мекунем, тақрибан даҳ дақиқа» (loading); «Курутоб тамом шуд» (error — фармоиш додан мумкин нест); «Мутаассифона, чунин хӯрок дар меню нест» (empty — ҷустем, аммо наёфтем); ва ниҳоят — табақро меорад (success). Пешхизмати бад оддӣ ғайб мезанад, шумо бошед менишинед ва тахмин мекунед: фармоиш қабул шуд ё не?</p>
+      </div>
+
+      <h3>Ҳолатро дар куҷо нигоҳ доштан</h3>
+      <p>Аз дарси ҳолат (дарси 11) шумо қоидаи асосиро медонед: <b>маълумот ҳаст — функсияе ҳаст, ки аз рӯи он экранро мекашад</b>. Дар ин ҷо ҳам ҳамин тавр. Як объекти <code>state</code> бо се майдон ва як функсияи <code>view</code> (ё <code>render</code>) месозем, ки қарор медиҳад, чиро нишон диҳад.</p>
+
+<pre class="code" data-run data-title="Ҳолат ва функсияе, ки аз рӯи он мекашад (бо матн)">
+// status: "idle" | "loading" | "success" | "error"
+function view(state) {
+  if (state.status === "idle") return "Введите название блюда";
+  if (state.status === "loading") return "Загрузка…";
+  if (state.status === "error") return `Ошибка: ${state.error}`;
+  // минбаъд status === "success"
+  if (state.data.length === 0) return "Ничего не найдено";
+  return `Нашли: ${state.data.join(", ")}`;
+}
+
+console.log(view({ status: "idle", data: [], error: null }));
+console.log(view({ status: "loading", data: [], error: null }));
+console.log(view({ status: "error", data: [], error: "Нет сети" }));
+console.log(view({ status: "success", data: [], error: null }));
+console.log(view({ status: "success", data: ["Курутоб"], error: null }));
+</pre>
+
+      <p>Диққат диҳед: «empty» — ин статуси алоҳидаи сервер <b>нест</b>, балки ҳолати хоси муваффақият аст: дархост гузашт, аммо рӯйхат холӣ баромад. Хоҳед — онро бо статуси алоҳидаи <code>"empty"</code> ҷудо кунед (дар тамға қулайтар мешавад), хоҳед — <code>data.length</code>-ро санҷед. Асосӣ — корбар матни гуногунро бинад.</p>
+
+      <h3>Тартиби санҷишҳо муҳим аст</h3>
+      <p>Хатои маъмултарин — аввал «холӣ?»-ро санҷидан. То даме ки маълумот бор мешавад, рӯйхат ҳам холӣ аст ва корбар ба ҷои «Загрузка…» «Ничего не найдено»-ро мебинад. Аввал мепурсем: <b>«бо дархост чӣ шуд?»</b> (loading, error), ва танҳо баъд — <b>«дар дохили ҷавоб чӣ ҳаст?»</b> (холӣ ё не).</p>
+
+      <div class="cols">
+        <div class="col bad">
+          <b>Рӯйхати холӣ якум</b>
+          <p>Ҳангоми боркунӣ — «Ничего не найдено». Корбар гумон мекунад, ки хӯрок нест.</p>
+<pre class="code" data-run>
+function view(state) {
+  if (state.data.length === 0) return "Ничего не найдено";
+  if (state.status === "loading") return "Загрузка…";
+  return state.data.join(", ");
+}
+console.log(view({ status: "loading", data: [] }));
+// → Ничего не найдено 😕
+</pre>
+        </div>
+        <div class="col good">
+          <b>Аввал статус</b>
+          <p>Аввал loading ва error, баъд бо мазмун сару кор мегирем.</p>
+<pre class="code" data-run>
+function view(state) {
+  if (state.status === "loading") return "Загрузка…";
+  if (state.data.length === 0) return "Ничего не найдено";
+  return state.data.join(", ");
+}
+console.log(view({ status: "loading", data: [] }));
+// → Загрузка… ✓
+</pre>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Ба ҷои чор ҳолат — як булии <code>isLoading</code> ва «баъд мебинем». Он гоҳ ба осонӣ омезишҳои имконнопазир ҳосил мешаванд: <code>isLoading: true</code> ва дар ҳамон вақт <code>error: "Нет сети"</code>. Як <code>status</code> бо қиматҳои фаҳмо чунин чизро намепазирад: дар ҳар лаҳза вай ба якто аз онҳо баробар аст.</p>
+      </div>
+
+      <h3>Гузариш байни ҳолатҳо</h3>
+      <p>Ҳолатҳо бо сенарияи оддӣ ҷойи ҳамдигарро мегиранд. Онро дар хотир доред — вай дар ҳар барномае, ки менависед, хоҳад буд:</p>
+      <ol class="steps">
+        <li><b>Корбар коре кард</b> (саҳифаро кушод, «Ёфтан»-ро пахш кард) → <code>status: "loading"</code>-ро мемонем ва экранро аз нав мекашем.</li>
+        <li><b>Сервер ҷавоб дод</b> → <code>status: "success"</code>-ро (ё <code>"empty"</code>) мемонем ва маълумотро мегузорем.</li>
+        <li><b>Чизе вайрон шуд</b> → <code>status: "error"</code>-ро мемонем ва матни <b>фаҳмои</b> хаторо мегузорем.</li>
+        <li><b>Корбар «Такрор кардан»-ро пахш кард</b> → боз қадами 1.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Маслиҳат</b>
+        <p>Ҳангоми дархости нав судманд аст, ки маълумоти кӯҳнаро то боркунӣ <b>нест накунед</b>, ҳангоми хато — рӯйхати аллакай нишондодаро гум накунед. Он гоҳ болои рӯйхати пештара «Навсозӣ муяссар нашуд»-ро кашидан мумкин аст, на ин ки корбарро бо экрани холӣ гузоштан. Имрӯз мо дар ҷое ки қулай аст, ҳамин тавр мекунем.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-busy" target="_blank" rel="noopener">MDN: aria-busy — чӣ тавр дар бораи боркунӣ ба технологияҳои ёрирасон хабар додан</a> · <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru: Fetch</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Ҳоло бе шабака ва бе таймерҳо: бо ҳолатҳо фикр карданро меомӯзем.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Экран чӣ нишон медиҳад</h4><span class="level easy">осон</span></header>
+          <p><b>Чопро пешгӯӣ кунед</b>, бе иҷрои код: <code>label</code> барои ҳар кадом аз чор ҳолат чӣ чоп мекунад? Сатрҳоро ба <code>prediction</code> ворид кунед ва иҷро намоед. Ба ҳолати дуюм диққат диҳед: статуси «success», аммо маълумот нест.</p>
+<pre class="code" data-run>
+const states = [
+  { status: "loading" },
+  { status: "success", data: [] },
+  { status: "success", data: ["Курутоб", "Нон"] },
+  { status: "error", error: "Нет сети" },
+];
+function label(s) {
+  if (s.status === "loading") return "Загрузка…";
+  if (s.status === "error") return `Ошибка: ${s.error}`;
+  if (s.data.length === 0) return "Ничего не найдено";
+  return `Найдено: ${s.data.length}`;
+}
+const prediction = ["", "", "", ""];   // пешгӯии шумо: чор ёддошт бо тартиб
+const actual = states.map(label);
+console.log(actual.join("|") === prediction.join("|") ? "Верно!" : "Не угадали, подумайте ещё");
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҳолатҳоро аз боло ба поён тай кунед ва барои ҳар кадом дар <code>label</code> аввалин санҷиши кордодаро ёбед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҳолати аввал майдони <code>data</code> надорад, аммо ба санҷиши <code>s.data.length</code> кор намерасад: функсия аллакай дар <code>return</code>-и аввал баромад.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Матн барои ҳар ҳолат</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>view(state)</code>-ро нависед, ки матнро барои экрани ҷустуҷӯи хӯрокҳо бармегардонад: барои <code>idle</code> — <code>Введите запрос</code>; барои <code>loading</code> — <code>Загрузка…</code>; барои <code>error</code> — <code>Ошибка: </code> ва матни хато; агар маълумот набошад — <code>Ничего не найдено по запросу «…»</code> (бо дархост аз <code>state.query</code>); вагарна — <code>Блюда: </code> ва номҳо бо вергул.</p>
+<pre class="code" data-run>
+// function view(state) { ... }
+
+console.log(view({ status: "idle", query: "", data: [], error: null }));
+console.log(view({ status: "loading", query: "нон", data: [], error: null }));
+console.log(view({ status: "error", query: "нон", data: [], error: "Сервер не отвечает" }));
+console.log(view({ status: "success", query: "борщ", data: [], error: null }));
+console.log(view({ status: "success", query: "н", data: ["Курутоб", "Нон"], error: null }));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Введите запрос
+Загрузка…
+Ошибка: Сервер не отвечает
+Ничего не найдено по запросу «борщ»
+Блюда: Курутоб, Нон</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Занҷири <code>if</code> бо <code>return</code>-и барвақт (дарси 5): аввал <code>idle</code>, <code>loading</code>, <code>error</code> ва танҳо баъд санҷиши дарозии <code>state.data</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Номҳо бо вергул ва фосила: <code>state.data.join(", ")</code>. Дархост дар нохунакҳои арча бо сатри қолабӣ гузошта мешавад: <code>`... «${state.query}»`</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Хаторо ёб: «Ничего не найдено» ба ҷои боркунӣ</h4><span class="level mid">миёна</span></header>
+          <p>Корбарон шикоят мекунанд: ҳангоми боркунӣ онҳо «Ничего не найдено»-ро мебинанд ва ҳангоми хато — ҳам. Сабабро дар тартиби санҷишҳо ёбед ва функсияро чунон ислоҳ кунед, ки чоп бо интизоршаванда мувофиқат кунад.</p>
+<pre class="code" data-run>
+function view(state) {
+  if (state.data.length === 0) return "Ничего не найдено";
+  if (state.status === "loading") return "Загрузка…";
+  if (state.status === "error") return `Ошибка: ${state.error}`;
+  return state.data.join(", ");
+}
+
+console.log(view({ status: "loading", data: [], error: null }));
+console.log(view({ status: "error", data: [], error: "Нет сети" }));
+console.log(view({ status: "success", data: [], error: null }));
+console.log(view({ status: "success", data: ["Нон"], error: null }));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Загрузка…
+Ошибка: Нет сети
+Ничего не найдено
+Нон</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Барои <code>loading</code> кадом санҷиш кор мекунад, агар рӯйхат холӣ бошад? Худи аввалӣ — ва функсия мебарояд.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Сатри <code>data.length === 0</code>-ро ба ҷои сеюм гузаронед: баъд аз <code>loading</code> ва <code>error</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ВАЗИФАИ 1.4</span><h4>Гузариш байни ҳолатҳо</h4><span class="level mid">миёна</span></header>
+          <p>Функсияи <code>next(state, event)</code>-ро нависед: вай ҳолати ҷорӣ ва ҳодисаро мегирад ва <b>ҳолати навро бармегардонад</b> (объекти кӯҳнаро тағйир намедиҳем). Ҳодисаҳо: <code>start</code> → <code>status: "loading"</code>, <code>error: null</code>, маълумоти пештара мемонад; <code>done</code> → <code>status: "success"</code>, дар <code>data</code> — <code>event.data</code>, хато нест; <code>fail</code> → <code>status: "error"</code>, дар <code>error</code> — <code>event.error</code>, маълумоти пештара мемонад.</p>
+<pre class="code" data-run>
+// function next(state, event) { ... }
+
+let s = { status: "idle", data: [], error: null };
+const events = [
+  { type: "start" },
+  { type: "done", data: ["Нон", "Курутоб"] },
+  { type: "start" },
+  { type: "fail", error: "Нет сети" },
+];
+for (const e of events) {
+  s = next(s, e);
+  console.log(e.type, "→", s.status, s.data.length, s.error);
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>start → loading 0 null
+done → success 2 null
+start → loading 2 null
+fail → error 2 Нет сети</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Се <code>if</code> аз рӯи <code>event.type</code>, дар ҳар кадом — <code>return</code>-и объекти нав. Барои нигоҳ доштани маълумоти пештара ҳолати кӯҳнаро нусха кунед: <code>{ ...state, status: "loading" }</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Барои <code>done</code> нусха кардани ҳолати кӯҳна лозим нест — ҳар се майдон аз нав муайян мешавад: <code>{ status: "success", data: event.data, error: null }</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="errors">
+      <h2 data-toc="Боркунӣ ва хатоҳо"><span class="num">02</span> Дархост, хатоҳо ва «сервери суст»</h2>
+
+      <p>Акнун боркунии воқеиро пайваст мекунем. Аз дарсҳои гузашта схемаро медонед: функсияи <code>async</code>, <code>await fetch(...)</code>, <code>try / catch</code>. Ба он ҳолатҳоро илова мекунем: <b>пеш аз</b> дархост <code>loading</code>-ро мемонем, <b>баъд аз</b> — <code>success</code> ё <code>error</code>, <code>finally</code> бошад дар ин ҷо қариб лозим нест: ҳар ҳолат ошкоро гузошта мешавад.</p>
+
+<pre class="code" data-run data-title="API-и воқеӣ: dummyjson.com (интернет лозим аст)">
+async function searchProducts(query) {
+  console.log("loading");
+  try {
+    const res = await fetch(`https://dummyjson.com/products/search?q=${query}&amp;limit=3`);
+    const data = await res.json();
+    console.log(`success: ${data.products.length} из ${data.total}`);
+  } catch (err) {
+    console.log(`error: ${err.message}`);
+  }
+}
+
+searchProducts("phone");
+</pre>
+
+      <h3>Ду хатои гуногун — ва fetch онҳоро на ҳамон тавр фарқ мекунад, ки шумо гумон мекунед</h3>
+      <p>Ин доме аст, ки қариб ҳар навомӯз ба он меафтад. Дархост <b>ду навъи гуногуни ноком</b> дорад:</p>
+      <dl class="terms">
+        <dt>Шабака нест</dt><dd>Интернет гум шуд, сервер ёфт нашуд, дархост нарасид. Он гоҳ <code>fetch</code> <b>промисро рад мекунад</b> — идоракунӣ ба <code>catch</code> меравад.</dd>
+        <dt>Сервер гуфт «не»</dt><dd>Дархост расид, аммо сервер рамзи <code>404</code> («ёфт нашуд») ё <code>500</code> («назди мо ҳама чиз вайрон шуд») баргардонд. Барои <code>fetch</code> ин <b>муваффақият</b> аст: ҷавоб гирифта шуд! Промис иҷро мешавад, ба <code>catch</code> намеафтем.</dd>
+      </dl>
+      <p>Барои ҳамин баъд аз <code>fetch</code> ҳамеша хусусияти <code>res.ok</code>-ро санҷед — вай барои рамзҳои 200–299 ба <code>true</code> баробар аст. Агар не — хаторо худатон бипартоед:</p>
+
+<pre class="code" data-run data-title="API-и воқеӣ: моли 999999 нест → рамзи 404 (интернет лозим аст)">
+async function loadProduct(id) {
+  try {
+    const res = await fetch(`https://dummyjson.com/products/${id}`);
+    console.log("status:", res.status, "ok:", res.ok);
+    if (!res.ok) throw new Error(`Сервер ответил кодом ${res.status}`);
+    const product = await res.json();
+    console.log("success:", product.title);
+  } catch (err) {
+    console.log("error:", err.message);
+  }
+}
+
+loadProduct(999999);
+</pre>
+      <p>Кӯшиш кунед <code>999999</code>-ро бо <code>1</code> иваз кунед: рамз 200 мешавад ва шумо номи молро мебинед.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо курйерро ба мағоза дар Бозори Сабз фиристодед. Агар роҳро банданд ва курйер нарасид — ин «шабака нест» аст (<code>catch</code>). Агар курйер расид ва бо гуфтаи «ин мол дар фурӯш нест» баргашт — вай <b>бомуваффақият</b> баргашт, аммо натиҷа бад аст. Маҳз ҳамин тавр <code>fetch</code> фикр мекунад: курйер баргашт — пас муваффақият. Санҷидани он ки вай дақиқан чӣ овард, кори шумост.</p>
+      </div>
+
+      <h3>«Сервери суст» дар коди мо</h3>
+      <p>API-и воқеӣ гоҳ тез, гоҳ суст ҷавоб медиҳад, гоҳ умуман ҷавоб намедиҳад. Барои он ки <b>дарсҳо ва вазифаҳо софдилона ва барои ҳама якхела бошанд</b>, мо ба худамон сервери «қалбакӣ» месозем — функсияи <code>fakeSearch</code>. Вай хӯрокро дар массиви хурд меҷӯяд, баъд аз вақти додашуда ҷавоб медиҳад ва аз рӯи дархости «ошибка» вайрон шуда метавонад. Касбиён ҳам ҳамин тавр мекунанд: то даме ки сервери воқеӣ нест (ё ноустувор аст), интерфейсро бо ҷойгузин месанҷанд.</p>
+
+      <div class="callout tip">
+        <b>Ҷойгузинро таҳлил мекунем</b>
+        <p>Онро пурра хондан ҳатмӣ нест, аммо се ҷои муҳим ҳаст. <code>setTimeout</code> таъхири шабакаро тақлид мекунад (<code>ms</code> миллисония). Агар дархост бо номи <code>"ошибка"</code> фиристода шавад — промис рад мешавад, мисли ҳангоми қатъи шабака. Параметри <code>signal</code> барои бекор кардан лозим аст — дар бораи он дар қисми 5; ҳоло онро нодида гирифтан мумкин аст. Дар ҳамаи мисолҳои поён блоки «сервер» як хел аст — онро оддӣ пурра нусха кунед.</p>
+      </div>
+
+<pre class="code" data-run data-title="«Сервери» суст-и мо">
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+fakeSearch("самбуса").then((dishes) => console.log("Нашли:", dishes.join(", ")));
+fakeSearch("борщ").then((dishes) => console.log("Нашли по «борщ»:", dishes.length));
+fakeSearch("ошибка").catch((err) => console.log("Сбой:", err.message));
+</pre>
+
+      <h3>Давраи пурра: loading → success / empty / error</h3>
+      <p>Ҳамаро ба як функсия мечаспонем. Ҳар сатри ҳолат — як «тасвир»-и экран аст. Аз паси тартиб дар консол назар кунед:</p>
+
+<pre class="code" data-run data-title="Се натиҷаи як дархост">
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+async function load(query) {
+  console.log("loading…");
+  try {
+    const items = await fakeSearch(query);
+    if (items.length === 0) {
+      console.log("empty: ничего не найдено");
+    } else {
+      console.log(`success: ${items.length} шт.`);
+    }
+  } catch (err) {
+    console.log(`error: ${err.message}`);
+  }
+}
+
+async function main() {
+  await load("курутоб");
+  await load("борщ");
+  await load("ошибка");
+}
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Дом</b>
+        <p>Ҳамаро ба як <code>catch</code> партофтан ва ба корбар <code>err.message</code>-ро чунон ки ҳаст навиштан — фикри бад. Матнҳои мисли <code>Failed to fetch</code> ё <code>Unexpected token &lt; in JSON</code> метарсонанд ва чизеро шарҳ намедиҳанд. Ибораи инсониро нишон диҳед («Менюро бор кардан муяссар нашуд. Интернетро санҷед ва такрор кунед»), матни «техникӣ»-ро барои <code>console.error</code> гузоред — вай ба шумо лозим аст, на ба корбар.</p>
+      </div>
+
+      <h3>Такрор ҳангоми нокомӣ</h3>
+      <p>Азбаски хато кори зуд-зуд аст, ба корбар тугмаи «Такрор кардан» лозим аст. Дар код ин оддӣ як даъвати дигари ҳамон <code>load</code> аст. Гоҳо такрорро худкор мекунанд — масалан, то се кӯшиши пай дар пай. Мо инро дар вазифаи 2.4 машқ мекунем.</p>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru: Fetch</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Response/ok" target="_blank" rel="noopener">MDN: Response.ok</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Дар ҳамаи вазифаҳои поён блоки «сервер» аллакай гузошта шудааст — онро тағйир надиҳед.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Дархости аввалин ба ҷойгузин</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>async</code>-и <code>main</code>-ро анҷом диҳед: ҷавоби <code>fakeSearch("самбуса")</code>-ро интизор шавед ва номи хӯрокҳои ёфтшударо бо вергул ва фосила чоп кунед.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+async function main() {
+  // await fakeSearch(...) ва console.log
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Самбуса с мясом, Самбуса с тыквой</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>const dishes = await fakeSearch("самбуса");</code> — <code>await</code> дар дохили функсияи <code>async</code> иҷозат дода шудааст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>dishes</code> — массиви сатрҳо. Ба як сатр бо вергул пайваст кардани он <code>join(", ")</code> кӯмак мекунад.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Функсияи load бо се натиҷа</h4><span class="level mid">миёна</span></header>
+          <p><code>async function load(query)</code>-ро нависед. Вай аввал <code>loading</code>-ро чоп мекунад; баъд хӯрокҳоро дархост мекунад; агар ҳадди ақал яке ёфт шуд — <code>success: N</code>-ро чоп мекунад (N — чандто ёфт шуд); агар рӯйхат холӣ бошад — <code>empty</code>; агар дархост афтод — <code>error: </code> ва матни хато. Даъватҳо дар <code>main</code> аллакай омодаанд.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+// async function load(query) { ... }
+
+async function main() {
+  await load("курутоб");
+  await load("ошибка");
+  await load("борщ");
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>loading
+success: 1
+loading
+error: Нет соединения с сервером
+loading
+empty</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Скелет: <code>console.log("loading"); try { const items = await fakeSearch(query); ... } catch (err) { ... }</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар дохили <code>try</code> <code>items.length === 0</code>-ро санҷед — ин <code>empty</code> аст, вагарна <code>success</code>. Матни хато дар <code>err.message</code> аст.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Сервер бо хато ҷавоб дод: ok-ро месанҷем</h4><span class="level mid">миёна</span></header>
+          <p>Функсияи <code>fakeHttp(status)</code> мисли <code>fetch</code>-и воқеӣ рафтор мекунад: <b>ҳамеша</b> ҷавобро бо майдонҳои <code>ok</code> ва <code>status</code> бармегардонад, ҳатто агар статус 404 ё 500 бошад. <code>async function getJson(status)</code>-ро нависед: ҷавобро гиред; агар <code>res.ok</code> дурӯғ бошад — <code>Error</code>-ро бо матни <code>HTTP 404</code> (бо рамзи воқеӣ) бипартоед; вагарна натиҷаи <code>res.json()</code>-ро баргардонед. Дар <code>main</code> натиҷаи ҳар даъват дар консол тарҳрезӣ мешавад.</p>
+<pre class="code" data-run>
+const fakeHttp = (status) =>
+  Promise.resolve({
+    ok: status &gt;= 200 &amp;&amp; status &lt; 300,
+    status,
+    json: () =&gt; Promise.resolve({ dishes: 3 }),
+  });
+
+// async function getJson(status) { ... }
+
+async function main() {
+  for (const status of [200, 404, 500]) {
+    try {
+      const data = await getJson(status);
+      console.log(`${status} → ${data.dishes} блюда`);
+    } catch (err) {
+      console.log(`${status} → ошибка: ${err.message}`);
+    }
+  }
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>200 → 3 блюда
+404 → ошибка: HTTP 404
+500 → ошибка: HTTP 500</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Бе санҷиши <code>ok</code> сатрҳо бо 404 ва 500 «3 хӯрок»-ро нишон медиҳанд: барои «fetch» ин муваффақият аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>if (!res.ok) throw new Error(`HTTP ${res.status}`);</code> — ва баъд аз ин санҷиш <code>res.json()</code>-ро бо оромӣ баргардонидан мумкин аст.</p></details>
+        </article>
+
+        <article class="task" id="t2-4">
+          <header><span class="task-num">ВАЗИФАИ 2.4</span><h4>Се кӯшиш</h4><span class="level hard">душвор</span></header>
+          <p>Шабака дар маршрутка ноустувор аст. <code>flakySearch</code> ду бори аввал бо хатои <code>Нет сети</code> меафтад, бори сеюм кор мекунад. <code>async function searchWithRetry(maxAttempts)</code>-ро нависед: вай дархостро дар давра мекӯшад; ҳангоми хато <code>попытка N: ошибка (текст)</code>-ро чоп мекунад ва ба давраи навбатӣ мегузарад; ҳангоми муваффақият <code>попытка N: успех, найдено K</code>-ро чоп мекунад ва натиҷаро бармегардонад. Агар ҳамаи кӯшишҳо тамом шаванд — <code>сдаёмся</code>-ро чоп мекунад ва <code>null</code> бармегардонад.</p>
+<pre class="code" data-run>
+let calls = 0;
+function flakySearch() {
+  calls++;
+  return new Promise((resolve, reject) =&gt;
+    setTimeout(() =&gt; (calls &lt; 3 ? reject(new Error("Нет сети")) : resolve(["Курутоб"])), 100)
+  );
+}
+
+// async function searchWithRetry(maxAttempts) { ... }
+
+searchWithRetry(4);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>попытка 1: ошибка (Нет сети)
+попытка 2: ошибка (Нет сети)
+попытка 3: успех, найдено 1</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Давраи <code>for (let attempt = 1; attempt &lt;= maxAttempts; attempt++)</code>, дар дохили он — <code>try / catch</code>. Муваффақият — <code>return</code> рост аз <code>try</code>, вай фавран функсия ва давраро тамом мекунад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар <code>catch</code> танҳо сатрро чоп мекунем ва чизеро барнамегардонем — давра худаш ба кӯшиши навбатӣ мегузарад. Сатри «сдаёмся» ва <code>return null</code> баъд аз давра меистанд: ба ин ҷо танҳо дар сурате мерасем, ки ягон кӯшиш муваффақ нашуд.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="skeleton">
+      <h2 data-toc="Skeleton"><span class="num">03</span> Skeleton: ҷойгузинҳои хокистарӣ ба ҷои холигӣ</h2>
+
+      <p>Оддитарин ҳолати боркунӣ — навиштаи «Загрузка…» ё чархак. Аммо вай камбудӣ дорад: саҳифа «ҷаст мезанад». Аввал дар экран навиштаи хурд, баъд ногаҳон рӯйхати дароз пайдо мешавад ва тамоми мазмун ба поён мекӯчад. Роҳи ҳал — <b>skeleton</b> («скелет»): дар ҷои кортҳои оянда росткунҷаҳои хокистарии ҳамон андоза нишон медиҳем. Корбар пешакӣ мебинад, ки саҳифа <b>чӣ гуна хоҳад буд</b>, вақте маълумот меояд — ҷойгузинҳо оддӣ бо кортҳои воқеӣ дар ҳамон ҷойҳо иваз мешаванд.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо ба тӯй дар чойхона омадед, аммо дастурхон ҳанӯз чида нашудааст. Аммо ғилофи миз аллакай густурда шудааст ва болои он табақҳои холӣ — ба шумораи меҳмонон — гузошта шудаанд. Шумо фавран мебинед, ки дар куҷо менишинед ва чанд ҷой ҳаст. Баъд пешхизматон оддӣ хӯрокро ба табақҳои тайёр мегузоранд — миз аз нав чида намешавад. Skeleton — ҳамон табақҳои холӣ аст.</p>
+      </div>
+
+      <h3>Skeleton бо CSS-и пок</h3>
+      <p>JavaScript дар ин ҷо танҳо барои як чиз лозим аст: шумораи лозимаи блокҳоро ба саҳифа гузоштан. Тамоми «намуд»-ро CSS месозад. Сирри милликунӣ — <b>градиент</b>, ки бо ёрии аниматсия аз чап ба рост «меҳазад»:</p>
+
+<pre class="code" data-lang="css" data-title="CSS барои skeleton">
+.skeleton {
+  /* замини хокистарии равшан бо рахи равшантар дар мобайн */
+  background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%);
+  background-size: 400% 100%;      /* градиент 4 маротиба аз блок васеътар */
+  animation: shimmer 1.2s ease infinite;
+  border-radius: 8px;
+  color: transparent;              /* барои ҳолате, ки дар дохил матн пайдо шавад */
+}
+
+@keyframes shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+/* ба корбароне, ки аниматсия ба онҳо нохуш аст, эҳтиром мегузорем */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+</pre>
+
+      <ol class="steps">
+        <li><b>Градиент аз блок васеътар.</b> <code>background-size: 400%</code> заминро чор маротиба аз худи блок васеътар мекунад — танҳо порчаи он намоён аст.</li>
+        <li><b>Аниматсия заминро ҳаракат медиҳад.</b> <code>@keyframes shimmer</code> <code>background-position</code>-ро тағйир медиҳад — «рахи равшан» оҳиста аз болои блок мегузарад.</li>
+        <li><b>Андозаҳоро корт муайян мекунад.</b> Ҷойгузин бояд ҳамон баландӣ ва бари корти воқеӣ дошта бошад — вагарна саҳифа ба ҳар ҳол «ҷаст мезанад».</li>
+        <li><b>Дар бораи дастрасӣ фаромӯш накунед.</b> Ба контейнер <code>aria-busy="true"</code>-ро то боркунӣ мемонем ва <code>"false"</code> — вақте тамом шуд: хонандаҳои экран мефаҳманд, ки мазмун навсозӣ мешавад.</li>
+      </ol>
+
+      <p>Ба мисоли тайёр нигаред. «Иҷро кардан»-ро пахш кунед — аввал кортҳои хокистарии милликунандаро мебинед ва баъд аз 0,8 сония — хӯрокҳои воқеӣ.</p>
+
+<div class="playground" data-mode="dom" data-title="Skeleton → кортҳо">
+<pre class="code" data-lang="html">
+&lt;div id="list" class="list" aria-busy="true"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.list { display: grid; gap: 10px; }
+.card { height: 54px; padding: 14px 16px; border: 2px solid #ccd3df; border-radius: 12px; background: #fff; font-weight: 700; box-sizing: border-box; }
+.skeleton {
+  border-color: transparent;
+  color: transparent;
+  background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.2s ease infinite;
+}
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+// 1. боркунӣ: се ҷойгузин
+for (let i = 0; i &lt; 3; i++) {
+  const stub = document.createElement("div");
+  stub.className = "card skeleton";
+  list.append(stub);
+}
+
+// 2. баъд аз 0,8 сония маълумот «меояд»
+setTimeout(() =&gt; {
+  const cards = ["Курутоб", "Самбуса", "Шакароб"].map((name) =&gt; {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.textContent = name;
+    return card;
+  });
+  list.replaceChildren(...cards);
+  list.setAttribute("aria-busy", "false");
+}, 800);
+</pre>
+</div>
+
+      <div class="callout tip">
+        <b>Кай skeleton, кай чархак</b>
+        <p><b>Skeleton</b> хуб аст, вақте медонед, ки натиҷа чӣ гуна менамояд: рӯйхати кортҳо, ҷадвал, профил. <b>Чархак</b> (спиннер) ё «Загрузка…»-и кӯтоҳ — вақте натиҷа номуайян ё хурд аст (масалан, тугмаи «Захира кардан»). Бо skeleton кор карда, ҳамон қадар ҷойгузин нишон диҳед, ки одатан кортҳо дар экран ҷо мешаванд, — зиёд не.</p>
+      </div>
+
+      <h3>Skeleton — ягона ҳолати «зебо» нест</h3>
+      <p>Ҳолатҳои дигарро низ бояд оро дод, на ин ки матни «луч» гузошт:</p>
+      <ul>
+        <li><b>Холӣ (empty):</b> ибораи кӯтоҳ ва ишора, ки чӣ кор кардан лозим: «Ничего не найдено. Номи дигарро кӯшиш кунед».</li>
+        <li><b>Хато (error):</b> сабаби фаҳмо ва <b>тугмаи «Такрор кардан»</b>. Ранги сурх — ҳатмӣ нест, асосӣ — равшан бошад, ки минбаъд чӣ кор кардан мумкин аст.</li>
+        <li><b>Оғоз (idle):</b> даъват ба амал: «Номи хӯрокро ворид кунед».</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p><b>Нест кардани</b> ҷойгузинҳоро фаромӯш кардан. Агар ҳангоми ҷавоби сервер кортҳоро тавассути <code>append</code> илова кунед, на ин ки мазмунро тавассути <code>replaceChildren</code> иваз кунед, блокҳои хокистарӣ дар саҳифа мемонанд, кортҳои воқеӣ бошанд дар зери онҳо пайдо мешаванд. Ҳамеша мазмунро пурра иваз кунед.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://developer.mozilla.org/ru/docs/Web/CSS/CSS_animations/Using_CSS_animations" target="_blank" rel="noopener">MDN: истифодаи аниматсияҳои CSS</a> · <a href="https://developer.mozilla.org/ru/docs/Web/CSS/@media/prefers-reduced-motion" target="_blank" rel="noopener">MDN: prefers-reduced-motion</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Дар ҳар вазифа саҳифаи хурд кор мекунад: код дар тарафи чап (ҷадвалҳои <code>index.html</code>, <code>style.css</code>, <code>script.js</code>), натиҷа дар тарафи рост, сатрҳои санҷишӣ — дар консол. CSS барои skeleton аллакай тайёр аст.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Се ҷойгузин</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>showSkeleton(count)</code>-ро анҷом диҳед: вай мазмуни <code>#list</code>-ро бо <code>count</code> блоки <code>&lt;div class="card skeleton"&gt;&lt;/div&gt;</code> иваз мекунад ва ба <code>#list</code> атрибути <code>aria-busy="true"</code>-ро мемонад. Сатрҳои санҷишии поён шумораи блокҳо, шумораи ҷойгузинҳо ва қимати атрибутро чоп мекунанд.</p>
+<div class="playground" data-mode="dom" data-title="showSkeleton">
+<pre class="code" data-lang="html">
+&lt;div id="list" class="list"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.list { display: grid; gap: 10px; }
+.card { height: 54px; border: 2px solid #ccd3df; border-radius: 12px; background: #fff; box-sizing: border-box; padding: 14px 16px; font-weight: 700; }
+.skeleton {
+  border-color: transparent;
+  background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.2s ease infinite;
+}
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+function showSkeleton(count) {
+  // list-ро тоза кунед, count блоки div.card.skeleton илова кунед
+  // ва aria-busy="true"-ро гузоред
+}
+
+showSkeleton(3);
+
+// --- санҷиш (нест накунед) ---
+console.log(list.children.length);
+console.log(list.querySelectorAll(".skeleton").length);
+console.log(list.getAttribute("aria-busy"));
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>3
+3
+true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Давраи оддии <code>for</code> барои <code>count</code> қадам: дар ҳар қадам — <code>document.createElement("div")</code>, баъд <code>className = "card skeleton"</code> ва <code>list.append(...)</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Барои аввал нест кардани кӯҳна <code>list.replaceChildren()</code>-ро даъват кунед. Атрибут чунин гузошта мешавад: <code>list.setAttribute("aria-busy", "true")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Ҷойгузинҳо бо кортҳо иваз мешаванд</h4><span class="level mid">миёна</span></header>
+          <p><code>showCards(items)</code>-ро анҷом диҳед: вай мазмуни <code>#list</code>-ро пурра бо кортҳои <code>div.card</code> (барои ҳар хӯрок як-як, ном — дар <code>textContent</code>) иваз мекунад ва <code>aria-busy="false"</code>-ро мемонад. Баъд аз даъвати <code>fakeSearch</code> шумо бояд бубинед, ки ҷойгузин намонд.</p>
+<div class="playground" data-mode="dom" data-title="Skeleton → cards">
+<pre class="code" data-lang="html">
+&lt;div id="list" class="list"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.list { display: grid; gap: 10px; }
+.card { height: 54px; border: 2px solid #ccd3df; border-radius: 12px; background: #fff; box-sizing: border-box; padding: 14px 16px; font-weight: 700; }
+.skeleton {
+  border-color: transparent;
+  background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.2s ease infinite;
+}
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+</pre>
+<pre class="code" data-lang="js">
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const list = document.querySelector("#list");
+const count = (selector) =&gt; list.querySelectorAll(selector).length;
+
+function showSkeleton(n) {
+  const stubs = Array.from({ length: n }, () =&gt; {
+    const stub = document.createElement("div");
+    stub.className = "card skeleton";
+    return stub;
+  });
+  list.replaceChildren(...stubs);
+  list.setAttribute("aria-busy", "true");
+}
+
+function showCards(items) {
+  // мазмуни list-ро бо кортҳои div.card иваз кунед ва aria-busy="false"-ро гузоред
+}
+
+showSkeleton(3);
+console.log(`скелетонов: ${count(".skeleton")}`);
+
+fakeSearch("самбуса").then((items) =&gt; {
+  showCards(items);
+  console.log(`скелетонов: ${count(".skeleton")}, карточек: ${count(".card")}`);
+  console.log(list.getAttribute("aria-busy"));
+});
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>скелетонов: 3
+скелетонов: 0, карточек: 2
+false</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар дохили <code>showCards</code> массиви номҳоро тавассути <code>items.map(...)</code> ба массиви кортҳо табдил диҳед — ҳамон тавр, ки <code>showSkeleton</code> бо блокҳои худ мекунад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Пурра иваз кардани мазмун — <code>list.replaceChildren(...cards)</code>. Он гоҳ ҷойгузинҳо худашон нопадид мешаванд ва дастӣ нест кардани онҳо лозим нест.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Чор ҳолат дар тамға</h4><span class="level hard">душвор</span></header>
+          <p>Функсияи <code>render(state)</code>-ро анҷом диҳед, ки мазмуни <code>#box</code>-ро барои ҳар ҳолат мекашад. Аввал вай <code>#box</code>-ро тоза мекунад ва <code>box.dataset.state</code>-ро мемонад: ин <code>"loading"</code>, <code>"error"</code> ё <code>"success"</code> аст — аммо агар статус <code>success</code> бошад ва маълумот набошад, пас <code>"empty"</code>. Баъд мекашад: барои loading — се блоки <code>div.skeleton</code>; барои error — <code>&lt;p class="error"&gt;Не удалось загрузить&lt;/p&gt;</code> ва тугмаи <code>&lt;button id="retry"&gt;Повторить&lt;/button&gt;</code>; барои empty — <code>&lt;p class="empty"&gt;Ничего не найдено&lt;/p&gt;</code>; барои success — барои ҳар унсури <code>data</code> як <code>div.dish</code>.</p>
+<div class="playground" data-mode="dom" data-title="render(state)">
+<pre class="code" data-lang="html">
+&lt;div id="box" class="box"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.box { display: grid; gap: 8px; }
+.skeleton { height: 40px; border-radius: 10px; background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%); background-size: 400% 100%; animation: shimmer 1.2s ease infinite; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.dish { padding: 10px 14px; border: 2px solid #ccd3df; border-radius: 10px; background: #fff; font-weight: 700; }
+.error { color: #c0392b; font-weight: 700; margin: 0; }
+.empty { color: #6b7488; margin: 0; }
+#retry { justify-self: start; border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const box = document.querySelector("#box");
+
+function render(state) {
+  // 1. box-ро тоза кунед ва box.dataset.state-ро гузоред
+  // 2. вобаста ба ҳолат чизи лозимаро кашед
+}
+
+// --- санҷиш (нест накунед) ---
+const states = [
+  { status: "loading", data: [] },
+  { status: "error", data: [], error: "Нет сети" },
+  { status: "success", data: [] },
+  { status: "success", data: ["Курутоб", "Нон", "Шакароб"] },
+];
+for (const s of states) {
+  render(s);
+  console.log(box.dataset.state, box.children.length, !!box.querySelector("#retry"));
+}
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>loading 3 false
+error 2 true
+empty 1 false
+success 3 false</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аввал «намуд»-и ҳолатро ҳисоб кунед: <code>const kind = state.status === "success" &amp;&amp; state.data.length === 0 ? "empty" : state.status;</code> — ва онро ба <code>box.dataset.state</code> гузоред.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Минбаъд — занҷири <code>if</code> / <code>else if</code> аз рӯи <code>kind</code>. Дар ҳар шоха унсурҳоро тавассути <code>createElement</code> созед, <code>className</code> ва <code>textContent</code>-ро муқаррар кунед, дар охир — <code>box.append(...)</code>. Ба тугма <code>id = "retry"</code> лозим аст.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="debounce">
+      <h2 data-toc="Debounce"><span class="num">04</span> Debounce: функсияро ба ҳар атса насозед</h2>
+
+      <p>Сатри ҷустуҷӯи «дар парвоз»: корбар «плов»-ро менависад ва натиҷаҳо аллакай дар ҷараён тағйир меёбанд. Оддитарин роҳи ҳал — ба ҳодисаи <code>input</code> гӯш додан ва барои ҳар ҳарф дархост фиристодан. Аммо одам зуд менависад: «п», «пл», «пло», «плов» — ин <b>чор дархост дар як сония</b> аст, ки аз онҳо танҳо охирин лозим аст. Сервер сарбор мешавад, трафик сарф мешавад, ҷавобҳо бошанд омехта меоянд (дар бораи ин — дар қисми 5).</p>
+
+      <p>Роҳи ҳал <b>debounce</b> — «пахшкунии ларзиш» ном дорад: <b>функсияро танҳо вақте иҷро мекунем, ки корбар барои вақти додашуда онро кашидан гузошт</b>. Ҳар даъвати нав интизориро аз нав оғоз мекунад. То даме ки одам менависад — ҳеҷ чиз намешавад; 300 мс истод — дархост меравад.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Маршрутка дар истгоҳ. Ронанда ҳамин ки мусофири аввал даромад, намеравад. Вай интизор мешавад: дуюм даромад — боз интизор, сеюм даромад — боз интизор. Ва танҳо вақте чанд сония ҳеҷ кас намедарояд, ҳаракат мекунад. Ҳар мусофири нав <b>таймери</b> интизориро аз нав оғоз мекунад. Debounce — ин ронандаест, ки танҳо баъд аз танаффус ҳаракат мекунад.</p>
+      </div>
+
+      <figure class="diagram">
+        <div class="tline">
+          <div class="row"><span>ворид кардан</span><div class="bar"><span class="tick" style="left:3%"></span><span class="tick" style="left:11%"></span><span class="tick" style="left:19%"></span><span class="tick" style="left:60%"></span></div></div>
+          <div class="row"><span>интизорӣ</span><div class="bar"><span class="gap" style="left:3%; width:8%"></span><span class="gap" style="left:11%; width:8%"></span><span class="gap" style="left:19%; width:21%"></span><span class="gap" style="left:60%; width:21%"></span></div></div>
+          <div class="row"><span>дархост</span><div class="bar"><span class="fire" style="left:40%"></span><span class="fire" style="left:81%"></span></div></div>
+        </div>
+        <figcaption>Нишонаҳои хокистарӣ — пахши тугмаҳо (п, пл, пло, плов). Рахи зард — интизории танаффус. Нишонаҳои сабз — дархостҳо: танҳо баъд аз хомӯшӣ ва танҳо бо қимати охирин</figcaption>
+      </figure>
+
+      <h3>Debounce-ро аз сифр менависем</h3>
+      <p>Дар дохил ҳамагӣ се ғояи аллакай маълум ҳаст: <b>функсия функсия бармегардонад</b>, <b>closure</b> таймерро байни даъватҳо нигоҳ медорад, <code>clearTimeout</code> бошад интизории қаблиро бекор мекунад.</p>
+
+<pre class="code" data-lang="js" data-title="debounce пурра">
+function debounce(fn, wait) {
+  let timer;                         // як таймер барои ҳамаи даъватҳо — дар closure зиндагӣ мекунад
+  return function (...args) {
+    clearTimeout(timer);             // даъвати нав: интизории гузаштаро бекор мекунем
+    timer = setTimeout(() => {
+      fn(...args);                   // танаффус дида шуд — функсияи воқеиро иҷро мекунем
+    }, wait);
+  };
+}
+</pre>
+
+      <ol class="steps">
+        <li><b>Мо функсияи <code>fn</code> ва танаффуси <code>wait</code>-ро мегирем</b> ва функсияи <b>нав</b> бармегардонем — онро ба ҳодиса мепайвандем.</li>
+        <li><b>Тағйирёбандаи <code>timer</code> дар берун</b> аз функсияи баргардонидашаванда эълон шудааст. Барои ҳамин ҳамаи даъватҳо як тағйирёбандаи ягонаро мебинанд (closure, дарси 5).</li>
+        <li><b>Ҳангоми ҳар даъват</b> аввал <code>clearTimeout(timer)</code> интизории даъвати гузаштаро нест мекунад, баъд <code>setTimeout</code> интизории нав месозад.</li>
+        <li><b>Танҳо интизории охирин кор мекунад</b> — он, ки дар давоми <code>wait</code> миллисония касе барқарор накард.</li>
+        <li><b><code>...args</code></b> ҳамаи аргументҳоро ба массив ҷамъ мекунад, <code>fn(...args)</code> бошад баргашта паҳн мекунад — ба ин тартиб debounce ба функсия бо ҳар шумораи параметрҳо мувофиқ аст.</li>
+      </ol>
+
+      <h3>Дар «менависандаи» одам месанҷем</h3>
+      <p>Барои он ки натиҷа аз суръати навиштани шумо вобаста набошад, мо <b>пахши тугмаҳоро аз рӯи ҷадвал ба нақша мегирем</b> тавассути <code>setTimeout</code>. Ҷадвал: «п» дар 0 мс, «пл» дар 40 мс, «пло» дар 80 мс (зуд менависад), баъд танаффус ва «плов» дар 300 мс. Танаффуси debounce — 100 мс. Дар консол дида мешавад, ки воқеан чӣ кор кард.</p>
+
+<pre class="code" data-run data-title="Debounce дар амал">
+function debounce(fn, wait) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
+const search = debounce((q) => console.log(`поиск: ${q}`), 100);
+
+[[0, "п"], [40, "пл"], [80, "пло"], [300, "плов"]].forEach(([at, q]) => {
+  setTimeout(() => {
+    console.log(`ввод: ${q}`);
+    search(q);
+  }, at);
+});
+</pre>
+      <p>Чопро таҳлил кунед. Чор «пахш» — аммо ҳамагӣ <b>ду дархост</b>. Се пахши аввал бо фосилаҳои 40 мс (камтар аз 100) мегузаштанд, барои ҳамин ҳар кадом таймерро аз нав оғоз мекард; баъд аз сеюм 100 мс хомӯшӣ гузашт — ва ҷустуҷӯи «пло» кор кард. Баъд танаффус то 300 мс — ва «плов» бо дархости алоҳида рафт.</p>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p><code>let timer</code>-ро <b>дар дохили</b> функсияи баргардонидашаванда эълон кардан. Он гоҳ ҳар даъват <code>timer</code>-и худии ҷудогона мегирад, <code>clearTimeout</code> бошад холигиро бекор мекунад — ҳеҷ чиз барқарор намешавад ва <b>ҳамаи</b> даъватҳо кор мекунанд, фақат бо таъхир. Тағйирёбандаи таймер бояд дар берун, дар closure зиндагӣ кунад.</p>
+      </div>
+
+      <h3>Кадом танаффусро интихоб кардан</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Танаффус</th><th>Чӣ тавр эҳсос мешавад</th></tr></thead>
+          <tbody>
+            <tr><td><b>100–200 мс</b></td><td>Қариб фавран, аммо ҳангоми навиштани зуд дархостҳо ба ҳар ҳол зуд-зуд мераванд</td></tr>
+            <tr><td><b>300–500 мс</b></td><td>Миёнаи тиллоӣ барои ҷустуҷӯ: одатан ҳамин қадарро мегиранд</td></tr>
+            <tr><td><b>1000 мс ва бештар</b></td><td>Интерфейс «овезон» менамояд — корбар намефаҳмад, ки ҷустуҷӯ кор мекунад ё не</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <b>Debounce ва throttle — як чиз нестанд</b>
+        <p><b>Debounce</b> танаффусро интизор мешавад ва <b>як маротиба баъд аз</b> силсилаи даъватҳо кор мекунад (ҷустуҷӯ, худкор захира кардан). <b>Throttle</b> («дроссел») <b>на зиёдтар аз як маротиба дар N мс</b> ҳангоми силсила кор мекунад (варақ задани саҳифа, тағйири андозаи тиреза). Дар ҷустуҷӯ ба мо маҳз debounce лозим аст.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Кай debounce лозим нест</b>
+        <p>Барои амалҳо бо тугма («Ёфтан», «Фиристодан») танаффус лозим нест: одам бошуурона ва як маротиба пахш мекунад. Debounce — дору аз <b>ҷараёни</b> ҳодисаҳост: <code>input</code>, <code>scroll</code>, <code>resize</code>, <code>mousemove</code>.</p>
+      </div>
+
+      <h3>Даъвати ба таъхир гузоштаро бекор кардан: cancel</h3>
+      <p>Мешавад, ки на танҳо ба таъхир гузоштан, балки интизорро <b>бекор кардан</b> лозим мешавад: корбар майдонро тоза кард ё аз саҳифа баромад. Функсияҳо дар JavaScript низ объект мебошанд, ба онҳо хусусиятро «часпондан» мумкин аст. Усули <code>cancel</code>-ро илова мекунем:</p>
+<pre class="code" data-lang="js">
+function debounce(fn, wait) {
+  let timer;
+  function debounced(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  }
+  debounced.cancel = () => clearTimeout(timer);   // усул дар функсия
+  return debounced;
+}
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/call-apply-decorators" target="_blank" rel="noopener">learn.javascript.ru: декораторҳо ва равона кардани даъват</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Window/clearTimeout" target="_blank" rel="noopener">MDN: clearTimeout</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Ҷадвали «пахшҳо» дар ҳар вазифа аллакай навишта шудааст — ба шумо танҳо <code>debounce</code> лозим аст. Ҳар иҷро аз як сония камтар мегирад.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Ҷустуҷӯ ба ҳар ҳарф кор мекунад</h4><span class="level easy">осон</span></header>
+          <p>Барномасоз debounce навишт, аммо ҷустуҷӯ ба <b>ҳар</b> пахш кор мекунад — фақат бо таъхир. Ёбед, ки ин версия аз дурусташ чӣ фарқ дорад ва чунон ислоҳ кунед, ки ҷустуҷӯ як маротиба — аз рӯи қимати охирин иҷро шавад.</p>
+<pre class="code" data-run>
+function debounce(fn, wait) {
+  return function (arg) {
+    let timer;
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(arg), wait);
+  };
+}
+
+const search = debounce((q) =&gt; console.log(`поиск: ${q}`), 100);
+
+[[0, "п"], [40, "пл"], [80, "пло"]].forEach(([at, q]) =&gt; {
+  setTimeout(() =&gt; {
+    console.log(`ввод: ${q}`);
+    search(q);
+  }, at);
+});
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>ввод: п
+ввод: пл
+ввод: пло
+поиск: пло</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Чунон ки ҳаст иҷро кунед: ҷустуҷӯ се бор кор мекунад. Пас <code>clearTimeout</code> чизеро бекор намекунад. Барои чӣ? Бинед, тағйирёбандаи <code>timer</code> дар куҷо эълон шудааст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҳар даъват <code>timer</code>-и нави худашро месозад. Сатри <code>let timer;</code>-ро ба боло — ба функсияи <code>debounce</code> гузаронед, аммо <b>пеш аз</b> <code>return function</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Debounce-ро худамон менависем</h4><span class="level mid">миёна</span></header>
+          <p>Функсияи <code>debounce(fn, wait)</code>-ро аз сифр нависед — бе нигоҳ кардан ба матни дарс, агар муяссар шавад. Функсияи баргардонидашаванда як аргументи <code>arg</code>-ро мегирад ва баъд аз танаффуси <code>wait</code> онро ба <code>fn</code> медиҳад. Ҷадвали поён: силсилаи зуди пахш, танаффус, баъд боз як пахш.</p>
+<pre class="code" data-run>
+// function debounce(fn, wait) { ... }
+
+const search = debounce((q) =&gt; console.log(`поиск: ${q}`), 100);
+
+[[0, "п"], [40, "пл"], [80, "пло"], [300, "плов"]].forEach(([at, q]) =&gt; {
+  setTimeout(() =&gt; {
+    console.log(`ввод: ${q}`);
+    search(q);
+  }, at);
+});
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>ввод: п
+ввод: пл
+ввод: пло
+поиск: пло
+ввод: плов
+поиск: плов</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Се қадам: тағйирёбандаи <code>timer</code>-ро дар берун эълон кардан, функсия баргардонидан ва дар дохили он аввал таймери гузаштаро бекор кардан, баъд нав сохтан.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>return function (arg) { clearTimeout(timer); timer = setTimeout(() =&gt; fn(arg), wait); };</code> — тағйирёбандаи <code>timer</code> бо сатри боло, берун аз <code>return</code> эълон шудааст.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Танаффуси хеле кӯтоҳ</h4><span class="level easy">осон</span></header>
+          <p>Одам оҳиста менависад: як аломат ҳар 150 мс. <b>Аввал пешгӯӣ кунед</b>, ки ҳангоми танаффуси 200 мс чанд ҷустуҷӯ кор мекунад. Иҷро кунед ва санҷед. Баъд танаффусро чунон иваз кунед, ки ҷустуҷӯ <b>баъд аз ҳар ҳарф</b> кор кунад — яъне debounce амалан «кор накунад».</p>
+<pre class="code" data-run>
+function debounce(fn, wait) {
+  let timer;
+  return function (arg) {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(arg), wait);
+  };
+}
+
+const search = debounce((q) =&gt; console.log(`поиск: ${q}`), 200);
+
+[[0, "п"], [150, "пл"], [300, "пло"]].forEach(([at, q]) =&gt; {
+  setTimeout(() =&gt; {
+    console.log(`ввод: ${q}`);
+    search(q);
+  }, at);
+});
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда пас аз ислоҳ</b><pre>ввод: п
+поиск: п
+ввод: пл
+поиск: пл
+ввод: пло
+поиск: пло</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Пахши нав ҳар 150 мс меояд. Барои он ки ҷустуҷӯ <b>пештар</b> аз пахши оянда кор карда тавонад, танаффус бояд аз ин фосила кӯтоҳтар бошад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Танаффусро ба таври назаррас камтар аз 150 гузоред — масалан, <code>60</code>. Он гоҳ таймер баъд аз 60 мс кор мекунад, пеш аз он ки ҳарфи оянда омада, онро барқарор кунад.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ВАЗИФАИ 4.4</span><h4>Debounce бо якчанд аргумент</h4><span class="level mid">миёна</span></header>
+          <p>Ҷустуҷӯ акнун дархост ва рақами саҳифаро мегирад: <code>find(query, page)</code>. Debounce-и ҷорӣ танҳо аргументи аввалро минбаъд мегузаронад. Онро бо <code>...args</code> чунон бознависед, ки <b>ҳамаи</b> аргументҳои даъвати охирин бирасанд.</p>
+<pre class="code" data-run>
+function debounce(fn, wait) {
+  let timer;
+  return function (arg) {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(arg), wait);
+  };
+}
+
+const find = debounce((query, page) =&gt; console.log(`поиск: ${query}, страница ${page}`), 100);
+
+find("п", 1);
+setTimeout(() =&gt; find("пл", 1), 40);
+setTimeout(() =&gt; find("плов", 2), 80);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда пас аз ислоҳ</b><pre>поиск: плов, страница 2</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҳоло функсия ҳамчун <code>function (arg)</code> эълон шудааст — вай як параметр мегирад, барои ҳамин <code>page</code> гум мешавад (<code>undefined</code> мешавад).</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Параметрро бо <code>...args</code> иваз кунед, дар даъвати <code>fn(arg)</code> бошад <code>fn(...args)</code> нависед.</p></details>
+        </article>
+
+        <article class="task" id="t4-5">
+          <header><span class="task-num">ВАЗИФАИ 4.5</span><h4>Тугмаи «бекор кардан» дар debounce</h4><span class="level mid">миёна</span></header>
+          <p>Ба debounce усули <code>cancel</code>-ро илова кунед, ки даъвати интизорро бекор мекунад. Ҷадвал: ду даъвати зуд, баъд бекор кардан, баъд — пас аз муддате — боз як даъват. Танҳо <b>охирин</b> бояд кор кунад.</p>
+<pre class="code" data-run>
+function debounce(fn, wait) {
+  let timer;
+  function debounced(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), wait);
+  }
+  // усули debounced.cancel-ро илова кунед
+  return debounced;
+}
+
+const find = debounce((q) =&gt; console.log(`поиск: ${q}`), 100);
+
+setTimeout(() =&gt; { console.log("вызов: п"); find("п"); }, 0);
+setTimeout(() =&gt; { console.log("вызов: пл"); find("пл"); }, 40);
+setTimeout(() =&gt; { console.log("отмена"); find.cancel(); }, 80);
+setTimeout(() =&gt; { console.log("вызов: плов"); find("плов"); }, 300);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>вызов: п
+вызов: пл
+отмена
+вызов: плов
+поиск: плов</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Функсия дар JavaScript объект аст, барои ҳамин ба вай хусусият таъин кардан мумкин аст: <code>debounced.cancel = ...</code>. Қимати таъиншаванда — функсияи тирдор.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>debounced.cancel = () =&gt; clearTimeout(timer);</code> — вай <code>timer</code>-ро тавассути closure мебинад, мисли худи <code>debounced</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="abort">
+      <h2 data-toc="AbortController"><span class="num">05</span> AbortController: бекор кардани дархост</h2>
+
+      <p>Debounce шумораи дархостҳоро кам мекунад, аммо мушкили асосиро бартараф намекунад: <b>дархосте, ки аллакай рафтааст, «фаромӯш» кардан мумкин нест</b>. Вай ба сервер мерасад ва бо ҷавоб бармегардад, ҳатто агар ин ҷавоб ба корбар аллакай лозим набошад. Ва ин ба ду нохушӣ меорад.</p>
+
+      <h3>Мушкили 1. Кори зиёдатӣ</h3>
+      <p>Корбар саҳифаи каталогро кушод ва фавран ба саҳифаи дигар рафт. Дархост барои 100 мол ба ҳар ҳол зеркашӣ ва таҷзия мешавад — трафик ва батарея беҳуда сарф мешавад (дар интернети мобилӣ дар маршрутка ин эҳсос мешавад).</p>
+
+      <h3>Мушкили 2. Мусобиқаи дархостҳо (race condition)</h3>
+      <p>Корбар «с»-ро навишт — дархости №1 рафт. Баъд аз 50 мс «са»-ро анҷом дод — дархости №2 рафт. Сервер дархостҳоро <b>бо вақти гуногун</b> коркард мекунад: ҷавоб ба якум (натиҷаҳояш бисёр) баъд аз 400 мс омад, ба дуюм — баъд аз 100 мс. Дар экран чӣ мешавад?</p>
+
+<pre class="code" data-run data-title="Хато: ҷавоби кӯҳнашуда навро пок мекунад">
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+let shown = "";
+
+function onType(query, ms) {
+  fakeSearch(query, { ms }).then(() => {
+    shown = query;                      // ҷавобро «мекашем»
+    console.log(`пришёл ответ на «${query}»`);
+  });
+}
+
+onType("с", 400);                        // дархости кӯҳна — суст
+setTimeout(() => onType("са", 100), 50); // дархости нав — тез
+setTimeout(() => console.log(`на экране: «${shown}»`), 600);
+</pre>
+      <p>Дар экран «с» монд — ҳарчанд дар майдон аллакай «са» навишта шудааст. Ҷавоб ба дархости <b>нав</b> аввал омад, баъд ҷавоби дертар омадаи дархости <b>кӯҳна</b> онро пок кард. Корбар натиҷаҳоро на барои он чи навишт, мебинад. Хато ноустувор аст: дар хонаи шумо, бо интернети тез, вай зоҳир намешавад, назди муштарӣ дар кӯҳҳо — ҳатман зоҳир мешавад.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо палав фармоиш додед, баъд аз як дақиқа фикратон гашт ва занг задед: «Беҳтараш самбуса». Агар дар чойхона фармоиши аввалро бекор накунанд, ба назди шумо <b>ҳарду</b> курйер меоянд — ва палав, шояд, пештар ё дертар аз самбуса. Дуруст — занг задан ва <b>фармоиши аввалро бекор кардан</b>. Маҳз инро <code>AbortController</code> мекунад: вай ба дархост «занг мезанад» ва мегӯяд «истед».</p>
+      </div>
+
+      <h3>Чӣ тавр кор мекунад: controller ва signal</h3>
+      <dl class="terms">
+        <dt>AbortController</dt><dd>«Пулт»: объекте, ки тугмаи <code>abort()</code> дорад. Чунин сохта мешавад: <code>new AbortController()</code>.</dd>
+        <dt>controller.signal</dt><dd>«Симча»-и пулт: сигнале, ки ба дархост медиҳем. Дархост онро гӯш мекунад ва вақте тугма пахш шуд, истод.</dd>
+        <dt>controller.abort()</dt><dd>Тугма пахш шуд — дархост бекор шуд, промиси он бо хатои бо номи <code>AbortError</code> <b>рад мешавад</b>.</dd>
+      </dl>
+
+<pre class="code" data-run data-title="Бекор кардани дархост: «сервер» signal дорад">
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const controller = new AbortController();
+
+// дархост барои 500 мс, ба он «пулт» пайваст аст
+fakeSearch("самбуса", { signal: controller.signal, ms: 500 })
+  .then((items) => console.log("получили", items.length))
+  .catch((err) => console.log("ошибка:", err.name));
+
+// баъд аз 100 мс корбар «Бекор»-ро пахш кард
+setTimeout(() => {
+  console.log("нажали abort()");
+  controller.abort();
+}, 100);
+</pre>
+      <p>Дархосте, ки бояд 500 мс мерафт, баъд аз 100 истод. Ҷавоб наомад — ба ҷои он <code>catch</code> бо <code>err.name === "AbortError"</code> кор кард.</p>
+
+      <h3><code>fetch</code>-и воқеӣ <code>signal</code>-ро мефаҳмад</h3>
+      <p>Ҷойгузини мо мисли <code>fetch</code>-и воқеӣ сохта шудааст: сигнал ҳамчун аргументи дуюм, дар объекти танзимот дода мешавад. Агар <code>abort()</code>-ро фавран даъват кунем, дархост ҳатто зеркаширо оғоз намекунад:</p>
+
+<pre class="code" data-run data-title="fetch-и воқеӣ + abort()">
+const controller = new AbortController();
+
+const request = fetch("https://dummyjson.com/products?limit=100", {
+  signal: controller.signal,
+});
+
+controller.abort();   // фавран бекор мекунем
+
+request.catch((err) => console.log("fetch отменён:", err.name));
+</pre>
+
+      <h3>Дарозтар тоб намеорад — таймаут бо як сатр</h3>
+      <p>Аксар вақт на бекор кардани дастӣ, балки интизор шудани <b>на дарозтар аз N миллисония</b> лозим мешавад. Барои ин функсияи тайёри <code>AbortSignal.timeout(мс)</code> ҳаст: вай худаш баъд аз вақти додашуда «abort»-ро пахш мекунад. Хато ҳангоми ин <code>AbortError</code> не, балки <code>TimeoutError</code> ном дорад — ба ин тартиб шумо «мо бекор кардем»-ро аз «интизор нашудем» фарқ мекунед.</p>
+
+<pre class="code" data-run data-title="Таймаут: на зиёда аз 1 мс интизор мешавем (интернет лозим аст)">
+fetch("https://dummyjson.com/products?limit=100", { signal: AbortSignal.timeout(1) })
+  .then(() => console.log("успели"))
+  .catch((err) => console.log("ошибка:", err.name));
+</pre>
+
+      <h3>Намуна: «ҳар дархости нав дархости гузаштаро бекор мекунад»</h3>
+      <p>Маҳз ҳамин тавр мусобиқаи аввали қисмро ислоҳ кардан мумкин аст. Контроллерро дар тағйирёбандаи берун аз функсия нигоҳ медорем; пеш аз дархости нав кӯҳнаро бекор мекунем ва контроллери нав месозем.</p>
+
+<pre class="code" data-run data-title="Ислоҳ: дархости қаблиро бекор мекунем">
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+let shown = "";
+let controller = null;                     // контроллери дархости охирин
+
+function onType(query, ms) {
+  if (controller) controller.abort();      // 1. дархости гузаштаро бекор мекунем (агар меравад)
+  controller = new AbortController();      // 2. «пулт»-и нав месозем
+
+  fakeSearch(query, { signal: controller.signal, ms })
+    .then(() => {
+      shown = query;
+      console.log(`пришёл ответ на «${query}»`);
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") console.log("ошибка:", err.message);   // 3.
+    });
+}
+
+onType("с", 400);
+setTimeout(() => onType("са", 100), 50);
+setTimeout(() => console.log(`на экране: «${shown}»`), 600);
+</pre>
+
+      <ol class="steps">
+        <li><b>Як «пулт» барои як дархост.</b> Контроллер якдафъаина аст: баъд аз <code>abort()</code> вай то абад «вайрон» мешавад, барои ҳамин барои ҳар дархост нав месозем.</li>
+        <li><b>Дар кӯҳна <code>abort()</code>-ро даъват мекунем</b> пеш аз сохтани нав — дар ҳамин лаҳза дархости кӯҳна ҳанӯз дар роҳ буда метавонад.</li>
+        <li><b>Дар <code>catch</code> <code>AbortError</code>-ро хомӯшона мегузаронем.</b> Бекор кардан — хатои сервер нест, ва ба корбар бо матни сурхи «Хато!» бо сабаби он ки ҳарфе илова кард, тарс додан мумкин нест.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p><code>AbortError</code>-ро коркард накардан. Дархости бекоршуда промисро рад мекунад ва агар дар <code>catch</code> оддӣ «хаторо нишон деҳ» навишта шуда бошад — дар экран як лаҳза «Ошибка: The user aborted a request» милтик мезанад. Ҳамеша <code>err.name</code>-ро санҷед ва барои <code>"AbortError"</code> хомӯшона бароед.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Роҳи дуюм ҳам ҳаст</b>
+        <p>Дархостро бекор накарда, оддӣ <b>ҷавоби кӯҳнашударо нодида гирифтан</b> мумкин аст: ҳисобкунаки <code>requestId</code> сохтан, рақами дархости худро ба ёд гирифтан ва ҳангоми ҷавоб санҷидан, ки вай ҳанӯз охирин аст. Ин оддитар аст, аммо дархост ба ҳар ҳол ба сервер мерасад ва трафик сарф мекунад. <code>AbortController</code> — роҳи «софдилона»: дархост воқеан қатъ мешавад.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/fetch-abort" target="_blank" rel="noopener">learn.javascript.ru: Fetch: қатъи дархост</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN: AbortController</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>«Сервер» аллакай ба ҳар вазифа гузошта шудааст. Вай <code>signal</code>-ро мефаҳмад ва ҳангоми бекор кардан промисро бо ҳамон <code>signal.reason</code> рад мекунад.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Корбар аз саҳифа баромад</h4><span class="level easy">осон</span></header>
+          <p>Дархост 500 мс меравад, аммо баъд аз 100 мс корбар меравад. Бекор карданро анҷом диҳед: дар дохили <code>setTimeout</code> баъд аз сатри «пользователь ушёл» дархостро бекор кунед.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const controller = new AbortController();
+
+fakeSearch("самбуса", { signal: controller.signal, ms: 500 })
+  .then((r) =&gt; console.log("получили", r.length))
+  .catch((e) =&gt; console.log("ошибка:", e.name));
+
+setTimeout(() =&gt; {
+  console.log("пользователь ушёл");
+  // дархостро дар ин ҷо бекор кунед
+}, 100);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>пользователь ушёл
+ошибка: AbortError</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Контроллери лозимӣ аллакай сохта шудааст — вай <code>controller</code> ном дорад ва тавассути <code>signal</code> ба дархост пайваст аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Як сатр: <code>controller.abort();</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Мусобиқаи дархостҳо</h4><span class="level mid">миёна</span></header>
+          <p><b>Аввал пешгӯӣ кунед</b>, ки коди поён чӣ чоп мекунад (ба қисми «Мушкили 2» нигаред), баъд иҷро кунед. Баъд <code>onType</code>-ро чунон ислоҳ кунед, ки дархости кӯҳна бекор шавад ва ҷавоб ба он пайдо нашавад. Хатои бекоркуниро бояд хомӯшона гузаронд.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+let shown = "";
+
+function onType(q, ms) {
+  fakeSearch(q, { ms }).then(() =&gt; {
+    shown = q;
+    console.log(`пришёл ответ на «${q}»`);
+  });
+}
+
+onType("с", 400);
+setTimeout(() =&gt; onType("са", 100), 50);
+setTimeout(() =&gt; console.log(`на экране: «${shown}»`), 600);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда пас аз ислоҳ</b><pre>пришёл ответ на «са»
+на экране: «са»</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар берун аз функсия <code>let controller = null;</code>-ро созед. Дар аввали <code>onType</code>: агар <code>controller</code> аллакай бошад — аз он <code>abort()</code>-ро даъват кунед, баъд <code>AbortController</code>-и нав созед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>signal: controller.signal</code>-ро ба танзимоти <code>fakeSearch</code> диҳед ва ба промис <code>.catch((e) =&gt; { if (e.name !== "AbortError") console.log("ошибка:", e.message); })</code>-ро илова кунед.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ВАЗИФАИ 5.3</span><h4>На дарозтар аз ҳадди муқаррар интизор шудан</h4><span class="level mid">миёна</span></header>
+          <p><code>async function searchWithTimeout(query, limit, ms)</code>-ро нависед: вай <code>fakeSearch</code>-ро бо сигнали <code>AbortSignal.timeout(limit)</code> ва таъхири <code>ms</code> даъват мекунад. Агар ҷавоб омад — сатри <code>Найдено: N</code>-ро бармегардонад. Агар таймаут кор кард (<code>err.name === "TimeoutError"</code>) — <code>Сервер отвечает слишком долго</code>. Ҳар хатои дигар — <code>Ошибка: текст</code>.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+// async function searchWithTimeout(query, limit, ms) { ... }
+
+async function main() {
+  console.log(await searchWithTimeout("самбуса", 500, 200));
+  console.log(await searchWithTimeout("курутоб", 100, 400));
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Найдено: 2
+Сервер отвечает слишком долго</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ба аргументи дуюми <code>fakeSearch</code> объект диҳед: <code>{ signal: AbortSignal.timeout(limit), ms }</code>. Муроҷиат ба функсия — дар дохили <code>try</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар <code>catch (err)</code> аввал <code>err.name === "TimeoutError"</code>-ро санҷед ва сатри лозимиро баргардонед, вагарна <code>`Ошибка: ${err.message}`</code>-ро баргардонед.</p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ВАЗИФАИ 5.4</span><h4>createSearcher: ҷустуҷӯе, ки худаш худро бекор мекунад</h4><span class="level hard">душвор</span></header>
+          <p>Функсияи <code>createSearcher()</code>-ро нависед, ки функсияи <code>search(query)</code>-ро бармегардонад. Ҳар даъвати нав <b>дархости қаблиро бекор мекунад</b>. Даъвати бекоршуда <code>null</code> бармегардонад (на ин ки хато мепартояд), муваффақ — массиви хӯрокҳоро. Хатоҳои дигар минбаъд партофта мешаванд.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+// function createSearcher() { ... }
+
+const search = createSearcher();
+
+const p1 = search("самбуса");
+const p2 = new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(search("курутоб")), 50));
+
+Promise.all([p1, p2]).then(([a, b]) =&gt; {
+  console.log("первый:", a === null ? "отменён" : a.join(", "));
+  console.log("второй:", b === null ? "отменён" : b.join(", "));
+});
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>первый: отменён
+второй: Курутоб</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Тағйирёбандаи <code>controller</code> дар closure зиндагӣ мекунад — дар <code>createSearcher</code>, то <code>return</code>. <code>search</code>-и баргардонидашаванда — функсияи <code>async</code> аст: ин тавр истифодаи <code>try / catch</code> осонтар аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар <code>search</code>: гузаштаро бекор кардан (агар ҳаст) → контроллери нав → <code>try { return await fakeSearch(query, { signal: controller.signal }); } catch (e) { if (e.name === "AbortError") return null; throw e; }</code>. Бе <code>await</code> пеш аз <code>fakeSearch</code> хато ба <code>catch</code> намеафтад.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="cursor">
+      <h2 data-toc="Демо: Cursor"><span class="num">06</span> Муаллим чӣ нишон медиҳад: Cursor</h2>
+
+      <p>То ҳол ЗС дар курси мо — ин чат аст: шумо савол менависед, матн мегиред, <b>худатон</b> кодро нусха карда ба файл мегузоред. Имрӯз муаллим сатҳи навбатиро нишон медиҳад — <b>агенти ЗС дар дохили муҳаррири код</b>. Ин намоиш дар экран аст: Cursor-ро ба компютерҳои худ насб кардан лозим нест. Муҳимтарин дар ин қисм — на «вой, чӣ тез», балки <b>чӣ тавр ин натиҷаро санҷидан</b>.</p>
+
+      <div class="callout ai">
+        <b>Қоидаҳои курс, ки имрӯз махсусан муҳиманд</b>
+        <p><b>1.</b> Аввал 15 дақиқа худатон кӯшиш мекунед. <b>2.</b> Промпт — аз рӯи формула: контекст → вазифа → маҳдудиятҳо → формати ҷавоб → санҷиш. <b>3.</b> Ба лоиҳа коде гузоред, ки онро сатр ба сатр шарҳ дода наметавонед. <b>4.</b> Агент тез ва бисёр менависад — пас санҷидан низ бояд зуд ва бисёр бошад. Масъулият барои код ҳамеша бар души шумост, на агент.</p>
+      </div>
+
+      <h3>Чат ва агент — фарқ дар чист</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Чати ЗС (ChatGPT, Claude, Gemini)</th><th>Агенти ЗС дар муҳаррир (Cursor)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Чӣ мебинад</b></td><td>Танҳо он чиро, ки шумо ба равзана гузоштед</td><td>Тамоми лоиҳа: худаш файлҳои лозимаро мекушояд ва меҷӯяд</td></tr>
+            <tr><td><b>Чӣ мекунад</b></td><td>Бо матн ҷавоб медиҳад</td><td>Нақша пешниҳод мекунад ва якбора якчанд файлро ислоҳ мекунад; бо иҷозат фармонҳоро иҷро карда метавонад</td></tr>
+            <tr><td><b>Кӣ код ворид мекунад</b></td><td>Шумо — бо нусхабардорӣ</td><td>Агент — шумо ислоҳҳоро мебинед ва қабул ё рад мекунед</td></tr>
+            <tr><td><b>Хавфи асосӣ</b></td><td>Ҷавобро насанҷидаанд</td><td>«Ҳамаро қабул кун»-ро пахш карданд ва ислоҳҳоро дар панҷ файл нахонданд</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <b>Дар бораи интерфейс муҳим аст</b>
+        <p>Cursor — муҳаррирест дар асоси VS Code бо ЗС дар дохил, ва вай зуд рушд мекунад: номи ҳолатҳо ва тугмаҳо аз версия ба версия иваз мешавад. Барои ҳамин дар ин ҷо мо <b>моҳият</b> ва тартиби амалҳоро тавсиф мекунем, на «тугмаи сеюми тарафи ростро пахш кунед». Дар намоиш ба мантиқ назар кунед: агент чиро хонд, чиро пешниҳод кард, чиро тағйир дод.</p>
+      </div>
+
+      <h3>Сенарияи намоиш</h3>
+      <p>Муаллим барномаи хурдро аз дарсҳои гузашта — ҷустуҷӯ аз рӯи API бо рӯйхат ва пагинатсия — бар якчанд файл тақсимшуда мегирад: <code>index.html</code>, <code>style.css</code>, <code>api.js</code> (дархостҳо), <code>ui.js</code> (кашидан) ва <code>main.js</code> (ҳодисаҳо). Вазифа — маҳз ҳамон аст, ки имрӯз бо даст ҳал мекунем: ҳолатҳои боркунӣ, холигӣ ва хато, debounce ва бекор кардани дархостҳоро илова кардан.</p>
+
+      <ol class="steps">
+        <li><b>Нусхаро нигоҳ медорем.</b> Пеш аз демо ҷузвдони лоиҳаро нусха мекунанд (Git-ро дар дарси 19 меомӯзем, ҳоло — нусхаи оддӣ). Агар агент вайрон кунад, ҳамеша баргаштан мумкин аст.</li>
+        <li><b>Вазифаро аз рӯи формула мегузорем.</b> Промпт бо овози баланд хонда мешавад (вай дар поён аст) — ҳар порчаи он барои қисми худи формула масъул аст.</li>
+        <li><b>Мебинем, ки агент чиро мехонад.</b> Агент «тахмин» намекунад: вай файлҳои лоиҳаро мекушояд. Диққат диҳед, <b>кадом</b> файлҳоро кушод — оё лозимаро гузаронд.</li>
+        <li><b>Нақшаро мехонем</b> — пеш аз ислоҳҳо. Аз агент хоҳиш мекунем, ки аввал нақша нависад: кадом файлҳо ва чиро тағйир медиҳад. Аллакай дар ин қадам дида мешавад, ки вазифаро фаҳмид ё не.</li>
+        <li><b>Ислоҳҳоро файл ба файл баррасӣ мекунем.</b> Дар муҳаррир фарқ дида мешавад: чӣ илова шуд, чӣ нест шуд. Қабул мекунем <b>яктоӣ-яктоӣ</b>, на «ҳама якбора».</li>
+        <li><b>Иҷро мекунем ва кӯшиш мекунем вайрон кунем.</b> Дар ҷустуҷӯ зуд менависем; дар DevTools дар ҷадвали Network шабакаи сустро ва ҳолати Offline-ро фаъол мекунем; дархостеро меҷӯем, ки дар API нест.</li>
+        <li><b>Фаромӯшшударо меёбем.</b> Қариб ҳамеша чизе мемонад: саҳифаро ба аввал барқарор карданро ҳангоми дархости нав фаромӯш карданд, <code>AbortError</code>-ро гузарониданд, <code>console.log</code>-ро монданд. Инро промпти навбатӣ ё бо даст ислоҳ мекунанд.</li>
+      </ol>
+
+      <h3>Промпт барои демо</h3>
+      <p>Диққат диҳед, вай чӣ тавр сохта шудааст: аввал контекст, баъд вазифа, баъд маҳдудиятҳо, сипас чиро нишон додан ва чӣ тавр санҷидан. Бо варианти «бад» муқоиса кунед:</p>
+
+      <div class="prompt bad-prompt">ба лоиҳаи ман боркунӣ ва ҷустуҷӯро бо таъхир илова кун</div>
+      <div class="prompt good-prompt">Контекст: барномаи таълимӣ бо JS-и пок бе китобхонаҳо — ҷустуҷӯи хӯрокҳо аз рӯи API бо пагинатсия. Файлҳо: index.html, style.css, api.js (fetch), ui.js (рӯйхатро мекашад), main.js (ҳодисаҳо). Вазифа: 1) се ҳолатро илова кун — боркунӣ (skeleton аз се блоки хокистарӣ), холӣ («Ничего не найдено») ва хато (матни фаҳмо ва тугмаи «Повторить»); 2) debounce 400 мс ба вурудот дар сатри ҷустуҷӯ илова кун; 3) ҳангоми дархости нав қаблиро тавассути AbortController бекор кун ва AbortError-ро хомӯшона нодида гир; 4) ҳангоми дархости ҷустуҷӯи нав саҳифаро ба аввал барқарор кун. Маҳдудиятҳо: мантиқи пагинатсия ва номи синфҳои CSS-и мавҷударо ламс накун, китобхона илова накун, файлҳоеро, ки барои ин вазифа лозим нестанд, тағйир надеҳ. Формат: аввал нақша нависед — кадом файлҳоро ва барои чӣ тағйир медиҳӣ; баъд ислоҳҳоро ворид кун ва файлҳои тағйирёфтаро номбар кун. Санҷиш: бинвис, ки ман чӣ тавр ҳар яке аз чор тағйиротро дастӣ санҷам.</div>
+
+      <h3>Дар вақти намоиш ба чӣ нигоҳ кардан лозим</h3>
+      <p>Ин саволҳоро дар хотир доред, ҳангоме ки ба экран менигаред, — ва онҳоро бо овози баланд диҳед:</p>
+      <ul>
+        <li><b>Чанд файл тағйир ёфтааст ва оё ҳамаи онҳо лозиманд?</b> Ислоҳ дар <code>style.css</code> бамаврид аст (skeleton). Аммо тағйирот дар функсияҳои бегона, ки мо ламс кардани онҳоро нахостем, — сабаби истодан аст.</li>
+        <li><b>Оё тамоми diff хонда шудааст?</b> Сурх — нест шуд. Оё мантиқи корӣ (масалан, пагинатсия) дар «рефакторинг» нопадид нашуд?</li>
+        <li><b>Оё чизи ихтироъшуда нест?</b> Майдони JSON, ки дар ҷавоби воқеии API нест, ё функсияе, ки дар браузер нест. Бо ҷавоби воқеӣ дар ҷадвали Network муқоиса мекунем.</li>
+        <li><b>Оё ҳар чор ҳолат коркард шудаанд?</b> Махсусан омехтагии «холӣ» ва «хато» — ЗС онҳоро зуд-зуд омехта мекунад.</li>
+        <li><b>Оё <code>AbortError</code> дар <code>catch</code> ҳаст?</b> Бе он дар экран «хато» бо ҳар ҳарфи нав милтик мезанад.</li>
+        <li><b>Оё ман метавонам ҳар сатрро шарҳ диҳам?</b> Агар не — кодро қабул намекунем (қоидаи курс №3).</li>
+      </ul>
+
+      <h3>Хавфҳо: чӣ метавонад хато равад</h3>
+      <div class="cols">
+        <div class="col bad">
+          <b>Одатҳои хатарнок</b>
+          <ul>
+            <li>«Ҳамаро қабул кун»-ро бе хондани ислоҳҳо пахш кардан</li>
+            <li>Бе маҳдудият «ҳамаро ислоҳ кун» хоҳиш кардан: агент он чиро, ки кор мекард, аз нав менависад</li>
+            <li>Бовар кардан, ки «агент худаш санҷид» — иҷро ва санҷиш бар души шумо мемонанд</li>
+            <li>Ба агент сирҳо додан: калидҳои API, паролҳо, файлҳо бо маълумоти шахсӣ (<code>.env</code>)</li>
+            <li>Хондани кодро бас кардан — бо мурури замон малака гум мешавад</li>
+          </ul>
+        </div>
+        <div class="col good">
+          <b>Одатҳои солим</b>
+          <ul>
+            <li>Вазифаи хурд — ислоҳҳои хурд — санҷиш</li>
+            <li>Ҳамеша пеш аз ислоҳҳо нақша ва баъд аз онҳо рӯйхати файлҳои тағйирёфтаро хоҳиш кардан</li>
+            <li>Равшан навиштан, ки чиро <b>ламс кардан мумкин нест</b></li>
+            <li>То оғози кори агент нусхаи лоиҳаро нигоҳ доштан (баъдтар — коммит дар Git)</li>
+            <li>Дар браузер санҷидан: зуд, суст, офлайн, холӣ</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <b>Махфият</b>
+        <p>Коде, ки шумо ба агент нишон медиҳед, ба сервери хидмати ЗС фиристода мешавад. Барои лоиҳаҳои таълимӣ ин муқаррарӣ аст, аммо <b>коди корӣ-и фармоишгар, паролҳо ва калидҳоро</b> бе иҷозат ба он ҷо фиристодан мумкин нест. Одат кунед, ки дар ин бора пешакӣ фикр кунед: дар амал ин масъалаи эътимод ва гоҳо — қонун аст.</p>
+      </div>
+
+      <h3>Ва шумо — тавассути чати ЗС: ҳуҷҷатгузории API-ро таҳлил мекунем</h3>
+      <p>Ҳамин ҳозир шумо метавонед ЗС-ро дар ҷое истифода баред, ки вай махсусан судманд аст: барои фаҳмидани ҳуҷҷатгузории бегона. Формула ҳамон:</p>
+
+      <div class="prompt bad-prompt">чӣ тавр аз ин api маълумот гирифтан</div>
+      <div class="prompt good-prompt">Инак ҳуҷҷатгузории API-и ҷустуҷӯи мол: [матн ё истинодро гузоред]. Ба ман лозим аст 5 натиҷаи аввалро аз рӯи дархост аз майдони вуруд гирам ва ҳолатеро, ки чизе ёфт нашуд, коркард кунам. Кадом эндпойнт, кадом параметрҳо, кадом мисоли дархост бо fetch? JS-и пок, бе китобхонаҳо. Чунин ҷавоб деҳ: 1) ҷадвали параметрҳо; 2) мисоли код; 3) дар ҷавоби воқеӣ чиро санҷидан лозим, то боварӣ ҳосил шавад, ки майдонҳо дуруст номгузорӣ шудаанд.</div>
+
+      <div class="callout tip">
+        <b>Санҷиши ҷавоби ЗС: бо API-и воқеӣ муқоиса мекунем</b>
+        <p>Суроғаи дархостро рост дар браузер кушоед (масалан, <code>https://dummyjson.com/products/search?q=phone&amp;limit=5</code>) ё ҷавобро дар ҷадвали Network бинед. Оё номи майдонҳо (<code>products</code>, <code>total</code>) бо навиштаи ЗС мувофиқат мекунанд? Агар не — ЗС ихтироъ кардааст ё омехта кардааст; мо танҳо ба ҷавоби воқеии сервер бовар мекунем.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Амал: баррасии кори «агент»</h3>
+        <p>Дар поён — код, чунон ки агент аз рӯи промпти мо навишта метавонист. Мо дар кори воқеӣ ҳамин тавр мекунем: аз сифр намеорем, балки кори бегонаро <b>месанҷем ва ислоҳ мекунем</b>.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Баррасии коди агент: се хато</h4><span class="level hard">душвор</span></header>
+          <p>Дар коди поён се хато ҳаст; аз сабаби онҳо ҷустуҷӯ дархостҳои зиёдатӣ мегирад ва ҳолатҳои нодурустро нишон медиҳад. Ҷадвали «пахшҳо» дар охир: «к», «ку», «кур» — силсилаи зуд; баъд «самбуса», ҳангоме ки дархости қаблӣ ҳанӯз меравад; баъд «борщ» (дар меню чунин нест). Кодро иҷро кунед, ба бесарусомонӣ дар консол нигаред, хатоҳоро ёбед ва ислоҳ кунед. Баъд аз ислоҳ ҳолатҳо бояд маҳз бо ин тартиб раванд: боркунӣ, боркунӣ, муваффақият, боркунӣ, холӣ.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+let state = { status: "idle", data: [], error: null };
+let timer = null;
+let controller = null;
+
+function setState(patch) {
+  state = { ...state, ...patch };
+  console.log(`состояние: ${state.status}`);
+}
+
+async function runSearch(query) {
+  controller = new AbortController();
+  setState({ status: "loading" });
+  try {
+    const items = await fakeSearch(query, { signal: controller.signal });
+    setState({ status: "success", data: items });
+  } catch (e) {
+    setState({ status: "error", error: e.message });
+  }
+}
+
+function onInput(query) {
+  timer = setTimeout(() =&gt; runSearch(query), 50);
+}
+
+[[0, "к"], [20, "ку"], [40, "кур"], [150, "самбуса"], [550, "борщ"]].forEach(([at, q]) =&gt;
+  setTimeout(() =&gt; onInput(q), at)
+);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>состояние: loading
+состояние: loading
+состояние: success
+состояние: loading
+состояние: empty</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Се нуқсон: (1) дар <code>onInput</code> <code>clearTimeout</code> нест — ин debounce нест; (2) <code>runSearch</code> дархости қаблиро бекор намекунад; (3) ҷавоби холӣ ба ҷои <code>empty</code> статуси <code>success</code> мегирад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҳангоми ислоҳи нуқсони дуюм шумо бо чорум рӯ ба рӯ мешавед: дархости бекоршуда ба <code>catch</code> меафтад ва <code>error</code>-ро нишон медиҳад. Дар <code>catch</code> бояд аввал <code>e.name === "AbortError"</code>-ро санҷед ва тавассути <code>return</code> бе ҳолат бароед.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Амал дар дарс"><span class="num">07</span> Амал дар дарс: се ҳолат ва debounce</h2>
+
+      <p>Ҳамаро дар барномаи хурди «Менюи чойхона» ҷамъ мекунем: сатри ҷустуҷӯ ва рӯйхати хӯрокҳо. Ба ҷои API-и воқеӣ дар ин ҷо ҷойгузини шиноси <code>fakeSearch</code> ҳаст, то ҳама чиз барои ҳама якхела ва бе интернет кор кунад. Шумо дар ду марҳила кор мекунед: аввал <b>ҳолатҳо</b>, баъд <b>debounce ва бекор кардан</b>.</p>
+
+      <ol class="steps">
+        <li><b>Марҳилаи 1. Ҳолатҳо.</b> Як объекти <code>state</code> ва функсияи <code>render</code>, ки аз рӯи <code>state.status</code> мекашад: ишора, skeleton, кортҳо, «холӣ» ё хато бо тугмаи «Такрор кардан». Функсияи <code>load</code> статусро мегузаронад: loading → success / empty / error.</li>
+        <li><b>Марҳилаи 2. Debounce.</b> <code>debounce</code>-ро менависем, ба <code>input</code> мепайвандем: дархост танҳо баъд аз танаффус меравад.</li>
+        <li><b>Марҳилаи 3. Бекор кардан.</b> Пеш аз дархости нав кӯҳнаро бекор мекунем, <code>AbortError</code>-ро хомӯшона мегузаронем.</li>
+        <li><b>Марҳилаи 4. Дар барномаи худ.</b> Ҳамонро ба лоиҳаи дарсҳои 14–15 мегузаронем — дар поён нақша ҳаст.</li>
+      </ol>
+
+      <div class="practice">
+        <h3>Амал: менюи чойхона</h3>
+        <p>Сатрҳои санҷишии консол тасдиқ мекунанд, ки ҳар марҳила кор мекунад. Онҳо худашон «тугмаҳо»-ро пахш мекунанд, барои ҳамин натиҷа барои ҳама якхела аст.</p>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Менюи чойхона: чор ҳолат</h4><span class="level mid">миёна</span></header>
+          <p><code>render</code> ва <code>load</code>-ро анҷом диҳед. Барои ҳар статус тамғагузории худӣ лозим аст: <code>idle</code> — <code>&lt;p class="hint"&gt;Начните вводить название блюда&lt;/p&gt;</code>; <code>loading</code> — се <code>div.skeleton</code>; <code>success</code> — барои ҳар хӯрок <code>div.dish</code>; <code>empty</code> — <code>&lt;p class="empty"&gt;Ничего не найдено&lt;/p&gt;</code>; <code>error</code> — <code>&lt;p class="error"&gt;</code> бо матни хато ва <code>&lt;button class="retry"&gt;Повторить&lt;/button&gt;</code>. Функсияи <code>load(query)</code> <code>loading</code>-ро мемонад (ва фавран аз нав мекашад), баъд — аз рӯи натиҷаи дархост — <code>success</code>, <code>empty</code> ё <code>error</code> ва боз аз нав мекашад.</p>
+<div class="playground" data-mode="dom" data-title="Менюи чойхона: ҳолатҳо">
+<pre class="code" data-lang="html">
+&lt;h3 class="title"&gt;Меню чайханы&lt;/h3&gt;
+&lt;input id="q" class="search" placeholder="Что ищем?" autocomplete="off"&gt;
+&lt;div id="result" class="result"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.title { margin: 0 0 10px; font-size: 20px; }
+.search { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 2px solid #ccd3df; border-radius: 10px; font-size: 16px; margin-bottom: 12px; }
+.result { display: grid; gap: 8px; }
+.skeleton { height: 42px; border-radius: 10px; background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%); background-size: 400% 100%; animation: shimmer 1.2s ease infinite; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.dish { padding: 10px 14px; border: 2px solid #ccd3df; border-radius: 10px; background: #fff; font-weight: 700; }
+.hint, .empty { color: #6b7488; margin: 0; }
+.error { color: #c0392b; font-weight: 700; margin: 0; }
+.retry { justify-self: start; border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+// ↓ «сервер»: ҷустуҷӯи суст дар меню — тағйир надиҳед
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const result = document.querySelector("#result");
+let state = { status: "idle", items: [], error: null };
+
+function render() {
+  result.dataset.state = state.status;
+  result.replaceChildren();
+  // TODO 1: result-ро вобаста ба state.status кашед
+}
+
+async function load(query) {
+  // TODO 2: loading -> дархост -> success / empty / error
+  // баъд аз ҳар тағйири state render()-ро даъват кунед
+}
+
+render();
+
+// --- санҷиш (нест накунед) ---
+async function check() {
+  const request = load("самбуса");
+  console.log(result.dataset.state, result.children.length);
+  await request;
+  console.log(result.dataset.state, result.children.length);
+  await load("борщ");
+  console.log(result.dataset.state, result.textContent.trim());
+  await load("ошибка");
+  console.log(result.dataset.state, !!result.querySelector(".retry"));
+}
+check();
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>loading 3
+success 2
+empty Ничего не найдено
+error true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар <code>render</code> — занҷири <code>if / else if</code> аз рӯи <code>state.status</code>. Шохаи <code>loading</code>: давра барои се қадам бо <code>document.createElement("div")</code> ва <code>className = "skeleton"</code>. Шохаи <code>success</code>: <code>state.items.map(...)</code> ва <code>result.append(...cards)</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар <code>load</code>: <code>state = { status: "loading", items: [], error: null }; render();</code> — баъд <code>try { const items = await fakeSearch(query); ... } catch (err) { ... }</code>. Статуси <code>"empty"</code>-ро мемонед, агар <code>items.length === 0</code> бошад. <code>render()</code>-ро баъд аз ҳар тағйири <code>state</code> фаромӯш накунед.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Менюи чойхона: debounce ва бекор кардан</h4><span class="level hard">душвор</span></header>
+          <p>Ҳолатҳо аллакай омодаанд (<code>render</code> ва <code>load</code> аз вазифаи гузашта). Чор ҷойро анҷом диҳед: <b>(1)</b> функсияи <code>debounce(fn, wait)</code>; <b>(2)</b> дар аввали <code>load</code> — бекор кардани дархости қаблӣ ва сохтани контроллери нав; <b>(3)</b> дар <code>catch</code> — баромадани хомӯшона ҳангоми <code>AbortError</code>; <b>(4)</b> шунавандаи ҳодисаи <code>input</code> дар майдони ҷустуҷӯ, ки бо debounce 100 мс <code>load(input.value.trim())</code>-ро даъват мекунад. Санҷиш худаш матнро «менависад»: силсилаи зуди «с», «са», «сам», баъд «кур» ва фавран баъд — «курутоб». Дархостҳои зиёдатӣ бояд қатъ шаванд, ҷавоби кӯҳнашуда — кашида нашавад.</p>
+<div class="playground" data-mode="dom" data-title="Менюи чойхона: debounce ва abort">
+<pre class="code" data-lang="html">
+&lt;h3 class="title"&gt;Меню чайханы&lt;/h3&gt;
+&lt;input id="q" class="search" placeholder="Что ищем?" autocomplete="off"&gt;
+&lt;div id="result" class="result"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.title { margin: 0 0 10px; font-size: 20px; }
+.search { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 2px solid #ccd3df; border-radius: 10px; font-size: 16px; margin-bottom: 12px; }
+.result { display: grid; gap: 8px; }
+.skeleton { height: 42px; border-radius: 10px; background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%); background-size: 400% 100%; animation: shimmer 1.2s ease infinite; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.dish { padding: 10px 14px; border: 2px solid #ccd3df; border-radius: 10px; background: #fff; font-weight: 700; }
+.hint, .empty { color: #6b7488; margin: 0; }
+.error { color: #c0392b; font-weight: 700; margin: 0; }
+.retry { justify-self: start; border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+let requests = 0;                          // воқеан чанд дархост рафт
+function fakeSearch(query, { signal, ms = 300 } = {}) {
+  requests++;
+  return new Promise((resolve, reject) =&gt; {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() =&gt; {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) =&gt; d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () =&gt; {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const input = document.querySelector("#q");
+const result = document.querySelector("#result");
+let state = { status: "idle", items: [], error: null };
+let controller = null;
+let successRenders = 0;                    // чанд маротиба муваффақиятро кашидем
+
+function render() {
+  result.dataset.state = state.status;
+  result.replaceChildren();
+  if (state.status === "idle") {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "Начните вводить название блюда";
+    result.append(p);
+  } else if (state.status === "loading") {
+    for (let i = 0; i &lt; 3; i++) {
+      const stub = document.createElement("div");
+      stub.className = "skeleton";
+      result.append(stub);
+    }
+  } else if (state.status === "success") {
+    successRenders++;
+    result.append(...state.items.map((name) =&gt; {
+      const dish = document.createElement("div");
+      dish.className = "dish";
+      dish.textContent = name;
+      return dish;
+    }));
+  } else if (state.status === "empty") {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = "Ничего не найдено";
+    result.append(p);
+  } else {
+    const p = document.createElement("p");
+    p.className = "error";
+    p.textContent = state.error;
+    const retry = document.createElement("button");
+    retry.className = "retry";
+    retry.textContent = "Повторить";
+    result.append(p, retry);
+  }
+}
+
+// TODO 1: function debounce(fn, wait) { ... }
+
+async function load(query) {
+  // TODO 2: агар controller аллакай бошад — онро бекор кунед; баъд нав созед
+  state = { status: "loading", items: [], error: null };
+  render();
+  try {
+    const items = await fakeSearch(query, { signal: controller.signal });
+    state = { status: items.length === 0 ? "empty" : "success", items, error: null };
+  } catch (err) {
+    // TODO 3: агар err.name === "AbortError" — оддӣ аз функсия бароед
+    state = { status: "error", items: [], error: err.message };
+  }
+  render();
+}
+
+// TODO 4: input.addEventListener("input", ...) бо debounce 100 мс
+
+render();
+
+// --- санҷиш (нест накунед) ---
+function type(text) {
+  input.value = text;
+  input.dispatchEvent(new Event("input"));
+}
+type("с");
+setTimeout(() =&gt; type("са"), 30);
+setTimeout(() =&gt; type("сам"), 60);
+setTimeout(() =&gt; console.log("запросов:", requests), 500);
+setTimeout(() =&gt; type("кур"), 550);
+setTimeout(() =&gt; type("курутоб"), 720);
+setTimeout(() =&gt; {
+  console.log("запросов:", requests);
+  console.log("успешных отрисовок:", successRenders);
+  console.log(result.dataset.state, result.children.length);
+}, 1250);
+</pre>
+</div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>запросов: 1
+запросов: 3
+успешных отрисовок: 2
+success 1</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Се пахши пай дар пай («с», «са», «сам») бояд <b>як</b> дархост диҳад — пас <code>debounce</code> кор мекунад. Агар дар консол «запросов: 3» аллакай дар сатри аввал бошад — шунаванда <code>load</code>-ро бевосита, бе <code>debounce</code> даъват мекунад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Агар «успешных отрисовок» 3 баромад, на 2 — бекор кардан кор намекунад: ҷавоб ба «кур» кашида шуд, ҳарчанд корбар аллакай «курутоб»-ро ворид кардааст. Санҷед, ки <code>abort()</code> <b>пеш аз</b> сохтани контроллери нав даъват мешавад ва <code>AbortError</code> дар <code>catch</code> бо <code>return</code> анҷом меёбад.</p></details>
+        </article>
+      </div>
+
+      <h3>Марҳилаи 4. Ба барномаи худ мегузаронем</h3>
+      <p>Барномаи шумо аз дарсҳои 14–15 аллакай ҷустуҷӯ ва варақ задани саҳифаҳоро медонад. Ҳамонро қадам ба қадам ба он илова мекунем. Баъд аз ҳар қадам иҷро кунед ва санҷед:</p>
+      <ol class="steps">
+        <li><b><code>state</code>-ро созед</b> бо майдонҳои <code>status</code>, <code>items</code>, <code>error</code> (ва <code>page</code>, агар пагинатсия дошта бошед).</li>
+        <li><b>Кашидани ҳамаро ба як функсияи <code>render()</code> баред</b>, ки аз рӯи <code>state.status</code> тасвири лозимаро нишон медиҳад. Дар ҷои дигар DOM-ро ламс накунед.</li>
+        <li><b>Дархостро бипечонед</b>: аввал <code>loading</code>, баъд <code>success</code> / <code>empty</code> / <code>error</code>. <code>if (!res.ok) throw ...</code>-ро фаромӯш накунед.</li>
+        <li><b>Skeleton</b>: CSS-ро аз қисми 3 нусха кунед, шумораи лозимаи ҷойгузинҳоро дар ҳолати <code>loading</code> илова кунед.</li>
+        <li><b>Debounce</b>: <code>debounce</code>-ро нусха кунед, коркардкунандаи <code>input</code>-ро бипечонед — танаффус 300–400 мс.</li>
+        <li><b>AbortController</b>: <code>signal</code>-ро ба <code>fetch</code>-и худ диҳед, дархости гузаштаро бекор кунед, <code>AbortError</code>-ро гузаронед.</li>
+        <li><b>Дар DevTools санҷед</b> (ҷадвали Network): шабакаи сустро (Slow 4G) ва ҳолати Offline-ро фаъол кунед — ҳар се ҳолат бояд зинда дида шавад.</li>
+      </ol>
+
+<pre class="code" data-run data-title="Скелет барои барномаи худ (бо API-и воқеӣ, интернет лозим аст)">
+let state = { status: "idle", items: [], error: null };
+let controller = null;
+
+async function load(query) {
+  if (controller) controller.abort();
+  controller = new AbortController();
+  state = { status: "loading", items: [], error: null };
+  console.log("состояние:", state.status);          // инҷо render() мешавад
+  try {
+    const url = `https://dummyjson.com/products/search?q=${encodeURIComponent(query)}&amp;limit=5`;
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Сервер ответил кодом ${res.status}`);
+    const data = await res.json();
+    state = { status: data.products.length ? "success" : "empty", items: data.products, error: null };
+  } catch (err) {
+    if (err.name === "AbortError") return;           // бекор кардан — хато нест
+    state = { status: "error", items: [], error: err.message };
+  }
+  console.log("состояние:", state.status, "| найдено:", state.items.length);
+}
+
+load("phone");
+</pre>
+
+      <div class="callout tip">
+        <b>Дар бораи пагинатсия фаромӯш накунед</b>
+        <p>Агар дар барнома саҳифаҳо бошанд, ҳангоми дархости ҷустуҷӯи <b>нав</b> ба саҳифаи аввал баргардед. Ҳангоми боркунӣ — тугмаҳои «Ба қафо» ва «Ба пеш»-ро ғайрифаъол кунед (<code>disabled</code>), вагарна корбар метавонад онҳоро якчанд бор пай дар пай пахш кунад.</p>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">08</span> Вазифаи хонагӣ</h2>
+
+      <p><b>UX-и барномаро такмил диҳед:</b> боркунӣ, натиҷаи холӣ, хатои шабака. Барномаи худро аз дарсҳои 14–15 (рӯйхат ё ҷустуҷӯ аз рӯи API-и воқеӣ) мегиред ва онро ба корбар мулоим мекунед.</p>
+
+      <h3>Чӣ кор кардан лозим</h3>
+      <ol>
+        <li><b>Боркунӣ.</b> То даме ки дархост меравад, skeleton нишон дода мешавад (3–6 ҷойгузин бо шакли лозимӣ). Дар контейнер — <code>aria-busy</code>.</li>
+        <li><b>Холӣ.</b> Агар чизе ёфт нашуд — матни фаҳмо («Ничего не найдено по запросу «…»») ва ишора, ки чӣ кор кардан лозим.</li>
+        <li><b>Хато.</b> Санҷиши <code>res.ok</code>; паёми инсонӣ (на «Failed to fetch») ва тугмаи «Такрор кардан», ки ҳамон дархостро такрор мекунад.</li>
+        <li><b>Debounce.</b> Ҷустуҷӯи «дар парвоз» бо debounce 300–500 мс, ки <b>шумо</b> навиштаед (на аз китобхона).</li>
+        <li><b>Бекор кардан.</b> Дархости нав қаблиро тавассути <code>AbortController</code> бекор мекунад; <code>AbortError</code> ҳамчун хато нишон дода намешавад.</li>
+        <li><b>Санҷиш дар DevTools.</b> Се скриншот гиред: боркунӣ дар шабакаи суст, ҳолати Offline бо хато, натиҷаи холӣ.</li>
+        <li><b>(Бонус.)</b> Ҳангоми дархости нав саҳифа ба аввал барқарор мешавад; тугмаҳои пагинатсия барои вақти боркунӣ ғайрифаъол мешаванд.</li>
+      </ol>
+
+      <h3>Чӣ супоридан лозим</h3>
+      <ul>
+        <li>Истинод ба репозиторий дар GitHub (ё ҷузвдони лоиҳа — чунон ки бо муаллим мувофиқа кунед).</li>
+        <li>Се скриншоти ҳолатҳо (боркунӣ, хато, холӣ).</li>
+        <li>Тавсифи кӯтоҳ дар 3–5 ҷумла: чӣ аз ҳама душвортар буд ва ЗС-ро дар куҷо истифода бурдед. Агар истифода бурда бошед — ҳар сатрро бояд шарҳ дода тавонед.</li>
+      </ul>
+
+      <h3>Чӣ тавр баҳо медиҳем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Чӣ</th><th>Холҳо</th></tr></thead>
+          <tbody>
+            <tr><td>Боркунӣ: skeleton ё нишондиҳии дигари фаҳмо, мазмун «ҷаст намезанад»</td><td>2</td></tr>
+            <tr><td>Холӣ ва хато: матнҳои гуногун, санҷиши <code>res.ok</code>, «Такрор кардан» кор мекунад</td><td>2</td></tr>
+            <tr><td>Debounce мустақилона навишта шудааст ва кор мекунад (як дархост барои силсилаи пахшҳо)</td><td>2</td></tr>
+            <tr><td>AbortController: дархости кӯҳна бекор мешавад, <code>AbortError</code> нишон дода намешавад</td><td>2</td></tr>
+            <tr><td>Скриншотҳо ва тавсиф; донишҷӯ код ва қарорҳоро дар ҳимоя шарҳ медиҳад</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Пеш аз супоридан</b>
+        <p>Кӯшиш кунед барномаи худро вайрон кунед: зуд нависед, «Ёфтан»-ро бисёр бор пай дар пай пахш кунед, Offline-ро фаъол кунед, дархостеро ворид кунед, ки нест. Агар истодагарӣ кунад — тайёр аст.</p>
+      </div>
+    </section>
+
+    <!-- ============ ХУЛОСА ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Лавҳаи ёддошт"><span class="num">✓</span> Лавҳаи ёддошти дарс</h2>
+      <ul>
+        <li><b>Чор ҳолат:</b> <code>loading</code> (бор мекунем), <code>error</code> (вайрон шуд + «Такрор кардан»), <code>empty</code> (ҷавоб холӣ аст), <code>success</code> (маълумот). Плюс <code>idle</code> — оғоз. Як <code>status</code> ба ҷои бисёр булиҳо.</li>
+        <li><b>Тартиби санҷишҳо:</b> аввал loading ва error, баъд «холӣ ё не». Вагарна ҳангоми боркунӣ «Ничего не найдено» нишон дода мешавад.</li>
+        <li><b>fetch ва хатоҳо:</b> шабака нест → промис рад шуд (<code>catch</code>); сервер 404/500 ҷавоб дод → барои fetch <b>муваффақият</b>. Ҳамеша <code>if (!res.ok) throw new Error(...)</code>.</li>
+        <li><b>Ба корбар</b> — матни фаҳмо ва «Такрор кардан»; ҷузъиёти техникӣ — дар <code>console.error</code>.</li>
+        <li><b>Skeleton:</b> блокҳои хокистарӣ бо ҳамон шакл + <code>background-size: 400%</code> ва аниматсияи <code>background-position</code>; <code>aria-busy</code>; <code>prefers-reduced-motion</code>; мазмунро пурра иваз кардан (<code>replaceChildren</code>).</li>
+        <li><b>debounce(fn, wait):</b> <code>let timer</code> дар берун, дар дохил <code>clearTimeout(timer); timer = setTimeout(() =&gt; fn(...args), wait)</code>. Танаффус барои ҷустуҷӯ — 300–500 мс. Debounce — барои ҷараёни ҳодисаҳост, на барои тугмаҳо.</li>
+        <li><b>AbortController:</b> <code>const c = new AbortController(); fetch(url, { signal: c.signal }); c.abort();</code> — промис бо <code>AbortError</code> рад мешавад. Контроллер якдафъаина аст; барои дархости нав — нав.</li>
+        <li><b>Мусобиқаи дархостҳо:</b> дархости нав гузаштаро бекор мекунад; <code>AbortError</code>-ро дар <code>catch</code> хомӯшона мегузаронем. <code>AbortSignal.timeout(мс)</code> — таймаут (<code>TimeoutError</code>).</li>
+        <li><b>Агенти ЗС (Cursor):</b> тамоми лоиҳаро мебинад, якчанд файлро ислоҳ мекунад. Пеш аз ислоҳҳо нақша мепурсем, diff-ро файл ба файл мехонем, «ҳамаро қабул кун»-ро намепахшем, дар браузер месанҷем (зуд, суст, офлайн, холӣ); сирҳоро ба агент намедиҳем.</li>
+      </ul>
+    </section>

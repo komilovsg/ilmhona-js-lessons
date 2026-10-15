@@ -1,0 +1,1510 @@
+<style>
+  /* схема event loop (только для этого урока) */
+  .eloop { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; text-align: left; }
+  .eloop .box { border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--paper); }
+  .eloop .box > .ttl { display: block; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+  .eloop .box > .sub { display: block; font-size: 14px; color: var(--ink-3); margin-bottom: 8px; }
+  .eloop .box > code { display: inline-block; margin: 2px 4px 2px 0; }
+  .eloop .stack { border-color: var(--blue); }  .eloop .stack > .ttl { color: var(--blue); }
+  .eloop .api   { border-color: var(--gold); }  .eloop .api > .ttl { color: var(--gold); }
+  .eloop .micro { border-color: var(--accent); } .eloop .micro > .ttl { color: var(--accent); }
+  .eloop .macro { border-color: var(--red); }   .eloop .macro > .ttl { color: var(--red); }
+  .eloop-rule { margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; border: 2px dashed var(--line); font-weight: 700; text-align: center; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 13 · Async ва API</p>
+      <h1>JavaScript-и ғайрисинхронӣ</h1>
+      <p class="lead">Вақте шумо сайтро мекушоед, он то боршавии расмҳо, қурби асъор ё рӯйхати мол ях намебандад. Саҳифа зинда аст, маълумот бошад баъдтар «меояд». Ин ғайрисинхронӣ (асинхронӣ) аст: JavaScript одат кардааст, ки назди оташ интизор нашавад, балки то омодашавии ҷавоб бо корҳои дигар машғул шавад. Имрӯз мефаҳмем, ин чӣ тавр кор мекунад ва навиштани чунин кодро бе саргардонӣ меомӯзем.</p>
+      <ul class="goals">
+        <li>Фарқи байни коди синхронӣ ва ғайрисинхрониро шарҳ додан</li>
+        <li>Амалҳоро бо <code>setTimeout</code> ба таъхир гузоштан ва бо <code>setInterval</code> такрор кардан</li>
+        <li>Кодро бо колбэкҳо хондан ва фаҳмидани он, ки «дӯзахи колбэкҳо» чаро бад аст</li>
+        <li>Промисҳо сохтан ва занҷираҳои <code>then / catch / finally</code> бастан</li>
+        <li><code>async / await</code>-ро бо <code>try / catch</code> навиштан</li>
+        <li>Тартиби чопро пешгӯӣ кардан: стек, микровазифаҳо, макровазифаҳо (event loop)</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Бо ин саҳифа чӣ тавр кор кардан лозим</b>
+      <p>Тамоми коди дар заминаи торик бо тугмаи <b>▶ Иҷро кардан</b> зинда аст. Онро тағйир додан ва натиҷаро дарҳол дар консол дидан мумкин аст. Дар ин дарс код аксар вақт чизеро <b>бо таъхир</b> чоп мекунад — як сония интизор шавед, то консол сатрҳоро пурра кунад. Вазифаҳои «тартиби чопро пешгӯӣ кун» бисёранд: аввал фикр кунед ва пешгӯии худро нависед, баъд иҷро кунед. Ишораҳо зери қулфак 🔒 пинҳонанд — танҳо вақте кушоед, ки монда бошед.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="sync-async">
+      <h2 data-toc="Синхронӣ ва ғайрисинхронӣ · setTimeout"><span class="num">01</span> Синхронӣ ва ғайрисинхронӣ. setTimeout</h2>
+
+      <p>То имрӯз тамоми коди мо <b>синхронӣ</b> буд: JavaScript сатрҳоро қатъиян бо тартиб, яке пас аз дигаре иҷро мекард ва сатри оянда то анҷоми сатри қаблӣ оғоз намешуд.</p>
+
+<pre class="code" data-run data-title="Коди синхронӣ: қатъиян аз боло ба поён">
+console.log("1. Открыли приложение");
+console.log("2. Посчитали сумму");
+console.log("3. Показали результат");
+</pre>
+
+      <p>Аммо дар барномаҳои воқеӣ корҳое ҳастанд, ки <b>вақт мегиранд</b>: дархост ба сервер, боркунии расм, таймер, ҷавоби корбар. Агар ҳар якеро то анҷомаш интизор шавем, саҳифа «ях мебандад». Барои ҳамин чунин корҳоро оғоз мекунанд ва <b>интизор намешаванд</b>: вақте натиҷа омода шавад, JavaScript ба он бармегардад. Ин аст коди <b>ғайрисинхронӣ</b>.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо ба чойхона омада, палав фармоиш додед. Пешхизмат то пухтани биринҷ назди дег намеистад — ӯ аз дигар мизҳо фармоиш мегирад. Вақте палав тайёр шавад, ошпаз пешхизматро садо медиҳад ва ӯ хӯрокро ба назди шумо меорад. Пешхизмати <b>синхронӣ</b> 40 дақиқа назди дег меистод ва ба ҳеҷ кас хизмат намекард. <b>Ғайрисинхронӣ</b> бошад — пухтанро оғоз кард ва рафт.</p>
+      </div>
+
+      <h3>setTimeout — «инро баъдтар иҷро кун»</h3>
+      <p>Роҳи осонтарини ба даст овардани ғайрисинхронӣ — функсияи <code>setTimeout(функсия, миллисония)</code>. Вай ба браузер мегӯяд: «баъди ин қадар миллисония ин функсияро даъват кун» ва худаш фавран бармегардад. 1000 мс = 1 сония.</p>
+
+<pre class="code" data-run data-title="Кодҳои баъд аз setTimeout интизор намешаванд">
+console.log("Заказали плов");
+
+setTimeout(() => {
+  console.log("Плов готов!");
+}, 500);
+
+console.log("Официант идёт к другому столу");
+</pre>
+
+      <p>Ба тартиб диққат диҳед: «Официант идёт…» <b>пештар</b> аз «Плов готов!» пайдо шуд, ҳарчанд поёнтар навишта шудааст. Функсияи дохили <code>setTimeout</code>-ро мо <b>месупорем</b>, даъват намекунем: вай баъдтар кор мекунад. Чунин функсия <b>колбэк</b> (callback — «баргашта занг зан») номида мешавад — дар бораи он дар қисми оянда муфассалтар.</p>
+
+      <h3>Таъхири сифр ҳам ғайрисинхронӣ аст</h3>
+      <p>Ҳайратомезтарин ҳолат: ҳатто <code>setTimeout(…, 0)</code> функсияро фавран иҷро намекунад. Вай онро ба навбат мегузорад — «баъд аз он ки тамоми коди ҷорӣ анҷом ёбад».</p>
+
+<pre class="code" data-run>
+console.log("A");
+setTimeout(() => console.log("B (с нулевой задержкой)"), 0);
+console.log("C");
+</pre>
+
+      <ol class="steps">
+        <li><b>A</b> — сатри оддӣ, фавран чоп мешавад.</li>
+        <li><b>setTimeout</b> — функсия «ба як сў гузошта шуд». JavaScript минбаъд бе ақиб нигоҳ кардан мегузарад.</li>
+        <li><b>C</b> — фавран чоп мешавад.</li>
+        <li>Тамоми код анҷом ёфт ва танҳо <b>акнун</b> JavaScript функсияи ба таъхир гузоштаро мебарорад ва B-ро чоп мекунад.</li>
+      </ol>
+
+      <h3>Аргументҳо ва бекор кардан</h3>
+      <p><code>setTimeout</code> рақам бармегардонад — рақами таймер. Бо ёрии он таймерро то кор карданаш тавассути <code>clearTimeout</code> бекор кардан мумкин аст.</p>
+
+<pre class="code" data-run>
+const timerId = setTimeout(() => console.log("Это не выведется"), 300);
+console.log("Таймер запущен, номер есть:", typeof timerId);
+
+clearTimeout(timerId);
+console.log("Таймер отменили");
+</pre>
+
+      <h3>setInterval — «ҳар N мс такрор кун»</h3>
+      <p><code>setInterval</code> ҳамин тавр кор мекунад, аммо функсияро борҳо ва борҳо даъват мекунад, то он даме ки онро тавассути <code>clearInterval</code> қатъ кунед. Агар қатъ карданро фаромӯш кунед — таймер то абад тик-так мекунад (дар ин саҳифа иҷро баъди 8 сония қатъ мешавад).</p>
+
+<pre class="code" data-run data-title="Ҳисоби баръакс">
+let left = 3;
+
+const id = setInterval(() => {
+  console.log("Осталось:", left);
+  left--;
+
+  if (left === 0) {
+    clearInterval(id);   // қатъ мекунем, вагарна то абад тик-так мекунад
+    console.log("Поехали!");
+  }
+}, 200);
+</pre>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Функсияро ба ҷои супоридан даъват кардан. <code>setTimeout(sayHi(), 1000)</code> — қавсҳо функсияро ҳамин лаҳза <b>иҷро мекунанд</b>, ба таймер бошад, он чи вай баргардонд (яъне ҳеҷ чиз) меравад. Бояд <code>setTimeout(sayHi, 1000)</code> ё <code>setTimeout(() =&gt; sayHi(), 1000)</code> навишт.</p>
+      </div>
+<pre class="code" data-run data-title="Хато: таймер фавран кор кард">
+function sayHi() {
+  console.log("Салом!");
+}
+
+setTimeout(sayHi(), 1000);   // ✖ «Салом!» якбора чоп мешавад, на баъди як сония
+console.log("Конец кода");
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/settimeout-setinterval" target="_blank" rel="noopener">learn.javascript.ru — setTimeout ва setInterval</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Window/setTimeout" target="_blank" rel="noopener">MDN — setTimeout</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Аксари вазифаҳои ин дарс дар бораи <b>тартибест</b>, ки сатрҳо ба консол мерасанд. Дар вазифаҳои «тартибро пешгӯӣ кун» код худаш пешгӯии шуморо бо воқеият муқоиса мекунад: ҷавобро ба массиви <code>prediction</code> ворид кунед ва иҷро намоед. Агар «Верно!»-ро бинед — шумо мисли JavaScript фикр мекунед.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Фармоиш дар чойхона</h4><span class="level easy">осон</span></header>
+          <p>Палав фармоиш диҳед: байни ду сатр таймере илова кунед, ки баъд аз 500 мс «Плов готов!»-ро чоп кунад. Пешхизмат набояд интизор шавад — сатр дар бораи мизи дигар бояд пештар пайдо шавад.</p>
+<pre class="code" data-run>
+console.log("Заказ принят");
+
+// инҷо таймерро барои 500 мс оғоз кунед
+
+console.log("Официант идёт к другому столу");
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Заказ принят
+Официант идёт к другому столу
+Плов готов!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>setTimeout</code> бо ду аргумент лозим аст: функсия ва шумораи миллисонияҳо.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>setTimeout(() =&gt; { console.log("Плов готов!"); }, 500);</code> — ва бигзор сатр байни ду <code>console.log</code> бошад.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Тартибро пешгӯӣ кун: се таймер</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>log</code> нишонаҳоро бо тартиби чоп ба хотир мегирад. <b>Бе иҷро кардани код</b> тартиби нишонаҳоро, ки пайдо мешаванд, ба <code>prediction</code> ворид кунед (масалан, <code>["1", "2", "3", "4"]</code>). Сипас иҷро кунед — санҷиш дар охир мегӯяд, ки шумо дуруст пешгӯӣ кардед ё не.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+log("1");
+setTimeout(() =&gt; log("2"), 100);
+setTimeout(() =&gt; log("3"), 50);
+log("4");
+
+const prediction = [];   // пешгӯии шумо: тартиби нишонаҳо
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аввал тамоми коди синхронӣ иҷро мешавад — инҳо нишонаҳои 1 ва 4 мебошанд. Таймерҳо интизор мешаванд.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Аз таймерҳо он пештар кор мекунад, ки таъхираш камтар аст: 50 мс пештар аз 100 мс — новобаста аз тартиби навишт дар код.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Оғози мусобиқа</h4><span class="level mid">миёна</span></header>
+          <p>Ҳисоби баръакс созед: ҳар 100 мс аз 3 сар карда рақам чоп кунед. Вақте рақам ба 0 расад, «Старт!»-ро (ба ҷои нул) чоп кунед ва таймерро қатъ намоед.</p>
+<pre class="code" data-run>
+let n = 3;
+
+// setInterval-ро барои 100 мс оғоз кунед
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>3
+2
+1
+Старт!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Рақами таймерро нигоҳ доред: <code>const id = setInterval(…)</code> — вай барои <code>clearInterval(id)</code> лозим мешавад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар дохили колбэк: агар <code>n === 0</code> бошад — «Старт!»-ро чоп кунед, таймерро қатъ намоед ва <code>return</code> нависед. Вагарна <code>n</code>-ро чоп кунед ва онро 1 кам намоед.</p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ВАЗИФАИ 1.4</span><h4>Хаторо ёб: таймер интизор намешавад</h4><span class="level mid">миёна</span></header>
+          <p>Паём «Таймер сработал» бояд <b>баъд аз</b> «Конец», баъди 200 мс пайдо шавад. Ҳоло вай фавран пайдо мешавад. Хаторо ёбед ва ислоҳ кунед.</p>
+<pre class="code" data-run>
+console.log("Начало");
+
+setTimeout(console.log("Таймер сработал"), 200);
+
+console.log("Конец");
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Начало
+Конец
+Таймер сработал</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Қавсҳои <code>console.log(...)</code> функсияро фавран даъват мекунанд. Ба <code>setTimeout</code> бояд <b>функсия</b> дод, на натиҷаи даъвати он.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Даъватро ба функсияи тирдор печонед: <code>() =&gt; console.log("Таймер сработал")</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="callbacks">
+      <h2 data-toc="Callback"><span class="num">02</span> Callback: «вақте омода шуд, занг зан»</h2>
+
+      <p>Мо аллакай функсияҳоро ба <code>map</code> ва <code>filter</code> додаем. Функсияе, ки ба функсияи дигар «барои баъд» дода мешавад, <b>колбэк</b> номида мешавад. Пештар колбэкҳо фавран, дар дохили давра даъват мешуданд. Дар коди ғайрисинхронӣ бошад колбэк <b>вақте кор анҷом ёбад</b> даъват мешавад.</p>
+
+<pre class="code" data-run data-title="Функсия дар бораи натиҷа тавассути колбэк хабар медиҳад">
+function loadPrice(dish, callback) {
+  console.log("Спрашиваем цену:", dish);
+  setTimeout(() => {
+    const price = dish === "плов" ? 35 : 10;
+    callback(price);            // бо натиҷа «занг мезанем»
+  }, 300);
+}
+
+loadPrice("плов", (price) => {
+  console.log("Цена плова:", price, "сомони");
+});
+
+console.log("Пока ждём ответ, можно заняться другими делами");
+</pre>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо дар қаннодӣ торт фармоиш дода, рақами худро мегузоред: «Вақте тайёр шуд, занг занед». Рақам — ин колбэк аст. Шумо ба корҳоятон меравед, қаннод бошад худаш занг мезанад. Шуморо лозим нест назди витрина истода, ҳар панҷ дақиқа пурсед.</p>
+      </div>
+
+      <h3>Колбэк бо хато: шартномаи «error-first»</h3>
+      <p>Кори ғайрисинхронӣ метавонад муваффақ нашавад: шабака нест, чунин мол нест, парол нодуруст аст. Барои ҳамин аз рӯи анъана колбэк аввалин аргументро <b>хато</b> (ё <code>null</code>, агар ҳама чиз хуб бошад), дуюмро — натиҷа мегирад.</p>
+
+<pre class="code" data-run data-title="Колбэк (error, result)">
+function findStudent(id, callback) {
+  setTimeout(() => {
+    if (id !== 1) {
+      callback(new Error("студент не найден"));   // хато — аргументи аввал
+      return;
+    }
+    callback(null, "Мадина");                      // муваффақият — хато нест
+  }, 200);
+}
+
+findStudent(1, (error, name) => {
+  if (error) {
+    console.log("Ошибка:", error.message);
+    return;
+  }
+  console.log("Нашли:", name);
+});
+
+findStudent(7, (error, name) => {
+  if (error) {
+    console.log("Ошибка:", error.message);
+    return;
+  }
+  console.log("Нашли:", name);
+});
+</pre>
+
+      <h3>Дӯзахи колбэкҳо (callback hell)</h3>
+      <p>Агар қадамҳо аз ҳам вобаста бошанд чӣ? Аввал корбарро ёфтан, баъд фармоишҳои ӯро, баъд суроғаи расониданро. Ҳар қадами оянда бояд ба колбэки қаблӣ дохил карда шавад. «Нардбон» ҳосил мешавад, ки ба тарафи рост мегурезад.</p>
+
+<pre class="code" data-run data-title="Пирамидаи тақдир">
+function step(name, callback) {
+  setTimeout(() => {
+    console.log("Готово:", name);
+    callback();
+  }, 100);
+}
+
+step("нашли пользователя", () => {
+  step("загрузили заказы", () => {
+    step("узнали адрес", () => {
+      step("посчитали доставку", () => {
+        console.log("Всё готово!");
+      });
+    });
+  });
+});
+</pre>
+
+      <p>Ҳамагӣ чор қадам, аммо код аллакай душвор хонда мешавад. Агар дар ҳар сатҳ коркарди хаторо илова кунем — лабиринти ҳақиқӣ ҳосил мешавад. Маҳз ҳамин мушкилотро <b>промисҳо</b> ҳал карданд, ки дар бораи онҳо андаке баъдтар сӯҳбат мекунем: ҳамин қадамҳо дар як занҷири ҳамвор саф мекашанд.</p>
+
+      <div class="cols">
+        <div class="col bad"><b>Колбэкҳо</b><p>Дохилшавӣ ба тарафи рост меафзояд. Хатоҳоро дар ҳар сатҳ бояд дастӣ санҷид. Кодро тағйир додан душвор аст.</p></div>
+        <div class="col good"><b>Промисҳо ва async/await</b><p>Қадамҳо яке пас аз дигаре дар як сутуни ҳамвор мераванд. Хатоҳоро як ҷой дастгир мекунад — <code>catch</code> ё <code>try/catch</code>.</p></div>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Баъд аз даъвати ғайрисинхронӣ код навиштан ва интизор шудан, ки натиҷа аллакай ҳаст. Колбэк ҳанӯз кор накардааст, сатри поён бошад аллакай иҷро шуд.</p>
+      </div>
+<pre class="code" data-run data-title="Хато: натиҷа ҳанӯз нест">
+let price;
+
+setTimeout(() => {
+  price = 35;
+}, 200);
+
+console.log("Цена плова:", price);   // ✖ undefined — таймер ҳанӯз кор накардааст
+</pre>
+      <p>Ҳар чизе, ки аз натиҷа вобаста аст, бояд <b>дар дохили колбэк</b> (ё, чунон ки минбаъд мебинем, баъд аз <code>await</code>) иҷро шавад.</p>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/callbacks" target="_blank" rel="noopener">learn.javascript.ru — Муқаддима: колбэкҳо</a> · <a href="https://developer.mozilla.org/ru/docs/Glossary/Callback_function" target="_blank" rel="noopener">MDN — Callback function</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Функсияҳои ғайрисинхронии худамонро бо колбэкҳо менависем ва хатоҳоро коркард мекунем.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Меню бо таъхир</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>loadMenu(callback)</code>-ро нависед: баъд аз 200 мс вай <code>callback</code>-ро даъват мекунад ва массиви <code>["самбуса", "курутоб", "чой"]</code>-ро ба он мемонад. Даъвати функсия аллакай навишта шудааст.</p>
+<pre class="code" data-run>
+// function loadMenu(callback) { ... }
+
+loadMenu((menu) =&gt; {
+  console.log("Меню загружено, блюд:", menu.length);
+  console.log(menu.join(", "));
+});
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Меню загружено, блюд: 3
+самбуса, курутоб, чой</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар дохили функсия <code>setTimeout</code> барои 200 мс лозим аст. Колбэк дар дохили таймер даъват мешавад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>setTimeout(() =&gt; callback(["самбуса", "курутоб", "чой"]), 200);</code></p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Санҷиши синну сол</h4><span class="level mid">миёна</span></header>
+          <p>Функсияи <code>checkAge</code> омода аст ва натиҷаро аз рӯи қоидаи error-first хабар медиҳад. Онро ду маротиба даъват кунед — барои синни 20 ва барои 15 — ва дар колбэк ё паёми муваффақият, ё <code>Ошибка: …</code>-ро бо матни хато чоп кунед.</p>
+<pre class="code" data-run>
+function checkAge(age, callback) {
+  setTimeout(() =&gt; {
+    if (age &lt; 18) {
+      callback(new Error("слишком мал"));
+    } else {
+      callback(null, "Добро пожаловать!");
+    }
+  }, 100);
+}
+
+// checkAge(20, …) ва checkAge(15, …)-ро даъват кунед
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Добро пожаловать!
+Ошибка: слишком мал</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Колбэк ду параметр мегирад: <code>(error, result)</code>. Аввал <code>error</code>-ро месанҷем.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>(error, result) =&gt; { if (error) { console.log("Ошибка: " + error.message); return; } console.log(result); }</code> — ин колбэкро дар ҳарду даъват истифода бурдан мумкин аст.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Фармоиши палав қадам ба қадам</h4><span class="level easy">осон</span></header>
+          <p>Се қадами фармоиш аллакай навишта шудаанд, ҳар кадом 100 мс мегирад. Онҳоро <b>яке аз паси дигаре</b> оғоз кунед: қадами оянда дар колбэки қаблӣ даъват мешавад. Ҳар қадам сатреро ба колбэк мемонад — онро чоп кунед.</p>
+<pre class="code" data-run>
+function takeOrder(callback) { setTimeout(() =&gt; callback("заказ принят"), 100); }
+function cook(callback)      { setTimeout(() =&gt; callback("плов приготовлен"), 100); }
+function serve(callback)     { setTimeout(() =&gt; callback("плов на столе"), 100); }
+
+// занҷирро созед: takeOrder → cook → serve
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>заказ принят
+плов приготовлен
+плов на столе</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аз <code>takeOrder((text) =&gt; { ... })</code> оғоз кунед. Дар дохили колбэк <code>text</code>-ро чоп кунед ва қадами оянда-ро даъват намоед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Се сатҳи дохилшавӣ ҳосил мешавад: <code>takeOrder(…)</code> дар худ <code>cook(…)</code>-ро дорад, ва он дар худ <code>serve(…)</code>-ро. Ин ҳамон «пирамидаи» хурд аст.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="event-loop">
+      <h2 data-toc="Event loop"><span class="num">03</span> Чӣ тавр кор мекунад: event loop</h2>
+
+      <p>JavaScript якрешагӣ аст: вай <b>як даст</b> дорад ва дар як вақт як кор мекунад. Пас таймерҳо ва дархостҳо чӣ тавр «худ аз худ мераванд»? Онҳоро JavaScript не, балки <b>браузер</b> интизор мешавад. Вақте таймер кор кард, браузер колбэки шуморо ба навбат мегузорад, механизми махсус — <b>event loop</b> (давраи ҳодисаҳо) — бошад онро аз он ҷо мебарорад, вақте ки JavaScript озод шавад.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Як дастгоҳи касса дар мағозаи Шоҳмансурро тасаввур кунед. Кассир (стеки даъватҳо) дар як вақт як харидорро хизмат мекунад. Боқӣ дар навбатҳо меистанд. Аммо навбат дутост: дар <b>«кассаи тез»</b> онҳое меистанд, ки як харид доранд (микровазифаҳо — промисҳо), дар <b>навбати оддӣ</b> — боқӣ ҳама (макровазифаҳо — таймерҳо). Кассир бо харидор тамом кард ва аввал <b>тамоми</b> кассаи тезро хизмат мекунад ва танҳо баъд аз навбати оддӣ <b>як</b> нафарро мегирад.</p>
+      </div>
+
+      <h3>Схема</h3>
+      <figure class="diagram">
+        <div class="eloop">
+          <div class="box stack"><span class="ttl">Call Stack</span><span class="sub">Стеки даъватҳо: чӣ ҳоло иҷро мешавад</span><code>main()</code><code>console.log()</code></div>
+          <div class="box api"><span class="ttl">Web API (браузер)</span><span class="sub">Инҷо таймерҳо ва дархостҳо «интизор мешаванд». JavaScript банд нест</span><code>setTimeout</code><code>fetch</code><code>кликҳо</code></div>
+          <div class="box micro"><span class="ttl">Навбати микровазифаҳо</span><span class="sub">Кассаи тез: аввал мераванд</span><code>promise.then</code><code>await</code><code>queueMicrotask</code></div>
+          <div class="box macro"><span class="ttl">Навбати макровазифаҳо</span><span class="sub">Навбати оддӣ: дар як давр яктоӣ</span><code>колбэки setTimeout</code><code>setInterval</code><code>ҳодисаҳо</code></div>
+        </div>
+        <div class="eloop-rule">Event loop: стек холӣ → ҲАМАИ микровазифаҳоро иҷро кун → ЯК макровазифаро бигир → боз аз сар</div>
+        <figcaption>Аввал тамоми коди синхронӣ, баъд микровазифаҳо, баъд яктоӣ макровазифаҳо</figcaption>
+      </figure>
+
+      <dl class="terms">
+        <dt>Call Stack</dt><dd>Стеки даъватҳо. Дар ин ҷо JavaScript кор мекунад. То даме ки дар стек код ҳаст, боқӣ ҳама интизоранд.</dd>
+        <dt>Макровазифа</dt><dd>Колбэки таймери <code>setTimeout</code> / <code>setInterval</code>, коркарди клик ва монанди инҳо. Дар як «давр» танҳо яктояш иҷро мешавад.</dd>
+        <dt>Микровазифа</dt><dd>Колбэкҳои <code>.then / .catch / .finally</code>, идомаи баъд аз <code>await</code>, <code>queueMicrotask</code>. Баъд аз ҳар макровазифа <b>ҳама</b> иҷро мешаванд, то навбат холӣ шавад.</dd>
+      </dl>
+
+      <h3>Таҳлил қадам ба қадам</h3>
+<pre class="code" data-run data-title="Классикаи мусоҳибаҳо">
+console.log("1");
+
+setTimeout(() => console.log("2"), 0);
+
+Promise.resolve().then(() => console.log("3"));
+
+console.log("4");
+</pre>
+      <ol class="steps">
+        <li><b>Коди синхронӣ.</b> Ба стек <code>console.log("1")</code> меафтад — <b>1</b> чоп мешавад.</li>
+        <li><b><code>setTimeout</code>.</b> Таймер ба браузер супорида шуд. Баъд аз 0 мс колбэки он ба навбати <b>макровазифаҳо</b> мегузарад. Вай ҳоло иҷро намешавад.</li>
+        <li><b><code>Promise.resolve().then(…)</code>.</b> Промис аллакай иҷро шудааст, барои ҳамин колбэки <code>then</code> фавран ба навбати <b>микровазифаҳо</b> мегузарад.</li>
+        <li><b>Коди синхронӣ.</b> <code>console.log("4")</code> — <b>4</b> чоп мешавад. Стек холӣ шуд.</li>
+        <li><b>Микровазифаҳо.</b> Event loop мебинад, ки навбати микровазифаҳо холӣ нест ва колбэкро иҷро мекунад — <b>3</b> чоп мешавад.</li>
+        <li><b>Макровазифа.</b> Акнун навбати микровазифаҳо холӣ аст ва як макровазифаро гирифтан мумкин аст — колбэки таймер: <b>2</b> чоп мешавад.</li>
+      </ol>
+      <p>Натиҷа: <b>1, 4, 3, 2</b>. Қоидаро дар хотир доред: <b>коди синхронӣ → микровазифаҳо (промисҳо) → макровазифаҳо (таймерҳо)</b>.</p>
+
+      <h3>Микровазифаҳо баъд аз ҳар макровазифа медароянд</h3>
+      <p>Агар дар макровазифа промис сохта шавад, колбэки он <b>фавран баъд аз вай</b>, ҳанӯз пеш аз макровазифаи навбатӣ аз навбат иҷро мешавад.</p>
+<pre class="code" data-run>
+setTimeout(() => {
+  console.log("таймер 1");
+  Promise.resolve().then(() => console.log("промис внутри таймера 1"));
+}, 0);
+
+setTimeout(() => console.log("таймер 2"), 0);
+</pre>
+      <p>Тартиб: <i>таймери 1</i>, <i>промиси дохили таймери 1</i>, <i>таймери 2</i>. Микровазифае, ки таймери 1 таваллуд кард, пештар аз он расид, ки «навбати оддӣ» ба таймери 2 бирасад.</p>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Гумон кардан, ки <code>setTimeout(fn, 0)</code> «фавран» кор мекунад. Дар асл вай танҳо вақте кор мекунад, ки <b>тамоми коди ҷорӣ ва ҳамаи микровазифаҳо анҷом ёбанд</b>. Агар коди ҷорӣ бо давраи вазнин банд бошад, таймер интизор мешавад, то давра анҷом ёбад: <code>setTimeout</code> «на пештар аз N мс» кафолат медиҳад, на «дақиқан баъди N мс».</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Маслиҳат: тартибро чӣ тавр пешгӯӣ кардан</b>
+        <p>Кодро аз боло ба поён бингаред ва сатрҳоро ба се «сабад» тақсим кунед: <b>1. фавран иҷро мешавад</b>, <b>2. ба микровазифаҳо</b> (<code>then</code>, <code>await</code>), <b>3. ба макровазифаҳо</b> (<code>setTimeout</code>; таъхираш камтар — пештар). Баъд бихонед: сабади 1 → сабади 2 → сабади 3. Агар дар дохили колбэк сабади нави 2 ё 3 пайдо шавад, ҳамин корро такрор кунед.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/event-loop" target="_blank" rel="noopener">learn.javascript.ru — Давраи ҳодисаҳо</a> · <a href="https://learn.javascript.ru/microtask-queue" target="_blank" rel="noopener">learn.javascript.ru — Микровазифаҳо</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Event_loop" target="_blank" rel="noopener">MDN — Event loop</a></p>
+
+      <div class="practice">
+        <h3>Амал: тартиби чопро пешгӯӣ кун</h3>
+        <p>Ин машқи асосии дарс аст. Барои ҳар вазифа аввал сатрҳоро дар коғаз ба сабадҳо тақсим кунед, ҷавобро ба <code>prediction</code> ворид намоед ва танҳо баъд иҷро кунед.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Се ҳарф</h4><span class="level easy">осон</span></header>
+          <p>Тартиби нишонаҳоро ворид кунед.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+log("A");
+setTimeout(() =&gt; log("B"), 0);
+log("C");
+
+const prediction = [];   // масалан: ["A", "B", "C"]
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Таймер, ҳатто нулӣ, ба навбати макровазифаҳо меравад — баъд аз тамоми коди синхронӣ.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>log("A")</code> ва <code>log("C")</code> ба таври синхронӣ иҷро мешаванд. Баъд — таймер бо нишонаи B.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Промис дар муқобили таймер</h4><span class="level mid">миёна</span></header>
+          <p>Кӣ тезтар аст: промис ё таймер бо таъхири сифр?</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+log("1");
+setTimeout(() =&gt; log("2"), 0);
+Promise.resolve().then(() =&gt; log("3"));
+log("4");
+
+const prediction = [];
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ин ҳамон мисолест, ки дар боло таҳлил кардем, танҳо нишонаҳо бо рақамҳо иваз шудаанд. Аммо кӯшиш кунед, ки худатон ҳал кунед, бе назар кардан.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Тартиби сабадҳо: фавран (1, 4) → микровазифаҳо (3) → макровазифаҳо (2).</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Ду микровазифа</h4><span class="level easy">осон</span></header>
+          <p>Дар ин ҷо ду роҳи сохтани микровазифа ҳаст: <code>queueMicrotask</code> ва <code>then</code>. Онҳо дар як навбат меистанд — бо тартиби илова шудан.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+setTimeout(() =&gt; log("таймер"), 0);
+queueMicrotask(() =&gt; log("микро-1"));
+Promise.resolve().then(() =&gt; log("микро-2"));
+log("синхронно");
+
+const prediction = [];   // чор нишона: синхронӣ, ду микро ва таймер
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Таймер ҳамеша дар охири охир аст, сатри синхронӣ бошад — дар аввали аввал.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Байни онҳо микровазифаҳо бо ҳамон тартибе, ки ба навбат <b>илова шуданд</b>: аввал <code>queueMicrotask</code>, баъд <code>then</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ВАЗИФАИ 3.4</span><h4>Навбатҳои дарунӣ</h4><span class="level hard">душвор</span></header>
+          <p>Вазифаи андаке душвортар: колбэкҳо худашон таймерҳо ва промисҳои нав месозанд. Қоидаро дар хотир доред: баъд аз <b>ҳар</b> макровазифа ҳамаи микровазифаҳои ҷамъшуда иҷро мешаванд.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+setTimeout(() =&gt; {
+  log("A");
+  Promise.resolve().then(() =&gt; log("B"));
+}, 0);
+
+setTimeout(() =&gt; log("C"), 0);
+
+Promise.resolve().then(() =&gt; {
+  log("D");
+  setTimeout(() =&gt; log("E"), 0);
+});
+
+log("F");
+
+const prediction = [];
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аввал F (синхронӣ), баъд микровазифаи ягона D. Вай ба навбати макровазифаҳо боз як таймер — E-ро <b>дар охири</b> навбат, баъд аз A ва C мегузорад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Навбати макровазифаҳо баъд аз давраи аввал: A, C, E. Аммо баъд аз иҷрои A микровазифаи он B фавран кор мекунад — пештар аз C.</p></details>
+        </article>
+
+        <article class="task" id="t3-5">
+          <header><span class="task-num">ВАЗИФАИ 3.5</span><h4>Таъхирҳо ва занҷир</h4><span class="level hard">душвор</span></header>
+          <p>Таймерҳо бо таъхирҳои гуногун ва занҷири аз ду <code>then</code>. Занҷир — ин ду микровазифаи пай дар пай аст: дуюмаш вақте пайдо мешавад, ки аввалӣ иҷро шуд, аммо ба ҳар ҳол пештар аз ҳар гуна таймер.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+setTimeout(() =&gt; log("T200"), 200);
+setTimeout(() =&gt; log("T0"), 0);
+Promise.resolve().then(() =&gt; log("P1")).then(() =&gt; log("P2"));
+setTimeout(() =&gt; log("T100"), 100);
+log("S");
+
+const prediction = [];
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ба таври синхронӣ — танҳо S. Баъд ҳамаи микровазифаҳо: P1 ва аз паси он P2.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Таймерҳо аз рӯи афзудани таъхир кор мекунанд: 0, 100, 200 — новобаста аз он ки дар код бо кадом тартиб навишта шудаанд.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="promises">
+      <h2 data-toc="Promise"><span class="num">04</span> Promise: ваъдаи натиҷа</h2>
+
+      <p><b>Промис</b> (Promise — «ваъда») — ин объектест, ки натиҷаи кори ғайрисинхрониро ифода мекунад, ки ҳоло нест, вале <b>хоҳад буд</b>: ё қимат, ё хато. Ба ҷои колбэкҳои дохилшуда мо объекте мегирем, ки ба он бо усулҳои <code>then</code> ва <code>catch</code> «обуна шудан» мумкин аст.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо расониданро пардохт кардед ва <b>чек бо рақами фармоиш</b> гирифтед. Ин ҳоло мол нест, балки ваъда аст: «мол хоҳад омад». Ваъда се ҳолат дорад: <b>интизорӣ</b> (фармоиш дар роҳ), <b>иҷрошуда</b> (курйер овард) ё <b>радшуда</b> (мол дар анбор нест). Чекро шумо фавран дар даст доред, мол баъдтар меояд — ё бекор мешавад.</p>
+      </div>
+
+      <h3>Се ҳолати промис</h3>
+      <dl class="terms">
+        <dt>pending</dt><dd>«Интизор аст». Ҳолати ибтидоӣ: натиҷа ҳанӯз нест.</dd>
+        <dt>fulfilled</dt><dd>«Иҷро шуд». Кор бомуваффақият анҷом ёфт, промис қимат дорад. Колбэки <code>then</code> даъват мешавад.</dd>
+        <dt>rejected</dt><dd>«Рад шуд». Чизе хато рафт, промис сабаб (хато) дорад. Колбэки <code>catch</code> даъват мешавад.</dd>
+      </dl>
+      <p>Муҳим: промис аз <code>pending</code> ба ҳолати дигар <b>як маротиба</b> ва ба таври абадӣ мегузарад. Промиси иҷрошударо баъдтар «рад кардан» мумкин нест.</p>
+
+      <h3>Сохтани промис</h3>
+      <p>Промисро тавассути <code>new Promise</code> месозанд. Ба конструктор функсия бо ду параметр дода мешавад: <code>resolve</code> (ҳангоми муваффақият даъват мешавад) ва <code>reject</code> (ҳангоми хато даъват мешавад).</p>
+
+<pre class="code" data-run data-title="Промисе, ки баъд аз 300 мс иҷро мешавад">
+const orderPlov = new Promise((resolve, reject) => {
+  setTimeout(() => {
+    resolve("Плов готов!");     // муваффақият: қиматро мемонем
+  }, 300);
+});
+
+orderPlov.then((result) => {
+  console.log("Получили:", result);
+});
+
+console.log("Промис создан, ждём…");
+</pre>
+
+<pre class="code" data-run data-title="Промисе, ки рад мешавад">
+function buyTicket(balance) {
+  return new Promise((resolve, reject) => {
+    if (balance &gt;= 3) {
+      resolve("Билет куплен");
+    } else {
+      reject(new Error("Недостаточно сомони"));
+    }
+  });
+}
+
+buyTicket(10)
+  .then((text) => console.log(text))
+  .catch((error) => console.log("Ошибка:", error.message));
+
+buyTicket(1)
+  .then((text) => console.log(text))
+  .catch((error) => console.log("Ошибка:", error.message));
+</pre>
+
+      <h3>then, catch, finally</h3>
+      <ul>
+        <li><code>.then(onSuccess)</code> — вақте иҷро мешавад, ки промис иҷро шуда бошад;</li>
+        <li><code>.catch(onError)</code> — вақте иҷро мешавад, ки промис рад шуда бошад (ё дар ягон ҷои боло дар занҷир хато рух дода бошад);</li>
+        <li><code>.finally(fn)</code> — <b>дар ҳар сурат</b> иҷро мешавад: барои баъд аз кор «ҷамъ кардан» (нишондиҳандаи боркуниро нест кардан).</li>
+      </ul>
+
+<pre class="code" data-run>
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+console.log("Показываем «Загрузка...»");
+
+wait(300)
+  .then(() => console.log("Данные пришли"))
+  .catch(() => console.log("Ошибка"))
+  .finally(() => console.log("Прячем «Загрузка...»"));
+</pre>
+      <p>Функсияи <code>wait</code> дар ин ҷо — омодаи судманд аст. Вай промисе бармегардонад, ки баъд аз вақти додашуда иҷро мешавад. Мо онро дар дарс пайваста истифода мебарем.</p>
+
+      <h3>Занҷираҳои промисҳо</h3>
+      <p>Қуввати асосии промисҳо: <code>then</code> <b>промиси нав бармегардонад</b>. Барои ҳамин <code>then</code>-ҳоро ба занҷир пайваст кардан мумкин аст, қимате ки як <code>then</code> баргардонд, ба оянда мерасад.</p>
+
+<pre class="code" data-run data-title="Ҳар then натиҷаи қаблиро мегирад">
+Promise.resolve(5)
+  .then((n) => {
+    console.log("Получили:", n);
+    return n * 2;               // ин қимат минбаъд меравад
+  })
+  .then((n) => {
+    console.log("Удвоили:", n);
+    return n + 1;
+  })
+  .then((n) => {
+    console.log("Прибавили 1:", n);
+  });
+</pre>
+
+      <p>Агар колбэки <code>then</code> <b>промис</b> баргардонад, занҷир анҷоми онро интизор мешавад ва танҳо баъд минбаъд меравад. Ба ин тартиб қадамҳои пайдарпай сохта мешаванд ва пирамидаи колбэкҳо аз қисми гузашта ба сутуни ҳамвор табдил меёбад:</p>
+
+<pre class="code" data-run data-title="Ҳамон чор қадам, аммо бе пирамида">
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function step(name) {
+  return wait(100).then(() => console.log("Готово:", name));
+}
+
+step("нашли пользователя")
+  .then(() => step("загрузили заказы"))
+  .then(() => step("узнали адрес"))
+  .then(() => step("посчитали доставку"))
+  .then(() => console.log("Всё готово!"));
+</pre>
+
+      <h3>Хатоҳо дар занҷир</h3>
+      <p>Агар дар ягон ҳалқа хато рух диҳад (<code>reject</code> ё <code>throw</code>), занҷир ҳамаи <code>then</code>-ҳои баъдиро <b>мепарронад</b> ва ба наздиктарин <code>catch</code> «меафтад». Як <code>catch</code> дар охир хатоҳои ҳамаи қадамҳоро дастгир мекунад. Агар <code>catch</code> қимат баргардонад — занҷир боз муваффақ ҳисоб мешавад ва минбаъд меравад.</p>
+
+<pre class="code" data-run>
+Promise.resolve("шаг 1")
+  .then((v) => {
+    console.log(v, "выполнен");
+    throw new Error("шаг 2 сломался");
+  })
+  .then(() => console.log("этот then пропущен"))
+  .catch((error) => {
+    console.log("Поймали:", error.message);
+    return "запасной вариант";
+  })
+  .then((v) => console.log("Цепочка продолжилась:", v));
+</pre>
+
+      <div class="callout warn">
+        <b>Хатои маъмул: return-ро дар then фаромӯш кардан</b>
+        <p>Агар дар колбэки <code>then</code> <code>return</code> набошад, <code>then</code>-и оянда <code>undefined</code> мегирад. Агар дар дохили <code>then</code> қадами нави ғайрисинхронӣ оғоз шавад ва онро барнагардонанд — занҷир онро интизор намешавад.</p>
+      </div>
+<pre class="code" data-run data-title="Нарх гум шуд">
+Promise.resolve(100)
+  .then((price) => {
+    price * 2;                      // ✖ ҳисоб кардем, аммо барнагардондем
+  })
+  .then((result) => {
+    console.log("Результат:", result);   // → undefined
+  });
+</pre>
+
+      <h3>Якчанд промис якбора</h3>
+      <p>Мешавад, ки якчанд чизи новобастаро бор кардан лозим мешавад. Агар онҳоро ба навбат интизор шавем — вақт гум мекунем. Беҳтар аст ҳамаро якбора оғоз кунем.</p>
+      <ul>
+        <li><code>Promise.all([…])</code> — <b>ҳама</b>-ро интизор мешавад. Массиви натиҷаҳоро <b>бо ҳамон тартиб</b>, ки дар дархост буд, бармегардонад. Агар ақаллан як промис рад шавад — пурра рад мешавад;</li>
+        <li><code>Promise.allSettled([…])</code> — ҳамаро интизор мешавад ва ҳаргиз рад намешавад: барои ҳар кадом <code>status</code> (<code>"fulfilled"</code> ё <code>"rejected"</code>) ва <code>value</code> / <code>reason</code>-ро хабар медиҳад;</li>
+        <li><code>Promise.race([…])</code> — натиҷа (ё хатои) <b>аз ҳама тез</b>-ро.</li>
+      </ul>
+
+<pre class="code" data-run>
+const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+Promise.all([
+  wait(300, "курсы валют"),
+  wait(100, "погода"),
+  wait(200, "новости"),
+]).then((results) => {
+  console.log("Всё загружено:", results.join(", "));   // тартиб мисли дархост
+});
+
+Promise.race([wait(300, "медленный"), wait(100, "быстрый")])
+  .then((winner) => console.log("Первым пришёл:", winner));
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/promise-basics" target="_blank" rel="noopener">learn.javascript.ru — Промисҳо</a> · <a href="https://learn.javascript.ru/promise-chaining" target="_blank" rel="noopener">learn.javascript.ru — Занҷири промисҳо</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Promise" target="_blank" rel="noopener">MDN — Promise</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Промис месозем, занҷир мебандем, хатоҳоро дастгир мекунем, якчанд промисро баробар оғоз мекунем.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Промиси аввалин</h4><span class="level easy">осон</span></header>
+          <p>Промисе созед, ки баъд аз 200 мс бо қимати <code>"Данные загружены"</code> иҷро мешавад. Қиматро тавассути <code>then</code> чоп кунед.</p>
+<pre class="code" data-run>
+// const loading = new Promise(...)
+
+// loading.then(...)
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Данные загружены</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>new Promise((resolve) =&gt; { ... })</code> — дар дохил <code>setTimeout</code>-ро барои 200 мс оғоз кунед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар дохили таймер <code>resolve("Данные загружены")</code>-ро даъват кунед. Қимате, ки ба <code>resolve</code> дода шуд, ба колбэки <code>then</code> мерасад.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Санҷиши дастрасӣ</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>checkAdult</code> промис бармегардонад. Натиҷаро барои синни 15 коркард кунед: <code>Ошибка: …</code>-ро бо матни сабаб чоп кунед, дар охир бошад — «проверка завершена». Сипас синнро ба 20 иваз кунед ва бинед, чӣ тағйир меёбад.</p>
+<pre class="code" data-run>
+function checkAdult(age) {
+  return new Promise((resolve, reject) =&gt; {
+    if (age &gt;= 18) {
+      resolve("доступ разрешён");
+    } else {
+      reject(new Error("доступ закрыт"));
+    }
+  });
+}
+
+// checkAdult(15) ...
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Ошибка: доступ закрыт
+проверка завершена</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Занҷири се усул: <code>.then(...)</code> барои муваффақият, <code>.catch(...)</code> барои хато ва <code>.finally(...)</code> дар охир.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Сабаби радшавӣ дар <code>error.message</code> аст: <code>.catch((error) =&gt; console.log("Ошибка: " + error.message))</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Занҷири тахфифҳо</h4><span class="level mid">миёна</span></header>
+          <p>Куртка 1000 сомонӣ меарзад. Занҷири аз ду <code>then</code> созед: аввалӣ тахфифи 10%-ро татбиқ мекунад ва <code>После скидки: …</code>-ро чоп мекунад, дуюмӣ купони 50 сомониро кам мекунад ва <code>С купоном: …</code>-ро чоп мекунад. Ҳар қадам бояд нархи навро баргардонад.</p>
+<pre class="code" data-run>
+const price = 1000;
+
+// Promise.resolve(price)...
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>После скидки: 900
+С купоном: 850</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аз <code>Promise.resolve(price)</code> оғоз кунед. Ҳар <code>then</code> нархро аз қаблӣ мегирад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Қолаби қадам: <code>.then((p) =&gt; { const next = p * 0.9; console.log("После скидки: " + next); return next; })</code>. Қадами дуюм ҳамин тавр сохта шудааст, аммо 50-ро кам мекунад.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ВАЗИФАИ 4.4</span><h4>Хаторо ёб: return-и гумшуда</h4><span class="level easy">осон</span></header>
+          <p>Бояд «Итого: 120» чоп шавад (нархи 100 плюс расонидани 20), аммо <code>undefined</code> чоп мешавад. Кодро ислоҳ кунед.</p>
+<pre class="code" data-run>
+Promise.resolve(100)
+  .then((price) =&gt; {
+    const total = price + 20;
+  })
+  .then((total) =&gt; {
+    console.log("Итого: " + total);
+  });
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Итого: 120</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>then</code>-и дуюм чӣ мегирад? Танҳо он чиро, ки аввалӣ <b>баргардонд</b>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ба <code>then</code>-и аввал сатри <code>return total;</code>-ро илова кунед.</p></details>
+        </article>
+
+        <article class="task" id="t4-5">
+          <header><span class="task-num">ВАЗИФАИ 4.5</span><h4>Боркунии саҳифаи асосӣ</h4><span class="level mid">миёна</span></header>
+          <p>Се боркунии новобаста 300, 100 ва 200 мс мегиранд. Онҳоро <b>якбора</b> тавассути <code>Promise.all</code> оғоз кунед ва як сатр чоп намоед, чунон ки дар мисол аст.</p>
+<pre class="code" data-run>
+const wait = (ms, value) =&gt; new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(value), ms));
+
+const loadProfile = () =&gt; wait(300, "профиль");
+const loadOrders  = () =&gt; wait(100, "заказы");
+const loadBanners = () =&gt; wait(200, "баннеры");
+
+// Promise.all([...]).then(...)
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Загружено: профиль, заказы, баннеры</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ба <code>Promise.all</code> массиви <b>даъватҳои</b> функсияҳо дода мешавад: <code>[loadProfile(), loadOrders(), loadBanners()]</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ба <code>then</code> массиви натиҷаҳо бо ҳамон тартибе, ки дар дархост буд, мерасад. Онро тавассути <code>.join(", ")</code> пайваст кунед.</p></details>
+        </article>
+
+        <article class="task" id="t4-6">
+          <header><span class="task-num">ВАЗИФАИ 4.6</span><h4>Чӣ бор шуд, чӣ не</h4><span class="level hard">душвор</span></header>
+          <p>Яке аз се дархост барор нагирифт, аммо боқиро бояд нишон дод. Дар <code>then</code> массиви натиҷаҳоро гиред ва барои ҳар кадом <code>✓ қимат</code> (агар <code>status === "fulfilled"</code>) ё <code>✗ сабаб</code> (агар <code>"rejected"</code>, сабаб — <code>reason.message</code>) чоп кунед.</p>
+<pre class="code" data-run>
+const wait = (ms, value) =&gt; new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(value), ms));
+const fail = (ms, message) =&gt; new Promise((_, reject) =&gt; setTimeout(() =&gt; reject(new Error(message)), ms));
+
+Promise.allSettled([
+  wait(100, "курс"),
+  fail(150, "нет сети"),
+  wait(50, "расписание"),
+]).then((results) =&gt; {
+  // барои ҳар натиҷа як сатр чоп кунед
+});
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>✓ курс
+✗ нет сети
+✓ расписание</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>results.forEach((item) =&gt; { ... })</code>-ро истифода баред. Ҳар унсур майдони <code>status</code> дорад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Агар <code>item.status === "fulfilled"</code> бошад — қимат дар <code>item.value</code>, вагарна сабаб дар <code>item.reason.message</code>. Тартиби натиҷаҳо — мисли дар массиви дархост, на ба тартиби анҷомёбии онҳо.</p></details>
+        </article>
+
+        <article class="task" id="t4-7">
+          <header><span class="task-num">ВАЗИФАИ 4.7</span><h4>Тартибро пешгӯӣ кун: занҷир бо хато</h4><span class="level mid">миёна</span></header>
+          <p>Хато дар занҷир, <code>catch</code>, ки қимат бармегардонад ва <code>finally</code>. Дар бораи сатри синхронии <code>log("f")</code> дар охир фаромӯш накунед.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+Promise.resolve("a")
+  .then((v) =&gt; {
+    log(v);
+    throw new Error("сбой");
+  })
+  .then(() =&gt; log("b"))
+  .catch(() =&gt; {
+    log("c");
+    return "d";
+  })
+  .then((v) =&gt; log(v))
+  .finally(() =&gt; log("e"));
+
+log("f");
+
+const prediction = [];
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ба таври синхронӣ танҳо <code>log("f")</code> иҷро мешавад. Ҳамаи ҳалқаҳои дигари занҷир — микровазифаҳо мебошанд, ки яке аз паси дигаре саф кашидаанд.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Баъд аз <code>throw</code> ҳалқа бо нишонаи b гузаронда мешавад — вай даъват намегардад. <code>catch</code> «d»-ро бармегардонад ва занҷир ҳамчун муваффақ идома меёбад.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="async-await">
+      <h2 data-toc="async / await"><span class="num">05</span> async / await: промисҳо бе занҷирҳо</h2>
+
+      <p>Занҷирҳои <code>then</code> аз пирамида беҳтаранд, аммо боз ҳам мисли коди оддӣ хонда намешаванд. Дар JavaScript синтаксисе ҳаст, ки коди ғайрисинхрониро ба синхронӣ монанд мекунад: <code>async / await</code>. Дар зери сарпӯш ин ҳамон промисҳост, фақат бароҳаттар навишта шудаанд.</p>
+
+      <dl class="terms">
+        <dt>async</dt><dd>Калима пеш аз функсия. Чунин функсия <b>ҳамеша промис бармегардонад</b> ва дар дохили он <code>await</code>-ро истифода бурдан мумкин аст.</dd>
+        <dt>await</dt><dd>«Натиҷаи промисро интизор шав». Танҳо дар дохили функсияи <code>async</code> кор мекунад. <b>Ҳамин функсияро</b> боздошта мемонад, на тамоми барномаро.</dd>
+      </dl>
+
+<pre class="code" data-run data-title="Ҳамон қадамҳо: аввал тавассути then, баъд тавассути await">
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// буд: занҷири then
+function checkoutThen() {
+  return wait(100)
+    .then(() => console.log("then: корзина открыта"))
+    .then(() => wait(100))
+    .then(() => console.log("then: оплата прошла"));
+}
+
+// шуд: async / await
+async function checkout() {
+  await wait(100);
+  console.log("await: корзина открыта");
+  await wait(100);
+  console.log("await: оплата прошла");
+}
+
+checkoutThen().then(() => checkout());
+</pre>
+
+      <p>Коди бо <code>await</code> аз боло ба поён мисли синхронии оддӣ хонда мешавад: «интизор шудем, чоп кардем, интизор шудем, чоп кардем». Натиҷаи промисро оддӣ ба тағйирёбанда гузоштан мумкин аст:</p>
+
+<pre class="code" data-run>
+const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+async function showPrice() {
+  console.log("Спрашиваем цену...");
+  const price = await wait(200, 35);      // await қиматро аз промис «мебарорад»
+  console.log("Цена плова:", price, "сомони");
+  return price * 2;
+}
+
+showPrice().then((double) => console.log("Две порции:", double));
+console.log("showPrice() запущена и вернула промис");
+</pre>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо дар навбати нон меистед. <code>await</code> — ин «ба навбат истодӣ ва ҳиссаи худро интизорӣ». Аммо корҳои дигари кӯча (тамоми боқимондаи коди барнома) намеистанд: танҳо шумо, як функсия, интизор мешавед. Нон тайёр шуд — шумо аз ҳамон ҷое, ки истода будед, идома медиҳед.</p>
+      </div>
+
+      <h3>Хатоҳо: try / catch / finally</h3>
+      <p>Агар промис рад шавад, <code>await</code> дар ҳамон ҷое, ки шумо интизор будед, <b>хато мепартояд</b>. Онро бо <code>try / catch</code>-и маъмулӣ, ки аллакай медонед, дастгир мекунем. <code>finally</code> дар ҳар сурат иҷро мешавад.</p>
+
+<pre class="code" data-run>
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function loadStudent(id) {
+  await wait(100);
+  if (id &lt;= 0) {
+    throw new Error("неверный номер студента");
+  }
+  return "Студент №" + id;
+}
+
+async function main() {
+  try {
+    console.log(await loadStudent(5));
+    console.log(await loadStudent(0));      // инҷо хато мешавад
+    console.log("эта строка не выполнится");
+  } catch (error) {
+    console.log("Ошибка:", error.message);
+  } finally {
+    console.log("Загрузка завершена");
+  }
+}
+
+main();
+</pre>
+
+      <h3>Пай дар пай ё мувозӣ</h3>
+      <p>Ҳар <code>await</code> интизор мешавад, то қадами қаблӣ анҷом ёбад. Агар қадамҳо новобаста бошанд — ин талафи вақт аст: ду боркунии 200 мс-а пай дар пай 400 мс мегиранд. Ҳарду промисро якбора оғоз кунед ва онҳоро якҷоя тавассути <code>Promise.all</code> интизор шавед — 200 мс мешавад.</p>
+
+<pre class="code" data-run>
+const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+async function sequential() {
+  console.log("--- последовательно ---");
+  const a = await wait(200, "курсы");        // 200 мс интизор мешавем
+  const b = await wait(200, "новости");      // баъд боз 200 мс
+  console.log("получили:", a, b);
+}
+
+async function parallel() {
+  console.log("--- параллельно ---");
+  const [a, b] = await Promise.all([wait(200, "курсы"), wait(200, "новости")]);   // 200 мс якҷоя
+  console.log("получили:", a, b);
+}
+
+sequential().then(parallel);
+</pre>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>await</code> берун аз функсияи <code>async</code> — хатои синтаксисӣ аст. <b>2.</b> <code>await</code>-ро фаромӯш кардан: ба ҷои қимат худи промисро мегиред. <b>3.</b> <code>try / catch</code>-ро фаромӯш кардан: хато ҳамчун коркарднашуда ба берун «парвоз мекунад».</p>
+      </div>
+<pre class="code" data-run data-title="Хато: await-ро фаромӯш кардем">
+const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+async function main() {
+  const price = wait(100, 35);         // ✖ бе await
+  console.log("Цена:", price);          // → Цена: Promise {…}, на 35
+}
+
+main();
+</pre>
+
+      <h3>await ва event loop</h3>
+      <p>Ҳар чизе, ки <b>баъд аз</b> <code>await</code> меояд — идомаи функсия дар намуди <b>микровазифа</b> аст. Коди то аввалин <code>await</code> ба таври синхронӣ иҷро мешавад, боқимонда бошад ба навбати микровазифаҳо «меистад»:</p>
+<pre class="code" data-run>
+async function main() {
+  console.log("1. до await (синхронно)");
+  await null;
+  console.log("3. после await (микрозадача)");
+}
+
+main();
+console.log("2. после вызова main() (синхронно)");
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/async-await" target="_blank" rel="noopener">learn.javascript.ru — Async/await</a> · <a href="https://developer.mozilla.org/ru/docs/Learn_web_development/Extensions/Async_JS/Promises" target="_blank" rel="noopener">MDN — Истифодаи промисҳо</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Функсияҳои <code>async</code> менависем, хатоҳоро дастгир мекунем ва қадамҳои новобастаро тезонем.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Ба async/await бознависед</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>checkoutOld</code> тавассути занҷири <code>then</code> навишта шудааст ва даъват намешавад. Функсияи <code>async function checkout()</code>-ро нависед, ки ҳамин корро тавассути <code>await</code> мекунад ва онро даъват кунед.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+function checkoutOld() {
+  return wait(100)
+    .then(() =&gt; { console.log("Шаг 1: открыли корзину"); return wait(100); })
+    .then(() =&gt; { console.log("Шаг 2: выбрали доставку"); return wait(100); })
+    .then(() =&gt; console.log("Шаг 3: оплатили"));
+}
+
+// async function checkout() { ... }
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Шаг 1: открыли корзину
+Шаг 2: выбрали доставку
+Шаг 3: оплатили</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҳар <code>.then(() =&gt; ...)</code> ба сатр табдил меёбад: аввал <code>await wait(100)</code>, баъд <code>console.log(...)</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Бадан: <code>await wait(100); console.log("Шаг 1: ..."); await wait(100); console.log("Шаг 2: ..."); await wait(100); console.log("Шаг 3: ...");</code> — ва даъват кардани <code>checkout()</code>-ро фаромӯш накунед.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Тартибро пешгӯӣ кун: await</h4><span class="level easy">осон</span></header>
+          <p>Коди баъд аз <code>await</code> — микровазифа аст. Бо нишонаҳои 1, 2, 3, 0 чӣ мешавад?</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+async function main() {
+  log("1");
+  await null;
+  log("2");
+}
+
+log("0");
+main();
+log("3");
+
+const prediction = [];
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Функсияи <code>main()</code> ба таври синхронӣ <b>то аввалин <code>await</code></b> иҷро мешавад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Нишонаи 2 баъд аз <code>await</code> меистад — ин микровазифа аст, вай вақте иҷро мешавад, ки тамоми коди синхронӣ, аз ҷумла <code>log("3")</code>, анҷом ёбад.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ВАЗИФАИ 5.3</span><h4>Рӯйхати донишҷӯён бо хато</h4><span class="level mid">миёна</span></header>
+          <p>Функсияи <code>fetchStudent</code> барои рақами 0 хато мепартояд. Функсияи <code>async</code>-и <code>main</code>-ро нависед: вай ба навбат (дар давраи <code>for…of</code>) донишҷӯёни 1, 0 ва 2-ро бор мекунад. Натиҷаро чунон ки ҳаст, хаторо бошад ҳамчун <code>Ошибка: …</code> чоп мекунад. Баъд аз <b>ҳар</b> дархост, муваффақ ё не, <code>— запрос завершён</code> чоп мешавад.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+async function fetchStudent(id) {
+  await wait(50);
+  if (id === 0) {
+    throw new Error("студент не найден");
+  }
+  return "Студент №" + id;
+}
+
+// async function main() { ... }
+// main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Студент №1
+— запрос завершён
+Ошибка: студент не найден
+— запрос завершён
+Студент №2
+— запрос завершён</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар дохили давра <code>try / catch / finally</code>-и худӣ лозим аст — он гоҳ хатои як дархост боқиро қатъ намекунад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>for (const id of [1, 0, 2]) { try { console.log(await fetchStudent(id)); } catch (error) { console.log("Ошибка: " + error.message); } finally { console.log("— запрос завершён"); } }</code></p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ВАЗИФАИ 5.4</span><h4>Боркуниро тезон</h4><span class="level mid">миёна</span></header>
+          <p>Ду боркунии новобаста ҳоло яке аз паси дигаре мераванд. <code>main</code>-ро чунон дигар кунед, ки ҳарду якбора оғоз шаванд (<code>Promise.all</code>). Он гоҳ «новости» (тезтар) пештар аз «курсы» анҷом меёбад.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+async function load(name, ms) {
+  console.log("старт " + name);
+  await wait(ms);
+  console.log("готов " + name);
+  return name;
+}
+
+async function main() {
+  const a = await load("курсы", 200);
+  const b = await load("новости", 100);
+  console.log("итого: " + a + " + " + b);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>старт курсы
+старт новости
+готов новости
+готов курсы
+итого: курсы + новости</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>await</code>-ро барои ҳар боркунӣ ҷудогона истифода набаред. Ҳарду функсияро якбора оғоз кунед ва ба <code>Promise.all</code> диҳед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>const [a, b] = await Promise.all([load("курсы", 200), load("новости", 100)]);</code> — массиви натиҷаҳо бо ҳамон тартибе, ки дар дархост буд, меояд.</p></details>
+        </article>
+
+        <article class="task" id="t5-5">
+          <header><span class="task-num">ВАЗИФАИ 5.5</span><h4>Кӯшишро такрор кун</h4><span class="level hard">душвор</span></header>
+          <p>Сервер баъзан «меафтад». <code>async function retry(fn, times)</code>-ро нависед: вай <code>fn</code>-ро то <code>times</code> маротиба даъват мекунад. Агар кӯшиш ноком шавад — <code>попытка N: сообщение</code>-ро чоп мекунад ва боз кӯшиш мекунад. Агар ҳама ноком шаванд — хатои охиринро мепартояд. Функсияи <code>flaky</code> махсус ду бор вайрон мешавад.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+let calls = 0;
+async function flaky() {
+  calls++;
+  await wait(50);
+  if (calls &lt; 3) {
+    throw new Error("сбой " + calls);
+  }
+  return "данные";
+}
+
+// async function retry(fn, times) { ... }
+
+retry(flaky, 5).then((result) =&gt; console.log("успех: " + result));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>попытка 1: сбой 1
+попытка 2: сбой 2
+успех: данные</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Давраи <code>for (let i = 1; i &lt;= times; i++)</code>, дар дохилаш бошад — <code>try { return await fn(); } catch (error) { … }</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар <code>catch</code>: <code>`попытка ${i}: ${error.message}`</code>-ро чоп кунед. Агар <code>i === times</code> бошад, <code>throw error</code> нависед — вагарна давра оддӣ ба кӯшиши навбатӣ мегузарад.</p></details>
+        </article>
+
+        <article class="task" id="t5-6">
+          <header><span class="task-num">ВАЗИФАИ 5.6</span><h4>Абадӣ интизор нашав</h4><span class="level hard">душвор</span></header>
+          <p><code>withTimeout(promise, ms)</code>-ро нависед: тавассути <code>Promise.race</code> вай натиҷаи промисро бармегардонад, агар расида бошад, ё бо хатои <code>таймаут</code> рад мешавад, агар аз <code>ms</code> мс зиёдтар гузашта бошад. Функсияи <code>test</code> аллакай навишта шудааст.</p>
+<pre class="code" data-run>
+const wait = (ms, value) =&gt; new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(value), ms));
+
+// function withTimeout(promise, ms) { ... }
+
+async function test(label, delay) {
+  try {
+    console.log(await withTimeout(wait(delay, "ответ " + label), 150));
+  } catch (error) {
+    console.log("Ошибка: " + error.message);
+  }
+}
+
+test("быстрый", 50).then(() =&gt; test("медленный", 400));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>ответ быстрый
+Ошибка: таймаут</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>«Мусобиқа» байни промиси шумо ва промиси дуюм лозим аст, ки оддӣ баъд аз <code>ms</code> миллисония рад мешавад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>return Promise.race([promise, new Promise((_, reject) =&gt; setTimeout(() =&gt; reject(new Error("таймаут")), ms))]);</code></p></details>
+        </article>
+
+        <article class="task" id="t5-7">
+          <header><span class="task-num">ВАЗИФАИ 5.7</span><h4>Тартибро пешгӯӣ кун: финал</h4><span class="level hard">душвор</span></header>
+          <p>Ҳама якҷоя: функсияҳои <code>async</code>, <code>await</code>, <code>then</code> ва таймер. Ба ёд оред: функсияи <code>b()</code> ба таври синхронӣ то охир иҷро мешавад ва промиси аллакай иҷрошударо бармегардонад, <code>await</code> бошад идоракуниро ба берун медиҳад.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+async function a() {
+  log("a1");
+  await b();
+  log("a2");
+}
+
+async function b() {
+  log("b1");
+}
+
+setTimeout(() =&gt; log("t"), 0);
+a();
+Promise.resolve().then(() =&gt; log("p"));
+log("s");
+
+const prediction = [];
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ба таври синхронӣ: <code>a()</code> то <code>await</code> иҷро мешавад ва <code>b()</code>-ро пурра даъват мекунад (нишонаҳои a1, b1). Баъд <code>then</code> сабт мешавад ва <code>log("s")</code> иҷро мегардад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Микровазифаҳо бо тартиби илова шудан мераванд: аввал идомаи функсияи <code>a</code> (вай дар <code>await</code> ба навбат истод), баъд <code>then</code> бо нишонаи p. Таймер — охирин.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="Блоки ЗС"><span class="num">06</span> Блоки ЗС: event loop-ро шарҳ медиҳем ва бо код месанҷем</h2>
+
+      <p>Ғайрисинхронӣ — яке аз мавзӯъҳоест, ки ЗС (зеҳни сунъӣ) онро зебо шарҳ медиҳад, аммо баъзан дар ҷузъиёт хато мекунад: тартиби микровазифаҳо ва таймерҳоро омехта мекунад ё дар бораи <code>await</code> «фаромӯш мекунад». Имрӯз малакаи асосии кор бо ЗС-ро машқ мекунем: <b>бовар накардан ба гап, балки бо иҷро санҷидан</b>.</p>
+
+      <div class="callout ai">
+        <b>Қоидаҳои курс, ки дар ин ҷо махсусан муҳиманд</b>
+        <p><b>1.</b> Аввал 15 дақиқа худатон кӯшиш мекунед: кодро ба сабадҳо (синхронӣ / микровазифаҳо / макровазифаҳо) тақсим кунед ва пешгӯии тартиби чопи худро нависед. <b>2.</b> Танҳо баъд ба сӯи ЗС мераванд. <b>3.</b> Ба лоиҳаи худ коде гузоред, ки онро сатр ба сатр шарҳ дода наметавонед. <b>4.</b> Шарҳи ЗС-ро <b>ҳамеша бо иҷро санҷед</b>: код — беҳтарин довар аст.</p>
+      </div>
+
+      <h3>Чӣ тавр пурсидан: бад ва хуб</h3>
+      <p>Формулаи промпти курс: <b>контекст → вазифа → маҳдудиятҳо → формати ҷавоб → санҷиш</b>.</p>
+
+      <div class="prompt bad-prompt">event loop-ро шарҳ деҳ</div>
+      <div class="prompt good-prompt">Ман JavaScript меомӯзам, сатҳ — навомӯз, функсияҳо ва массивҳоро медонам, дар бораи промисҳо танҳо оғоз мекунам. Event loop-ро дар мисоли ин код шарҳ деҳ: console.log("A"); setTimeout(() => console.log("B"), 0); Promise.resolve().then(() => console.log("C")); console.log("D"); Тартиби чопро дар консол нишон деҳ ва чаро чунин аст: қадам ба қадам, бо қайди он ки дар стек, дар навбати микровазифаҳо ва дар навбати макровазифаҳо чӣ хобидааст. Бе истилоҳоти мураккаб ва бе мисолҳои дигар. Дар охир 2 хатои маъмули навомӯзонро номбар кун, ки аз сабаби онҳо тартиби чопро нодуруст пешгӯӣ мекунанд.</div>
+
+      <p>Промпти хубро ба чати ЗС нусха кунед. Баъд <b>шарҳро бо код санҷед</b>:</p>
+
+<pre class="code" data-run data-title="Ҷавоби ЗС-ро бо иҷро месанҷем">
+console.log("A");
+setTimeout(() => console.log("B"), 0);
+Promise.resolve().then(() => console.log("C"));
+console.log("D");
+// Оё тартиб бо ҷавоби ЗС мувофиқат кард? Агар не, пас ЗС хато кардааст — ё шумо вазифаро нодуруст тавсиф кардаед.
+</pre>
+
+      <div class="callout tip">
+        <b>Дар ҷавоби ЗС чиро санҷидан лозим</b>
+        <p>1) Оё тартиби чоп бо иҷрои воқеӣ мувофиқат мекунад? 2) Оё навбат барои <code>then</code> ва <code>setTimeout</code> дуруст номбар шудааст? 3) Оё дар мисолҳо коди бегонае нест, ки шумо онро намефаҳмед? 4) Агар ЗС <code>async/await</code>-ро пешниҳод кард, оё дар он <code>try/catch</code> ҳаст?</p>
+      </div>
+
+      <div class="practice">
+        <h3>Амал: хатои ЗС-ро медарёбем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>ЗС хато кардааст? Бо иҷро санҷ</h4><span class="level mid">миёна</span></header>
+          <p>ЗС боварӣ бо ҷавоб дод, ки тартиби чоп <code>начало, таймер, промис, конец</code> мешавад. Бовар накунед — санҷед. Кодро ба сабадҳо тақсим кунед, хаторо дар ҷавоби ЗС ёбед ва массиви <code>aiAnswer</code>-ро чунон ислоҳ кунед, ки бо тартиби воқеӣ мувофиқат кунад.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+log("начало");
+setTimeout(() =&gt; log("таймер"), 0);
+Promise.resolve().then(() =&gt; log("промис"));
+log("конец");
+
+// ҷавоби ЗС — дар он хато ҳаст, ислоҳ кунед
+const aiAnswer = ["начало", "таймер", "промис", "конец"];
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === aiAnswer.join(" ") ? "Верно!" : "ИИ ошибся, исправьте ответ"), 400);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Сатрҳои синхронӣ — «начало» ва «конец» — бояд аввал раванд.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Промис — микровазифа аст, вай ҳамеша пештар аз таймер (макровазифа) мебошад.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Амал дар дарс"><span class="num">07</span> Амал дар дарс: тақлиди боркунии маълумот</h2>
+
+      <p>Серверҳои воқеӣ ҳоло надорем (ба онҳо дар дарси оянда мерасем), барои ҳамин сервери «қалбакӣ» месозем — функсияҳое, ки мисли дархостҳои воқеӣ бо таъхир ҷавоб медиҳанд. Ин усули стандартӣ аст: бо ин роҳ интерфейсро то омода шудани сервер месанҷанд.</p>
+
+      <h3>Қадами 1. Базаи маълумот ва функсияҳои ёрирасон</h3>
+      <p>Аввал «базаи» мо ва функсияи <code>wait</code>. Иҷро кунед — ҳоло чизе чоп намешавад, мо танҳо мавод омода мекунем.</p>
+<pre class="code" data-run data-title="Қадами 1. «Сервер»">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+const users = {
+  1: { name: "Мадина" },
+  2: { name: "Фарход" },
+};
+
+const orders = {
+  1: [120, 80, 45],   // маблағи фармоишҳо бо сомонӣ
+  2: [],
+};
+
+console.log("Готово. Пользователей:", Object.keys(users).length);
+</pre>
+
+      <h3>Қадами 2. Функсияҳои «дархостҳо»</h3>
+      <p>Ҳар функсия интизор мешавад ва маълумот бармегардонад. Агар корбар набошад — промисро бо хато рад мекунад. Сервери воқеӣ ҳамин тавр рафтор мекунад: аксар вақт вай дар 100–500 мс ҷавоб медиҳад ва гоҳо «хато» мегӯяд.</p>
+<pre class="code" data-run data-title="Қадами 2. Дархостҳо бо таъхир">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+const orders = { 1: [120, 80, 45], 2: [] };
+
+async function fakeFetchUser(id) {
+  await wait(200);
+  const user = users[id];
+  if (!user) {
+    throw new Error("пользователь не найден");
+  }
+  return user;
+}
+
+async function fakeFetchOrders(id) {
+  await wait(150);
+  return orders[id] ?? [];
+}
+
+fakeFetchUser(1).then((user) =&gt; console.log("Получили:", user.name));
+fakeFetchUser(99).catch((error) =&gt; console.log("Ошибка:", error.message));
+</pre>
+
+      <h3>Қадами 3. Занҷир: корбар → фармоишҳои ӯ</h3>
+      <p>Фармоишҳо аз корбар вобастаанд, барои ҳамин ба навбат интизор мешавем. Тавассути <code>async/await</code> ин мисли дастур хонда мешавад:</p>
+<pre class="code" data-run data-title="Қадами 3. Дархостҳои вобаста">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+const orders = { 1: [120, 80, 45], 2: [] };
+
+async function fakeFetchUser(id) {
+  await wait(200);
+  if (!users[id]) throw new Error("пользователь не найден");
+  return users[id];
+}
+async function fakeFetchOrders(id) {
+  await wait(150);
+  return orders[id] ?? [];
+}
+
+async function showProfile(id) {
+  const user = await fakeFetchUser(id);
+  const list = await fakeFetchOrders(id);
+  const sum = list.reduce((total, price) =&gt; total + price, 0);
+  console.log(`${user.name}: заказов ${list.length}, на ${sum} сомони`);
+}
+
+showProfile(1);
+</pre>
+
+      <h3>Қадами 4. Инро дар саҳифа нишон медиҳем</h3>
+      <p>Дар браузер мо одатан ба корбар се ҳолатро нишон медиҳем: <b>«Боркунӣ…»</b>, <b>маълумот</b> ё <b>хато</b>. Дар барномаи хурди поён «Загрузить»-ро пахш кунед, баъд ҷадвали <code>script.js</code>-ро кушоед ва рақами корбарро ба 99 иваз кунед — ҳолати хаторо мебинед. Ба ин усул мо дар дарси 17 бармегардем.</p>
+
+      <div class="playground" data-mode="dom" data-title="Профил бо нишондиҳандаи боркунӣ">
+<pre class="code" data-lang="html">
+&lt;div class="card"&gt;
+  &lt;button id="load"&gt;Загрузить профиль&lt;/button&gt;
+  &lt;p id="status"&gt;Нажмите кнопку&lt;/p&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.card { max-width: 320px; padding: 16px; border: 1px solid #ccd; border-radius: 12px; }
+button { padding: 8px 14px; border-radius: 8px; border: 0; background: #1a8a6a; color: #fff; font-size: 15px; cursor: pointer; }
+#status { margin: 12px 0 0; }
+.error { color: #c0392b; }
+</pre>
+<pre class="code" data-lang="js">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+
+async function fakeFetchUser(id) {
+  await wait(600);
+  if (!users[id]) throw new Error("пользователь не найден");
+  return users[id];
+}
+
+const button = document.querySelector("#load");
+const status = document.querySelector("#status");
+
+button.addEventListener("click", async () =&gt; {
+  status.className = "";
+  status.textContent = "Загрузка...";
+  button.disabled = true;
+  try {
+    const user = await fakeFetchUser(1);        // ба 99 иваз кунед
+    status.textContent = "Привет, " + user.name + "!";
+  } catch (error) {
+    status.className = "error";
+    status.textContent = "Ошибка: " + error.message;
+  } finally {
+    button.disabled = false;
+  }
+  console.log("статус:", status.textContent);
+});
+</pre>
+      </div>
+
+      <div class="practice">
+        <h3>Амал: дашборд ҷамъ мекунем</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Дашборди корбар</h4><span class="level mid">миёна</span></header>
+          <p><code>async function loadDashboard(id)</code>-ро нависед: вай «Загрузка...»-ро чоп мекунад, баъд корбар ва фармоишҳои ӯро <b>якбора</b> мегирад (<code>Promise.all</code> — онҳо аз ҳам вобаста нестанд, танҳо <code>id</code> лозим аст) ва сатри <code>Привет, имя! Заказов: N, на сумму S сомони</code>-ро чоп мекунад.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+const orders = { 1: [120, 80, 45], 2: [] };
+
+async function fakeFetchUser(id) {
+  await wait(200);
+  if (!users[id]) throw new Error("пользователь не найден");
+  return users[id];
+}
+async function fakeFetchOrders(id) {
+  await wait(150);
+  return orders[id] ?? [];
+}
+
+// async function loadDashboard(id) { ... }
+
+loadDashboard(1);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Загрузка...
+Привет, Мадина! Заказов: 3, на сумму 245 сомони</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>const [user, list] = await Promise.all([fakeFetchUser(id), fakeFetchOrders(id)]);</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Маблағи фармоишҳо: <code>list.reduce((total, price) =&gt; total + price, 0)</code>. Сатрро бо нохунакҳои қолабӣ ҷамъ кардан қулай аст.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Боркунӣ бо хато</h4><span class="level hard">душвор</span></header>
+          <p><code>loadDashboard</code>-ро такмил диҳед: агар корбар ёфт нашавад, ба ҷои салом <code>Ошибка: …</code>-ро чоп кунед. Дар ҳар сурат, муваффақият ё хато, дар охир «Загрузка завершена» чоп мешавад. Функсияро барои корбарони 1 ва 99 <b>ба навбат</b> (баъд аз анҷоми якум) иҷро кунед.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+const orders = { 1: [120, 80, 45], 2: [] };
+
+async function fakeFetchUser(id) {
+  await wait(200);
+  if (!users[id]) throw new Error("пользователь не найден");
+  return users[id];
+}
+async function fakeFetchOrders(id) {
+  await wait(150);
+  return orders[id] ?? [];
+}
+
+// async function loadDashboard(id) { ... }
+
+// барои 1 иҷро кунед, вақте анҷом ёфт — барои 99
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Загрузка...
+Привет, Мадина! Заказов: 3, на сумму 245 сомони
+Загрузка завершена
+Загрузка...
+Ошибка: пользователь не найден
+Загрузка завершена</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Бадани функсия: «Загрузка...», баъд <code>try { ... } catch (error) { ... } finally { ... }</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Барои ба навбат иҷро кардан занҷирро истифода баред: <code>loadDashboard(1).then(() =&gt; loadDashboard(99));</code> — функсия промис бармегардонад, чунки вай <code>async</code> аст.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">08</span> Вазифаи хонагӣ</h2>
+
+      <p>Шаш вазифа дар мавзӯи промисҳо ва <code>async/await</code>. Ҳамаи ҳалҳо — дар як файли <code>async-basics.js</code>. Пеш аз ҳар ҳал шарҳе бо рақами вазифа гузоред.</p>
+
+      <ol>
+        <li><b>Таймер бо промисҳо.</b> Функсияи <code>delay(ms)</code>-ро нависед, ки промисе бармегардонад, ки баъд аз <code>ms</code> миллисония иҷро мешавад. Бо ёрии он «3», «2», «1», «Старт!»-ро бо танаффуси 300 мс байни сатрҳо (тавассути занҷири <code>then</code>) чоп кунед.</li>
+        <li><b>Аз колбэк ба промис.</b> Функсияи <code>checkAge(age, callback)</code>-ро аз вазифаи 2.2 гиред ва печонандаи <code>checkAgeAsync(age)</code>-ро нависед, ки промис бармегардонад. Онро барои ду синну сол даъват кунед, натиҷаро тавассути <code>then / catch</code> коркард намоед.</li>
+        <li><b>Занҷири се қадам.</b> Се қадами «фармоиши питса» бо таъхир: фармоишро қабул кардан → тайёр кардан → расондан. Ҳар кадом промис бо сатр бармегардонад. Онҳоро ба занҷири ҳамвор саф кашед ва натиҷаи ҳар қадамро чоп кунед. Дар охир як <code>catch</code> илова кунед ва санҷед, ки он кор мекунад, агар як қадамро маҷбур кунед, ки рад шавад.</li>
+        <li><b>Се боркунӣ якбора.</b> Се «дархост» бо таъхири гуногун (қурби сомонӣ, обу ҳаво дар Душанбе, ҷадвали гурӯҳ). Тавассути <code>Promise.all</code> оғоз кунед, натиҷаҳо ва вақти умумиро чоп намоед (<code>Date.now()</code> то ва баъд — вай бояд тақрибан ба дарозтарин таъхир баробар бошад, на ба маҷмӯъ).</li>
+        <li><b>async / await бо хато.</b> <code>async function loadProfile(id)</code>-ро нависед, ки профилро 300 мс «бор мекунад» ва барои рақами калонтар аз 100 хато мепартояд. Онро барои се рақам даъват кунед, хатоҳоро тавассути <code>try / catch / finally</code> дастгир намоед.</li>
+        <li><b>Варақаи пешгӯиҳо.</b> <b>Се</b> порчаи кодии худатонро бо омехтаи <code>console.log</code>, <code>setTimeout</code> ва <code>Promise.then</code> ихтироъ кунед. Болои ҳар кадом пешгӯии тартиби чопи худро ҳамчун шарҳ нависед, баъд иҷро кунед ва муқоиса намоед. Агар дуруст пешгӯӣ накардед — дар як сатр шарҳ диҳед, ки хато дар чӣ буд.</li>
+      </ol>
+
+      <h3>Чӣ супоридан лозим</h3>
+      <ul>
+        <li>Файли <code>async-basics.js</code> бо ҳамаи шаш ҳал ва шарҳҳо.</li>
+        <li>Истинод ба репозиторий дар GitHub (ё худи файл — чунон ки бо муаллим мувофиқа кунед).</li>
+      </ul>
+
+      <h3>Чӣ тавр баҳо медиҳем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Чӣ</th><th>Холҳо</th></tr></thead>
+          <tbody>
+            <tr><td>Вазифаҳои 1–2 кор мекунанд ва натиҷаи интизоршавандаро чоп мекунанд</td><td>2</td></tr>
+            <tr><td>Вазифаи 3: занҷири ҳамвор, <code>catch</code> воқеан кор мекунад</td><td>2</td></tr>
+            <tr><td>Вазифаи 4: дархостҳо якбора мераванд, вақт тақрибан ба дарозтарин таъхир баробар аст</td><td>2</td></tr>
+            <tr><td>Вазифаи 5: <code>try / catch / finally</code> дар ҷояш аст ва хатоҳоро дастгир мекунад</td><td>2</td></tr>
+            <tr><td>Вазифаи 6: пешгӯиҳои софдилона, хатоҳо таҳлил шудаанд</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Пеш аз супоридан</b>
+        <p>Барои ҳар функсия аз худ пурсед: «Оё метавонам шарҳ диҳам, ки ҳар сатр дар кадом навбат иҷро мешавад?» Агар ЗС-ро истифода бурда бошед — ҳар сатрро бояд дар ҳимоя шарҳ дода тавонед.</p>
+      </div>
+    </section>
+
+    <!-- ============ ХУЛОСА ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Лавҳаи ёддошт"><span class="num">✓</span> Лавҳаи ёддошти дарс</h2>
+      <ul>
+        <li>Коди <b>синхронӣ</b> сатр ба сатр меравад. <b>Ғайрисинхронӣ</b> корро оғоз мекунад ва интизор намешавад: натиҷа баъдтар меояд.</li>
+        <li><b>setTimeout(fn, мс)</b> — як маротиба баъдтар иҷро кардан; <b>setInterval</b> — такрор кардан; қатъкунӣ — <code>clearTimeout</code> / <code>clearInterval</code>. <b>Функсия</b>-ро месупорем, на даъвати онро.</li>
+        <li><b>Callback</b> — функсияе, ки «баъдтар» даъват мешавад. Колбэки «error-first»: <code>(error, result)</code>. Колбэкҳои бисёри дохилшуда — «дӯзахи колбэкҳо».</li>
+        <li><b>Promise</b>: <code>pending → fulfilled / rejected</code>, як маротиба тағйир меёбад. Сохтан: <code>new Promise((resolve, reject) =&gt; …)</code>.</li>
+        <li><b>then / catch / finally</b>: <code>then</code> промиси нав бармегардонад, қимат дар занҷир мерасад (<code>return</code> лозим аст); хато <code>then</code>-ро то наздиктарин <code>catch</code> мепарронад; <code>finally</code> — ҳамеша.</li>
+        <li><b>Promise.all</b> — ҳама якҷоя (тартиб мисли дар дархост, як хато — ҳама рад мешавад); <b>allSettled</b> — ҳисобот аз рӯи ҳар кадом; <b>race</b> — тезтарин.</li>
+        <li>Функсияи <b>async</b> ҳамеша промис бармегардонад. <b>await</b> натиҷаро танҳо дар дохили <code>async</code> интизор мешавад; хатоҳоро бо <code>try / catch / finally</code> дастгир мекунем. Қадамҳои новобаста — тавассути <code>Promise.all</code>.</li>
+        <li><b>Event loop:</b> аввал тамоми коди синхронӣ → <b>ҳамаи</b> микровазифаҳо (<code>then</code>, баъд аз <code>await</code>, <code>queueMicrotask</code>) → <b>як</b> макровазифа (<code>setTimeout</code>) → боз микровазифаҳо.</li>
+        <li><b>Бо ЗС:</b> аввал худатон, баъд промпт аз рӯи формула. Шарҳи ЗС дар бораи тартиби чопро — ҳамеша бо иҷро месанҷем.</li>
+      </ul>
+    </section>
