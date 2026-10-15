@@ -138,7 +138,7 @@ export default function Playground({ mode, title, files }: Props) {
           <iframe
             ref={frame}
             className="pg-frame"
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-forms"
             title={S.previewAria}
             style={{ height }}
           />
