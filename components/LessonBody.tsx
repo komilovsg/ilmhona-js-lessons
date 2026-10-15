@@ -1,16 +1,12 @@
 import { isTag } from 'domhandler';
-import { findAll, findOne, textContent } from 'domutils';
-import parse, { domToReact, htmlToDOM, Element, type DOMNode, type HTMLReactParserOptions } from 'html-react-parser';
+import { findAll, textContent } from 'domutils';
+import parse, { htmlToDOM, type Element } from 'html-react-parser';
 import type { Lesson } from '@/content/lessons';
 import { getMessages, type Locale } from '@/lib/i18n';
 import { readFragment } from '@/lib/lessons.server';
-import CodeBlock from './CodeBlock';
+import { hasClass, makeReplaceOptions } from '@/lib/contentReplace';
 import Pager from './Pager';
-import Prompt from './Prompt';
-import Task from './Task';
 import Toc, { type TocItem } from './Toc';
-
-const hasClass = (el: Element, c: string) => (el.attribs.class ?? '').split(/\s+/).includes(c);
 
 export default function LessonBody({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
   const { html: raw, isFallback } = readFragment(lesson.file, locale);
@@ -18,31 +14,7 @@ export default function LessonBody({ lesson, locale }: { lesson: Lesson; locale:
   const css = styleMatch ? styleMatch[1] : '';
   const html = styleMatch ? raw.slice(styleMatch[0].length) : raw;
 
-  const options: HTMLReactParserOptions = {
-    replace(node) {
-      if (!isTag(node)) return;
-      if (node.name === 'pre' && hasClass(node, 'code')) {
-        const code = textContent(node).replace(/^\n/, '').replace(/\s+$/, '');
-        return <CodeBlock code={code} run={'data-run' in node.attribs} title={node.attribs['data-title']} />;
-      }
-      if (node.name === 'article' && hasClass(node, 'task')) {
-        const lvl = findOne((e) => hasClass(e, 'level'), node.children, true);
-        const level = (['easy', 'mid', 'hard'] as const).find((l) => lvl && hasClass(lvl, l)) ?? null;
-        return (
-          <Task id={node.attribs.id} lessonSlug={lesson.slug} level={level}>
-            {domToReact(node.children as DOMNode[], options)}
-          </Task>
-        );
-      }
-      if (hasClass(node, 'prompt')) {
-        return (
-          <Prompt className={node.attribs.class} text={textContent(node).trim()}>
-            {domToReact(node.children as DOMNode[], options)}
-          </Prompt>
-        );
-      }
-    },
-  };
+  const options = makeReplaceOptions(lesson.slug);
 
   // Table of contents: `main section[id] > h2`, with the tasks inside each section.
   const items = tocItems(html);
