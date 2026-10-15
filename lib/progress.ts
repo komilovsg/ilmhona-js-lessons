@@ -9,6 +9,7 @@ export type ProgressState = {
   updatedAt: string;
 };
 
+// NOTE: storage keys keep the legacy 'ilmhona:' prefix on purpose: renaming would wipe students' saved progress.
 const KEY = 'ilmhona:v2';
 const MIGRATED_KEY = 'ilmhona:v2:migrated';
 const OLD_PREFIX = 'ilmhona:';

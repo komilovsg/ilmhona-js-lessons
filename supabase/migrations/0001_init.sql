@@ -1,4 +1,4 @@
--- Ilmhona: accounts, cross-device progress sync, public leaderboard.
+-- MakeFirstStep: accounts, cross-device progress sync, public leaderboard.
 -- Run once in the Supabase SQL editor (or `supabase db push`). Safe to re-run.
 --
 -- Security model

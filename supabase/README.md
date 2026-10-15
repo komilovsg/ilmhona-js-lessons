@@ -38,7 +38,7 @@ The `/**` matters: the app returns to `/auth/callback?next=<page you were on>`.
 ## 4. Google sign-in
 
 1. Google Cloud Console → <https://console.cloud.google.com/apis/credentials> (create a project if needed).
-2. **OAuth consent screen**: External, app name "Ilmhona", your support email. Scopes: the default
+2. **OAuth consent screen**: External, app name "MakeFirstStep", your support email. Scopes: the default
    `email`, `profile`, `openid` are enough. Publish the app (otherwise only test users can sign in).
 3. **Credentials → Create credentials → OAuth client ID** → type **Web application**.
    - **Authorized JavaScript origins**: `http://localhost:3000`, `https://ilmhona.vercel.app`

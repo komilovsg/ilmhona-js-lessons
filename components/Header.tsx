@@ -7,6 +7,7 @@ import { lessonCounts } from '@/lib/course-status';
 import { useProgress } from '@/lib/progress';
 import AccountMenu from './AccountMenu';
 import { useT } from './I18nProvider';
+import Logo from './Logo';
 import LessonSwitcher from './LessonSwitcher';
 import XpBadge from './XpBadge';
 
@@ -20,10 +21,10 @@ export default function Header() {
 
   return (
     <header className="topbar">
-      <Link className="brand" href={`/${locale}`} aria-label={`Ilmhona — ${t.roadmap.nav}`}>
-        <span className="brand-mark">I</span>
+      <Link className="brand" href={`/${locale}`} aria-label={`MakeFirstStep — ${t.roadmap.nav}`}>
+        <Logo />
         <span className="brand-name">
-          Ilmhona <small>{t.header.brandSub}</small>
+          MakeFirstStep <small>{t.header.brandSub}</small>
         </span>
       </Link>
       <nav className="topnav" aria-label={t.header.lessonsNav}>
