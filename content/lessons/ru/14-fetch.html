@@ -1,0 +1,1611 @@
+<style>
+  /* длинные однострочные фрагменты кода в тексте и подсказках должны переноситься */
+  .topic p code, .topic li code, .topic dd code, .topic details code { white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 14 · Async и API</p>
+      <h1>fetch и HTTP</h1>
+      <p class="lead">Курс сомони в приложении банка, погода в Душанбе, список товаров в интернет-магазине, лента новостей: всё это лежит не в вашем браузере, а на чужих компьютерах — серверах. Чтобы забрать оттуда данные, страница отправляет HTTP-запрос и ждёт ответ. Сегодня вы научитесь делать это на чистом JavaScript через <code>fetch</code> — и собирать собственную обёртку <code>api.js</code>, которой будете пользоваться в каждом следующем проекте.</p>
+      <ul class="goals">
+        <li>Объяснять, из чего состоят HTTP-запрос и ответ: метод, URL, заголовки, тело, статус</li>
+        <li>Различать методы GET, POST, PUT, PATCH, DELETE и группы кодов статуса 2xx / 3xx / 4xx / 5xx</li>
+        <li>Делать запросы через <code>fetch</code> и читать ответ: <code>response.json()</code>, <code>status</code>, <code>ok</code>, <code>headers</code></li>
+        <li>Отправлять данные методом POST: заголовок <code>Content-Type</code> и <code>JSON.stringify</code></li>
+        <li>Отличать сетевую ошибку от ответа «404» и обрабатывать обе через <code>response.ok</code> и <code>try / catch</code></li>
+        <li>Собрать обёртку <code>api.js</code> и проверить код, который написал ИИ, на ошибочных ответах</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Код на тёмном фоне с кнопкой <b>▶ Запустить</b> — живой. В этом уроке многие примеры <b>ходят в интернет</b> (к учебным серверам jsonplaceholder и dummyjson): подождите секунду-две, пока ответ приедет и консоль допишет строки. Если интернета нет, запросы упадут — и это тоже полезный опыт: ниже мы научимся такие ситуации обрабатывать. Часть задач работает без сети (там мы сами «подделываем» ответы сервера) — они проверяются мгновенно. Подсказки спрятаны под замочком 🔒.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="http">
+      <h2 data-toc="HTTP"><span class="num">01</span> HTTP: как браузер разговаривает с сервером</h2>
+
+      <p><b>Клиент</b> — это ваш браузер (или ваш код в нём). <b>Сервер</b> — компьютер, на котором лежат данные. Они общаются по правилам протокола <b>HTTP</b>: клиент шлёт <b>запрос</b> (request), сервер возвращает <b>ответ</b> (response). Всегда по очереди: сервер сам первым не пишет.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы в кафе у Рудаки заказываете через официанта. <b>Запрос</b>: «Принесите (<b>метод</b>) плов (<b>адрес</b> блюда в меню), без моркови (<b>заголовок</b> с пожеланиями)». <b>Ответ</b>: официант возвращается и сначала говорит <b>статус</b> — «Принёс» (200) или «Такого блюда нет» (404) или «Повар заболел» (500), потом ставит на стол <b>тело</b> ответа — сам плов.</p>
+      </div>
+
+      <h3>Из чего состоит адрес</h3>
+      <p>Адрес ресурса называется <b>URL</b>. В нём несколько частей, и браузер умеет их разбирать с помощью встроенного класса <code>URL</code>.</p>
+
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="протокол">https://</span><span class="part p2" data-label="хост (сервер)">jsonplaceholder.typicode.com</span><span class="part p3" data-label="путь">/todos</span><span class="part p4" data-label="параметры (query)">?userId=1&amp;_limit=3</span>
+        </div>
+        <figcaption>Протокол — «как говорим», хост — «с кем», путь — «что просим», параметры — «уточнения»</figcaption>
+      </figure>
+
+<pre class="code" data-run data-title="Разбираем URL на части">
+const url = new URL("https://jsonplaceholder.typicode.com/todos?userId=1&amp;_limit=3");
+
+console.log(url.protocol);               // https:
+console.log(url.hostname);               // jsonplaceholder.typicode.com
+console.log(url.pathname);               // /todos
+console.log(url.searchParams.get("userId"));   // 1  (всегда строка!)
+</pre>
+
+      <h3>Запрос и ответ</h3>
+      <p>Запрос состоит из четырёх частей, ответ — из трёх. Запомните эту схему: она нужна, чтобы понимать любую документацию к API.</p>
+
+      <div class="cols">
+        <div class="col good"><b>Запрос (клиент → сервер)</b><p><b>Метод</b> (что делать) · <b>URL</b> (где) · <b>заголовки</b> (служебная информация) · <b>тело</b> (данные, если отправляем).</p></div>
+        <div class="col good"><b>Ответ (сервер → клиент)</b><p><b>Статус</b> (число: как всё прошло) · <b>заголовки</b> (например, тип данных) · <b>тело</b> (сами данные, чаще всего JSON).</p></div>
+      </div>
+
+      <h3>Методы: глагол запроса</h3>
+      <p>Метод говорит серверу, <b>что мы хотим сделать</b>. Для работы с данными есть пять основных. Адрес у них может быть один и тот же — отличается только глагол.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Метод</th><th>Что делает</th><th>Пример из жизни</th><th>Тело запроса</th></tr></thead>
+          <tbody>
+            <tr><td><code>GET</code></td><td>Получить данные</td><td>Посмотреть меню</td><td>нет</td></tr>
+            <tr><td><code>POST</code></td><td>Создать новую запись</td><td>Оформить новый заказ</td><td>да</td></tr>
+            <tr><td><code>PUT</code></td><td>Заменить запись целиком</td><td>Переписать заказ заново</td><td>да</td></tr>
+            <tr><td><code>PATCH</code></td><td>Изменить часть записи</td><td>Поменять только адрес доставки</td><td>да</td></tr>
+            <tr><td><code>DELETE</code></td><td>Удалить запись</td><td>Отменить заказ</td><td>нет</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Если метод не указан, браузер использует <code>GET</code>. Сегодня мы почти всё время будем получать данные, а к остальным методам придём в разделе 05.</p>
+
+      <h3>Коды статуса: число, которое сервер говорит первым</h3>
+      <p>Первая цифра кода — это <b>группа</b>. Если запомнить группы, то 90% кодов вы поймёте без справочника.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Код</th><th>Группа</th><th>Смысл</th><th>Частые примеры</th></tr></thead>
+          <tbody>
+            <tr><td><b>2xx</b></td><td>Успех</td><td>Всё получилось</td><td><code>200 OK</code>, <code>201 Created</code> (создано), <code>204 No Content</code> (успех, но тела нет)</td></tr>
+            <tr><td><b>3xx</b></td><td>Перенаправление</td><td>Ищите в другом месте</td><td><code>301</code> страница переехала, <code>304</code> ничего не изменилось</td></tr>
+            <tr><td><b>4xx</b></td><td>Ошибка клиента</td><td>Вы что-то сделали не так</td><td><code>400</code> плохой запрос, <code>401</code> не вошли, <code>403</code> нет прав, <code>404</code> не найдено, <code>429</code> слишком часто</td></tr>
+            <tr><td><b>5xx</b></td><td>Ошибка сервера</td><td>Сломалось у них</td><td><code>500</code> внутренняя ошибка, <code>503</code> сервер недоступен</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Заголовки: служебные записки</h3>
+      <dl class="terms">
+        <dt>Content-Type</dt><dd>Какого типа тело. Для JSON это <code>application/json</code>. Есть и у запроса (что мы отправляем), и у ответа (что получили).</dd>
+        <dt>Accept</dt><dd>В запросе: «какой формат ответа я понимаю».</dd>
+        <dt>Authorization</dt><dd>В запросе: ключ или токен, подтверждающий, кто вы. Без него закрытые API ответят <code>401</code>. В этом уроке он не нужен — мы берём открытые API.</dd>
+      </dl>
+
+      <h3>JSON: язык, на котором говорят API</h3>
+      <p>Данные по сети ходят как <b>текст</b>. Объекты и массивы превращают в текст формата JSON и обратно: <code>JSON.stringify(объект)</code> → строка, <code>JSON.parse(строка)</code> → объект. Правила строже, чем в JS: ключи и строки только в <b>двойных кавычках</b>, никаких комментариев и запятых в конце.</p>
+
+<pre class="code" data-run data-title="Туда и обратно">
+const student = { name: "Мадина", age: 17, courses: ["JS", "CSS"] };
+
+const text = JSON.stringify(student);
+console.log(text);                  // это строка
+console.log(typeof text);
+
+const back = JSON.parse(text);
+console.log(back.name, back.courses.length);
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Писать JSON «как в JavaScript»: без кавычек у ключей или с одинарными кавычками. Такой текст <code>JSON.parse</code> не принимает и бросает <code>SyntaxError</code>.</p>
+      </div>
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+const text = "{ name: 'Мадина' }";    // ✖ ключ без кавычек, строка в одинарных
+
+const student = JSON.parse(text);
+console.log(student.name);
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/json" target="_blank" rel="noopener">learn.javascript.ru — Формат JSON</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/Overview" target="_blank" rel="noopener">MDN — Обзор HTTP</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/Status" target="_blank" rel="noopener">MDN — Коды ответов HTTP</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Здесь интернет ещё не нужен: тренируем разбор адресов, коды статуса и JSON.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Разбор адреса</h4><span class="level easy">лёгкая</span></header>
+          <p>Из адреса магазина выведите три строки: имя хоста, путь и значение параметра <code>category</code>.</p>
+<pre class="code" data-run>
+const url = new URL("https://shop.example.tj/catalog/shoes?category=kids&amp;page=2");
+
+// выведите url.hostname, url.pathname и параметр category
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>shop.example.tj
+/catalog/shoes
+kids</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Хост и путь лежат в свойствах <code>url.hostname</code> и <code>url.pathname</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Параметр достаём методом: <code>url.searchParams.get("category")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Что означает код</h4><span class="level easy">лёгкая</span></header>
+          <p>Допишите функцию <code>describeStatus(code)</code>: она возвращает «успех» для 200–299, «перенаправление» для 300–399, «ошибка клиента» для 400–499, «ошибка сервера» для 500–599 и «неизвестно» для всего остального.</p>
+<pre class="code" data-run>
+function describeStatus(code) {
+  // ваш код
+}
+
+for (const code of [200, 201, 301, 404, 500, 99]) {
+  console.log(code + ": " + describeStatus(code));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>200: успех
+201: успех
+301: перенаправление
+404: ошибка клиента
+500: ошибка сервера
+99: неизвестно</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Используйте цепочку <code>if … else if</code> с неравенствами: <code>code &gt;= 200 &amp;&amp; code &lt; 300</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Последняя ветка <code>else</code> возвращает «неизвестно» — она ловит и 99, и всё, что выше 599.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Найди баг: сломанный JSON</h4><span class="level mid">средняя</span></header>
+          <p>Сервер прислал текст, но <code>JSON.parse</code> на нём падает. Исправьте <b>текст</b> (не трогая остальной код) так, чтобы он стал корректным JSON.</p>
+<pre class="code" data-run>
+const text = "{ name: 'Мадина', age: 17, active: true, }";
+
+const student = JSON.parse(text);
+console.log(student.name + " " + student.age);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Мадина 17</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В JSON ключи тоже пишутся в кавычках, и кавычки только двойные. Внутри обычной строки JS их придётся экранировать: <code>\"</code> — или заключить всю строку в одинарные кавычки.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Ещё одна ошибка спряталась в конце: запятая после последнего значения в JSON запрещена. Правильно: <code>'{"name": "Мадина", "age": 17, "active": true}'</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ЗАДАЧА 1.4</span><h4>Собери адрес с параметрами</h4><span class="level hard">сложная</span></header>
+          <p>Напишите функцию <code>buildUrl(base, params)</code>, которая приклеивает к адресу параметры из объекта. Пользуйтесь <code>URLSearchParams</code> — он сам расставит <code>&amp;</code> и закодирует русские буквы.</p>
+<pre class="code" data-run>
+function buildUrl(base, params) {
+  // ваш код
+}
+
+console.log(buildUrl("https://api.example.tj/products", { q: "плов", page: 2, limit: 10 }));
+console.log(buildUrl("https://api.example.tj/products", {}));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>https://api.example.tj/products?q=%D0%BF%D0%BB%D0%BE%D0%B2&amp;page=2&amp;limit=10
+https://api.example.tj/products</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>new URLSearchParams(params).toString()</code> превращает объект в строку вида <code>q=...&amp;page=2</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Если параметров нет, строка получится пустая — тогда знак <code>?</code> не нужен: <code>return query ? base + "?" + query : base;</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="fetch">
+      <h2 data-toc="fetch"><span class="num">02</span> fetch: первый запрос</h2>
+
+      <p><code>fetch(url)</code> — встроенная функция браузера для HTTP-запросов. Подключать ничего не нужно. Она возвращает <b>промис</b> (урок 13), поэтому с ней работают через <code>then</code> или, удобнее, через <code>async / await</code>. Попробуем взять одну задачу из учебного сервера jsonplaceholder — он создан специально, чтобы на нём тренироваться:</p>
+
+<pre class="code" data-run data-title="Первый запрос">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+  const todo = await response.json();
+
+  console.log(todo.title);
+  console.log("выполнена?", todo.completed);
+}
+
+main();
+</pre>
+
+      <p>Строк мало, но здесь есть <b>два</b> <code>await</code>, и это не случайность. Давайте разберёмся, зачем.</p>
+
+      <ol class="steps">
+        <li><code>fetch(url)</code> отправляет запрос. Промис выполнится, как только придёт <b>начало ответа</b>: статус и заголовки.</li>
+        <li><code>await</code> даёт нам объект <code>response</code> — это «конверт»: в нём статус и заголовки, а тело ещё может ехать по сети.</li>
+        <li><code>response.json()</code> дочитывает тело и превращает JSON-текст в объект. Это тоже промис — поэтому второй <code>await</code>.</li>
+      </ol>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы заказали доставку из пекарни. Сначала курьер звонит: «Заказ принят, еду» — это <code>response</code> со статусом. Потом он поднимается к вам с коробкой — это <code>response.json()</code>. Звонок и коробка приходят в разное время, поэтому ждать приходится дважды.</p>
+      </div>
+
+      <h3>Что есть у response</h3>
+      <dl class="terms">
+        <dt>response.status</dt><dd>Число — код статуса: <code>200</code>, <code>404</code>, <code>500</code>…</dd>
+        <dt>response.ok</dt><dd><code>true</code>, если статус от 200 до 299. Самая полезная проверка — к ней мы вернёмся в разделе 04.</dd>
+        <dt>response.headers</dt><dd>Заголовки ответа. Читаются методом <code>get</code>: <code>response.headers.get("content-type")</code>.</dd>
+        <dt>response.json()</dt><dd>Прочитать тело как JSON → получим объект или массив.</dd>
+        <dt>response.text()</dt><dd>Прочитать тело как обычный текст (удобно, если пришёл не JSON).</dd>
+      </dl>
+
+<pre class="code" data-run data-title="Смотрим на «конверт»">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+
+  console.log("статус:", response.status);
+  console.log("ok:", response.ok);
+  console.log("тип данных:", response.headers.get("content-type"));
+}
+
+main();
+</pre>
+
+      <h3>То же самое через then</h3>
+      <p>Вариант без <code>async / await</code> тоже встречается в чужом коде — вы должны его узнавать. Смысл тот же, только вложенность другая:</p>
+
+<pre class="code" data-run data-title="fetch + then">
+fetch("https://jsonplaceholder.typicode.com/todos/1")
+  .then((response) =&gt; response.json())
+  .then((todo) =&gt; {
+    console.log("Задача:", todo.title);
+  });
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Забыть <code>await</code> перед <code>fetch</code> или перед <code>response.json()</code>. Тогда в переменной окажется не данные, а <b>промис</b>, и все обращения к полям дадут <code>undefined</code>.</p>
+      </div>
+<pre class="code" data-run data-title="Ошибка: нет второго await">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+  const todo = response.json();     // ✖ забыли await — это промис, а не объект
+
+  console.log(todo.title);          // undefined
+}
+
+main();
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Fetch_API/Using_Fetch" target="_blank" rel="noopener">MDN — Использование Fetch</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Эти задачи ходят на jsonplaceholder: подождите секунду после запуска.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Первое название</h4><span class="level easy">лёгкая</span></header>
+          <p>Загрузите пост номер 1 по адресу <code>https://jsonplaceholder.typicode.com/posts/1</code> и выведите его поле <code>userId</code>, а затем <code>id</code>.</p>
+<pre class="code" data-run>
+async function main() {
+  // запрос, response.json(), вывод
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1
+1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Два шага: <code>const response = await fetch(…)</code>, затем <code>const post = await response.json()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>После этого: <code>console.log(post.userId); console.log(post.id);</code></p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Осмотр конверта</h4><span class="level easy">лёгкая</span></header>
+          <p>Запросите <code>https://jsonplaceholder.typicode.com/users/1</code>. <b>Не читая тело</b>, выведите: статус, <code>ok</code> и ответ на вопрос «содержит ли заголовок <code>content-type</code> слово json» (метод строки <code>includes</code>).</p>
+<pre class="code" data-run>
+async function main() {
+  // fetch, потом три строки вывода
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>200
+true
+true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Свойства <code>response.status</code> и <code>response.ok</code> читаются без <code>await</code> — они уже пришли.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>console.log(response.headers.get("content-type").includes("json"));</code></p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Предскажи порядок: запрос идёт «в фоне»</h4><span class="level mid">средняя</span></header>
+          <p>В каком порядке метки попадут в массив? Вспомните урок 13: пока <code>fetch</code> ждёт ответ, JavaScript не стоит на месте. Впишите прогноз в <code>prediction</code> и запустите.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+async function main() {
+  log("A");
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+  log("B");
+  await response.json();
+  log("C");
+}
+
+main();
+log("D");
+
+const prediction = [];   // ваш прогноз: порядок меток
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 3000);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Функция <code>main</code> работает синхронно до первого <code>await</code>: метка A ставится сразу. Дальше она «засыпает», и управление возвращается наружу — к метке D.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>После D код ждёт ответа: сначала продолжится после первого <code>await</code> (B), потом после второго (C). Итого: A D B C.</p></details>
+        </article>
+
+        <article class="task" id="t2-4">
+          <header><span class="task-num">ЗАДАЧА 2.4</span><h4>Две зависимых загрузки</h4><span class="level mid">средняя</span></header>
+          <p>У задачи <code>/todos/1</code> есть поле <code>userId</code> — номер автора. Загрузите задачу, затем возьмите автора по адресу <code>/users/ + userId</code> и выведите: <code>Задача «название» у имя</code>. Адрес сервера: <code>https://jsonplaceholder.typicode.com</code>.</p>
+<pre class="code" data-run>
+const API = "https://jsonplaceholder.typicode.com";
+
+async function main() {
+  // 1) загрузить задачу 1
+  // 2) загрузить пользователя по todo.userId
+  // 3) вывести строку
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Задача «delectus aut autem» у Leanne Graham</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Адрес второго запроса собираем из данных первого: <code>`${API}/users/${todo.userId}`</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Каждый запрос — это пара: <code>const r = await fetch(…); const data = await r.json();</code>. Таких пар у вас будет две.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="json">
+      <h2 data-toc="Тело ответа"><span class="num">03</span> Тело ответа: json(), text() и параметры запроса</h2>
+
+      <p>Серверы отдают данные двух видов: <b>один объект</b> (<code>/users/1</code>) и <b>список</b> (<code>/users</code> — массив). После <code>response.json()</code> вы получаете обычные объекты и массивы JavaScript, а с ними вы уже умеете работать: <code>map</code>, <code>filter</code>, деструктуризация, <code>?.</code>.</p>
+
+<pre class="code" data-run data-title="Список: массив объектов">
+const API = "https://jsonplaceholder.typicode.com";
+
+async function main() {
+  const response = await fetch(API + "/users");
+  const users = await response.json();
+
+  console.log("Пользователей:", users.length);
+
+  const names = users.slice(0, 3).map((user) =&gt; user.name);
+  console.log(names.join(", "));
+}
+
+main();
+</pre>
+
+      <h3>Вложенные данные</h3>
+      <p>Реальные ответы почти всегда вложенные: у пользователя есть адрес, у адреса — город. Деструктуризация из урока 7 здесь очень кстати:</p>
+
+<pre class="code" data-run data-title="Достаём вложенное">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/users/1");
+  const { name, email, address: { city } } = await response.json();
+
+  console.log(`${name}, ${city}, ${email}`);
+}
+
+main();
+</pre>
+
+      <h3>Параметры запроса: просим только нужное</h3>
+      <p>Скачивать всё подряд — расточительно. Большинство API понимают параметры после знака <code>?</code>: фильтры, лимиты, поиск. В jsonplaceholder, например, <code>?_limit=3</code> вернёт только три записи, а <code>?userId=2</code> — только записи второго пользователя.</p>
+
+<pre class="code" data-run data-title="Фильтр на стороне сервера">
+async function main() {
+  const url = "https://jsonplaceholder.typicode.com/todos?userId=2&amp;_limit=3";
+  const todos = await (await fetch(url)).json();
+
+  console.log("Получили:", todos.length);
+  console.log("Все от пользователя 2:", todos.every((t) =&gt; t.userId === 2));
+}
+
+main();
+</pre>
+      <p>Строка <code>await (await fetch(url)).json()</code> — сжатая запись двух шагов. Читается тяжелее, поэтому пока лучше писать по шагам.</p>
+
+      <h3>json() или text()?</h3>
+      <p><code>json()</code> ожидает на входе корректный JSON. Если сервер прислал HTML-страницу с ошибкой или пустой ответ, <code>json()</code> бросит <code>SyntaxError</code>. А <code>text()</code> всегда вернёт текст — его можно показать или записать в лог. Чтобы потренироваться без интернета, мы можем создать «поддельный» ответ: конструктор <code>new Response(текст)</code> делает точно такой же объект, как от настоящего сервера.</p>
+
+<pre class="code" data-run data-title="Поддельный ответ для тренировки">
+async function main() {
+  const response = new Response(JSON.stringify({ city: "Душанбе", temp: 21 }));
+
+  const data = await response.json();
+  console.log(data.city + ": " + data.temp);
+}
+
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Тело ответа можно прочитать <b>только один раз</b>. Вызвали <code>text()</code> — потом <code>json()</code> уже не сработает: данные «выпиты». Читайте тело один раз и сохраняйте результат в переменную.</p>
+      </div>
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+async function main() {
+  const response = new Response(JSON.stringify({ city: "Душанбе" }));
+
+  const text = await response.text();   // тело прочитано
+  const data = await response.json();   // ✖ читаем второй раз
+
+  console.log(text, data);
+}
+
+main();
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch: чтение ответа</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Response/json" target="_blank" rel="noopener">MDN — Response.json()</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Три первые задачи</h4><span class="level easy">лёгкая</span></header>
+          <p>Загрузите <code>https://jsonplaceholder.typicode.com/todos?_limit=3</code> и выведите названия задач с номерами: <code>1. название</code>, <code>2. название</code>…</p>
+<pre class="code" data-run>
+async function main() {
+  // запрос, json(), цикл с номерами
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1. delectus aut autem
+2. quis ut nam facilis et officia qui
+3. fugiat veniam minus</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Ответ — массив. Пройдите по нему через <code>forEach((todo, index) =&gt; …)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Номер строки — <code>index + 1</code>: <code>console.log(`${index + 1}. ${todo.title}`)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Визитка пользователя</h4><span class="level mid">средняя</span></header>
+          <p>Загрузите <code>/users/1</code> и выведите строку вида <code>Leanne Graham — Gwenborough (Bret)</code>: имя, город из вложенного <code>address</code>, а в скобках — <code>username</code>.</p>
+<pre class="code" data-run>
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/users/1");
+  // деструктуризация и вывод
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Leanne Graham — Gwenborough (Bret)</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Вложенное поле можно достать так: <code>const { name, username, address: { city } } = await response.json();</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Строку собираем шаблонными кавычками: <code>`${name} — ${city} (${username})`</code>. Длинное тире копируйте из условия.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Сколько дел выполнено</h4><span class="level mid">средняя</span></header>
+          <p>Загрузите все задачи первого пользователя: <code>/todos?userId=1</code>. Выведите, сколько всего задач и сколько из них выполнено (<code>completed === true</code>).</p>
+<pre class="code" data-run>
+async function main() {
+  // запрос с параметром userId=1
+  // всего и выполнено
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Всего: 20
+Выполнено: 11</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Адрес: <code>"https://jsonplaceholder.typicode.com/todos?userId=1"</code>. Длина массива — <code>todos.length</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Выполненные: <code>todos.filter((todo) =&gt; todo.completed).length</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ЗАДАЧА 3.4</span><h4>Найди баг: тело прочитано дважды</h4><span class="level mid">средняя</span></header>
+          <p>Разработчик хотел сначала сохранить «сырой» текст ответа для лога, а потом получить из него данные. Код падает. Исправьте его так, чтобы тело читалось <b>один раз</b>: сначала <code>text()</code>, а объект получите через <code>JSON.parse</code>.</p>
+<pre class="code" data-run>
+async function main() {
+  const response = new Response(JSON.stringify({ city: "Душанбе", temp: 21 }));
+
+  const raw = await response.text();
+  console.log("Длина текста:", raw.length);
+
+  const data = await response.json();
+  console.log(data.city + ": " + data.temp + "°C");
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Длина текста: 28
+Душанбе: 21°C</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Проблема в строке <code>await response.json()</code> — тело уже прочитано методом <code>text()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замените её на <code>const data = JSON.parse(raw);</code> — текст у нас уже есть в переменной <code>raw</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="errors">
+      <h2 data-toc="Ошибки"><span class="num">04</span> Ошибки: 404 — это не ошибка fetch</h2>
+
+      <p>Это самое неожиданное место для новичков. У запроса может быть <b>два совершенно разных</b> вида неудач — и <code>fetch</code> относится к ним по-разному.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы едете на маршрутке в Рудаки. <b>Сетевая ошибка</b> — маршрутка сломалась по дороге и вы вообще не доехали (нет интернета, неверный адрес сервера, сервер выключен). <b>Ответ с кодом 404 или 500</b> — вы доехали, зашли в магазин, а продавец говорит «такого товара нет» или «у нас сегодня закрыто». Вы связались с сервером, он ответил — просто не тем, на что вы рассчитывали.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ситуация</th><th>Что делает <code>fetch</code></th><th>Как узнать</th></tr></thead>
+          <tbody>
+            <tr><td>Нет сети, сервер недоступен, неверный адрес</td><td>Промис <b>отклоняется</b> (ошибка <code>TypeError</code>)</td><td>Сработает <code>catch</code></td></tr>
+            <tr><td>Сервер ответил 404, 500 и т. п.</td><td>Промис <b>выполняется успешно</b>!</td><td>Проверить <code>response.ok</code> или <code>response.status</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Посмотрите: запрос несуществующей задачи не бросил ошибку. <code>catch</code> молчит, а <code>ok</code> равно <code>false</code>.</p>
+
+<pre class="code" data-run data-title="404 не попадает в catch">
+async function main() {
+  try {
+    const response = await fetch("https://jsonplaceholder.typicode.com/todos/99999");
+    console.log("запрос дошёл до сервера");
+    console.log("статус:", response.status, "ok:", response.ok);
+  } catch (error) {
+    console.log("сюда мы не попадём");
+  }
+}
+
+main();
+</pre>
+
+      <h3>Правильная схема: проверяем ok и сами бросаем ошибку</h3>
+      <p>Чтобы обе неудачи обрабатывались в одном месте, превращаем «плохой статус» в настоящую ошибку:</p>
+
+<pre class="code" data-run data-title="Шаблон, который вы будете писать всегда">
+async function loadTodo(id) {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/" + id);
+
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);   // 404 → настоящая ошибка
+  }
+  return response.json();
+}
+
+async function main() {
+  for (const id of [1, 99999]) {
+    try {
+      const todo = await loadTodo(id);
+      console.log("Нашли:", todo.title);
+    } catch (error) {
+      console.log("Ошибка:", error.message);
+    }
+  }
+}
+
+main();
+</pre>
+
+      <h3>Сетевая ошибка: сервера нет вообще</h3>
+      <p>Когда запрос не смог добраться до сервера, <code>fetch</code> отклоняет промис, и <code>catch</code> получает ошибку типа <code>TypeError</code>. Чтобы сымитировать это, возьмём адрес, которого точно не существует (зона <code>.invalid</code> зарезервирована под «несуществующие» адреса):</p>
+
+<pre class="code" data-run data-title="Сервера не существует">
+async function main() {
+  try {
+    await fetch("https://no-such-server.invalid/data");
+    console.log("не дойдём досюда");
+  } catch (error) {
+    console.log("Сеть недоступна. Тип ошибки:", error.name);
+  }
+}
+
+main();
+</pre>
+      <p>Текст самой ошибки в разных браузерах разный (в Chrome — <code>Failed to fetch</code>, в Safari — <code>Load failed</code>), поэтому полагаться на <code>error.message</code> нельзя. Надёжнее смотреть на <code>error.name</code> или просто показать пользователю свой понятный текст.</p>
+
+      <div class="callout tip">
+        <b>Ещё одна причина «Failed to fetch» — CORS</b>
+        <p>Браузер не даёт страницам читать ответы чужих серверов, если те явно не разрешили (заголовок <code>Access-Control-Allow-Origin</code>). Публичные учебные API разрешают всем, поэтому у нас всё работает. Но когда вы запросите «закрытый» сервер, в консоли появится красное сообщение про <b>CORS</b>, а <code>fetch</code> выдаст ту же сетевую ошибку. Это не баг вашего кода: нужно, чтобы владелец сервера разрешил запросы с вашего сайта. Подробнее разберём в следующих уроках.</p>
+      </div>
+
+      <h3>Когда тело — не JSON</h3>
+      <p>Третья неприятность: сервер ответил, но в теле не JSON (например, HTML-страница «Сервис временно недоступен»). Тогда <code>response.json()</code> бросит <code>SyntaxError</code>. Проверим на поддельном ответе:</p>
+
+<pre class="code" data-run data-title="Тело не JSON">
+async function main() {
+  const response = new Response("&lt;html&gt;Сервис временно недоступен&lt;/html&gt;", { status: 503 });
+
+  try {
+    const data = await response.json();
+    console.log(data);
+  } catch (error) {
+    console.log("Не удалось разобрать JSON. Тип ошибки:", error.name);
+  }
+}
+
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Сразу делать <code>response.json()</code> и надеяться на лучшее. Для ответа 404 с пустым телом (<code>{}</code>) код «сработает» и выдаст <code>undefined</code> вместо данных — а настоящая причина (запись не найдена) останется незамеченной.</p>
+      </div>
+<pre class="code" data-run data-title="Ошибка: нет проверки ok">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/99999");
+  const todo = await response.json();      // ✖ статус 404, но ошибки нет
+
+  console.log("Название задачи:", todo.title);   // undefined
+}
+
+main();
+</pre>
+
+      <h3>finally: убираем «Загрузка…» при любом исходе</h3>
+      <p>Блок <code>finally</code> выполняется и после успеха, и после ошибки. Это идеальное место, чтобы спрятать индикатор загрузки или снова включить кнопку (мы делали это в уроке 13).</p>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch: response.ok</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Response/ok" target="_blank" rel="noopener">MDN — Response.ok</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/CORS" target="_blank" rel="noopener">MDN — CORS</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Статус несуществующей задачи</h4><span class="level easy">лёгкая</span></header>
+          <p>Запросите <code>https://jsonplaceholder.typicode.com/todos/99999</code> и выведите одной строкой <code>статус ok</code> — то есть код ответа и значение <code>response.ok</code> через пробел. Тело читать не нужно.</p>
+<pre class="code" data-run>
+async function main() {
+  // fetch и одна строка вывода
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>404 false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Достаточно <code>const response = await fetch(…)</code>. Тело читать не надо — статус уже в <code>response</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>console.log(response.status, response.ok);</code> — <code>console.log</code> сам поставит пробел между аргументами.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Загрузка с проверкой</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>loadTodo(id)</code>: если ответ не <code>ok</code> — бросьте <code>new Error("HTTP " + response.status)</code>, иначе верните данные. Затем цикл должен вывести название для задачи 1 и ошибку для 99999.</p>
+<pre class="code" data-run>
+async function loadTodo(id) {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/" + id);
+  // проверка ok и возврат данных
+}
+
+async function main() {
+  for (const id of [1, 99999]) {
+    try {
+      const todo = await loadTodo(id);
+      console.log(todo.title);
+    } catch (error) {
+      console.log("Ошибка: " + error.message);
+    }
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>delectus aut autem
+Ошибка: HTTP 404</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Условие: <code>if (!response.ok) { throw new Error(…); }</code> — перед возвратом данных.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Возврат: <code>return response.json();</code> — <code>async</code>-функция сама обернёт результат в промис.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Сервер не отвечает</h4><span class="level easy">лёгкая</span></header>
+          <p>Отправьте запрос на <code>https://no-such-server.invalid/data</code>. Поймайте ошибку и выведите <code>Сеть недоступна: ТипОшибки</code>, подставив <code>error.name</code>.</p>
+<pre class="code" data-run>
+async function main() {
+  // try / catch вокруг fetch
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Сеть недоступна: TypeError</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Оберните <code>await fetch(…)</code> в <code>try</code>, а в <code>catch (error)</code> выведите сообщение.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>console.log("Сеть недоступна: " + error.name);</code></p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ЗАДАЧА 4.4</span><h4>Безопасное чтение JSON</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>readData(response)</code>: если статус не <code>ok</code>, она возвращает строку <code>"Ошибка сервера: " + status</code>. Если статус хороший, но тело — не JSON, возвращает <code>"Ответ не JSON"</code>. Иначе — сами данные. Ответы поддельные (без интернета), так что результат мгновенный.</p>
+<pre class="code" data-run>
+async function readData(response) {
+  // ваш код
+}
+
+async function main() {
+  const answers = [
+    new Response(JSON.stringify({ city: "Худжанд" })),
+    new Response("{}", { status: 404 }),
+    new Response("&lt;html&gt;Привет&lt;/html&gt;"),
+    new Response("Сервис недоступен", { status: 503 }),
+  ];
+
+  for (const response of answers) {
+    const result = await readData(response);
+    console.log(typeof result === "string" ? result : result.city);
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Худжанд
+Ошибка сервера: 404
+Ответ не JSON
+Ошибка сервера: 503</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала <code>if (!response.ok) return …</code>. Ранний возврат избавляет от лишней вложенности.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Разбор JSON оберните в <code>try { return await response.json(); } catch { return "Ответ не JSON"; }</code> — без <code>await</code> перед <code>response.json()</code> ошибка не попадёт в <code>catch</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-5">
+          <header><span class="task-num">ЗАДАЧА 4.5</span><h4>Три загрузки с finally</h4><span class="level hard">сложная</span></header>
+          <p>Загрузите по очереди задачи с номерами 1, 99999 и 2. Для каждой: выведите <code>Загружаем #id</code>; при успехе — название, при ошибке — <code>Ошибка: HTTP 404</code> (код из ответа); в любом случае — строку <code>— готово</code> (через <code>finally</code>).</p>
+<pre class="code" data-run>
+async function loadTodo(id) {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/" + id);
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+  return response.json();
+}
+
+async function main() {
+  for (const id of [1, 99999, 2]) {
+    // try / catch / finally
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Загружаем #1
+delectus aut autem
+— готово
+Загружаем #99999
+Ошибка: HTTP 404
+— готово
+Загружаем #2
+quis ut nam facilis et officia qui
+— готово</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Строку «Загружаем» выводите перед <code>try</code>. Внутри цикла нужны все три блока: <code>try</code>, <code>catch</code>, <code>finally</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>try { const todo = await loadTodo(id); console.log(todo.title); } catch (error) { console.log("Ошибка: " + error.message); } finally { console.log("— готово"); }</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="methods">
+      <h2 data-toc="POST и другие методы"><span class="num">05</span> POST, PUT, DELETE: отправляем данные</h2>
+
+      <p>Чтобы <b>создать</b> или <b>изменить</b> запись, второй аргумент <code>fetch</code> — объект настроек. В нём три главных ключа: <code>method</code>, <code>headers</code> и <code>body</code>.</p>
+
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="метод">method: "POST"</span><span class="part p2" data-label="заголовки">headers: { "Content-Type": "application/json" }</span><span class="part p3" data-label="тело">body: JSON.stringify(data)</span>
+        </div>
+        <figcaption>Три ключа настроек: что делаем, как описываем тело, и само тело (всегда строка)</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>О нашем учебном сервере</b>
+        <p>jsonplaceholder — «притворный» сервер: он принимает POST, PUT и DELETE, отвечает как настоящий, но <b>ничего не сохраняет</b>. Создали пост — а при следующем запросе его нет. Для обучения это идеально: нельзя ничего сломать. Настоящие серверы, конечно, данные запоминают.</p>
+      </div>
+
+<pre class="code" data-run data-title="POST: создаём пост">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/posts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "Мой первый пост", body: "Салом, мир!", userId: 1 }),
+  });
+
+  const created = await response.json();
+
+  console.log("статус:", response.status);   // 201 — Created
+  console.log("id:", created.id);            // сервер присвоил номер
+  console.log("заголовок:", created.title);  // и вернул то, что мы отправили
+}
+
+main();
+</pre>
+
+      <ol class="steps">
+        <li><code>method: "POST"</code> — сообщаем серверу, что хотим <b>создать</b> запись.</li>
+        <li><code>Content-Type: application/json</code> — предупреждаем: «в теле лежит JSON». Без этого сервер может не понять тело.</li>
+        <li><code>JSON.stringify(...)</code> — тело запроса должно быть <b>строкой</b>, объект напрямую отправить нельзя.</li>
+        <li>В ответ сервер вернёт <code>201 Created</code> и созданную запись — с новым <code>id</code>.</li>
+      </ol>
+
+      <h3>PUT, PATCH и DELETE</h3>
+      <p>Те же настройки, другой метод. Адрес теперь указывает на <b>конкретную запись</b>: <code>/posts/1</code>.</p>
+
+<pre class="code" data-run data-title="PUT, PATCH и DELETE">
+const API = "https://jsonplaceholder.typicode.com";
+const json = { "Content-Type": "application/json" };
+
+async function main() {
+  // PUT — заменить запись целиком
+  let response = await fetch(API + "/posts/1", {
+    method: "PUT",
+    headers: json,
+    body: JSON.stringify({ title: "Новый заголовок", body: "новый текст", userId: 1 }),
+  });
+  console.log("PUT:", response.status, (await response.json()).title);
+
+  // PATCH — изменить только одно поле
+  response = await fetch(API + "/posts/1", {
+    method: "PATCH",
+    headers: json,
+    body: JSON.stringify({ title: "Только заголовок" }),
+  });
+  console.log("PATCH:", response.status, (await response.json()).title);
+
+  // DELETE — удалить, тело не нужно
+  response = await fetch(API + "/posts/1", { method: "DELETE" });
+  console.log("DELETE:", response.status);
+}
+
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Отправить объект без <code>JSON.stringify</code> и без <code>Content-Type</code>. Браузер превратит объект в строку <code>"[object Object]"</code>, и данные пропадут по дороге. Сервер при этом может ответить «успешно» (<code>201</code>) — просто с пустой записью. Всегда проверяйте, что <b>вернул сервер</b>, а не только статус.</p>
+      </div>
+<pre class="code" data-run data-title="Что на самом деле уйдёт в body">
+const data = { title: "Салом" };
+
+console.log("без stringify:", String(data));         // ✖ потеряли данные
+console.log("со stringify:", JSON.stringify(data));  // ✔ корректный JSON
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch: POST-запросы</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/Methods" target="_blank" rel="noopener">MDN — HTTP-методы</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Новая запись в блоге</h4><span class="level easy">лёгкая</span></header>
+          <p>Отправьте POST на <code>https://jsonplaceholder.typicode.com/posts</code> с данными <code>{ title: "Салом", body: "Первый пост", userId: 1 }</code>. Выведите код статуса и номер, который присвоил сервер.</p>
+<pre class="code" data-run>
+async function main() {
+  // fetch с method, headers и body
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Статус: 201
+id: 101</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Второй аргумент <code>fetch</code>: <code>{ method: "POST", headers: { "Content-Type": "application/json" }, body: … }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>body</code> положите <code>JSON.stringify({ title: "Салом", body: "Первый пост", userId: 1 })</code>. Номер — в поле <code>id</code> ответа.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Фабрика настроек</h4><span class="level mid">средняя</span></header>
+          <p>Чтобы не писать одно и то же в каждом запросе, напишите функцию <code>makeOptions(method, data)</code>. Она возвращает объект настроек с методом, заголовком <code>Content-Type</code> и телом-JSON. Интернет не нужен — мы просто смотрим, что получилось.</p>
+<pre class="code" data-run>
+function makeOptions(method, data) {
+  // ваш код
+}
+
+console.log(JSON.stringify(makeOptions("POST", { title: "Салом" })));
+console.log(JSON.stringify(makeOptions("PUT", { id: 7 })));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"method":"POST","headers":{"Content-Type":"application/json"},"body":"{\"title\":\"Салом\"}"}
+{"method":"PUT","headers":{"Content-Type":"application/json"},"body":"{\"id\":7}"}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Порядок ключей важен для проверки: сначала <code>method</code>, потом <code>headers</code>, потом <code>body</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) };</code></p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Заменяем пост</h4><span class="level mid">средняя</span></header>
+          <p>Отправьте PUT-запрос на <code>https://jsonplaceholder.typicode.com/posts/1</code> с данными <code>{ title: "Новый заголовок", body: "текст", userId: 1 }</code>. Выведите статус, затем <code>title</code> и <code>id</code> из ответа.</p>
+<pre class="code" data-run>
+async function main() {
+  // PUT-запрос
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>200
+Новый заголовок
+1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Отличие от POST только в <code>method: "PUT"</code> и в адресе: теперь он указывает на запись <code>/posts/1</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сервер возвращает то, что вы отправили, плюс <code>id</code>: <code>console.log(response.status); console.log(data.title); console.log(data.id);</code></p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>Удаляем пост</h4><span class="level easy">лёгкая</span></header>
+          <p>Отправьте DELETE на <code>https://jsonplaceholder.typicode.com/posts/1</code> и выведите статус ответа и то, пуст ли ответ (<code>Object.keys(data).length === 0</code>).</p>
+<pre class="code" data-run>
+async function main() {
+  // DELETE-запрос
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>200
+true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Для DELETE достаточно <code>{ method: "DELETE" }</code> — тело и заголовки не нужны.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Прочитайте ответ: <code>const data = await response.json();</code> — сервер вернёт пустой объект <code>{}</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-5">
+          <header><span class="task-num">ЗАДАЧА 5.5</span><h4>Найди баг: данные потерялись</h4><span class="level mid">средняя</span></header>
+          <p>Запрос возвращает <code>201</code>, но в ответе нет заголовка поста: <code>created.title</code> равен <code>undefined</code>. Найдите, чего не хватает в настройках, и исправьте.</p>
+<pre class="code" data-run>
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/posts", {
+    method: "POST",
+    body: { title: "Салом", body: "Первый пост", userId: 1 },
+  });
+
+  const created = await response.json();
+  console.log(response.status);
+  console.log(created.title);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>201
+Салом</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Тело запроса должно быть строкой JSON, а объект превращается в <code>"[object Object]"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавьте <code>headers: { "Content-Type": "application/json" }</code> и оберните объект в <code>JSON.stringify(…)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="wrapper">
+      <h2 data-toc="Обёртка api.js"><span class="num">06</span> Собираем свою обёртку api.js</h2>
+
+      <p>Посмотрите, сколько повторяющегося кода мы уже написали: адрес сервера, проверка <code>ok</code>, заголовки, <code>JSON.stringify</code>, <code>response.json()</code>. В большом проекте запросов десятки. Решение — <b>одна функция-обёртка</b>, которая делает всё это за вас. Это и есть ваш артефакт урока: файл <code>api.js</code>. Строим его по шагам, и на каждом шаге код работает.</p>
+
+      <h3>Шаг 1. Одна функция вместо копипасты</h3>
+      <p>Выносим адрес сервера в константу и учимся собирать полный адрес из пути.</p>
+<pre class="code" data-run data-title="api.js · шаг 1">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path) {
+  const response = await fetch(BASE_URL + path);
+  return response.json();
+}
+
+async function main() {
+  const todo = await request("/todos/1");
+  console.log(todo.title);
+}
+
+main();
+</pre>
+
+      <h3>Шаг 2. Проверка ok и ошибка со статусом</h3>
+      <p>Добавляем главное: плохой статус становится ошибкой. Заодно кладём код статуса прямо в ошибку — вызывающему коду он пригодится (например, показать «Не найдено» вместо «Ошибка»).</p>
+<pre class="code" data-run data-title="api.js · шаг 2">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path) {
+  const response = await fetch(BASE_URL + path);
+
+  if (!response.ok) {
+    const error = new Error("HTTP " + response.status);
+    error.status = response.status;      // запоминаем код на ошибке
+    throw error;
+  }
+  return response.json();
+}
+
+async function main() {
+  try {
+    await request("/todos/99999");
+  } catch (error) {
+    console.log(error.message, "| статус в ошибке:", error.status);
+  }
+}
+
+main();
+</pre>
+
+      <h3>Шаг 3. Поддержка POST и других методов</h3>
+      <p>Принимаем второй аргумент <code>options</code>. Если передали <code>body</code> — сами делаем <code>JSON.stringify</code> и ставим заголовок. Теперь тело всегда отправляется правильно.</p>
+<pre class="code" data-run data-title="api.js · шаг 3">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { method = "GET", body } = {}) {
+  const options = { method, headers: {} };
+
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(BASE_URL + path, options);
+
+  if (!response.ok) {
+    const error = new Error("HTTP " + response.status);
+    error.status = response.status;
+    throw error;
+  }
+  return response.json();
+}
+
+async function main() {
+  const post = await request("/posts", { method: "POST", body: { title: "Салом", userId: 1 } });
+  console.log("создан пост номер", post.id);
+}
+
+main();
+</pre>
+      <p>Запись <code>{ method = "GET", body } = {}</code> — это деструктуризация параметра со значениями по умолчанию (урок 7). Благодаря <code>= {}</code> функцию можно вызывать и вовсе без второго аргумента.</p>
+
+      <h3>Шаг 4. Таймаут: не ждём вечно</h3>
+      <p>Если сервер завис, пользователь будет смотреть на «Загрузка…» до бесконечности. Поэтому добавим ограничение по времени. Для этого у <code>fetch</code> есть «кнопка отмены» — <code>AbortController</code>: вызываем <code>controller.abort()</code>, и запрос прерывается с ошибкой <code>AbortError</code>.</p>
+<pre class="code" data-run data-title="api.js · шаг 4">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { method = "GET", body, timeout = 8000 } = {}) {
+  const options = { method, headers: {} };
+
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  const controller = new AbortController();
+  options.signal = controller.signal;
+  const timer = setTimeout(() =&gt; controller.abort(), timeout);   // через timeout мс — отмена
+
+  try {
+    const response = await fetch(BASE_URL + path, options);
+
+    if (!response.ok) {
+      const error = new Error("HTTP " + response.status);
+      error.status = response.status;
+      throw error;
+    }
+    return await response.json();
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("сервер не ответил за " + timeout + " мс");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);               // таймер больше не нужен
+  }
+}
+
+async function main() {
+  try {
+    await request("/todos/1", { timeout: 1 });     // 1 мс — слишком мало
+  } catch (error) {
+    console.log("Ошибка:", error.message);
+  }
+}
+
+main();
+</pre>
+
+      <h3>Шаг 5. Удобные сокращения и итоговый api.js</h3>
+      <p>Остаётся спрятать вызов <code>request</code> за короткими именами. Объект <code>api</code> с методами <code>get</code>, <code>post</code>, <code>put</code>, <code>del</code> (слово <code>delete</code> в JS занято) — и код в проекте читается как предложение. Параметры запроса принимаем объектом и собираем через <code>URLSearchParams</code>.</p>
+<pre class="code" data-run data-title="api.js · готовая обёртка">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { method = "GET", body, timeout = 8000 } = {}) {
+  const options = { method, headers: {} };
+
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  const controller = new AbortController();
+  options.signal = controller.signal;
+  const timer = setTimeout(() =&gt; controller.abort(), timeout);
+
+  try {
+    const response = await fetch(BASE_URL + path, options);
+
+    if (!response.ok) {
+      const error = new Error("HTTP " + response.status);
+      error.status = response.status;
+      throw error;
+    }
+    return await response.json();
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("сервер не ответил за " + timeout + " мс");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const api = {
+  get(path, params) {
+    const query = params ? "?" + new URLSearchParams(params) : "";
+    return request(path + query);
+  },
+  post: (path, body) =&gt; request(path, { method: "POST", body }),
+  put: (path, body) =&gt; request(path, { method: "PUT", body }),
+  del: (path) =&gt; request(path, { method: "DELETE" }),
+};
+
+async function main() {
+  const todos = await api.get("/todos", { userId: 2, _limit: 3 });
+  console.log("задач:", todos.length);
+
+  const post = await api.post("/posts", { title: "Салом", userId: 1 });
+  console.log("создан пост:", post.id);
+
+  try {
+    await api.get("/todos/99999");
+  } catch (error) {
+    console.log("ошибка:", error.message, error.status);
+  }
+}
+
+main();
+</pre>
+
+      <div class="callout tip">
+        <b>Зачем всё это</b>
+        <p>Теперь любая ошибка — сеть, 404, 500, таймаут — прилетает в <b>один</b> <code>catch</code> в виде обычной ошибки с понятным сообщением. В следующих уроках мы будем только вызывать <code>api.get(…)</code> и рисовать результат. Сохраните готовый файл как <code>api.js</code>: он будет вашим артефактом урока и пригодится в проекте.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/fetch-abort" target="_blank" rel="noopener">learn.javascript.ru — Fetch: прерывание запроса</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN — AbortController</a></p>
+
+      <div class="practice">
+        <h3>Практика: достраиваем обёртку</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Добавь проверку ok</h4><span class="level easy">лёгкая</span></header>
+          <p>В обёртке нет проверки статуса: запрос несуществующей задачи «успешно» возвращает пустой объект. Добавьте проверку: бросайте ошибку <code>"HTTP " + status</code> и сохраняйте код в <code>error.status</code>. Вызывающий код уже написан.</p>
+<pre class="code" data-run>
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path) {
+  const response = await fetch(BASE_URL + path);
+  // проверка ok — здесь
+  return response.json();
+}
+
+async function main() {
+  const todo = await request("/todos/1");
+  console.log(todo.title);
+
+  try {
+    await request("/todos/99999");
+    console.log("ошибки не было");
+  } catch (error) {
+    console.log(error.message + ", код " + error.status);
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>delectus aut autem
+HTTP 404, код 404</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Создайте ошибку, допишите ей свойство и бросьте: <code>const error = new Error(…); error.status = response.status; throw error;</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Всё это внутри <code>if (!response.ok) { … }</code> — перед <code>return response.json()</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Короткие get и post</h4><span class="level mid">средняя</span></header>
+          <p>Функция <code>request(path, options)</code> уже есть. Допишите объект <code>api</code> с методами <code>get(path)</code> и <code>post(path, body)</code>, которые вызывают <code>request</code>. Тело в <code>request</code> уже превращается в JSON само.</p>
+<pre class="code" data-run>
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { method = "GET", body } = {}) {
+  const options = { method, headers: {} };
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+  const response = await fetch(BASE_URL + path, options);
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+  return response.json();
+}
+
+// const api = { get..., post... };
+
+async function main() {
+  const todo = await api.get("/todos/1");
+  console.log(todo.title);
+
+  const post = await api.post("/posts", { title: "Салом", userId: 1 });
+  console.log("id нового поста:", post.id);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>delectus aut autem
+id нового поста: 101</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>get</code> вызывает <code>request(path)</code>, а <code>post</code> передаёт метод и тело: <code>request(path, { method: "POST", body })</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const api = { get: (path) =&gt; request(path), post: (path, body) =&gt; request(path, { method: "POST", body }) };</code></p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Параметры запроса в get</h4><span class="level mid">средняя</span></header>
+          <p>Научите <code>get</code> принимать второй аргумент — объект параметров, который превращается в строку запроса. Если параметров нет, адрес остаётся прежним. Затем получите 5 задач второго пользователя и проверьте, что все они его.</p>
+<pre class="code" data-run>
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path) {
+  const response = await fetch(BASE_URL + path);
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+  return response.json();
+}
+
+function get(path, params) {
+  // соберите адрес с параметрами и вызовите request
+}
+
+async function main() {
+  const todos = await get("/todos", { userId: 2, _limit: 5 });
+  console.log("задач:", todos.length);
+  console.log("все от пользователя 2:", todos.every((t) =&gt; t.userId === 2));
+
+  const one = await get("/todos/1");
+  console.log(one.id);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>задач: 5
+все от пользователя 2: true
+1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Строка запроса: <code>new URLSearchParams(params).toString()</code>. Она нужна, только если <code>params</code> передали.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const query = params ? "?" + new URLSearchParams(params) : ""; return request(path + query);</code></p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ЗАДАЧА 6.4</span><h4>Таймаут запроса</h4><span class="level hard">сложная</span></header>
+          <p>Добавьте в <code>request</code> таймаут через <code>AbortController</code>: по истечении <code>timeout</code> мс запрос отменяется, а наружу летит ошибка с текстом <code>"Таймаут"</code>. Таймер надо очистить в <code>finally</code>. Вызов с <code>timeout: 1</code> обязан упасть, а обычный вызов — сработать.</p>
+<pre class="code" data-run>
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { timeout = 8000 } = {}) {
+  // создайте AbortController, таймер и передайте signal в fetch
+  const response = await fetch(BASE_URL + path);
+  return response.json();
+}
+
+async function main() {
+  try {
+    await request("/todos/1", { timeout: 1 });
+    console.log("успели?!");
+  } catch (error) {
+    console.log(error.message);
+  }
+
+  const todo = await request("/todos/1");
+  console.log(todo.title);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Таймаут
+delectus aut autem</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужны: <code>const controller = new AbortController();</code>, <code>setTimeout(() =&gt; controller.abort(), timeout)</code> и <code>fetch(url, { signal: controller.signal })</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Оберните запрос в <code>try / catch / finally</code>. В <code>catch</code>: если <code>error.name === "AbortError"</code> — <code>throw new Error("Таймаут")</code>, иначе пробросьте ошибку дальше. В <code>finally</code>: <code>clearTimeout(timer)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ-блок"><span class="num">07</span> ИИ-блок: обёртка над fetch от ИИ и её проверка</h2>
+
+      <p>Обёртку над <code>fetch</code> ИИ пишет быстро и красиво. Но именно здесь он любит «срезать углы»: забывает проверить <code>response.ok</code>, не ловит ответ без JSON или не различает, что именно сломалось. Поэтому сегодняшний навык — не «получить код», а <b>проверить его на плохих ответах</b>: 404, 500, не-JSON и пропавшая сеть.</p>
+
+      <div class="callout ai">
+        <b>Правила курса, которые здесь особенно важны</b>
+        <p><b>1.</b> Сначала 15 минут пробуете сами: вспомните шаблон из раздела 04 и шаги обёртки из раздела 06. <b>2.</b> Только потом идёте к ИИ. <b>3.</b> Не вставляйте в проект код, который не можете объяснить строчка за строчкой — для обёртки это значит: вы знаете, зачем каждая проверка. <b>4.</b> Проверяйте не на «счастливом пути» (200 OK), а на <b>ошибочных ответах</b>: ИИ почти всегда справляется с хорошим сценарием и ошибается на плохих.</p>
+      </div>
+
+      <h3>Как просить: плохо и хорошо</h3>
+      <p>Формула промпта курса: <b>контекст → задача → ограничения → формат ответа → проверка</b>.</p>
+
+      <div class="prompt bad-prompt">напиши функцию для fetch</div>
+      <div class="prompt good-prompt">Я учу JavaScript, уровень — новичок, знаю промисы, async/await и try/catch. Напиши обёртку над fetch: базовый URL, таймаут через AbortController, проверка response.ok, понятные ошибки. Чистый JS, без библиотек, одним файлом, не больше 40 строк, с комментариями на русском к каждому блоку. Формат ответа: код, затем список «что делает каждая проверка» в 5 пунктах. В конце скажи, какие ошибочные сценарии мне нужно проверить вручную.</div>
+
+      <p>После ответа ИИ прогоните код по чек-листу. Если хотя бы один пункт «нет» — вы нашли баг:</p>
+
+      <div class="callout tip">
+        <b>Чек-лист проверки обёртки</b>
+        <p>1) На ответе <b>404</b> вылетает ошибка с кодом статуса? 2) На ответе <b>500</b> — то же? 3) Если пришёл <b>не JSON</b>, ошибка понятная, а не «Unexpected token <code>&lt;</code>»? 4) При <b>выключенной сети</b> (отключите Wi-Fi) пользователь видит ваш текст, а не страшный стек? 5) Есть <b>таймаут</b>, и таймер очищается в <code>finally</code>? 6) Тело <b>не читается дважды</b>? 7) Вы можете объяснить каждую строку?</p>
+      </div>
+
+      <p>Проверять на настоящем сервере неудобно: нельзя заставить jsonplaceholder «упасть» по заказу. Поэтому профессионалы подменяют сервер на <b>тестовый стенд</b> — функцию, которая отдаёт заранее заготовленные ответы. В задаче ниже именно такой стенд, и вам предстоит проверить и починить «обёртку от ИИ».</p>
+
+      <div class="practice">
+        <h3>Практика: ловим ошибки ИИ</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Проверь и почини обёртку от ИИ</h4><span class="level hard">сложная</span></header>
+          <p>ИИ выдал функцию <code>aiRequest</code>. Запустите стенд — увидите, что на плохих ответах она ведёт себя неправильно. Перепишите <b>только</b> <code>aiRequest</code> так, чтобы сценарии вели себя по таблице: <code>ok</code> → данные, <code>notfound</code> → ошибка <code>HTTP 404</code>, <code>server</code> → <code>HTTP 500</code>, <code>html</code> (статус 200, но тело не JSON) → <code>ответ не JSON</code>, <code>network</code> (запрос не дошёл) → <code>сеть недоступна</code>.</p>
+<pre class="code" data-run>
+// --- тестовый стенд, не меняйте ---
+function fakeFetch(scenario) {
+  switch (scenario) {
+    case "ok":       return Promise.resolve(new Response(JSON.stringify({ name: "Мадина" })));
+    case "notfound": return Promise.resolve(new Response("{}", { status: 404 }));
+    case "server":   return Promise.resolve(new Response("Internal Server Error", { status: 500 }));
+    case "html":     return Promise.resolve(new Response("&lt;html&gt;Привет&lt;/html&gt;"));
+    case "network":  return Promise.reject(new TypeError("Failed to fetch"));
+  }
+}
+
+// --- код от ИИ: починить ---
+async function aiRequest(scenario) {
+  const response = await fakeFetch(scenario);
+  const data = await response.json();
+  return data;
+}
+
+// --- проверка, не меняйте ---
+async function main() {
+  for (const scenario of ["ok", "notfound", "server", "html", "network"]) {
+    try {
+      const data = await aiRequest(scenario);
+      console.log(scenario + ": данные получены: " + data.name);
+    } catch (error) {
+      console.log(scenario + ": Ошибка: " + error.message);
+    }
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ok: данные получены: Мадина
+notfound: Ошибка: HTTP 404
+server: Ошибка: HTTP 500
+html: Ошибка: ответ не JSON
+network: Ошибка: сеть недоступна</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три места требуют защиты: сам <code>fakeFetch</code> (сеть), проверка <code>response.ok</code> (404 и 500) и <code>response.json()</code> (не JSON). Каждое — в своём <code>try / catch</code> или <code>if</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Заверните: <code>let response; try { response = await fakeFetch(scenario); } catch { throw new Error("сеть недоступна"); }</code>. Затем <code>if (!response.ok) throw new Error("HTTP " + response.status);</code>. Затем <code>try { return await response.json(); } catch { throw new Error("ответ не JSON"); }</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Свой промпт и проверка</h4><span class="level easy">лёгкая</span></header>
+          <p>Составьте промпт для ИИ по формуле курса (контекст → задача → ограничения → формат → проверка): пусть ИИ напишет обёртку <code>api.js</code> для <b>вашего</b> сценария — например, для запросов к <code>dummyjson.com</code>. Отправьте его, получите код и прогоните по чек-листу из этого раздела. Запишите в комментарии над кодом, какие из 7 пунктов провалились и как вы это исправили. Автоматической проверки нет — отметьте задачу вручную, когда будет готово.</p>
+<pre class="code" data-run>
+// Мой промпт:
+// ...
+
+// Что не прошло по чек-листу и как исправил:
+// ...
+</pre>
+          <details class="hint"><summary>Подсказка 1</summary><p>Если ИИ не вернул нужного, не переписывайте всё заново: напишите ему конкретный провал — «на ответе 404 функция вернула пустой объект, а не бросила ошибку».</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сравните код ИИ со своим из раздела 06. Чем отличается? Если отличие вам непонятно — это и есть повод спросить, а не копировать.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">08</span> Практика на уроке: первый запрос к API и вывод на страницу</h2>
+
+      <p>Теперь соберём всё вместе: возьмём данные из публичного API, выведем в консоль, а затем нарисуем на странице. Идём шагами — после каждого шага код работает.</p>
+
+      <h3>Шаг 1. Данные в консоли</h3>
+      <p>Всегда начинайте с консоли: сначала убедитесь, что данные приходят и вы понимаете их форму, и только потом рисуйте интерфейс.</p>
+<pre class="code" data-run data-title="Шаг 1. Что приходит от сервера">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/users?_limit=3");
+  const users = await response.json();
+
+  console.log("Получили:", users.length);
+  users.forEach((user) =&gt; {
+    console.log(user.name + " — " + user.address.city);
+  });
+}
+
+main();
+</pre>
+
+      <h3>Шаг 2. Рисуем на странице</h3>
+      <p>Данные из <code>fetch</code> — это те же массивы объектов, что и в уроках 6–8. Значит, превращаем их в элементы тем же способом: <code>createElement</code> и <code>append</code>. Нажмите «▶ Запустить» и посмотрите на список справа.</p>
+
+      <div class="playground" data-mode="dom" data-title="Список пользователей из API">
+<pre class="code" data-lang="html">
+&lt;h3&gt;Участники&lt;/h3&gt;
+&lt;p id="status"&gt;Загрузка...&lt;/p&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; padding: 12px; }
+h3 { margin: 0 0 8px; }
+ul { padding-left: 20px; }
+li { margin: 4px 0; }
+.error { color: #c0392b; }
+</pre>
+<pre class="code" data-lang="js">
+const status = document.querySelector("#status");
+const list = document.querySelector("#list");
+
+async function main() {
+  try {
+    const response = await fetch("https://jsonplaceholder.typicode.com/users?_limit=5");
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+    const users = await response.json();
+
+    users.forEach((user) =&gt; {
+      const li = document.createElement("li");
+      li.textContent = user.name + " (" + user.address.city + ")";
+      list.append(li);
+    });
+    status.textContent = "Загружено: " + users.length;
+  } catch (error) {
+    status.className = "error";
+    status.textContent = "Не получилось загрузить: " + error.message;
+  }
+  console.log(status.textContent);
+}
+
+main();
+</pre>
+      </div>
+
+      <p>Обратите внимание на структуру: <b>«Загрузка…» → данные или сообщение об ошибке</b>. Пользователь не должен смотреть на пустую страницу и гадать, что происходит. Подробно про такие состояния поговорим в уроке 17.</p>
+
+      <div class="practice">
+        <h3>Практика: свой запрос на странице</h3>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Список задач на странице</h4><span class="level mid">средняя</span></header>
+          <p>Загрузите 5 первых задач (<code>/todos?_limit=5</code>) и выведите их в список: у выполненной задачи перед названием стоит «✔ », у невыполненной — «○ ». Когда всё нарисовано, выведите в консоль <code>Показано: 5</code> (число элементов <code>li</code> в списке).</p>
+
+          <div class="playground" data-mode="dom" data-title="Мои задачи">
+<pre class="code" data-lang="html">
+&lt;h3&gt;Мои задачи&lt;/h3&gt;
+&lt;ul id="todos"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; padding: 12px; }
+li { list-style: none; margin: 4px 0; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#todos");
+
+async function main() {
+  // 1) fetch https://jsonplaceholder.typicode.com/todos?_limit=5
+  // 2) для каждой задачи создайте li: "✔ название" или "○ название"
+  // 3) выведите console.log("Показано: " + list.children.length)
+}
+
+main();
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Показано: 5</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запрос и разбор такие же, как в шаге 2. Внутри цикла выберите значок: <code>const mark = todo.completed ? "✔ " : "○ ";</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>li.textContent = mark + todo.title; list.append(li);</code> — а <code>console.log</code> ставьте после цикла, когда элементы уже добавлены.</p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Два API на одной странице</h4><span class="level hard">сложная</span></header>
+          <p>Загрузите <b>одновременно</b> (<code>Promise.all</code>) данные из двух разных серверов: пользователей <code>https://jsonplaceholder.typicode.com/users?_limit=3</code> и товары <code>https://dummyjson.com/products?limit=3&amp;select=title,price</code> (в ответе товары лежат в поле <code>products</code>). Выведите два списка: имена пользователей и «название — цена $». В консоль выведите <code>Пользователей: 3, товаров: 3</code>. Если любой из запросов упал — покажите ошибку в блоке <code>#status</code>.</p>
+
+          <div class="playground" data-mode="dom" data-title="Пользователи и товары">
+<pre class="code" data-lang="html">
+&lt;p id="status"&gt;Загрузка...&lt;/p&gt;
+&lt;h3&gt;Пользователи&lt;/h3&gt;
+&lt;ul id="users"&gt;&lt;/ul&gt;
+&lt;h3&gt;Товары&lt;/h3&gt;
+&lt;ul id="products"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; padding: 12px; }
+h3 { margin: 12px 0 4px; }
+.error { color: #c0392b; }
+</pre>
+<pre class="code" data-lang="js">
+const status = document.querySelector("#status");
+const usersList = document.querySelector("#users");
+const productsList = document.querySelector("#products");
+
+async function load(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+  return response.json();
+}
+
+async function main() {
+  try {
+    // const [users, productsData] = await Promise.all([ ... ]);
+    // нарисуйте оба списка: li "Имя" и li "Название — 9.99 $"
+    // status.textContent = "";
+    // console.log(`Пользователей: ${...}, товаров: ${...}`);
+  } catch (error) {
+    status.className = "error";
+    status.textContent = "Ошибка: " + error.message;
+  }
+}
+
+main();
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Пользователей: 3, товаров: 3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>const [users, productsData] = await Promise.all([load(URL1), load(URL2)]);</code> — оба запроса стартуют одновременно. Список товаров: <code>productsData.products</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для каждого списка свой цикл <code>forEach</code> с <code>createElement("li")</code>. Цена в тексте: <code>product.title + " — " + product.price + " $"</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание</h2>
+
+      <p>Получить данные из <b>двух разных API</b> и отрисовать их на странице. Артефакт — файл <code>api.js</code>: ваша собственная обёртка над <code>fetch</code>, через которую идут <b>оба</b> API.</p>
+
+      <h3>Что нужно сделать</h3>
+      <ol>
+        <li><b>Выберите два публичных API</b> без ключа и с CORS (проверьте в браузере, что ответ приходит): <code>jsonplaceholder.typicode.com</code>, <code>dummyjson.com</code>, <code>api.open-meteo.com</code> (погода — задайте координаты Душанбе: <code>latitude=38.56&amp;longitude=68.77&amp;current=temperature_2m</code>), <code>rickandmortyapi.com</code>. Важно: сервера должны быть <b>разные</b>.</li>
+        <li><b>Напишите <code>api.js</code>.</b> Функция <code>request</code> с проверкой <code>response.ok</code>, ошибкой со <code>status</code>, таймаутом, и сокращения <code>get</code> / <code>post</code>. Базовый адрес сделайте параметром (один <code>request</code> на два сервера).</li>
+        <li><b>Отрисуйте данные первого API</b> — список или карточки (минимум 5 элементов, минимум 2 поля у каждого).</li>
+        <li><b>Отрисуйте данные второго API</b> — другой формат (например, таблица, один большой блок или карточки с картинкой).</li>
+        <li><b>Три состояния</b> для каждого блока: «Загрузка…», данные, понятная ошибка. Проверьте ошибку: измените адрес на неправильный и убедитесь, что пользователь видит сообщение, а не пустоту.</li>
+        <li><b>Одно POST-действие.</b> Отправьте любую форму или кнопкой данные на <code>jsonplaceholder.typicode.com/posts</code> и покажите на странице ответ сервера (присвоенный <code>id</code>).</li>
+        <li><b>Проверка ИИ.</b> Если использовали ИИ — приложите свой промпт и список ошибочных сценариев, которые вы проверили (404, сеть, не JSON).</li>
+      </ol>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Ссылку на репозиторий в GitHub: <code>index.html</code>, <code>api.js</code>, <code>app.js</code>, <code>style.css</code>.</li>
+        <li>Два скриншота: страница с данными и страница с состоянием ошибки.</li>
+        <li>Короткий <code>README</code>: какие два API вы выбрали и чем они отличаются.</li>
+      </ul>
+
+      <h3>Как оцениваем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td><code>api.js</code>: проверка <code>ok</code>, понятные ошибки, <code>get</code> / <code>post</code></td><td>3</td></tr>
+            <tr><td>Данные двух разных API выведены на страницу</td><td>2</td></tr>
+            <tr><td>Состояния «Загрузка…» и «Ошибка» работают у обоих блоков</td><td>2</td></tr>
+            <tr><td>POST-запрос с показом ответа сервера</td><td>1</td></tr>
+            <tr><td>Таймаут и очистка таймера в <code>finally</code></td><td>1</td></tr>
+            <tr><td>Чистый код: нет повторов запроса, имена понятные, ИИ-код вы можете объяснить</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Перед сдачей</b>
+        <p>Отключите интернет (или поставьте в DevTools на вкладке Network режим Offline) и перезагрузите страницу. Если вместо понятной ошибки вы видите пустой экран или красное в консоли — доработайте обработку ошибок.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>HTTP:</b> клиент шлёт запрос (метод + URL + заголовки + тело), сервер отвечает (статус + заголовки + тело). Данные чаще всего в формате JSON.</li>
+        <li><b>Методы:</b> <code>GET</code> — получить, <code>POST</code> — создать, <code>PUT</code> — заменить, <code>PATCH</code> — изменить часть, <code>DELETE</code> — удалить.</li>
+        <li><b>Статусы:</b> <code>2xx</code> успех (<code>200</code>, <code>201</code>), <code>3xx</code> перенаправление, <code>4xx</code> ошибка клиента (<code>404</code>, <code>401</code>, <code>403</code>), <code>5xx</code> ошибка сервера (<code>500</code>).</li>
+        <li><b>fetch</b> возвращает промис с <code>response</code> (статус и заголовки). Тело читаем отдельно и <b>один раз</b>: <code>await response.json()</code> или <code>text()</code>.</li>
+        <li><b>404 и 500 — не ошибка fetch.</b> Проверяйте <code>response.ok</code> и сами бросайте ошибку. Сетевая ошибка (нет сети, неверный сервер) — отклонённый промис, <code>TypeError</code>.</li>
+        <li><b>Шаблон:</b> <code>try { const r = await fetch(url); if (!r.ok) throw new Error("HTTP " + r.status); const data = await r.json(); … } catch (e) { … } finally { … }</code></li>
+        <li><b>POST:</b> <code>fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })</code>. Тело — всегда строка.</li>
+        <li><b>URL и параметры:</b> <code>new URL(…)</code> разбирает адрес, <code>new URLSearchParams(объект)</code> собирает строку запроса.</li>
+        <li><b>api.js:</b> одна функция <code>request</code> — базовый адрес, заголовки, JSON, проверка <code>ok</code>, таймаут через <code>AbortController</code>; сверху — <code>get</code> / <code>post</code>.</li>
+        <li><b>С ИИ:</b> сначала сами, потом промпт по формуле. Обёртку от ИИ проверяем на плохих ответах: 404, 500, не-JSON, нет сети, таймаут.</li>
+      </ul>
+    </section>
