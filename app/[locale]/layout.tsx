@@ -46,7 +46,7 @@ export default async function RootLayout({
   const locale = fromUrlLocale((await params).locale);
   if (!locale) notFound();
   return (
-    <html lang={locale} className={`${manrope.variable} ${jetbrains.variable}`} suppressHydrationWarning>
+    <html lang={locale} data-scroll-behavior="smooth" className={`${manrope.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
         {/* themeScript is a constant from lib/theme.ts, no user input */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
