@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LOCALE_COOKIE, locales, type Locale } from '@/lib/i18n';
+import { LOCALE_COOKIE, locales, toUrlLocale, type Locale } from '@/lib/i18n';
 import { isTheme, readTheme, resolveTheme, THEME_KEY, type Theme } from '@/lib/theme';
 import { useT } from './I18nProvider';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
@@ -38,7 +38,7 @@ export default function AccountMenu() {
 
 const YEAR = 60 * 60 * 24 * 365;
 const setLocaleCookie = (l: Locale) => {
-  document.cookie = `${LOCALE_COOKIE}=${l}; path=/; max-age=${YEAR}; samesite=lax`;
+  document.cookie = `${LOCALE_COOKIE}=${toUrlLocale(l)}; path=/; max-age=${YEAR}; samesite=lax`;
 };
 
 const applyTheme = (theme: Theme) => {
@@ -464,7 +464,7 @@ function MenuView({ auth }: { auth?: AuthProps }) {
             </div>
           )}
           <div className={hasAuthBlock || signedIn ? 'auth-sec' : undefined}>
-            <Link className="auth-item" href={`/${locale}/leaderboard`} onClick={close}>
+            <Link className="auth-item" href={`/${toUrlLocale(locale)}/leaderboard`} onClick={close}>
               <span aria-hidden="true">🏆</span>
               {T.leaderboard}
             </Link>
@@ -477,7 +477,7 @@ function MenuView({ auth }: { auth?: AuthProps }) {
               {locales.map((l) => (
                 <Link
                   key={l}
-                  href={`/${l}${rest}`}
+                  href={`/${toUrlLocale(l)}${rest}`}
                   hrefLang={l}
                   lang={l}
                   aria-current={l === locale ? 'true' : undefined}

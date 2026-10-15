@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { course, modules } from '@/content/course';
 import { courseItems, type CourseItem, type CourseStatus } from '@/lib/course-status';
-import { fmt } from '@/lib/i18n';
+import { fmt, toUrlLocale } from '@/lib/i18n';
 import { useProgress } from '@/lib/progress';
 import { useT } from './I18nProvider';
 import { CheckIcon, DotIcon, LockIcon } from './roadmap/icons';
@@ -141,7 +141,7 @@ export default function LessonSwitcher({
                         ) : (
                           <Link
                             className={`lsw-row${here ? ' is-current' : ''}`}
-                            href={`/${locale}/lessons/${i.slug}`}
+                            href={`/${toUrlLocale(locale)}/lessons/${i.slug}`}
                             aria-current={here ? 'page' : undefined}
                             onClick={close}
                           >

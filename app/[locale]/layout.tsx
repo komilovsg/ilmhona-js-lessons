@@ -3,7 +3,7 @@ import { JetBrains_Mono, Manrope } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
 import I18nProvider from '@/components/I18nProvider';
-import { getMessages, isLocale, locales } from '@/lib/i18n';
+import { getMessages, fromUrlLocale, urlLocales } from '@/lib/i18n';
 import { themeScript } from '@/lib/theme';
 import '../globals.css';
 
@@ -25,12 +25,12 @@ const jetbrains = JetBrains_Mono({
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return locales.map((locale) => ({ locale }));
+  return urlLocales.map((locale) => ({ locale }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
-  const { locale } = await params;
-  if (!isLocale(locale)) return {};
+  const locale = fromUrlLocale((await params).locale);
+  if (!locale) return {};
   return {
     title: getMessages(locale).meta.siteTitle,
   };
@@ -43,8 +43,8 @@ export default async function RootLayout({
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
-  const { locale } = await params;
-  if (!isLocale(locale)) notFound();
+  const locale = fromUrlLocale((await params).locale);
+  if (!locale) notFound();
   return (
     <html lang={locale} className={`${manrope.variable} ${jetbrains.variable}`} suppressHydrationWarning>
       <head>
