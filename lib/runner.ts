@@ -288,15 +288,18 @@ function onMessage(e: MessageEvent) {
   } else if (d.kind === 'done') {
     finish(r);
   } else if (d.kind === 'err') {
-    const msg = String(d.text).replace(/^Uncaught\s+(\(in promise\)\s*)?/, '');
+    const msg = cap(String(d.text)).replace(/^Uncaught\s+(\(in promise\)\s*)?/, '');
     r.hadError = true;
     push(r, { text: '✖ ' + msg, cls: 'err' });
     const hint = explain(msg, r.opts.strings.explain);
     if (hint) push(r, { text: '↳ ' + hint, cls: 'warn-line' });
   } else {
-    push(r, { text: String(d.text), cls: d.kind === 'warn' ? 'warn-line' : d.kind === 'error' ? 'err' : '' });
+    push(r, { text: cap(String(d.text)), cls: d.kind === 'warn' ? 'warn-line' : d.kind === 'error' ? 'err' : '' });
   }
 }
+
+const MAX_LINE = 2000;
+const cap = (s: string) => (s.length > MAX_LINE ? s.slice(0, MAX_LINE) + '…' : s);
 
 const safe = (s: string) => s.replace(/<\/script/gi, '<\\/script');
 const safeStyle = (s: string) => s.replace(/<\/style/gi, '<\\/style');

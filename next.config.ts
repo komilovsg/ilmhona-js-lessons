@@ -2,10 +2,8 @@ import type { NextConfig } from 'next';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Report-Only for now: srcdoc runner iframes inherit this policy, so student code (inline
-// scripts, esm.sh imports for React, fetch to any https API, any image URL) must keep working.
-// TODO: after a week without unexpected reports in the console, switch the header name to
-// `Content-Security-Policy` (enforcing).
+// Enforced. srcdoc runner iframes inherit this policy, so student code (inline scripts, esm.sh imports
+// for React, fetch to any https API, any image URL) must keep working.
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' https://esm.sh blob:${isDev ? " 'unsafe-eval'" : ''}`,
@@ -22,11 +20,11 @@ const csp = [
 ].join('; ');
 
 const securityHeaders = [
-  { key: 'Content-Security-Policy-Report-Only', value: csp },
+  { key: 'Content-Security-Policy', value: csp },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), display-capture=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
 ];
 

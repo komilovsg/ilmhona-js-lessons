@@ -34,7 +34,7 @@ function time(s: unknown): number {
   return Number.isNaN(t) ? Infinity : t;
 }
 
-function cleanHints(h: unknown): number[] {
+export function cleanHints(h: unknown): number[] {
   if (!Array.isArray(h)) return [];
   const set = new Set<number>();
   for (const v of h) if (Number.isInteger(v) && v >= 0 && v <= 32767) set.add(v);
@@ -134,4 +134,37 @@ export function sameSolved(a: SolvedMap, b: SolvedMap): boolean {
       (x.hints ?? []).join() === (y.hints ?? []).join()
     );
   });
+}
+
+export type CleanProgress = {
+  version: 2;
+  solved: Record<string, Rec>;
+  hintsOpened: Record<string, number[]>;
+  updatedAt: string;
+};
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Validates parsed localStorage progress. Returns null when the shape is unusable. Never throws. */
+export function cleanProgress(p: unknown): CleanProgress | null {
+  if (!isObj(p) || p.version !== 2 || !isObj(p.solved)) return null;
+  const solved: Record<string, Rec> = Object.create(null);
+  for (const k of Object.keys(p.solved)) {
+    if (!splitKey(k)) continue;
+    const r = p.solved[k];
+    if (!isObj(r)) continue;
+    solved[k] = {
+      solvedAt: typeof r.solvedAt === 'string' ? r.solvedAt : '',
+      auto: r.auto === true,
+      hints: cleanHints(r.hints),
+      xp: Math.min(MAX_XP, Math.max(0, numXp(r.xp))),
+    };
+  }
+  const hintsOpened: Record<string, number[]> = Object.create(null);
+  if (isObj(p.hintsOpened)) {
+    for (const k of Object.keys(p.hintsOpened)) {
+      if (splitKey(k)) hintsOpened[k] = cleanHints(p.hintsOpened[k]);
+    }
+  }
+  return { version: 2, solved, hintsOpened, updatedAt: typeof p.updatedAt === 'string' ? p.updatedAt : '' };
 }

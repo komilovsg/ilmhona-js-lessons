@@ -21,6 +21,12 @@ function pickSegment(req: NextRequest): string {
   return toUrlLocale(defaultLocale);
 }
 
+function noStore(res: NextResponse) {
+  res.headers.set('Cache-Control', 'private, no-store');
+  res.headers.set('Vary', 'Cookie, Accept-Language');
+  return res;
+}
+
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const first = pathname.split('/')[1] ?? '';
@@ -34,7 +40,7 @@ export function proxy(req: NextRequest) {
   if (fromUrlLocale(first) || /^[a-z]{2}$/.test(first)) return NextResponse.next();
   const url = req.nextUrl.clone();
   url.pathname = `/${pickSegment(req)}${pathname === '/' ? '' : pathname}`;
-  return NextResponse.redirect(url);
+  return noStore(NextResponse.redirect(url));
 }
 
 export const config = {
