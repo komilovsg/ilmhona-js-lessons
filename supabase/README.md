@@ -3,7 +3,7 @@
 The backend is optional. Without the env vars below the site works fully local (progress in
 `localStorage`, no "Войти" button, no network calls). With them, students can sign in (Google or an
 email link opened in the same browser), their progress syncs across devices, and `/leaderboard`
-shows the top 50.
+shows the top 50 of the students who opted in (signed-in visitors only).
 
 Everything fits the Supabase **free** plan.
 
@@ -88,7 +88,9 @@ Both values are public by design; the data is protected by Row Level Security in
 1. Open the site → **Войти** → sign in with Google.
 2. Solve a task; in Supabase **Table Editor → task_progress** a row appears within ~1 s.
 3. Open the site on another device/browser, sign in with the same account → progress is there.
-4. `/leaderboard` shows you highlighted. Rename yourself from the avatar menu.
+4. Avatar menu → enable **«Показывать меня в рейтинге»** → `/leaderboard` shows you highlighted.
+   New accounts start as a pseudonym («Ученик 3f9a»); rename yourself from the same menu.
+5. Signed out, `/leaderboard` asks you to sign in (the function is not callable by `anon`).
 
 ## Free plan caveat: the project pauses
 
@@ -109,6 +111,13 @@ Other free-plan limits (500 MB database, 50k monthly active users) are far above
   task, solved time, auto-checked flag, opened hints, XP 0–40). Each user can read and change
   only their own rows. Other users' data is never readable; the leaderboard is a database function
   that returns only rank, name, avatar, XP total and solved count.
+- Leaderboard privacy: **opt-in and sign-in only.** `profiles.show_on_leaderboard` defaults to
+  `false`; only students who switch it on in the account menu are listed (name + avatar become
+  visible to every signed-in student). Anonymous visitors can't call `leaderboard()` at all.
+  New accounts get a random pseudonym («Ученик 3f9a»): the name is never taken from the email or
+  the Google profile, so nothing personal is shown until the student chooses to.
+- Names: 2–32 chars, at least one letter or digit, no control / invisible / bidi / filler
+  characters (checked by the database and by the client).
 - Sync: on sign-in, local and cloud progress are merged (union; earliest solve time, max XP,
   union of hints). Afterwards every change is sent within ~1 s, retried when offline. Signing out
   keeps local progress. If a *different* account signs in on the same browser, it gets its own
@@ -116,7 +125,7 @@ Other free-plan limits (500 MB database, 50k monthly active users) are far above
 - Deleting a solved mark ("unmark") deletes it in the cloud, but another device that still has the
   task marked will add it back on its next sign-in/page load (merge is a union).
 - XP is reported by the browser, so a determined student could fake rows through the API
-  (max 40 XP per row, max 1000 rows). Fine for a classroom leaderboard; a server-side task list or
+  (max 40 XP per row, max 1000 rows; the cap is race-safe via a per-user advisory lock). Fine for a classroom leaderboard; a server-side task list or
   an Edge Function that checks solutions would close this.
 
 ## Известные ограничения
@@ -133,6 +142,7 @@ Known ceilings, accepted for a classroom deployment:
   iframe with an opaque origin (no access to the site's cookies or storage). Upgrade path:
   self-host the vendor ESM bundles under `/vendor/`.
 - **Avatars are Google-only.** The migration keeps `avatar_url` only for Google sign-ups and only
-  for `https://lhN.googleusercontent.com/` URLs; email sign-ups always show the initial.
+  for `https://lhN.googleusercontent.com/` URLs; email sign-ups always show the initial. Avatars
+  appear on the leaderboard only for students who opted in.
 - **CSP is Report-Only** (`next.config.ts`). Switch it to enforcing once the browser console
   shows no unexpected reports during normal use.
