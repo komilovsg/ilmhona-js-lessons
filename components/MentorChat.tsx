@@ -3,9 +3,12 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { closeMentor, getMentor, getServerMentor, openMentor, subscribeMentor } from '@/lib/mentor-client';
 import { fmt } from '@/lib/i18n';
+import { redactCodeField, redactMessage } from '@/lib/redact';
 import { useT } from './I18nProvider';
+import MentorBot from './MentorBot';
+import MentorFab, { hasFabPos, resetFabPos } from './MentorFab';
 
-type Msg = { role: 'user' | 'model'; text: string };
+type Msg = { role: 'user' | 'model'; text: string; red?: boolean };
 type Ctx = { taskId?: string; code?: string; output?: string };
 
 const storeKey = (slug: string) => `mentor:${slug}`;
@@ -13,10 +16,26 @@ const storeKey = (slug: string) => `mentor:${slug}`;
 function load(slug: string): Msg[] {
   try {
     const v = JSON.parse(sessionStorage.getItem(storeKey(slug)) ?? '[]');
-    return Array.isArray(v) ? v.filter((m) => m && (m.role === 'user' || m.role === 'model') && typeof m.text === 'string') : [];
+    return Array.isArray(v)
+      ? v.filter((m) => m && (m.role === 'user' || m.role === 'model') && typeof m.text === 'string' && m.text.trim())
+      : [];
   } catch {
     return [];
   }
+}
+
+/** What goes upstream: no empty turns, consecutive same-role turns merged (a failed turn leaves two user turns), starts with a user turn. */
+function history(msgs: Msg[]): { role: Msg['role']; text: string }[] {
+  const out: { role: Msg['role']; text: string }[] = [];
+  for (const m of msgs) {
+    if (!m.text.trim()) continue;
+    const last = out[out.length - 1];
+    if (last && last.role === m.role) last.text += '\n' + m.text;
+    else out.push({ role: m.role, text: m.text });
+  }
+  let h = out.map((x) => ({ role: x.role, text: x.text.slice(-2000) })).slice(-12);
+  while (h.length && h[0].role === 'model') h = h.slice(1);
+  return h;
 }
 
 /** Plain-text answer with `code` and ``` blocks. Everything is a React text node, so it is escaped. */
@@ -53,6 +72,7 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
   const [ctx, setCtx] = useState<Ctx>({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [canRetry, setCanRetry] = useState(false);
   const [off, setOff] = useState(false);
   const [seen, setSeen] = useState(m.seq);
   const listRef = useRef<HTMLDivElement>(null);
@@ -81,7 +101,7 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(storeKey(lessonSlug), JSON.stringify(messages.slice(-24)));
+      sessionStorage.setItem(storeKey(lessonSlug), JSON.stringify(messages.filter((x) => x.text.trim()).slice(-24)));
     } catch {}
     const el = listRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -99,35 +119,56 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
     setMessages([]);
     setCtx({});
     setErr(null);
+    setCanRetry(false);
     setBusy(false);
     setInput('');
     inputRef.current?.focus();
   }
 
-  async function send() {
-    const text = input.trim().slice(0, 2000);
-    if (!text || busy) return;
-    const next: Msg[] = [...messages, { role: 'user', text }];
-    setMessages([...next, { role: 'model', text: '' }]);
-    setInput('');
+  /** Send the typed text, or (retry) re-ask the last user message without adding a new one. */
+  async function send(retry = false) {
+    if (busy) return;
+    let base = messages.filter((x) => x.text.trim());
+    if (retry) {
+      if (base[base.length - 1]?.role !== 'user') return;
+    } else {
+      const text = input.trim();
+      if (!text) return;
+      const r = redactMessage(text.slice(0, 2000));
+      base = [...base, { role: 'user', text: r.text, red: r.hit }];
+      setInput('');
+    }
+    setMessages([...base, { role: 'model', text: '' }]);
     setErr(null);
+    setCanRetry(false);
     setBusy(true);
-    let hist = next.slice(-12).map((x) => ({ role: x.role, text: x.text.slice(0, 2000) }));
-    if (hist[0].role === 'model') hist = hist.slice(1);
     const ac = new AbortController();
     abort.current = ac;
     let got = '';
+    let failed = false;
     try {
       const res = await fetch('/api/mentor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locale, lessonSlug, ...ctx, messages: hist }),
+        body: JSON.stringify({
+          locale,
+          lessonSlug,
+          taskId: ctx.taskId,
+          code: ctx.code ? redactCodeField(ctx.code.slice(0, 6000)).text : undefined,
+          output: ctx.output ? redactCodeField(ctx.output.slice(-3000)).text : undefined,
+          messages: history(base),
+        }),
         signal: ac.signal,
       });
       if (!res.ok || !res.body) {
+        failed = true;
         const j = await res.json().catch(() => ({}));
-        if (res.status === 503 && j.error === 'not_configured') setOff(true);
-        else setErr(res.status === 429 && typeof j.message === 'string' ? j.message : S.errGeneric);
+        if (res.status === 503 && j.error === 'not_configured') {
+          setOff(true);
+        } else {
+          setErr(res.status === 429 && typeof j.message === 'string' ? j.message : S.errGeneric);
+          setCanRetry(res.status !== 400);
+        }
       } else {
         const reader = res.body.getReader();
         const dec = new TextDecoder();
@@ -138,30 +179,27 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
           const snap = got;
           setMessages((cur) => [...cur.slice(0, -1), { role: 'model', text: snap }]);
         }
-        if (!got.trim()) setErr(S.errGeneric);
+        if (!got.trim()) {
+          failed = true;
+          setErr(S.errGeneric);
+          setCanRetry(true);
+        }
       }
     } catch {
-      if (!ac.signal.aborted) setErr(S.errGeneric);
-    } finally {
       if (ac.signal.aborted) return;
-      if (!got.trim()) setMessages((cur) => (cur[cur.length - 1]?.role === 'model' && !cur[cur.length - 1].text ? cur.slice(0, -1) : cur));
-      setBusy(false);
+      failed = true;
+      setErr(S.errGeneric);
+      setCanRetry(true);
     }
+    if (failed) setMessages((cur) => (cur[cur.length - 1]?.role === 'model' && !cur[cur.length - 1].text ? cur.slice(0, -1) : cur));
+    setBusy(false);
   }
 
   const ctxLabel = ctx.taskId ? fmt(S.ctxTask, { id: ctx.taskId }) : ctx.code || ctx.output ? S.ctxCode : '';
 
   return (
     <>
-      <button
-        type="button"
-        className="mentor-fab"
-        aria-haspopup="dialog"
-        aria-expanded={m.open}
-        onClick={() => openMentor()}
-      >
-        <span aria-hidden="true">💬</span> {S.fab}
-      </button>
+      <MentorFab label={S.fab} onOpen={() => openMentor()} />
       {m.open && (
         <>
           <div className="mentor-backdrop" onClick={close} aria-hidden="true" />
@@ -185,7 +223,15 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
             }}
           >
             <header>
+              <span className="mentor-av lg">
+                <MentorBot />
+              </span>
               <h2 id="mentor-title">{S.title}</h2>
+              {hasFabPos() && (
+                <button type="button" className="mentor-link" onClick={resetFabPos} title={S.resetPos}>
+                  ⌖
+                </button>
+              )}
               <button type="button" className="mentor-link" onClick={resetChat} disabled={!messages.length && !ctxLabel}>
                 {S.newChat}
               </button>
@@ -199,14 +245,29 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
               ) : (
                 <>
                   {!messages.length && <p className="mentor-note">{S.empty}</p>}
-                  {messages.map((x, i) => (
-                    <div key={i} className={'mentor-msg ' + (x.role === 'user' ? 'me' : 'bot')}>
-                      {x.text ? <Rich text={x.text} /> : <span className="mentor-dots">{S.thinking}</span>}
-                    </div>
-                  ))}
+                  {messages.map((x, i) =>
+                    x.role === 'user' ? (
+                      <Fragment key={i}>
+                        <div className="mentor-msg me">{x.text}</div>
+                        {x.red && <small className="mentor-red">{S.redacted}</small>}
+                      </Fragment>
+                    ) : (
+                      <div key={i} className="mentor-row">
+                        <span className="mentor-av">
+                          <MentorBot />
+                        </span>
+                        <div className="mentor-msg bot">{x.text ? <Rich text={x.text} /> : <span className="mentor-dots">{S.thinking}</span>}</div>
+                      </div>
+                    ),
+                  )}
                   {err && (
                     <p className="mentor-err" role="alert">
                       {err}
+                      {canRetry && (
+                        <button type="button" className="mentor-retry" onClick={() => void send(true)}>
+                          {S.retry}
+                        </button>
+                      )}
                     </p>
                   )}
                 </>
