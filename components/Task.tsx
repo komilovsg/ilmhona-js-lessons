@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { diffLines, diffMessage, normalizeOutput, normalizeText } from '@/lib/check';
 import { confetti, reducedMotion } from '@/lib/confetti';
 import { calcXp, hintPenaltyPct } from '@/lib/game';
+import { openMentor, readTaskContext } from '@/lib/mentor-client';
 import { getSnapshot, markSolved, noteHint, unmark, useProgress } from '@/lib/progress';
 import { useT } from './I18nProvider';
 import { TaskContext, type TaskContextValue } from './TaskContext';
@@ -162,6 +163,16 @@ export default function Task({ id, lessonSlug, level, children }: Props) {
           }}
         >
           {done ? t.task.solved + (rec.xp ? ` · ${t.task.xpSuffix(rec.xp)}` : '') : t.task.markAsSolved}
+        </button>
+        <button
+          type="button"
+          className="done-toggle ask-mentor"
+          onClick={() => {
+            const c = ref.current ? readTaskContext(ref.current) : { code: '', output: '' };
+            openMentor({ taskId: id, ...c, prefill: t.mentor.prefillTask });
+          }}
+        >
+          {t.mentor.askTask}
         </button>
         {chip && (
           <span className="xp-chip" style={{ top: chip.top, left: chip.left }} aria-hidden="true">
