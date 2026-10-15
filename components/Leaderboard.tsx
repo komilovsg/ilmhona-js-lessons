@@ -2,21 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { useT } from './I18nProvider';
 
-const T = {
-  title: 'Рейтинг',
-  lead: 'Топ-50 учеников по опыту (XP). Войдите, чтобы попасть в таблицу.',
-  noServer: 'Рейтинг появится после подключения сервера.',
-  loading: 'Загружаем рейтинг…',
-  error: 'Не удалось загрузить рейтинг. Проверьте интернет и обновите страницу.',
-  retry: 'Повторить',
-  empty: 'Пока никто не решил ни одной задачи. Будьте первым!',
-  place: 'Место',
-  name: 'Имя',
-  xp: 'XP',
-  solved: 'Решено',
-  you: 'вы',
-};
 
 type Entry = {
   rank: number;
@@ -30,6 +17,7 @@ type Entry = {
 const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
 export default function Leaderboard() {
+  const T = useT().t.leaderboard;
   return (
     <section className="lb">
       <h1>{T.title}</h1>
@@ -46,6 +34,7 @@ export default function Leaderboard() {
 }
 
 function LeaderboardTable() {
+  const T = useT().t.leaderboard;
   const [rows, setRows] = useState<Entry[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);

@@ -1,3 +1,4 @@
+import type { Messages } from '../messages/ru';
 import { explain } from './explain';
 
 export type OutLine = { text: string; cls: '' | 'err' | 'warn-line' | 'empty' };
@@ -8,7 +9,11 @@ export type RunSpec =
   | { mode: 'dom'; html: string; css: string; js: string }
   | { mode: 'react'; jsx: string; css: string };
 
+/** User-visible texts of the runner (`t.runner`) and runtime error hints (`t.explain`), in the UI language. */
+export type RunStrings = { runner: Messages['runner']; explain: Messages['explain'] };
+
 export type RunOptions = {
+  strings: RunStrings;
   /** Called with a snapshot of all lines every time a new line arrives (streaming). */
   onLines?: (lines: OutLine[]) => void;
   /** dom/react: the visible preview iframe (owned by the caller). Console mode creates its own hidden one. */
@@ -19,14 +24,6 @@ export type RunOptions = {
 
 export type Job = { id: string; result: Promise<RunResult>; stop: () => void };
 
-export const RUNNER_STRINGS = {
-  empty: '(ничего не выведено — добавьте console.log)',
-  loop: '⏱ Код выполняется слишком долго (возможен бесконечный цикл)',
-  cap: '⏱ Остановлено через 8 с',
-  tooMany: '… вывод обрезан (слишком много строк)',
-  noReact: 'Не удалось загрузить React с esm.sh. Проверьте подключение к интернету.',
-  noApp: 'Экспортируйте компонент: export default function App() { … }',
-};
 
 const LOOP_MS = 3000; // no heartbeat from the frame for this long = main thread is stuck
 const CAP_MS = 8000; // hard cap for pending async work
@@ -207,7 +204,7 @@ function emit(r: Pending) {
 
 function push(r: Pending, line: OutLine) {
   if (r.lines.length > MAX_LINES) return;
-  if (r.lines.length === MAX_LINES) line = { text: RUNNER_STRINGS.tooMany, cls: 'warn-line' };
+  if (r.lines.length === MAX_LINES) line = { text: r.opts.strings.runner.tooMany, cls: 'warn-line' };
   r.lines.push(line);
   emit(r);
 }
@@ -222,7 +219,7 @@ function finish(r: Pending) {
   if (r.done) return;
   r.done = true;
   clearTimers(r);
-  if (r.mode === 'console' && !r.lines.length) r.lines.push({ text: RUNNER_STRINGS.empty, cls: 'empty' });
+  if (r.mode === 'console' && !r.lines.length) r.lines.push({ text: r.opts.strings.runner.empty, cls: 'empty' });
   emit(r);
   if (r.own) {
     r.frame.remove();
@@ -264,7 +261,7 @@ function onMessage(e: MessageEvent) {
     const msg = String(d.text).replace(/^Uncaught\s+(\(in promise\)\s*)?/, '');
     r.hadError = true;
     push(r, { text: '✖ ' + msg, cls: 'err' });
-    const hint = explain(msg);
+    const hint = explain(msg, r.opts.strings.explain);
     if (hint) push(r, { text: '↳ ' + hint, cls: 'warn-line' });
   } else {
     if (d.kind === 'error') r.hadError = true;
@@ -299,17 +296,17 @@ function domDoc(id: string, s: { html: string; css: string; js: string }) {
   );
 }
 
-function reactDoc(id: string, js: string, css: string) {
+function reactDoc(id: string, js: string, css: string, rs: Messages['runner']) {
   const main = `
 const CODE = ${JSON.stringify(js)};
 __ilmHold((async () => {
   let React, ReactDOM;
   try { React = await import('react'); ReactDOM = await import('react-dom/client'); }
-  catch (e) { console.error(${JSON.stringify(RUNNER_STRINGS.noReact)}); return; }
+  catch (e) { console.error(${JSON.stringify(rs.noReact)}); return; }
   const url = URL.createObjectURL(new Blob([CODE], { type: 'text/javascript' }));
   const mod = await import(url);
   const App = mod.default || mod.App;
-  if (typeof App !== 'function') throw new Error(${JSON.stringify(RUNNER_STRINGS.noApp)});
+  if (typeof App !== 'function') throw new Error(${JSON.stringify(rs.noApp)});
   ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
 })());`;
   return (
@@ -320,10 +317,10 @@ __ilmHold((async () => {
   );
 }
 
-async function buildReact(id: string, jsx: string, css: string): Promise<string> {
+async function buildReact(id: string, jsx: string, css: string, rs: Messages['runner']): Promise<string> {
   const { transform } = await import('sucrase');
   const out = transform(jsx, { transforms: ['jsx'], jsxRuntime: 'automatic', production: true }).code;
-  return reactDoc(id, out, css);
+  return reactDoc(id, out, css, rs);
 }
 
 /**
@@ -334,7 +331,7 @@ async function buildReact(id: string, jsx: string, css: string): Promise<string>
  * is pending, or the run is cut at 8 s. Caveat: in some browsers an infinite loop in a srcdoc iframe
  * can still block the main thread before the watchdog fires; nothing we can do client-side.
  */
-export function startRun(spec: RunSpec, opts: RunOptions = {}): Job {
+export function startRun(spec: RunSpec, opts: RunOptions): Job {
   if (!listening) {
     window.addEventListener('message', onMessage);
     listening = true;
@@ -363,7 +360,7 @@ export function startRun(spec: RunSpec, opts: RunOptions = {}): Job {
     if (document.hidden) r.lastBeat = performance.now(); // timers are throttled in background tabs
     else if (performance.now() - r.lastBeat > LOOP_MS) {
       r.hadError = true;
-      push(r, { text: RUNNER_STRINGS.loop, cls: 'err' });
+      push(r, { text: opts.strings.runner.loop, cls: 'err' });
       clearTimers(r);
       kill(r);
       r.done = true;
@@ -375,7 +372,7 @@ export function startRun(spec: RunSpec, opts: RunOptions = {}): Job {
   r.cap = setTimeout(() => {
     if (r.done) return;
     if (spec.mode === 'console') {
-      push(r, { text: RUNNER_STRINGS.cap, cls: 'warn-line' });
+      push(r, { text: opts.strings.runner.cap, cls: 'warn-line' });
       kill(r);
     }
     finish(r);
@@ -390,11 +387,11 @@ export function startRun(spec: RunSpec, opts: RunOptions = {}): Job {
   if (spec.mode === 'console') start(consoleDoc(id, spec.code));
   else if (spec.mode === 'dom') start(domDoc(id, spec));
   else
-    buildReact(id, spec.jsx, spec.css).then(start, (err: unknown) => {
+    buildReact(id, spec.jsx, spec.css, opts.strings.runner).then(start, (err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       r.hadError = true;
       push(r, { text: '✖ SyntaxError: ' + msg, cls: 'err' });
-      const hint = explain('SyntaxError: ' + msg);
+      const hint = explain('SyntaxError: ' + msg, opts.strings.explain);
       if (hint) push(r, { text: '↳ ' + hint, cls: 'warn-line' });
       finish(r);
     });
@@ -403,6 +400,6 @@ export function startRun(spec: RunSpec, opts: RunOptions = {}): Job {
 }
 
 /** Console mode shortcut (kept for callers that just want the final result). */
-export function run(code: string, opts: RunOptions = {}): Promise<RunResult> {
+export function run(code: string, opts: RunOptions): Promise<RunResult> {
   return startRun({ mode: 'console', code }, opts).result;
 }

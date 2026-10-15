@@ -11,12 +11,11 @@ import { bracketMatching, HighlightStyle, indentUnit, syntaxHighlighting } from 
 import { EditorState, Prec } from '@codemirror/state';
 import { drawSelection, EditorView, keymap } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
+import type { Messages } from '../messages/ru';
 import type { Lang } from './highlight';
 
-export const CM_STRINGS = {
-  label: 'Редактор кода',
-  description: 'Нажмите Escape, затем Tab, чтобы покинуть редактор. Ctrl или Cmd + Enter запускает код.',
-};
+/** Dictionary section for the editor (`t.cm`). */
+export type CmStrings = Messages['cm'];
 
 // ---- theme: same colors/metrics as the static <pre class="code"> (see globals.css) ----
 const theme = EditorView.theme(
@@ -86,15 +85,15 @@ const RESPONSE_METHODS = ['json', 'text', 'ok', 'status'];
 
 const mk = (labels: string[], type: string, detail?: string): Completion[] => labels.map((label) => ({ label, type, detail }));
 
-const GENERIC_MEMBERS = [
-  ...mk(ARRAY_METHODS, 'method', 'массив'),
-  ...mk(STRING_METHODS, 'method', 'строка'),
-  ...mk(ELEMENT_METHODS, 'property', 'элемент'),
-  ...mk(PROMISE_METHODS, 'method', 'промис'),
-  ...mk(RESPONSE_METHODS, 'method', 'ответ'),
+const genericMembers = (s: CmStrings) => [
+  ...mk(ARRAY_METHODS, 'method', s.array),
+  ...mk(STRING_METHODS, 'method', s.string),
+  ...mk(ELEMENT_METHODS, 'property', s.element),
+  ...mk(PROMISE_METHODS, 'method', s.promise),
+  ...mk(RESPONSE_METHODS, 'method', s.response),
 ];
 
-function jsSource(ctx: CompletionContext) {
+const jsSource = (s: CmStrings) => (ctx: CompletionContext) => {
   const word = ctx.matchBefore(/[\w$]*(\.[\w$]*)?$/);
   if (!word || (word.from === word.to && !ctx.explicit)) return null;
   const text = word.text;
@@ -102,7 +101,7 @@ function jsSource(ctx: CompletionContext) {
   if (dot >= 0) {
     // member access: `console.l`, `arr.fi`
     const obj = text.slice(0, dot);
-    const options = MEMBERS[obj] ? mk(MEMBERS[obj], 'method') : GENERIC_MEMBERS;
+    const options = MEMBERS[obj] ? mk(MEMBERS[obj], 'method') : genericMembers(s);
     return { from: word.from + dot + 1, options, validFor: /^[\w$]*$/ };
   }
   if (text.length < 2 && !ctx.explicit) return null;
@@ -120,10 +119,11 @@ function jsSource(ctx: CompletionContext) {
     options: [...mk(KEYWORDS, 'keyword'), ...mk(GLOBALS, 'variable'), ...own],
     validFor: /^[\w$]*$/,
   };
-}
+};
 
 export type MountOptions = {
   parent: HTMLElement;
+  strings: CmStrings;
   doc: string;
   lang: Lang;
   onRun: (value: string) => void;
@@ -170,17 +170,17 @@ export function mountEditor(o: MountOptions): MountedEditor {
         EditorState.tabSize.of(2),
         indentUnit.of('  '),
         lang,
-        o.lang === 'js' || o.lang === 'jsx' ? autocompletion({ override: [jsSource], activateOnTyping: true }) : autocompletion(),
+        o.lang === 'js' || o.lang === 'jsx' ? autocompletion({ override: [jsSource(o.strings)], activateOnTyping: true }) : autocompletion(),
         syntaxHighlighting(highlightStyle),
         theme,
         tabHandling,
         EditorView.contentAttributes.of({
-          'aria-label': CM_STRINGS.label,
-          'aria-description': CM_STRINGS.description,
+          'aria-label': o.strings.label,
+          'aria-description': o.strings.description,
           spellcheck: 'false',
           autocapitalize: 'off',
           autocorrect: 'off',
-          title: CM_STRINGS.description,
+          title: o.strings.description,
         }),
         Prec.highest(
           keymap.of([

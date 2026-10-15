@@ -52,7 +52,7 @@ export default function RoadmapView() {
   const progCount = items.filter((i) => i.status === 'progress').length;
   const anyStarted = items.some((i) => i.solved > 0);
   const xp = totalXp(progress);
-  const lvl = levelInfo(xp);
+  const lvl = levelInfo(xp, t.game.ranks);
 
   let hereIdx = items.findIndex((i) => i.status === 'available' || i.status === 'progress');
   const allAvailableDone = hereIdx === -1;
