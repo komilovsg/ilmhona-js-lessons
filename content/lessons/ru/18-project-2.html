@@ -1,0 +1,1532 @@
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 18 · 🏁 Мини-проект №2 + Контрольная №2</p>
+      <h1>Мини-проект: приложение на публичном API</h1>
+      <p class="lead">Второй проект для портфолио — уже «взрослый»: он ходит за данными в интернет, показывает загрузку, переживает ошибки сети, не заваливает сервер запросами при каждой букве и собирается в готовую сборку через Vite. Именно так устроены погодные виджеты, поиск товаров и ленты новостей. Сегодня вы защитите проект, проверите код друг друга и напишете Контрольную №2 без ИИ.</p>
+      <ul class="goals">
+        <li>Выбрать вариант приложения на публичном API и разбить его на шаги вместе с ИИ</li>
+        <li>Показывать состояния <code>loading</code> / <code>error</code> / <code>empty</code> / <code>success</code> и не показывать устаревшие ответы</li>
+        <li>Ограничивать запросы через <code>debounce</code> и разносить код по модулям</li>
+        <li>Собрать проект через Vite (<code>npm run build</code>) и залить в репозиторий</li>
+        <li>Защитить проект за 5 минут и провести code review в паре</li>
+        <li>Написать Контрольную №2 за 30 минут: объекты, <code>async/await</code>, <code>fetch</code>, обработка ошибок</li>
+        <li>Честно разобрать, где ИИ сэкономил время, а где увёл в сторону</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Сегодня два блока. <b>Первый — мини-проект</b>: задание, критерии оценки (0–100), план с ИИ, две разминки по состояниям и запросам, стартовый шаблон в песочнице, ревью в парах и защита. <b>Второй — Контрольная №2</b>: в разделе 11 лежит полная пробная версия без подсказок. Для разминок мы не ходим в настоящую сеть: вместо <code>fetch</code> используем «поддельный сервер» из <code>Promise</code> и <code>setTimeout</code> — так результат всегда одинаковый и его можно проверить автоматически. Свой проект вы собираете у себя в VS Code.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="brief">
+      <h2 data-toc="Задание"><span class="num">01</span> Задание: выберите вариант</h2>
+
+      <p>Проект собирается из того, что вы прошли на уроках 13–17: асинхронность, <code>fetch</code>, состояния загрузки, <code>debounce</code>, модули и сборка Vite. Выберите <b>один из трёх вариантов</b>. Все они оцениваются по одним и тем же критериям, а API у всех открытые и не требуют ключа.</p>
+
+      <div class="cols">
+        <div class="col good">
+          <h4>Вариант А. Поиск товаров</h4>
+          <p>Поле поиска, под ним — карточки товаров. Запрос уходит с задержкой (<code>debounce</code>), пока идёт загрузка — индикатор, если ничего не нашли — понятное сообщение.</p>
+          <p><b>API:</b> <code>dummyjson.com/products/search?q=phone&amp;limit=10</code></p>
+        </div>
+        <div class="col good">
+          <h4>Вариант Б. Погода в городах</h4>
+          <p>Список городов (Душанбе, Худжанд, Бохтар, Куляб и свои). Выбираете город — видите температуру и ветер. Ошибку сети можно повторить кнопкой.</p>
+          <p><b>API:</b> <code>api.open-meteo.com/v1/forecast</code> с параметрами <code>latitude</code>, <code>longitude</code>, <code>current=temperature_2m,wind_speed_10m</code></p>
+        </div>
+        <div class="col good">
+          <h4>Вариант В. Люди и их посты</h4>
+          <p>Поиск пользователя по имени, при выборе — его посты. Два зависимых запроса: сначала человек, потом его записи.</p>
+          <p><b>API:</b> <code>jsonplaceholder.typicode.com</code>: <code>/users</code> и <code>/posts?userId=1</code></p>
+        </div>
+      </div>
+
+      <p>Сложность примерно равная: у товаров больше логики поиска, у погоды — разбор вложенного ответа, у пользователей — зависимые запросы. Свою идею на другом открытом API можно предложить, если у него нет ключа, он работает из браузера (CORS) и объём такой же — согласуйте это с преподавателем <b>до</b> начала работы.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы заказываете плов в чайхоне через официанта. Пока готовится — вы видите «заказ принят» (<code>loading</code>). Если плова нет — официант честно говорит «закончился» (<code>empty</code>), а если на кухне случился сбой — «извините, попробуйте ещё раз» (<code>error</code>). Плохой официант молчит и не отвечает вообще — и вы не знаете, ждать или уходить. Ваше приложение должно вести себя как хороший официант.</p>
+      </div>
+
+      <h3>Что вы показываете в конце</h3>
+      <ol class="steps">
+        <li><b>Работающее приложение</b> — открывается без ошибок в консоли, при отключённой сети показывает аккуратную ошибку.</li>
+        <li><b>Репозиторий на GitHub</b> с кодом на Vite, README и скриншотом; команда <code>npm run build</code> проходит без ошибок.</li>
+        <li><b>Защита на 5 минут</b> — демонстрация, объяснение кода и ответы на вопросы.</li>
+        <li><b>Короткий разбор «ИИ в проекте»</b> — раздел 12: где ИИ помог, где увёл в сторону.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Правила курса действуют и здесь</b>
+        <p>ИИ можно использовать, но: сначала пробуете сами 15 минут, не вставляете код, который не можете объяснить построчно, и на защите преподаватель вправе попросить объяснить <b>любую</b> строку. Не смогли — баллы за эту часть снимаются. А вот на <b>Контрольной №2 ИИ выключен полностью</b>.</p>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="mvp">
+      <h2 data-toc="MVP и бонусы"><span class="num">02</span> Требования: MVP и бонусы</h2>
+
+      <p><b>MVP</b> — минимальная версия, которая уже работает от начала до конца. Сначала делаем её полностью, и только потом украшения. Проект без MVP не получит высокой оценки, сколько бы бонусов в нём ни было.</p>
+
+      <h3>MVP — обязательно для всех вариантов</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>№</th><th>Требование</th><th>Как проверим</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Данные приходят с публичного API через <code>fetch</code> и <code>async/await</code></td><td>во вкладке Network виден запрос, в коде нет «пустых» данных-заглушек</td></tr>
+            <tr><td>2</td><td>Проверка <code>response.ok</code>: ответ 404 или 500 считается ошибкой, а не данными</td><td>в коде есть <code>if (!response.ok) throw …</code></td></tr>
+            <tr><td>3</td><td>Состояние <b>loading</b>: пока идёт запрос — индикатор, поле или кнопка не дают отправить двойной запрос</td><td>включаем Slow 3G в DevTools</td></tr>
+            <tr><td>4</td><td>Состояние <b>error</b>: понятное сообщение и кнопка «Повторить»; приложение не падает</td><td>включаем Offline в DevTools</td></tr>
+            <tr><td>5</td><td>Состояние <b>empty</b>: «Ничего не найдено» вместо пустого экрана</td><td>вводим бессмысленный запрос</td></tr>
+            <tr><td>6</td><td>Поиск или выбор (по варианту) с <code>debounce</code> или явной кнопкой; пустой запрос не уходит на сервер</td><td>быстро печатаем: в Network не больше одного запроса</td></tr>
+            <tr><td>7</td><td>Устаревший ответ не затирает свежий (счётчик запросов или <code>AbortController</code>)</td><td>быстро меняем запрос — на экране последний, а не предпоследний</td></tr>
+            <tr><td>8</td><td>Код разбит на ES-модули: <code>api.js</code>, <code>ui.js</code> (или <code>render.js</code>), <code>main.js</code></td><td>структура папки <code>src/</code></td></tr>
+            <tr><td>9</td><td>Проект на Vite: <code>npm run dev</code> запускается, <code>npm run build</code> завершается без ошибок</td><td>запускаем на защите</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Бонусы — после MVP</h3>
+      <ul>
+        <li><b>Скелетоны</b> вместо слова «Загрузка…» (серые блоки под карточки).</li>
+        <li><b>Кэш</b> последних запросов: тот же запрос второй раз не ходит в сеть.</li>
+        <li><b>Таймаут запроса</b> через <code>Promise.race</code> или <code>AbortController</code> со своим сообщением.</li>
+        <li><b>История поиска</b> или избранное в <code>localStorage</code>.</li>
+        <li><b>Автоповтор</b> при ошибке: до трёх попыток с паузой.</li>
+        <li><b>Тёмная тема</b> с сохранением выбора.</li>
+        <li><b>Пагинация</b> или кнопка «Показать ещё» (<code>limit</code> и <code>skip</code> у dummyjson).</li>
+      </ul>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>Бонус ценится, только если вы можете объяснить каждую его строку. Один простой кэш, который вы понимаете, лучше трёх «магических» кусков из чата с ИИ.</p>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="rubric">
+      <h2 data-toc="Оценивание 0–100"><span class="num">03</span> Как оценивается проект (0–100)</h2>
+
+      <p>Мини-проект оценивается по шкале <b>0–100</b>, как записано в правилах курса. Оценка складывается из восьми критериев:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Критерий</th><th>Баллы</th><th>Максимум ставим, если…</th><th>Частично, если…</th></tr></thead>
+          <tbody>
+            <tr><td><b>Функциональность MVP</b></td><td>20</td><td>приложение решает задачу выбранного варианта от начала до конца, нет красных ошибок в консоли</td><td>основной сценарий работает, но есть баги или нет части пунктов</td></tr>
+            <tr><td><b>fetch и async/await</b></td><td>20</td><td>реальный запрос на публичный API, <code>await</code> стоит где нужно, проверяется <code>response.ok</code>, ответ разбирается через <code>await response.json()</code>, ошибки ловит <code>try/catch</code></td><td>запрос работает, но 404 не считается ошибкой или <code>try/catch</code> формальный</td></tr>
+            <tr><td><b>Состояния loading / error / empty</b></td><td>15</td><td>все три состояния есть, переключаются из одного объекта состояния, есть «Повторить», двойной запрос невозможен</td><td>есть одно-два из трёх, или состояния «залипают» (после ошибки остаются старые данные)</td></tr>
+            <tr><td><b>Debounce и контроль запросов</b></td><td>10</td><td>запросы ограничены <code>debounce</code>, пустой запрос не отправляется, устаревший ответ не затирает свежий</td><td>debounce есть, но гонка ответов не решена</td></tr>
+            <tr><td><b>Модули и структура</b></td><td>10</td><td>ES-модули с понятными границами (<code>api</code> не трогает DOM, <code>ui</code> не ходит в сеть), короткие функции, нет дублей и мёртвого кода</td><td>модули есть, но «всё в <code>main.js</code>» или функции-монстры</td></tr>
+            <tr><td><b>Сборка и репозиторий</b></td><td>5</td><td><code>npm run build</code> проходит, публичный репозиторий, README со скриншотом, ≥ 5 осмысленных коммитов</td><td>сборка работает, но README пустой или коммит «всё одним куском»</td></tr>
+            <tr><td><b>Интерфейс</b></td><td>5</td><td>аккуратно, читается на телефоне (320–400 px), есть <code>:hover</code> и <code>:focus</code>, кнопки блокируются на время запроса</td><td>работает, но выглядит как черновик</td></tr>
+            <tr><td><b>Защита</b></td><td>15</td><td>уложились в 5 минут, показали сценарий (в том числе ошибку и пустой результат), объяснили ключевые куски и ответили на вопросы</td><td>объясняете общими словами, поплыли на «объясни эту строку»</td></tr>
+            <tr><td><b>ИТОГО</b></td><td><b>100</b></td><td colspan="2"></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><b>Бонусы</b> добавляют до <b>+5 баллов</b>, но итог не может быть больше 100.</p>
+
+      <h3>Что снимает баллы</h3>
+      <ul>
+        <li><b>Не можете объяснить свой код</b> — теряете баллы в том критерии, к которому относится непонятная часть.</li>
+        <li><b>Данные «захардкожены»</b> вместо настоящего запроса — критерий «fetch и async/await» получает 0.</li>
+        <li><b>Не сдано в срок</b> — до −10 баллов, по договорённости с преподавателем.</li>
+        <li><b>Код целиком скопирован у другого студента</b> или из чата без понимания — 0 за проект. Помогать друг другу можно и нужно, но каждый пишет и понимает своё.</li>
+      </ul>
+
+      <h3>Как это влияет на итоговую оценку курса</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Компонент курса</th><th>Вес</th><th>Как считается</th></tr></thead>
+          <tbody>
+            <tr><td>Посещаемость</td><td>15%</td><td>доля посещённых уроков</td></tr>
+            <tr><td>Домашние задания</td><td>30%</td><td>средний балл за 24 ДЗ (0–10)</td></tr>
+            <tr><td><b>Мини-проекты (2 шт.)</b></td><td><b>25%</b></td><td><b>среднее за мини-проект 1 и 2 (0–100)</b></td></tr>
+            <tr><td>Финальный проект</td><td>30%</td><td>защита на уроке 21 (0–100)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Для сертификата нужно <b>сдать оба мини-проекта</b>. Контрольная №2 — отдельная проверка знаний: она показывает, что вы понимаете асинхронный код без ИИ, и разбирается с преподавателем (см. раздел 11).</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Баллы</th><th>Оценка</th></tr></thead>
+          <tbody>
+            <tr><td>90–100</td><td>Отлично</td></tr>
+            <tr><td>75–89</td><td>Хорошо</td></tr>
+            <tr><td>60–74</td><td>Удовлетворительно</td></tr>
+            <tr><td>менее 60</td><td>Не аттестован</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="ai-plan">
+      <h2 data-toc="Декомпозиция с ИИ"><span class="num">04</span> Декомпозиция: разбиваем проект вместе с ИИ</h2>
+
+      <p>Проект с API опаснее первого: появились сеть, ожидание и ошибки, которые не воспроизводятся «по заказу». Поэтому план особенно важен. Идея та же, что на уроке 12: <b>сначала шаги, потом код</b>, и у каждого шага — видимый результат. Но теперь в плане должны быть отдельные шаги на каждое состояние (<code>loading</code>, <code>error</code>, <code>empty</code>) и на «рискованные» места: первый запрос, гонка ответов, сборка.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Поездка маршруткой из Душанбе в Худжанд: нужно заранее знать остановки, время в пути и запасной вариант, если дорогу перекроют. «Поеду как-нибудь» — путь в никуда. План с запасным вариантом — это ваши состояния <code>error</code> и «Повторить».</p>
+      </div>
+
+      <div class="callout ai">
+        <b>ИИ-блок: большая задача — непонятно, с чего начать</b>
+        <p>ИИ хорошо предлагает список шагов, но <b>порядок, лишнее и оценку времени проверяете вы</b>. Составляйте запрос по формуле курса: контекст → задача → ограничения → формат ответа → проверка.</p>
+      </div>
+<div class="prompt bad-prompt">сделай приложение с погодой на js</div>
+<div class="prompt good-prompt">Контекст: я студент курса JavaScript, делаю учебный проект «погода в городах Таджикистана» на чистом JS + Vite, без фреймворков. API: open-meteo (без ключа). Уже умею: fetch, async/await, try/catch, состояния loading/error/empty, debounce, ES-модули.
+Задача: разбей проект на 10–14 шагов по 20–40 минут в порядке выполнения.
+Ограничения: без библиотек; модули api.js, ui.js, main.js; в MVP — выбор города, запрос, три состояния, кнопка «Повторить», защита от устаревших ответов. Бонусы — отдельным списком в конце. Код не пиши.
+Формат ответа: нумерованный список. У каждого шага: название, что должно работать после него, оценка в минутах.
+Проверка: после списка назови 3 места, где новичок чаще всего ошибается в работе с fetch, и как их заметить.</div>
+
+      <p>Первый запрос даст случайный набор слов или сразу весь код, который вы не сможете объяснить. Второй — план, с которым можно работать. <b>Но это только черновик.</b> Вот пример плана после вашей правки:</p>
+
+      <h3>Пример плана для варианта Б (≈ 5 часов)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>№</th><th>Шаг</th><th>Время</th><th>Что работает после него</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Vite-проект, структура <code>src/api.js</code>, <code>ui.js</code>, <code>main.js</code></td><td>20 мин</td><td><code>npm run dev</code> открывает пустую страницу</td></tr>
+            <tr><td>2</td><td>Разметка: выбор города, блок результата, блок статуса</td><td>25 мин</td><td>страница выглядит как приложение, но «мёртвая»</td></tr>
+            <tr><td>3</td><td><code>api.js</code>: <code>getWeather(city)</code> с <code>fetch</code> и проверкой <code>ok</code></td><td>35 мин</td><td>функцию можно вызвать из консоли и увидеть данные</td></tr>
+            <tr><td>4</td><td>Объект <code>state</code> и функция <code>getView(state)</code></td><td>25 мин</td><td>каждое состояние даёт свой текст</td></tr>
+            <tr><td>5</td><td><code>ui.js</code>: <code>render(state)</code></td><td>30 мин</td><td>вручную подставленное состояние рисуется</td></tr>
+            <tr><td>6</td><td><code>main.js</code>: клик по городу → <code>loading</code> → <code>success</code></td><td>30 мин</td><td>погода появляется на странице</td></tr>
+            <tr><td>7</td><td>Ветка <code>error</code> + кнопка «Повторить»</td><td>30 мин</td><td>в режиме Offline — ошибка, после «Повторить» всё работает</td></tr>
+            <tr><td>8</td><td>Состояние <code>empty</code> (город без данных) и блокировка кнопок на время запроса</td><td>25 мин</td><td>двойной клик не создаёт два запроса</td></tr>
+            <tr><td>9</td><td>Защита от устаревших ответов (<code>requestId</code>)</td><td>25 мин</td><td>быстрое переключение городов показывает последний</td></tr>
+            <tr><td>10</td><td>Стили, мобильная версия, фокус</td><td>35 мин</td><td>приятно выглядит на 360 px</td></tr>
+            <tr><td>11</td><td>Ручное тестирование: Slow 3G, Offline, мусорные данные</td><td>30 мин</td><td>нет ошибок в консоли</td></tr>
+            <tr><td>12</td><td><code>npm run build</code>, проверка <code>npm run preview</code></td><td>20 мин</td><td>сборка работает из папки <code>dist</code></td></tr>
+            <tr><td>13</td><td>README, скриншот, репозиторий</td><td>30 мин</td><td>проект доступен по ссылке</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Что вы делаете с ответом ИИ — по шагам</h3>
+      <ol class="steps">
+        <li><b>Вычеркните лишнее.</b> «Подключить React», «настроить Redux», «написать свой сервер» — не про наш проект.</li>
+        <li><b>Проверьте порядок.</b> Нельзя рисовать состояние <code>error</code> раньше, чем есть сам <code>state</code>. Каждый шаг опирается на готовые предыдущие.</li>
+        <li><b>Оцените время сами.</b> ИИ не знает вашей скорости: умножайте его оценку на 1.5. Шаг длиннее 40 минут — разбейте.</li>
+        <li><b>Каждый шаг даёт видимый результат.</b> «Разобраться с API» — не шаг. «<code>getWeather("Душанбе")</code> возвращает температуру в консоли» — шаг.</li>
+        <li><b>Добавьте шаги на «плохую погоду»:</b> Offline, ответ 404, пустой результат. ИИ часто забывает о них — это ваша зона ответственности.</li>
+        <li><b>Запишите план</b> в <code>PLAN.md</code> и отмечайте выполненное.</li>
+      </ol>
+
+      <div class="practice">
+        <h3>Практика: считаем план средствами JavaScript</h3>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Сколько займёт проект</h4><span class="level easy">лёгкая</span></header>
+          <p>Дан массив шагов с оценкой в минутах. Посчитайте сумму и выведите строку вида <code>Всего: 185 мин = 3.1 ч</code>. Часы округлите до одного знака (<code>toFixed(1)</code>).</p>
+<pre class="code" data-run>
+const plan = [
+  { title: "Разметка и стили", min: 30 },
+  { title: "Функция fetch и разбор ответа", min: 40 },
+  { title: "Состояния loading / error / empty", min: 40 },
+  { title: "Debounce для поиска", min: 25 },
+  { title: "Разбивка на модули", min: 30 },
+  { title: "Сборка Vite и проверка build", min: 20 },
+];
+
+// посчитайте сумму минут и выведите итоговую строку
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Всего: 185 мин = 3.1 ч</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сумму полей массива объектов собирает <code>reduce</code> с начальным значением <code>0</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>plan.reduce((sum, step) =&gt; sum + step.min, 0)</code>. Часы — это <code>total / 60</code>, а <code>.toFixed(1)</code> оставит один знак.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Самые рискованные шаги</h4><span class="level mid">средняя</span></header>
+          <p>У рискованных шагов стоит <code>risky: true</code>. Выведите их по убыванию времени в формате <code>Рискованно: Название (N мин)</code>, а в конце — <code>Рискованных: N</code>. Исходный массив менять нельзя.</p>
+<pre class="code" data-run>
+const plan = [
+  { title: "Разметка", min: 20, risky: false },
+  { title: "Первый запрос к API", min: 40, risky: true },
+  { title: "Обработка ошибок сети", min: 35, risky: true },
+  { title: "Стили", min: 25, risky: false },
+  { title: "Отмена устаревших запросов", min: 30, risky: true },
+];
+
+// отфильтруйте, отсортируйте копию, выведите
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Рискованно: Первый запрос к API (40 мин)
+Рискованно: Обработка ошибок сети (35 мин)
+Рискованно: Отмена устаревших запросов (30 мин)
+Рискованных: 3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>filter</code> возвращает новый массив, поэтому <code>sort</code> после него не затронет исходный <code>plan</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сортировка по убыванию: <code>.sort((a, b) =&gt; b.min - a.min)</code>. Затем <code>forEach</code> со строкой-шаблоном и <code>.length</code> для итога.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Минуты по этапам</h4><span class="level mid">средняя</span></header>
+          <p>Соберите объект «этап → сумма минут» и выведите его через <code>JSON.stringify</code>. Порядок ключей — по первому появлению этапа в массиве.</p>
+<pre class="code" data-run>
+const plan = [
+  { phase: "api", min: 40 },
+  { phase: "ui", min: 30 },
+  { phase: "api", min: 35 },
+  { phase: "build", min: 20 },
+  { phase: "ui", min: 25 },
+];
+
+// const byPhase = plan.reduce(...)
+// console.log(JSON.stringify(byPhase));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"api":75,"ui":55,"build":20}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Начальное значение <code>reduce</code> — пустой объект <code>{}</code>. Ключом служит <code>item.phase</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>acc[item.phase] = (acc[item.phase] || 0) + item.min; return acc;</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="warm-states">
+      <h2 data-toc="Разминка: состояния"><span class="num">05</span> Разминка 1. Состояния запроса и ошибки сети</h2>
+
+      <p>Любой запрос в сеть живёт в одном из четырёх состояний: <b>idle</b> (ещё не просили), <b>loading</b> (ждём), <b>success</b> (получили, и данные могут быть как с содержимым, так и пустыми) и <b>error</b> (не получилось). Главное правило: <b>всё это лежит в одном объекте</b> <code>state</code>, а страница рисуется из него, как и в проекте №1.</p>
+
+<pre class="code" data-run data-title="Состояние запроса — один объект">
+const state = {
+  status: "loading",   // "idle" | "loading" | "success" | "error"
+  items: [],           // данные (при success)
+  error: "",           // текст ошибки (при error)
+};
+
+// для каждого статуса — свой «экран»
+const screens = {
+  idle: "Введите запрос",
+  loading: "Загрузка...",
+  success: "Показываем данные",
+  error: "Что-то пошло не так",
+};
+console.log(screens[state.status]);
+</pre>
+
+      <p>Чтобы тренироваться без интернета, мы будем подменять сервер своей функцией: она тоже возвращает <code>Promise</code> и отвечает с задержкой — точь-в-точь как <code>fetch</code>, но каждый раз одинаково.</p>
+
+<pre class="code" data-run data-title="Поддельный сервер: Promise + setTimeout">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+// «сервер» отвечает через 20 мс; на запрос "error" падает
+async function fakeApi(query) {
+  await wait(20);
+  if (query === "error") throw new Error("Сеть недоступна");
+  return [`${query} 1`, `${query} 2`];
+}
+
+async function main() {
+  console.log("запрос...");
+  const items = await fakeApi("плов");
+  console.log("получили:", items.join(", "));
+  try {
+    await fakeApi("error");
+  } catch (err) {
+    console.log("ошибка:", err.message);
+  }
+}
+main();
+</pre>
+
+      <h3>Настоящий fetch: что нужно проверить после ответа</h3>
+      <p><code>fetch</code> устроен хитро: он «падает» (отклоняет промис) только если <b>вообще не удалось связаться с сервером</b> — нет сети, не найден домен. А вот ответ <code>404 Not Found</code> или <code>500 Server Error</code> — это <b>успешный</b> с точки зрения <code>fetch</code> ответ: сервер ведь ответил! Поэтому после <code>await fetch(...)</code> всегда проверяйте <code>response.ok</code>.</p>
+
+<pre class="code" data-title="Шаблон запроса — используйте его в проекте">
+async function getJson(url) {
+  const response = await fetch(url);                       // 1. ждём ответ
+  if (!response.ok) {                                      // 2. 404 / 500 — тоже ошибка
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return await response.json();                            // 3. ждём разбор JSON
+}
+
+async function load() {
+  try {
+    const data = await getJson("https://jsonplaceholder.typicode.com/users/1");
+    console.log(data.name);
+  } catch (err) {
+    console.log("Ошибка:", err.message);                   // сеть упала ИЛИ статус не 2xx
+  }
+}
+</pre>
+
+      <p>Попробуйте настоящий запрос. Это единственный блок на странице, который ходит в сеть, поэтому у него нет автоматической проверки: результат зависит от API.</p>
+
+<pre class="code" data-run data-title="Живой запрос (нужен интернет)">
+async function getJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return await response.json();
+}
+
+getJson("https://jsonplaceholder.typicode.com/users/1")
+  .then((user) =&gt; console.log("Пользователь:", user.name))
+  .catch((err) =&gt; console.log("Ошибка:", err.message));
+
+getJson("https://jsonplaceholder.typicode.com/users/99999")   // такого нет → 404
+  .then((user) =&gt; console.log("Пользователь:", user.name))
+  .catch((err) =&gt; console.log("Ошибка:", err.message));
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы отправили посылку в Худжанд. «Не доставили вообще» (нет сети) — понятная проблема. Но есть и второй случай: посылку принял курьер, но на пункте выдачи сказали «такого адреса нет» (404). Курьер сработал, а результата нет. <code>response.ok</code> — это проверка не «приехал ли курьер», а «что он привёз».</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Три классические ошибки</b>
+        <p><b>1.</b> Забыть <code>await</code> перед <code>fetch</code> или <code>response.json()</code> — вместо данных вы получаете <code>Promise</code>. <b>2.</b> Не проверить <code>response.ok</code> — страница «успешно» показывает ответ ошибки. <b>3.</b> Не обработать ошибку — приложение молча зависает на «Загрузка…».</p>
+      </div>
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const fakeFetch = async () =&gt; { await wait(10); return { ok: true, json: async () =&gt; ({ name: "Плов" }) }; };
+
+async function load() {
+  const response = fakeFetch();         // забыли await
+  const data = await response.json();   // TypeError: response.json is not a function
+  console.log(data.name);
+}
+load().catch((err) =&gt; console.log("Ошибка:", err.message));
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Response/ok" target="_blank" rel="noopener">MDN — Response.ok</a> · <a href="https://learn.javascript.ru/try-catch" target="_blank" rel="noopener">learn.javascript.ru — try…catch</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Экран для каждого состояния</h4><span class="level easy">лёгкая</span></header>
+          <p>Допишите <code>getView(state)</code>. Правила: <code>idle</code> → <code>Введите запрос</code>; <code>loading</code> → <code>Загрузка...</code>; <code>error</code> → <code>Ошибка: &lt;текст&gt;</code>; <code>success</code> с пустым списком → <code>Ничего не найдено</code>, иначе <code>Найдено: N</code>.</p>
+<pre class="code" data-run>
+function getView(state) {
+  // допишите
+}
+
+const states = [
+  { status: "idle", items: [], error: "" },
+  { status: "loading", items: [], error: "" },
+  { status: "success", items: [], error: "" },
+  { status: "success", items: [{ id: 1 }, { id: 2 }], error: "" },
+  { status: "error", items: [], error: "Сеть недоступна" },
+];
+states.forEach((s) =&gt; console.log(getView(s)));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Введите запрос
+Загрузка...
+Ничего не найдено
+Найдено: 2
+Ошибка: Сеть недоступна</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Удобно писать цепочку ранних <code>return</code>: <code>if (state.status === "idle") return "…";</code> и так далее.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для <code>success</code> проверьте <code>state.items.length === 0</code>. Для <code>error</code> используйте шаблонную строку с <code>state.error</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>loadResults: loading → success / error</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>async function loadResults(api, query, onChange)</code>. Сначала она вызывает <code>onChange</code> с состоянием <code>{ status: "loading", items: [], error: "" }</code>. Затем ждёт <code>api(query)</code>: при успехе вызывает <code>onChange</code> с <code>success</code> и полученными <code>items</code>, при ошибке — с <code>error</code> и текстом <code>err.message</code> (<code>items</code> — пустой массив). Наружу ошибка не вылетает.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+const okApi = async (q) =&gt; { await wait(10); return [`${q}-1`, `${q}-2`]; };
+const badApi = async () =&gt; { await wait(10); throw new Error("Сервер упал"); };
+
+// async function loadResults(api, query, onChange) { ... }
+
+const log = (s) =&gt; console.log(`[${s.status}] items=${s.items.length} error="${s.error}"`);
+
+async function main() {
+  await loadResults(okApi, "плов", log);
+  await loadResults(badApi, "плов", log);
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>[loading] items=0 error=""
+[success] items=2 error=""
+[loading] items=0 error=""
+[error] items=0 error="Сервер упал"</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Каркас: вызвали <code>onChange</code> с loading, затем <code>try { const items = await api(query); … } catch (err) { … }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>catch</code>: <code>onChange({ status: "error", items: [], error: err.message });</code>. Не забудьте <code>await</code> перед <code>api(query)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Найдите баг: fetch без await и без ok</h4><span class="level mid">средняя</span></header>
+          <p>Функция <code>getTitle</code> должна вернуть заголовок, а для адреса, который отвечает 404, — строку <code>Ошибка: HTTP 404</code>. Сейчас она делает не то. Найдите <b>три</b> ошибки.</p>
+<pre class="code" data-run>
+const fakeFetch = (url) =&gt; new Promise((resolve) =&gt; setTimeout(() =&gt; {
+  if (url.endsWith("/missing")) {
+    resolve({ ok: false, status: 404, json: async () =&gt; ({ message: "Not Found" }) });
+  } else {
+    resolve({ ok: true, status: 200, json: async () =&gt; ({ title: "Плов" }) });
+  }
+}, 10));
+
+async function getTitle(url) {
+  try {
+    const response = fakeFetch(url);
+    const data = response.json();
+    return data.title;
+  } catch (err) {
+    return "Ошибка: " + err.message;
+  }
+}
+
+async function main() {
+  console.log(await getTitle("/dishes/1"));
+  console.log(await getTitle("/dishes/missing"));
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Плов
+Ошибка: HTTP 404</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запустите как есть: оба вызова дают одну и ту же ошибку про <code>json</code>. Значит, <code>response</code> — это не ответ, а что-то другое. Что?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Нужны <code>await</code> перед <code>fakeFetch(url)</code> и перед <code>response.json()</code>, а между ними — <code>if (!response.ok) throw new Error(`HTTP ${response.status}`);</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>Гонка ответов: побеждает последний запрос</h4><span class="level hard">сложная</span></header>
+          <p>Пользователь быстро печатает «п», затем «пл». Ответ на «п» приходит <b>медленнее</b> (50 мс), чем на «пл» (10 мс), и затирает свежий результат. Допишите <code>onInput(q)</code> так, чтобы в <code>state.text</code> попадал ответ только на <b>последний</b> запрос. Идея: у каждого запроса свой номер; применяем ответ, только если номер не устарел.</p>
+<pre class="code" data-run>
+const delays = { "п": 50, "пл": 10 };
+const search = (q) =&gt; new Promise((resolve) =&gt;
+  setTimeout(() =&gt; resolve(`результаты для "${q}"`), delays[q]));
+
+const state = { text: "" };
+let latestId = 0;
+
+async function onInput(q) {
+  // допишите: номер запроса, await search(q), применить только свежий ответ
+  // при применении выведите console.log("применён: " + q)
+}
+
+onInput("п");
+onInput("пл");
+setTimeout(() =&gt; console.log(state.text), 100);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>применён: пл
+результаты для "пл"</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В начале функции: <code>const myId = ++latestId;</code>. Переменная <code>myId</code> запомнит номер именно этого вызова.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>После <code>const text = await search(q);</code> проверьте <code>if (myId !== latestId) return;</code> — это устаревший ответ. Иначе запишите <code>state.text = text</code> и выведите строку.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="warm-requests">
+      <h2 data-toc="Разминка: запросы"><span class="num">06</span> Разминка 2. Debounce, кэш и таймаут</h2>
+
+      <p>Если отправлять запрос на каждую нажатую букву, сервер получит десятки лишних обращений, а экран будет мигать. <b>Debounce</b> решает это: функция срабатывает только когда пользователь <b>замолчал</b> на заданное время. Каждый новый вызов сбрасывает таймер и запускает новый.</p>
+
+<pre class="code" data-run data-title="debounce: срабатывает после паузы">
+function debounce(fn, ms) {
+  let timer;
+  return (...args) =&gt; {
+    clearTimeout(timer);                           // отменили прошлый таймер
+    timer = setTimeout(() =&gt; fn(...args), ms);     // запустили новый
+  };
+}
+
+const search = debounce((q) =&gt; console.log("запрос:", q), 30);
+search("п");
+search("пл");
+search("плов");      // сработает только этот вызов, через 30 мс
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Лифт в офисе не уезжает, пока в него кто-то заходит: каждый вошедший «сбрасывает» таймер закрытия дверей. Двери закроются, только когда никто не заходил несколько секунд. Debounce — те же двери.</p>
+      </div>
+
+      <h3>Модули и сборка: где что лежит</h3>
+      <p>В проекте на Vite код живёт в нескольких файлах — <b>ES-модулях</b>. Каждый файл экспортирует то, что нужно другим (<code>export</code>), и импортирует чужое (<code>import</code>). Хорошее правило границ: <b>api не знает про DOM, ui не знает про сеть, main их соединяет</b>.</p>
+
+<pre class="code" data-title="Структура проекта">
+product-search/
+├─ index.html          ← подключает &lt;script type="module" src="/src/main.js"&gt;
+├─ package.json        ← скрипты dev / build / preview
+├─ src/
+│  ├─ api.js           ← только fetch и разбор ответа
+│  ├─ ui.js            ← только DOM: render(state)
+│  ├─ utils.js         ← debounce и мелкие помощники
+│  ├─ main.js          ← состояние, события, связывает всё
+│  └─ style.css
+└─ dist/               ← появляется после npm run build (в Git не кладём)
+</pre>
+
+<pre class="code" data-title="src/api.js — только данные, без DOM" data-lang="js">
+export async function searchProducts(query, signal) {
+  const url = `https://dummyjson.com/products/search?q=${encodeURIComponent(query)}&amp;limit=10`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  return data.products;
+}
+</pre>
+
+<pre class="code" data-title="src/main.js — соединяет модули" data-lang="js">
+import { searchProducts } from "./api.js";
+import { render } from "./ui.js";
+import { debounce } from "./utils.js";
+
+const state = { status: "idle", items: [], error: "" };
+// … событие input → debounce(search, 400) → searchProducts → render(state)
+</pre>
+
+<pre class="code" data-title="Терминал">
+npm create vite@latest product-search -- --template vanilla
+cd product-search
+npm install
+npm run dev        # режим разработки, адрес вида http://localhost:5173
+npm run build      # собирает проект в папку dist
+npm run preview    # открывает собранную версию — проверьте её перед защитой
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Проверять только <code>npm run dev</code>. Сборка строже: опечатка в пути импорта (<code>./Api.js</code> вместо <code>./api.js</code>) на вашем компьютере может работать, а <code>npm run build</code> упадёт. Перед защитой всегда запускайте <code>build</code> и <code>preview</code>.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/modules-intro" target="_blank" rel="noopener">learn.javascript.ru — модули</a> · <a href="https://learn.javascript.ru/promise-api" target="_blank" rel="noopener">learn.javascript.ru — Promise API</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN — AbortController</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Напишите debounce</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>debounce(fn, ms)</code>: возвращает функцию, которая вызывает <code>fn</code> с последними аргументами только после паузы в <code>ms</code> миллисекунд.</p>
+<pre class="code" data-run>
+// function debounce(fn, ms) { ... }
+
+const calls = [];
+const search = debounce((q) =&gt; { calls.push(q); console.log("запрос:", q); }, 30);
+
+search("п");
+search("пл");
+search("плов");
+console.log("сразу:", calls.length);
+
+setTimeout(() =&gt; search("чой"), 80);
+setTimeout(() =&gt; console.log("всего запросов:", calls.length), 150);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>сразу: 0
+запрос: плов
+запрос: чой
+всего запросов: 2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Таймер хранится в переменной снаружи возвращаемой функции (<code>let timer;</code>), чтобы он «помнился» между вызовами.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри возвращаемой функции: <code>clearTimeout(timer); timer = setTimeout(() =&gt; fn(...args), ms);</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Кэш запросов</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>makeCached(api)</code>: возвращает асинхронную функцию, которая приводит запрос к виду <code>trim().toLowerCase()</code>, и если такой запрос уже был — отдаёт сохранённый ответ без обращения к <code>api</code>.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+let apiCalls = 0;
+const api = async (q) =&gt; { apiCalls++; await wait(10); return q.toUpperCase(); };
+
+// function makeCached(api) { ... }
+
+const cached = makeCached(api);
+async function main() {
+  console.log(await cached("Плов"));
+  console.log(await cached("  плов "));
+  console.log(await cached("чой"));
+  console.log("вызовов API:", apiCalls);
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ПЛОВ
+ПЛОВ
+ЧОЙ
+вызовов API: 2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Заведите <code>const cache = new Map();</code> снаружи возвращаемой функции. Ключ — нормализованный запрос.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>if (cache.has(key)) return cache.get(key);</code> иначе <code>const value = await api(key); cache.set(key, value); return value;</code></p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Ответ API → карточки</h4><span class="level mid">средняя</span></header>
+          <p>API вернул объект с товарами. Напишите <code>toCards(data)</code>: оставьте только товары в наличии (<code>stock &gt; 0</code>), отсортируйте по цене по возрастанию (исходный массив не менять), верните строки вида <code>Чехол — 50 сом. (★ 4.8)</code>. Рейтинг — с одним знаком после запятой.</p>
+<pre class="code" data-run>
+const apiData = {
+  total: 4,
+  products: [
+    { id: 1, title: "Телефон", price: 2500, rating: 4.46, stock: 5 },
+    { id: 2, title: "Наушники", price: 300, rating: 3.9, stock: 0 },
+    { id: 3, title: "Чехол", price: 50, rating: 4.8, stock: 20 },
+    { id: 4, title: "Зарядка", price: 120, rating: 4.1, stock: 7 },
+  ],
+};
+
+// function toCards(data) { ... }
+
+const cards = toCards(apiData);
+cards.forEach((c) =&gt; console.log(c));
+console.log(cards.length, apiData.products[0].title);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Чехол — 50 сом. (★ 4.8)
+Зарядка — 120 сом. (★ 4.1)
+Телефон — 2500 сом. (★ 4.5)
+3 Телефон</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Цепочка: <code>data.products.filter(...)</code> → <code>.sort(...)</code> → <code>.map(...)</code>. <code>filter</code> уже делает копию, поэтому исходный массив <code>sort</code> не изменит.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Деструктуризация в <code>map</code> упрощает шаблон: <code>({ title, price, rating }) =&gt; `${title} — ${price} сом. (★ ${rating.toFixed(1)})`</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ЗАДАЧА 6.4</span><h4>Таймаут запроса через Promise.race</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>withTimeout(promise, ms)</code>: если <code>promise</code> не успел за <code>ms</code> миллисекунд — результат отклоняется ошибкой <code>Таймаут</code>, иначе возвращается значение промиса. Используйте <code>Promise.race</code>.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+const fast = () =&gt; wait(20).then(() =&gt; "быстро");
+const slow = () =&gt; wait(200).then(() =&gt; "медленно");
+
+// function withTimeout(promise, ms) { ... }
+
+async function main() {
+  for (const fn of [fast, slow]) {
+    try {
+      console.log(await withTimeout(fn(), 100));
+    } catch (err) {
+      console.log("Ошибка:", err.message);
+    }
+  }
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>быстро
+Ошибка: Таймаут</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>Promise.race([a, b])</code> завершается так же, как тот из промисов, который завершился первым. Вторым промисом сделайте «таймер-бомбу».</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>new Promise((_, reject) =&gt; setTimeout(() =&gt; reject(new Error("Таймаут")), ms))</code> — вот эта «бомба».</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="vite-build">
+      <h2 data-toc="package.json и сборка"><span class="num">07</span> Чек перед защитой: package.json и сборка</h2>
+
+      <p>Когда вы выполняете <code>npm run build</code>, Vite находит команду <code>build</code> в разделе <code>scripts</code> файла <code>package.json</code>, собирает все модули в несколько файлов и кладёт их в папку <code>dist</code>. Именно эту папку выкладывают на хостинг. В <code>.gitignore</code> должны быть <code>node_modules</code> и <code>dist</code>: их не нужно хранить в репозитории, они восстанавливаются командами <code>npm install</code> и <code>npm run build</code>.</p>
+
+      <div class="callout tip">
+        <b>Чек-лист «готов к защите»</b>
+        <p>☐ <code>npm install</code> на чистой папке проходит · ☐ <code>npm run dev</code> открывает приложение · ☐ <code>npm run build</code> без ошибок и предупреждений · ☐ <code>npm run preview</code> показывает то же самое · ☐ в консоли браузера нет красного · ☐ в Network запросы идут на настоящий API · ☐ в Offline показывается ошибка, а не белый экран.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Прочитайте package.json</h4><span class="level easy">лёгкая</span></header>
+          <p>Дан текст файла <code>package.json</code>. Разберите его через <code>JSON.parse</code> и выведите каждый скрипт в формате <code>npm run имя → команда</code>, затем <code>Зависимостей: N</code> — сколько всего пакетов в <code>devDependencies</code>.</p>
+<pre class="code" data-run>
+const text = `{
+  "name": "product-search",
+  "private": true,
+  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
+  "devDependencies": { "vite": "^7.0.0" }
+}`;
+
+// разберите JSON и выведите результат
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>npm run dev → vite
+npm run build → vite build
+npm run preview → vite preview
+Зависимостей: 1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>const pkg = JSON.parse(text);</code> — теперь <code>pkg.scripts</code> обычный объект.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Пары «ключ — значение» даёт <code>Object.entries(pkg.scripts)</code>. Количество пакетов — <code>Object.keys(pkg.devDependencies).length</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="starter">
+      <h2 data-toc="Стартовый шаблон"><span class="num">08</span> Стартовый шаблон: поиск с состояниями</h2>
+
+      <p>Ниже — рабочий <b>скелет приложения с поиском</b> в песочнице. Чтобы результат всегда был одинаковым, вместо настоящего сервера в нём «поддельный» (<code>fakeSearch</code>); а рядом лежит <code>realSearch</code> с настоящим <code>fetch</code> — в своём проекте вы подставите его одной строкой. Код разбит на блоки в том порядке, в каком его удобно объяснять на защите: <b>«сервер» → состояние → DOM и отрисовка → поиск → события</b>.</p>
+
+      <ol class="steps">
+        <li><b>«Сервер».</b> Данные и функции, которые возвращают промис: поддельная и настоящая.</li>
+        <li><b>Состояние.</b> Один объект <code>{ status, items, error }</code> и счётчик запросов <code>latestId</code>.</li>
+        <li><b>Отрисовка.</b> <code>render()</code> строит интерфейс из <code>state</code>. Больше никто DOM не трогает.</li>
+        <li><b>Поиск.</b> <code>search(query)</code>: <code>loading</code> → <code>success</code> или <code>error</code>, устаревшие ответы игнорируются.</li>
+        <li><b>События.</b> Поле ввода с <code>debounce</code>.</li>
+      </ol>
+
+      <p>Нажмите <b>▶ Запустить</b>: самопроверка внизу напечатает, что пока не работает. Ваша задача — четыре отметки <code>TODO</code>.</p>
+
+      <div class="practice">
+        <h3>Практика: достроим стартовое приложение</h3>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Допишите TODO — и поиск заработает</h4><span class="level hard">сложная</span></header>
+          <p>Реализуйте в <code>script.js</code> четыре отметки: <b>1)</b> <code>debounce</code>, <b>2)</b> <code>getStatusText</code>, <b>3)</b> <code>search</code> (пустой запрос не уходит на сервер; состояния; защита от устаревших ответов; ошибка не вылетает наружу), <b>4)</b> обработчик <code>input</code> с <code>debounce</code>. Блок самопроверки внизу сам «печатает» в поле и выводит результат в консоль. Когда всё готово, в консоли должно быть ровно то, что в «Ожидаемом результате». Блок самопроверки в свой проект не копируйте.</p>
+
+<div class="playground" data-mode="dom" data-title="Стартовый поиск товаров">
+<pre class="code" data-lang="html">
+&lt;main class="app"&gt;
+  &lt;h1&gt;Поиск товаров&lt;/h1&gt;
+  &lt;input id="q" placeholder="Например: телефон" autocomplete="off"&gt;
+  &lt;p id="status" class="status"&gt;&lt;/p&gt;
+  &lt;ul id="results"&gt;&lt;/ul&gt;
+&lt;/main&gt;
+</pre>
+<pre class="code" data-lang="css">
+.app { max-width: 420px; margin: 0 auto; font-family: system-ui, sans-serif; }
+h1 { font-size: 22px; margin: 0 0 12px; }
+input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #c7ccd6; border-radius: 8px; font: inherit; }
+.status { color: #5b6477; min-height: 1.4em; }
+.status[data-status="error"] { color: #d1344f; }
+.status[data-status="loading"] { color: #1f6feb; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { display: flex; justify-content: space-between; padding: 8px 4px; border-bottom: 1px solid #e6e9f0; }
+li .price { color: #5b6477; }
+</pre>
+<pre class="code" data-lang="js">
+// ===== 1. «Сервер» =====
+const PRODUCTS = [
+  { id: 1, title: "Телефон Samsung", price: 2500 },
+  { id: 2, title: "Телевизор LG", price: 4200 },
+  { id: 3, title: "Ноутбук Acer", price: 5100 },
+  { id: 4, title: "Наушники Sony", price: 600 },
+  { id: 5, title: "Чехол для телефона", price: 50 },
+  { id: 6, title: "Зарядка для телефона", price: 120 },
+  { id: 7, title: "Клавиатура", price: 180 },
+  { id: 8, title: "Мышь", price: 90 },
+];
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+// поддельный сервер: отвечает через 60 мс; на запрос "error" падает
+async function fakeSearch(query) {
+  await wait(60);
+  if (query === "error") throw new Error("Сеть недоступна");
+  const q = query.trim().toLowerCase();
+  return PRODUCTS.filter((p) =&gt; p.title.toLowerCase().includes(q));
+}
+
+// настоящий сервер — в своём проекте поменяйте searchApi на него
+async function realSearch(query) {
+  const url = `https://dummyjson.com/products/search?q=${encodeURIComponent(query)}&amp;limit=10`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  return data.products;
+}
+const searchApi = fakeSearch;
+
+// ===== 2. Состояние =====
+let state = { status: "idle", items: [], error: "" };   // "idle" | "loading" | "success" | "error"
+let latestId = 0;                                        // номер последнего запроса
+const DEBOUNCE_MS = 40;
+
+function setState(patch) {
+  state = { ...state, ...patch };
+  render();
+}
+
+// TODO 1: debounce — вызывает fn только после паузы в ms миллисекунд
+function debounce(fn, ms) {
+  return fn;
+}
+
+// TODO 2: текст статуса по состоянию:
+// idle → "Введите запрос", loading → "Загрузка...", error → "Ошибка: ТЕКСТ",
+// success: пусто → "Ничего не найдено", иначе → "Найдено: N"
+function getStatusText(s) {
+  return "";
+}
+
+// ===== 3. DOM и отрисовка =====
+const input = document.querySelector("#q");
+const statusEl = document.querySelector("#status");
+const list = document.querySelector("#results");
+
+function createItem(product) {
+  const li = document.createElement("li");
+  const name = document.createElement("span");
+  name.textContent = product.title;
+  const price = document.createElement("span");
+  price.className = "price";
+  price.textContent = product.price + " сом.";
+  li.append(name, price);
+  return li;
+}
+
+function render() {
+  statusEl.textContent = getStatusText(state);
+  statusEl.dataset.status = state.status;
+  list.replaceChildren();                                // очистили список
+  state.items.forEach((product) =&gt; list.append(createItem(product)));
+}
+
+// ===== 4. Поиск =====
+// TODO 3: пустой запрос (после trim) → setState idle без обращения к серверу.
+// Иначе: свой номер запроса, status "loading", await searchApi, потом "success" или "error".
+// Если пока ждали, начался новый запрос (номер устарел) — результат выбросить.
+async function search(query) {
+}
+
+// ===== 5. События =====
+// TODO 4: на каждый ввод вызывайте search(input.value), но через debounce(…, DEBOUNCE_MS)
+input.addEventListener("input", () =&gt; {
+});
+
+render();
+
+// ===== Самопроверка для задачи 8.1 (в свой проект не копируйте) =====
+(async () =&gt; {
+  const type = (text) =&gt; {
+    input.value = text;
+    input.dispatchEvent(new Event("input"));
+  };
+  console.log("старт:", statusEl.textContent);
+  type("т"); type("те"); type("тел");
+  console.log("сразу после ввода:", statusEl.textContent);
+  await wait(70);
+  console.log("через 70 мс:", statusEl.textContent);
+  await wait(100);
+  console.log("ответ:", statusEl.textContent, "|", list.children.length);
+  type("zzz");
+  await wait(200);
+  console.log("пусто:", statusEl.textContent);
+  type("error");
+  await wait(200);
+  console.log("ошибка:", statusEl.textContent);
+  type("   ");
+  await wait(100);
+  console.log("очистили:", statusEl.textContent);
+})();
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>старт: Введите запрос
+сразу после ввода: Введите запрос
+через 70 мс: Загрузка...
+ответ: Найдено: 4 | 4
+пусто: Ничего не найдено
+ошибка: Ошибка: Сеть недоступна
+очистили: Введите запрос</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запустите шаблон как есть и сравните вывод с ожидаемым: строки, которые не совпадают, подсказывают, какой TODO решать следующим. Начните с <code>getStatusText</code> — это самый простой.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>search</code>: <code>const myId = ++latestId;</code>, проверка пустого запроса, <code>setState({ status: "loading", ... })</code>, затем <code>try</code> с <code>await searchApi(query)</code> и проверкой <code>if (myId !== latestId) return;</code> после <code>await</code> (и то же в <code>catch</code>). Обработчик: <code>const debouncedSearch = debounce(search, DEBOUNCE_MS);</code> вне слушателя, а внутри — <code>debouncedSearch(input.value);</code>.</p></details>
+        </article>
+      </div>
+
+      <h3>Как перенести шаблон в свой проект</h3>
+      <ol class="steps">
+        <li>Создайте проект на Vite (раздел 06) и разнесите код по модулям: <code>fakeSearch</code>/<code>realSearch</code> — в <code>api.js</code>, <code>debounce</code> — в <code>utils.js</code>, <code>getStatusText</code> и <code>render</code> — в <code>ui.js</code>, состояние и события — в <code>main.js</code>.</li>
+        <li>Каждому файлу добавьте <code>export</code>/<code>import</code>. <code>render</code> теперь принимает <code>state</code> аргументом — глобальные переменные между модулями не ходят.</li>
+        <li>Замените <code>fakeSearch</code> на <code>realSearch</code> и убедитесь во вкладке Network, что запросы настоящие.</li>
+        <li>Удалите блок самопроверки.</li>
+        <li>Если у вас уже есть собственный проект с уроков 15–17 — не выбрасывайте его, а сравните со схемой «состояние → render → search → события».</li>
+      </ol>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">09</span> Практика на уроке: ревью, защиты, контрольная</h2>
+
+      <p>Сегодня занятие устроено иначе, чем обычно: проекты уже почти готовы, поэтому время уходит на проверку, защиту и контрольную. Действуем по плану.</p>
+
+      <ol class="steps">
+        <li><b>0–10 мин · Последняя проверка.</b> Чек-лист из раздела 07: <code>npm run build</code>, <code>preview</code>, Offline, Slow 3G. Преподаватель утверждает порядок защит.</li>
+        <li><b>10–30 мин · Code review в парах.</b> По 10 минут на проект. Ревьюер идёт по чек-листу ниже и записывает замечания, автор слушает. Затем меняетесь.</li>
+        <li><b>30–60 мин · Защиты.</b> Каждая — 5 минут плюс минута на смену. Остальные слушают и задают вопросы. Не успели сегодня — защищаетесь в начале следующего занятия.</li>
+        <li><b>60–90 мин · Контрольная №2.</b> 30 минут, у всех одновременно, <b>без ИИ</b>. Подробности — в разделе 11. Разбор типичных ошибок — в конце.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Если проект ещё не готов</b>
+        <p>Не добавляйте бонусы. Откройте стартовый шаблон из раздела 08, закройте четыре TODO, проверьте <code>build</code> и добавьте README. Работающий простой проект лучше недоделанного сложного.</p>
+      </div>
+
+      <h3>Code review: чек-лист ревьюера</h3>
+      <p><b>Code review</b> — это когда один разработчик читает код другого до того, как он «уйдёт в мир». Не экзамен и не поиск виноватых: свежий взгляд видит то, что автор уже перестал замечать. Формула замечания: <b>где</b> (файл и строка) → <b>что вижу</b> → <b>почему важно</b> → <b>предложение</b> (лучше вопросом).</p>
+
+      <div class="cols">
+        <div class="col good">
+          <h4>Пробуем сломать (запуск)</h4>
+          <ul>
+            <li>☐ Режим Offline: приложение показывает ошибку и «Повторить», а не белый экран</li>
+            <li>☐ Slow 3G: виден индикатор, кнопки не дают отправить двойной запрос</li>
+            <li>☐ Бессмысленный запрос: сообщение «Ничего не найдено»</li>
+            <li>☐ Быстро печатаем: в Network не больше одного запроса на «паузу»</li>
+            <li>☐ Быстро меняем запрос: на экране ответ на последний, а не на предпоследний</li>
+            <li>☐ После ошибки и «Повторить» старые данные не «прилипают»</li>
+            <li>☐ Пустая строка не уходит на сервер</li>
+            <li>☐ Текст из API показывается как текст (<code>textContent</code>)</li>
+            <li>☐ На ширине 360 px всё читаемо; нет красного в консоли</li>
+          </ul>
+        </div>
+        <div class="col good">
+          <h4>Читаем код</h4>
+          <ul>
+            <li>☐ Один объект <code>state</code> со статусом, а не набор флагов <code>isLoading</code>, <code>isError</code>…</li>
+            <li>☐ После <code>fetch</code> стоит проверка <code>response.ok</code></li>
+            <li>☐ Везде, где нужен, есть <code>await</code>; нет «забытого» промиса</li>
+            <li>☐ <code>try/catch</code> вокруг запроса и осмысленное сообщение, а не пустой <code>catch</code></li>
+            <li>☐ Модули: <code>api</code> не трогает DOM, <code>ui</code> не ходит в сеть</li>
+            <li>☐ <code>debounce</code> написан один раз и переиспользуется</li>
+            <li>☐ Строки статусов вынесены в константы</li>
+            <li>☐ Нет закомментированного кода, <code>console.log</code> и мёртвых функций</li>
+            <li>☐ В репозитории нет <code>node_modules</code> и <code>dist</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout ai">
+        <b>ИИ как второй ревьюер — после людей, а не вместо них</b>
+        <p>Когда пара закончила, прогоните код через ИИ: «Проверь по чек-листу: обработка ошибок fetch, гонка ответов, границы модулей, имена. Только замечания, без переписывания кода». Принимайте <b>не все</b> советы: каждую правку вы должны уметь обосновать.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/debugging-chrome" target="_blank" rel="noopener">learn.javascript.ru — отладка в браузере</a></p>
+
+      <div class="practice">
+        <h3>Практика: ревью в миниатюре</h3>
+
+        <article class="task" id="t9-1">
+          <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Замечание ревьюера: ошибка не очищает данные</h4><span class="level mid">средняя</span></header>
+          <p>Ревьюер написал: «После ошибки на экране остаются старые результаты, а после успеха — старый текст ошибки». Исправьте <code>applyResult</code>: при <code>error</code> — <code>items</code> становится пустым массивом, при <code>success</code> — <code>error</code> становится пустой строкой.</p>
+<pre class="code" data-run>
+function applyResult(state, result) {
+  if (result.error) {
+    return { ...state, status: "error", error: result.error };
+  }
+  return { ...state, status: "success", items: result.items };
+}
+
+let s = { status: "idle", items: [], error: "" };
+s = applyResult(s, { items: ["плов", "чой"] });
+console.log(s.status, s.items.length, JSON.stringify(s.error));
+s = applyResult(s, { error: "Сеть недоступна" });
+console.log(s.status, s.items.length, JSON.stringify(s.error));
+s = applyResult(s, { items: ["самбуса"] });
+console.log(s.status, s.items.length, JSON.stringify(s.error));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>success 2 ""
+error 0 "Сеть недоступна"
+success 1 ""</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Каждое состояние должно быть <b>полным</b>: при смене статуса сбрасывайте поля, которые к новому статусу не относятся.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В ветку ошибки добавьте <code>items: []</code>, а в ветку успеха — <code>error: ""</code>.</p></details>
+        </article>
+
+        <article class="task" id="t9-2">
+          <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Замечание ревьюера: опечатка в статусе</h4><span class="level easy">лёгкая</span></header>
+          <p>Статус «Загрузка» не показывается — ревьюер подозревает опечатку. Исправьте её, а заодно вынесите статусы в константу <code>STATUS</code> (<code>IDLE</code>, <code>LOADING</code>, <code>SUCCESS</code>, <code>ERROR</code>) и используйте её везде: так опечатка станет ошибкой, которую заметит редактор.</p>
+<pre class="code" data-run>
+function badge(status) {
+  if (status === "loadin") return "⏳ Загрузка";
+  if (status === "error") return "⚠ Ошибка";
+  if (status === "success") return "✓ Готово";
+  return "…";
+}
+
+console.log(badge("idle"));
+console.log(badge("loading"));
+console.log(badge("error"));
+console.log(badge("success"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>…
+⏳ Загрузка
+⚠ Ошибка
+✓ Готово</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сравните строку в условии с той, которую передают при вызове: они должны совпадать до буквы.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const STATUS = { IDLE: "idle", LOADING: "loading", SUCCESS: "success", ERROR: "error" };</code> — и везде <code>STATUS.LOADING</code> вместо строки.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 10 ============ -->
+    <section class="topic" id="defence">
+      <h2 data-toc="Защита проекта"><span class="num">10</span> Защита: 5 минут, которые решают 15 баллов</h2>
+
+      <p>Защита — это <b>короткий рассказ о том, что вы сделали и как это работает</b>. Не презентация и не допрос: нужно показать, что проект ваш и вы его понимаете. Поэтому на неё отведено 15 баллов из 100. Здесь вы показываете не только «когда всё хорошо», но и <b>«плохую погоду»</b>: Offline и пустой результат.</p>
+
+      <h3>Сценарий на 5 минут</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Время</th><th>Что делаете</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:30</td><td><b>Представление.</b> Одной фразой: что за приложение, какое API. «Это поиск товаров на dummyjson: пишешь слово — через полсекунды видишь карточки».</td></tr>
+            <tr><td>0:30–2:00</td><td><b>Демо.</b> Поиск → пустой результат → <b>Offline в DevTools</b> → ошибка и «Повторить» → всё снова работает. Откройте <code>preview</code> собранной версии.</td></tr>
+            <tr><td>2:00–3:30</td><td><b>Код.</b> Три места: <code>getJson</code>/<code>api.js</code> (fetch + <code>ok</code>), объект <code>state</code> и <code>render</code>, <code>debounce</code>. Объясняйте своими словами.</td></tr>
+            <tr><td>3:30–5:00</td><td><b>Вопросы.</b> Не знаете — скажите честно и предположите, как бы искали ответ.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Типичные вопросы и о чём на них сказать</h3>
+      <dl class="terms">
+        <dt>Что такое async/await и чем отличается от then?</dt><dd>Это тот же <code>Promise</code>, но код читается сверху вниз. <code>await</code> «ставит функцию на паузу» до ответа, не блокируя страницу.</dd>
+        <dt>Почему нужен <code>response.ok</code>? Разве fetch не упадёт на 404?</dt><dd>Нет: <code>fetch</code> отклоняется только при сетевой проблеме. Ответ 404/500 — «успешный», потому что сервер ответил. Статус нужно проверять самому.</dd>
+        <dt>Зачем <code>await response.json()</code>, это же уже ответ?</dt><dd>Заголовки пришли, а тело ответа читается отдельно и тоже асинхронно.</dd>
+        <dt>Что такое debounce и зачем он здесь?</dt><dd>Функция срабатывает после паузы. Без него каждая буква — запрос: лишняя нагрузка и «мигающий» экран.</dd>
+        <dt>Что такое гонка ответов и как ты её решил?</dt><dd>Ответ на старый запрос может прийти позже ответа на новый и затереть его. Решение: номер запроса (применяем только свежий) или <code>AbortController</code>.</dd>
+        <dt>Как у тебя устроены состояния?</dt><dd>Один объект <code>state</code> со <code>status</code>, <code>items</code>, <code>error</code>; <code>render</code> рисует из него. Нет набора флагов, которые могут противоречить друг другу.</dd>
+        <dt>Что в <code>api.js</code>, что в <code>ui.js</code>, и почему так?</dt><dd>В <code>api.js</code> только сеть, в <code>ui.js</code> только DOM, <code>main.js</code> связывает. Так каждую часть можно менять и проверять отдельно.</dd>
+        <dt>Что делает <code>npm run build</code> и что лежит в <code>dist</code>?</dt><dd>Vite собирает модули в готовые для хостинга файлы. В Git <code>dist</code> не кладут: его можно пересобрать.</dd>
+        <dt>Где ты использовал ИИ? Объясни эту строку.</dt><dd>Скажите честно, для чего (план, объяснение ошибки, ревью) и где он ошибся — раздел 12. Любую строку нужно объяснить своими словами.</dd>
+      </dl>
+
+      <h3>Советы по подготовке</h3>
+      <ul>
+        <li><b>Прогоните демо вслух</b> с секундомером. Offline включается в DevTools → Network → «No throttling» → Offline.</li>
+        <li><b>Откройте нужные файлы заранее</b>, увеличьте шрифт: группа должна видеть код.</li>
+        <li><b>Уберите лишнее:</b> <code>console.log</code>, закомментированный код.</li>
+        <li><b>Не оправдывайтесь</b> («не успел»). Лучше: «этого нет, потому что… вот как бы я добавил».</li>
+      </ul>
+
+      <div class="practice">
+        <h3>Практика: репетиция</h3>
+
+        <article class="task" id="t10-1">
+          <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Подготовьте ответы на вопросы защиты</h4><span class="level easy">лёгкая</span></header>
+          <p>Ответьте на пять вопросов выше <b>про свой проект</b>, своими словами, одним-двумя предложениями. Запишите ответы в объект (это заметки — автоматической проверки нет), затем отрепетируйте вслух перед соседом. Когда ответите — отметьте задачу вручную.</p>
+<pre class="code" data-run>
+const defence = {
+  ok: "Проверяю response.ok, потому что ...",
+  states: "",
+  debounce: "",
+  race: "",
+  ai: "",
+};
+
+console.log(Object.keys(defence).length + " ответов подготовлено");
+</pre>
+          <details class="hint"><summary>Подсказка 1</summary><p>Отвечайте как другу, который ни разу не видел ваш код: коротко и с примером из проекта.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Хороший ответ содержит конкретику: «в <code>api.js</code>, строка 6, после <code>fetch</code> стоит <code>if (!response.ok)</code>», а не «ну там что-то проверяется».</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 11 ============ -->
+    <section class="topic" id="control">
+      <h2 data-toc="Контрольная №2"><span class="num">11</span> Контрольная №2 · пробная версия</h2>
+
+      <div class="callout warn">
+        <b>🚫 На контрольной ИИ выключен</b>
+        <p>Настоящая контрольная — <b>30 минут, без ИИ, без подсказок</b>, без чата и без соседа. Ниже — полная пробная версия: 10 задач на темы <b>объекты, async/await, fetch, обработка ошибок</b>. В этом разделе <b>нет подсказок</b> (кнопок «Подсказка» вы не увидите) — так же, как на настоящей контрольной. Решайте с таймером на 30 минут, не выходя из страницы и не открывая чат с ИИ.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Как проходит пробная</b>
+        <p>Всё честно: сначала ставите таймер, потом решаете. Все «запросы» тут — поддельные функции из <code>Promise</code> и <code>setTimeout</code>, поэтому ответ каждой задачи проверяется автоматически и не зависит от интернета. Порядок строк в консоли тоже часть результата, так что смотрите на него внимательно.</p>
+        <p><b>Ориентир для самопроверки:</b> 9–10 задач — отличный результат, 7–8 — хороший, 5–6 — удовлетворительно, меньше 5 — повторите уроки 13–16 и попробуйте ещё раз. Официальный порог настоящей контрольной определяет преподаватель.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Контрольная №2 · 10 задач · 30 минут</h3>
+
+        <article class="task" id="t11-1">
+          <header><span class="task-num">ЗАДАЧА 11.1</span><h4>Профиль студента (деструктуризация)</h4><span class="level easy">лёгкая</span></header>
+          <p>Для каждого студента выведите строку <code>Алишер (22) — Душанбе</code>. Если города нет (<code>address.city</code> отсутствует) — выведите <code>не указан</code>. Используйте деструктуризацию.</p>
+<pre class="code" data-run>
+const students = [
+  { name: "Алишер", age: 22, address: { city: "Душанбе" } },
+  { name: "Мадина", age: 19, address: {} },
+  { name: "Фаррух", age: 25, address: { city: "Худжанд" } },
+];
+
+// ваш код
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Алишер (22) — Душанбе
+Мадина (19) — не указан
+Фаррух (25) — Худжанд</pre></div>
+        </article>
+
+        <article class="task" id="t11-2">
+          <header><span class="task-num">ЗАДАЧА 11.2</span><h4>Прайс чайханы (Object.entries)</h4><span class="level easy">лёгкая</span></header>
+          <p>Дан объект цен. Выведите сумму всех цен в формате <code>Сумма: 36</code> и самое дорогое блюдо в формате <code>Дороже всего: плов (25)</code>.</p>
+<pre class="code" data-run>
+const prices = { плов: 25, чой: 5, самбуса: 6 };
+
+// ваш код
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Сумма: 36
+Дороже всего: плов (25)</pre></div>
+        </article>
+
+        <article class="task" id="t11-3">
+          <header><span class="task-num">ЗАДАЧА 11.3</span><h4>Выручка по городам (reduce в объект)</h4><span class="level mid">средняя</span></header>
+          <p>Соберите объект «город → сумма заказов» и выведите его через <code>JSON.stringify</code>, затем количество городов в формате <code>Городов: 2</code>.</p>
+<pre class="code" data-run>
+const orders = [
+  { city: "Душанбе", sum: 100 },
+  { city: "Худжанд", sum: 80 },
+  { city: "Душанбе", sum: 50 },
+];
+
+// ваш код
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"Душанбе":150,"Худжанд":80}
+Городов: 2</pre></div>
+        </article>
+
+        <article class="task" id="t11-4">
+          <header><span class="task-num">ЗАДАЧА 11.4</span><h4>Найдите баг: забытый await</h4><span class="level mid">средняя</span></header>
+          <p>Ожидаем вывод <code>Привет, Алишер!</code> и <code>Длина имени: 6</code>. Сейчас код выводит чепуху. Исправьте.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+const getName = () =&gt; wait(10).then(() =&gt; "Алишер");
+
+async function greet() {
+  const name = getName();
+  console.log(`Привет, ${name}!`);
+  return name.length;
+}
+
+greet().then((len) =&gt; console.log("Длина имени:", len));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Привет, Алишер!
+Длина имени: 6</pre></div>
+        </article>
+
+        <article class="task" id="t11-5">
+          <header><span class="task-num">ЗАДАЧА 11.5</span><h4>Два зависимых запроса</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>async function showProfile(id)</code>: сначала получите пользователя (<code>api.user(id)</code>), затем его команду по <code>user.teamId</code> (<code>api.team(...)</code>) и выведите <code>Мадина — Frontend-17 (12 чел.)</code>. После завершения вызова выводится <code>готово</code>.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+const api = {
+  user: async (id) =&gt; { await wait(10); return { id, name: "Мадина", teamId: 7 }; },
+  team: async (teamId) =&gt; { await wait(10); return { id: teamId, title: "Frontend-17", members: 12 }; },
+};
+
+// async function showProfile(id) { ... }
+
+showProfile(1).then(() =&gt; console.log("готово"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Мадина — Frontend-17 (12 чел.)
+готово</pre></div>
+        </article>
+
+        <article class="task" id="t11-6">
+          <header><span class="task-num">ЗАДАЧА 11.6</span><h4>Параллельные запросы (Promise.all)</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>loadAll(ids)</code>: запросите все города <b>одновременно</b> и верните массив названий в порядке <code>ids</code> (а не в порядке прихода ответов). Последовательные запросы дадут другой порядок строк <code>пришёл …</code> и не пройдут проверку.</p>
+<pre class="code" data-run>
+const delays = { 1: 30, 2: 5, 3: 15 };
+const cities = { 1: "Душанбе", 2: "Худжанд", 3: "Бохтар" };
+const getCity = (id) =&gt; new Promise((resolve) =&gt; setTimeout(() =&gt; {
+  console.log("пришёл", id);
+  resolve(cities[id]);
+}, delays[id]));
+
+// function loadAll(ids) { ... }
+
+loadAll([1, 2, 3]).then((names) =&gt; console.log(names.join(", ")));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>пришёл 2
+пришёл 3
+пришёл 1
+Душанбе, Худжанд, Бохтар</pre></div>
+        </article>
+
+        <article class="task" id="t11-7">
+          <header><span class="task-num">ЗАДАЧА 11.7</span><h4>getJson с проверкой ok</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>getJson(url)</code> с помощью <code>fakeFetch</code>: если <code>response.ok</code> ложно — бросьте ошибку с текстом <code>HTTP &lt;статус&gt;</code>, иначе верните разобранный JSON. Ошибки из цикла внизу обрабатываются уже готовым кодом.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+const fakeFetch = async (url) =&gt; {
+  await wait(5);
+  if (url === "/users") return { ok: true, status: 200, json: async () =&gt; [{ name: "Алишер" }] };
+  if (url === "/nope") return { ok: false, status: 404, json: async () =&gt; ({}) };
+  return { ok: false, status: 500, json: async () =&gt; ({}) };
+};
+
+// async function getJson(url) { ... }
+
+async function main() {
+  for (const url of ["/users", "/nope", "/crash"]) {
+    try {
+      const data = await getJson(url);
+      console.log("OK:", data.length);
+    } catch (err) {
+      console.log("Ошибка:", err.message);
+    }
+  }
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>OK: 1
+Ошибка: HTTP 404
+Ошибка: HTTP 500</pre></div>
+        </article>
+
+        <article class="task" id="t11-8">
+          <header><span class="task-num">ЗАДАЧА 11.8</span><h4>safeLoad: результат вместо исключения</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>safeLoad(task)</code>: она вызывает асинхронную функцию <code>task</code> и возвращает <code>{ ok: true, data }</code>; при ошибке — <code>{ ok: false, name: err.name, error: err.message }</code>. Счётчик <code>finished</code> должен увеличиваться при любом исходе (используйте <code>finally</code>).</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+let finished = 0;
+
+// async function safeLoad(task) { ... }
+
+const tasks = [
+  async () =&gt; { await wait(5); return [1, 2, 3]; },
+  async () =&gt; { await wait(5); throw new Error("Сервер недоступен"); },
+  async () =&gt; { await wait(5); throw new TypeError("Неверный формат"); },
+];
+
+async function main() {
+  for (const task of tasks) {
+    const result = await safeLoad(task);
+    console.log(result.ok ? `данные: ${result.data.length}` : `${result.name}: ${result.error}`);
+  }
+  console.log("завершено:", finished);
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>данные: 3
+Error: Сервер недоступен
+TypeError: Неверный формат
+завершено: 3</pre></div>
+        </article>
+
+        <article class="task" id="t11-9">
+          <header><span class="task-num">ЗАДАЧА 11.9</span><h4>retry: повторяем при сбое</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>retry(fn, times)</code>: до <code>times</code> попыток вызывает <code>fn</code>; перед каждой выводит <code>Попытка N</code> (с единицы). Если попытка удалась — возвращает результат. Если все неудачны — бросает ошибку <b>последней</b> попытки.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+let attempt = 0;
+const flaky = async () =&gt; {
+  attempt++;
+  await wait(5);
+  if (attempt &lt; 3) throw new Error(`сбой ${attempt}`);
+  return "данные получены";
+};
+const alwaysBad = async () =&gt; { throw new Error("навсегда"); };
+
+// async function retry(fn, times) { ... }
+
+async function main() {
+  console.log(await retry(flaky, 5));
+  try {
+    await retry(alwaysBad, 2);
+  } catch (err) {
+    console.log("Не вышло:", err.message);
+  }
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Попытка 1
+Попытка 2
+Попытка 3
+данные получены
+Попытка 1
+Попытка 2
+Не вышло: навсегда</pre></div>
+        </article>
+
+        <article class="task" id="t11-10">
+          <header><span class="task-num">ЗАДАЧА 11.10</span><h4>Всё вместе: load с состояниями и таймаутом</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>load(api, onChange)</code>. Сначала <code>onChange("loading")</code>. Затем запрос с таймаутом 100 мс (готовая <code>withTimeout</code>). Итог: непустой массив — <code>onChange("success:N")</code>, пустой — <code>onChange("empty")</code>, любая ошибка (в том числе таймаут) — <code>onChange("error:" + сообщение)</code>. Исключения наружу не вылетают.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+const withTimeout = (promise, ms) =&gt; Promise.race([
+  promise,
+  new Promise((_, reject) =&gt; setTimeout(() =&gt; reject(new Error("Таймаут")), ms)),
+]);
+
+const apis = {
+  ok: async () =&gt; { await wait(10); return [1, 2, 3]; },
+  empty: async () =&gt; { await wait(10); return []; },
+  slow: async () =&gt; { await wait(300); return [1]; },
+  bad: async () =&gt; { await wait(10); throw new Error("Сеть недоступна"); },
+};
+
+// async function load(api, onChange) { ... }
+
+async function main() {
+  for (const name of ["ok", "empty", "slow", "bad"]) {
+    const log = [];
+    await load(apis[name], (status) =&gt; log.push(status));
+    console.log(name + ": " + log.join(" &gt; "));
+  }
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ok: loading &gt; success:3
+empty: loading &gt; empty
+slow: loading &gt; error:Таймаут
+bad: loading &gt; error:Сеть недоступна</pre></div>
+        </article>
+      </div>
+
+      <div class="callout tip">
+        <b>После пробной</b>
+        <p>Отметьте, какие задачи не получились, и ответьте на два вопроса: «какой урок мне нужно перечитать?» и «что я бы сделал, если бы на настоящей контрольной ИИ был включён — и почему это не помогло бы понять тему?». Разбор типичных ошибок преподаватель проводит в конце занятия. В домашнем задании вы перепишете нерешённые задачи.</p>
+      </div>
+    </section>
+
+    <!-- ============ 12 ============ -->
+    <section class="topic" id="ai-review">
+      <h2 data-toc="ИИ: разбор проекта"><span class="num">12</span> Разбор: где ИИ сэкономил время, а где увёл в сторону</h2>
+
+      <p>Это AI-блок урока: после двух проектов важно не просто «пользоваться ИИ», а <b>знать его настоящую цену</b>. Часто кажется, что ИИ ускорил работу, а потом вы час искали баг в чужом, непонятном коде. Бывает наоборот: ИИ за три минуты объяснил то, на что вы потратили бы вечер. Чтобы отличать одно от другого, нужны не ощущения, а <b>записи</b>.</p>
+
+      <div class="callout ai">
+        <b>Правила курса, которые мы сейчас проверяем</b>
+        <p>№1: сначала 15 минут сам, потом ИИ. №2: код, который не можешь объяснить построчно, не вставляем. №5: ИИ пишет черновик — ты проверяешь логику, имена и крайние случаи. Разбор покажет, где вы эти правила соблюдали, а где нет.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Навигатор в машине. На незнакомой трассе в Согдийскую область он экономит часы. Но если слепо ехать, куда он говорит, можно оказаться на закрытой дороге. Хороший водитель знает, куда ему нужно, и сверяет подсказки со знаками. ИИ — тоже навигатор: цель и проверка остаются на вас.</p>
+      </div>
+
+      <h3>Структурированный разбор: шаблон</h3>
+      <p>Выберите <b>3–5 эпизодов</b> из проекта, где вы обращались к ИИ. Для каждого заполните одну строку таблицы. Пример (вариант Б, погода):</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Эпизод</th><th>Что просил</th><th>Что получил</th><th>Итог</th><th>± минут</th><th>Как проверил</th></tr></thead>
+          <tbody>
+            <tr><td>Разметка карточек погоды</td><td>«Сделай HTML и CSS для карточки: город, температура, ветер»</td><td>Рабочая вёрстка, пара лишних классов</td><td>✅ сэкономил</td><td>+25</td><td>Открыл в браузере, убрал лишнее</td></tr>
+            <tr><td>Запрос к API</td><td>«Как получить current-данные open-meteo?»</td><td>Правильный URL, но без проверки <code>ok</code></td><td>⚖ частично</td><td>+15 / −10</td><td>Нашёл при тесте с ошибкой 404</td></tr>
+            <tr><td>Обработка ошибок</td><td>«Сделай так, чтобы не падало»</td><td>Пустой <code>catch {}</code>: ошибки молча глотались</td><td>❌ увёл в сторону</td><td>+5 / −40</td><td>Заметил в режиме Offline: экран не менялся</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>А теперь — шаблон для вашего README. Скопируйте его и заполните <b>своими</b> эпизодами:</p>
+
+<pre class="code" data-title="Шаблон разбора — вставьте в README.md">
+## ИИ в проекте: где помог, где увёл в сторону
+
+### Эпизод 1: &lt;что делал&gt;
+- Что просил (коротко): …
+- Что получил: …
+- Итог: ✅ сэкономил / ⚖ частично / ❌ увёл в сторону
+- Минуты: сэкономил … / потерял …
+- Как проверил результат: …
+- Вывод для себя (правило): …
+
+### Эпизод 2: …
+
+## Итог
+- Где ИИ реально сэкономил время: …
+- Где он увёл в сторону и почему я не заметил сразу: …
+- Что я теперь делаю иначе: …
+</pre>
+
+      <h3>Три вопроса для самопроверки</h3>
+      <ol class="steps">
+        <li><b>Могу ли я объяснить этот код построчно?</b> Если нет — это долг: вы взяли чужое и не поняли. Либо разберите, либо перепишите.</li>
+        <li><b>Как я узнал, что ответ ИИ правильный?</b> «Заработало» — слабая проверка. Хорошая: сломал нарочно (Offline, 404, пустой запрос) и убедился, что поведение осмысленное.</li>
+        <li><b>Что бы я сделал без ИИ — и сколько бы это стоило?</b> Честная оценка помогает понять, где выгода реальна, а где — самообман.</li>
+      </ol>
+
+      <h3>Типичные «увели в сторону» в проектах с API</h3>
+      <div class="cols">
+        <div class="col bad">
+          <h4>Что ИИ делает плохо</h4>
+          <ul>
+            <li>Забывает <code>response.ok</code> — 404 «успешно» показывается как данные</li>
+            <li>Пишет пустой <code>catch</code> или только <code>console.log</code> вместо сообщения пользователю</li>
+            <li>Не думает про гонку ответов и двойной запрос</li>
+            <li>Придумывает несуществующие поля API (<code>data.weather.temp</code>) — их нужно сверять с настоящим ответом</li>
+            <li>Предлагает лишнее: библиотеки, фреймворки, сложный <code>try/catch</code>-каркас</li>
+          </ul>
+        </div>
+        <div class="col good">
+          <h4>Где ИИ реально помогает</h4>
+          <ul>
+            <li>Разбивка проекта на шаги (раздел 04)</li>
+            <li>Объяснение непонятного сообщения об ошибке — с вашим кодом и текстом ошибки</li>
+            <li>Черновик разметки и CSS, которые вы потом читаете и правите</li>
+            <li>Ревью по чек-листу — после людей</li>
+            <li>README и тексты — с обязательной правкой своими словами</li>
+          </ul>
+        </div>
+      </div>
+
+<div class="prompt bad-prompt">оцени мой код</div>
+<div class="prompt good-prompt">Контекст: учебный проект «поиск товаров», JS + Vite, модули api.js / ui.js / main.js. Умею: fetch, async/await, try/catch, debounce.
+Задача: сделай ревью файла api.js — только замечания, без переписывания кода.
+Ограничения: смотри на 4 вещи: проверка response.ok, обработка ошибок, имена, дублирование.
+Формат ответа: список «строка → проблема → почему важно → как проверить исправление».
+Проверка: в конце назови одно место, где ты не уверен, что я правильно понял API.
+
+[вставьте код api.js]</div>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/ru/docs/Learn_web_development/Core/Scripting/Debugging_JavaScript" target="_blank" rel="noopener">MDN — отладка JavaScript</a></p>
+
+      <div class="practice">
+        <h3>Практика: считаем цену ИИ</h3>
+
+        <article class="task" id="t12-1">
+          <header><span class="task-num">ЗАДАЧА 12.1</span><h4>Итоги разбора эпизодов</h4><span class="level mid">средняя</span></header>
+          <p>Эпизоды разбора лежат в массиве. Для каждого указано, сколько минут ИИ сэкономил (<code>saved</code>) и сколько потерял (<code>lost</code>: поиск ошибки в чужом коде, переписывание). Посчитайте суммы и итог со знаком (<code>+20</code> или <code>-5</code>) и найдите эпизод с наибольшей потерей. Выведите четыре строки по образцу ниже.</p>
+<pre class="code" data-run>
+const episodes = [
+  { task: "разметка карточек", saved: 25, lost: 0 },
+  { task: "запрос к API", saved: 15, lost: 10 },
+  { task: "debounce", saved: 10, lost: 0 },
+  { task: "обработка ошибок", saved: 5, lost: 40 },
+  { task: "README", saved: 15, lost: 0 },
+];
+
+// посчитайте и выведите четыре строки
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Сэкономил: 70 мин
+Потерял: 50 мин
+Итого: +20 мин
+Главная ловушка: обработка ошибок</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Две суммы собираются двумя <code>reduce</code> (или одним циклом). Итог — разность <code>saved − lost</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Знак: <code>net &gt; 0 ? "+" + net : String(net)</code>. Худший эпизод — <code>reduce</code>, который оставляет элемент с большим <code>lost</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 13 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">13</span> Домашнее задание</h2>
+
+      <p>Доработайте проект по замечаниям ревью и защиты, оформите разбор «ИИ в проекте» и сделайте работу над ошибками по контрольной.</p>
+
+      <h3>Что нужно сделать</h3>
+      <ul>
+        <li>☐ Исправить замечания ревью и защиты, которые вы приняли.</li>
+        <li>☐ Проверить все пункты MVP из раздела 02 и пройти чек-лист ревьюера по своему проекту ещё раз; <code>npm run build</code> без ошибок.</li>
+        <li>☐ Убрать лишние <code>console.log</code>, закомментированный код и мёртвые функции.</li>
+        <li>☐ Дописать в README раздел «ИИ в проекте» по шаблону из раздела 12 (3–5 эпизодов и итог — своими словами).</li>
+        <li>☐ Обновить репозиторий: публичный, README со скриншотом, не менее 5 осмысленных коммитов, <code>node_modules</code> и <code>dist</code> не загружены.</li>
+        <li>☐ Работа над ошибками: каждую задачу пробной контрольной, которую вы не решили или решили с ошибкой, решите заново <b>и объясните своими словами</b>, в чём была ошибка (1–2 предложения в комментарии).</li>
+      </ul>
+
+      <h3>Что сдать</h3>
+      <p>Ссылку на репозиторий в чат группы (Telegram). В сообщении напишите: вариант проекта (А, Б или В), какое API использовали, что добавили после ревью, какой бонус сделали, и список задач контрольной, которые переделывали.</p>
+
+      <h3>Как оценивается ДЗ (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что проверяем</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Ссылка открывается без входа, <code>npm run build</code> проходит на чистой копии</td><td>2</td></tr>
+            <tr><td>Замечания ревью исправлены (видно в коммитах)</td><td>2</td></tr>
+            <tr><td>README: описание, скриншот и раздел «ИИ в проекте» своими словами</td><td>3</td></tr>
+            <tr><td>Не менее 5 осмысленных коммитов с понятными сообщениями</td><td>1</td></tr>
+            <tr><td>Работа над ошибками по контрольной с объяснениями</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Это оценка за домашнее задание урока (0–10). Оценка за мини-проект (0–100) выставляется по таблице из раздела 03 и учитывается отдельно.</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Проект:</b> приложение на публичном API (товары, погода или пользователи) на Vite. Оценка 0–100: MVP 20, fetch и async/await 20, состояния 15, debounce и контроль запросов 10, модули 10, сборка и репозиторий 5, интерфейс 5, защита 15; бонус до +5.</li>
+        <li><b>fetch:</b> <code>await fetch(url)</code> → <code>if (!response.ok) throw …</code> → <code>await response.json()</code>. <code>fetch</code> падает только при сбое сети, 404 и 500 — «успешные» ответы.</li>
+        <li><b>Состояния:</b> один объект <code>{ status, items, error }</code>, <code>status</code>: idle / loading / success / error; пустой <code>success</code> — это empty. Смена статуса сбрасывает лишние поля.</li>
+        <li><b>try/catch/finally:</b> <code>catch</code> показывает пользователю понятное сообщение, а не молчит; <code>finally</code> выполняется всегда.</li>
+        <li><b>Параллельно или по очереди:</b> независимые запросы — <code>Promise.all</code>, зависимые — <code>await</code> по очереди. <code>Promise.race</code> — для таймаута.</li>
+        <li><b>debounce:</b> сбрасываем таймер при каждом вызове; срабатывает после паузы. Пустой запрос на сервер не отправляем.</li>
+        <li><b>Гонка ответов:</b> номер запроса (<code>myId !== latestId</code> → игнор) или <code>AbortController</code>.</li>
+        <li><b>Модули:</b> <code>api.js</code> — сеть, <code>ui.js</code> — DOM, <code>main.js</code> — связка; <code>npm run build</code> + <code>preview</code> перед защитой; <code>dist</code> и <code>node_modules</code> не в Git.</li>
+        <li><b>Ревью:</b> запуск (Offline, Slow 3G, мусор) → чтение по чек-листу → замечание = где, что вижу, почему, предложение.</li>
+        <li><b>Контрольная №2:</b> 30 минут, без ИИ, темы — объекты, async/await, fetch, ошибки; 10 задач с автопроверкой.</li>
+        <li><b>ИИ в проекте:</b> записывайте эпизоды (что просил → что получил → итог → ± минут → как проверил). ИИ часто забывает <code>ok</code>, глотает ошибки и придумывает поля API — проверка остаётся на вас.</li>
+      </ul>
+    </section>
