@@ -50,6 +50,9 @@ Lesson-type specifics:
 2. `pnpm start -p <free port 34xx>`; Playwright MCP (load via ToolSearch "playwright"; browser may be shared — use a fresh context/new tab): open `/ru/lessons/<slug>`, check no console errors, run at least 8 examples across sections, solve at least 4 tasks by typing your reference solution into the editor (click into the code block, select all, type) → task auto-solves; screenshots at 1280 and 390 (light + dark) of hero, one topic and one task; no horizontal scroll. Kill the server by its port only (`lsof -ti:<port> | xargs kill`) — never `pkill -f next…`: other authors run servers in parallel. Keep scratch files in your own subfolder of the scratchpad (others share it). Forms in the sandbox: `allow-forms` is on, so clicking a submit button and `form.requestSubmit()` fire `submit` (always `preventDefault()` — a real submit reloads the preview and loses the console); `dispatchEvent(new Event("submit", { cancelable: true }))` also works.
 3. Only `content/lessons/ru/NN-<slug>.html` (and the regenerated `lib/lesson-meta.generated.ts`) may change. Never edit app code; if the app can't express something, write it as plainly as possible and mention it in the report.
 
+## Resources
+The machine is shared with other authors and froze once from load: run only ONE build and ONE `pnpm start` at a time (no parallel `next dev`), ONE Playwright browser context (close it when done), no extra Chrome launches.
+
 ## Finish
 Commit only your files (`git add <file> lib/lesson-meta.generated.ts && git commit -m "add lesson N: <short topic>"` — lowercase, ≤50 chars, never mention AI/Claude, no Co-Authored-By, don't touch git config). Never push. If `next dev`/build creates AGENTS.md or modifies next-env.d.ts, revert them.
 Report (English, concise): file, sections list, task count by level, which tasks have no auto-check and why, sources used (URLs), verification results (what you actually ran/saw), anything the app couldn't express.
