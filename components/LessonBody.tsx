@@ -2,6 +2,7 @@ import { isTag } from 'domhandler';
 import { findAll, findOne, textContent } from 'domutils';
 import parse, { domToReact, htmlToDOM, Element, type DOMNode, type HTMLReactParserOptions } from 'html-react-parser';
 import type { Lesson } from '@/content/lessons';
+import { getMessages, type Locale } from '@/lib/i18n';
 import { readFragment } from '@/lib/lessons.server';
 import CodeBlock from './CodeBlock';
 import Pager from './Pager';
@@ -11,8 +12,8 @@ import Toc, { type TocItem } from './Toc';
 
 const hasClass = (el: Element, c: string) => (el.attribs.class ?? '').split(/\s+/).includes(c);
 
-export default function LessonBody({ lesson }: { lesson: Lesson }) {
-  const raw = readFragment(lesson.file);
+export default function LessonBody({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
+  const { html: raw, isFallback } = readFragment(lesson.file, locale);
   const styleMatch = raw.match(/^<style>([\s\S]*?)<\/style>\n/);
   const css = styleMatch ? styleMatch[1] : '';
   const html = styleMatch ? raw.slice(styleMatch[0].length) : raw;
@@ -54,8 +55,13 @@ export default function LessonBody({ lesson }: { lesson: Lesson }) {
           <Toc items={items} lessonSlug={lesson.slug} />
         </aside>
         <main>
+          {isFallback && (
+            <div className="callout fallback-notice" role="note">
+              <p>{getMessages(locale).lesson.fallbackNotice}</p>
+            </div>
+          )}
           {parse(html, options)}
-          <Pager lesson={lesson} />
+          <Pager lesson={lesson} locale={locale} />
         </main>
       </div>
     </>
