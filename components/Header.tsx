@@ -24,7 +24,12 @@ export default function Header() {
       <Link className="brand" href={`/${locale}`} aria-label={`MakeFirstStep — ${t.roadmap.nav}`}>
         <Logo />
         <span className="brand-name">
-          MakeFirstStep <small>{t.header.brandSub}</small>
+          <span className="brand-word">
+            <span>Make</span>
+            <span>First</span>
+            <span>Step</span>
+          </span>
+          <small>{t.header.brandSub}</small>
         </span>
       </Link>
       <nav className="topnav" aria-label={t.header.lessonsNav}>
