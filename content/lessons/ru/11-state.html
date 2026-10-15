@@ -1,0 +1,1968 @@
+<style>
+/* схема «действие → состояние → экран» (только для этого урока) */
+.loop-flow { display: flex; align-items: stretch; flex-wrap: wrap; gap: 10px; }
+.loop-flow .step { flex: 1 1 150px; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
+.loop-flow .step b { display: block; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.loop-flow .step code { display: block; margin-top: 6px; background: none; padding: 0; white-space: normal; }
+.loop-flow .step.s { border-color: var(--gold); }  .loop-flow .step.s b { color: var(--gold); }
+.loop-flow .step.r { border-color: var(--accent); } .loop-flow .step.r b { color: var(--accent); }
+.loop-flow .step.d { border-color: var(--blue); }  .loop-flow .step.d b { color: var(--blue); }
+.loop-flow .arrow { align-self: center; font: 700 18px var(--mono); color: var(--ink-3); }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 11 · DOM и интерфейс</p>
+      <h1>Состояние приложения и localStorage</h1>
+      <p class="lead">Вы написали список дел, закрыли вкладку — и всё пропало. Для пользователя это катастрофа: он потратил десять минут, а сайт всё забыл. В настоящих приложениях корзина интернет-магазина, тёмная тема и недочитанный урок переживают перезагрузку страницы. Сегодня вы научитесь хранить все данные приложения в одном месте, рисовать экран по этим данным и сохранять их в браузере.</p>
+      <ul class="goals">
+        <li>Описывать состояние приложения одним объектом и отличать его от «производных» данных</li>
+        <li>Писать функцию <code>render(state)</code>, которая рисует экран только по состоянию</li>
+        <li>Менять состояние через небольшие функции-действия: добавить, отметить, удалить</li>
+        <li>Сохранять и читать данные через <code>localStorage</code> вместе с <code>JSON.stringify</code> и <code>JSON.parse</code></li>
+        <li>Не падать, когда данных нет, они повреждены или устарели</li>
+        <li>Просить ИИ предложить структуру состояния и сравнивать её со своей</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Код на тёмном фоне с кнопкой <b>▶ Запустить</b> — живой: меняйте и запускайте. Блоки «Практика» проверяются автоматически по тексту в консоли. В нескольких задачах есть мини-страница с предпросмотром: слева код (вкладки <b>index.html</b>, <b>style.css</b>, <b>script.js</b>), справа результат. Подсказки спрятаны — сначала попробуйте сами.</p>
+      <p><b>Важно про localStorage.</b> Код на этой странице работает в изолированной «песочнице», где настоящего <code>localStorage</code> нет. Мы подробно разберём это в разделе 04 и дадим вам точную заглушку с тем же API. На вашем компьютере (в домашнем задании) вы будете использовать настоящий.</p>
+    </div>
+
+    <!-- ===================================================== 01 -->
+    <section class="topic" id="what-is-state">
+      <h2 data-toc="Что такое состояние"><span class="num">01</span> Что такое состояние приложения</h2>
+
+      <p><b>Состояние</b> (state) — это все данные, которые описывают приложение <b>прямо сейчас</b> и могут измениться: список задач, какие из них выполнены, выбранный фильтр, тема оформления, товары в корзине. Если сделать «снимок» состояния, по нему можно полностью воссоздать то, что видит пользователь.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Табло на автовокзале в Душанбе. Само табло ничего не «помнит»: оно только <b>показывает</b> расписание, которое лежит в системе диспетчера. Отменили рейс в Худжанд — диспетчер поменял запись, и табло перерисовалось. Расписание в системе — это <b>состояние</b>. Табло — <b>экран</b>. Если бы кто-то вручную исправил надпись на табло, не тронув систему, при следующем обновлении правка бы исчезла, а в зале начался бы хаос.</p>
+      </div>
+
+      <h3>Как делают новички: данные «разбросаны»</h3>
+      <p>Первое, что приходит в голову — завести отдельную переменную на каждую мелочь, а частью данных вообще считать то, что написано на странице. Такой код быстро превращается в кашу:</p>
+<pre class="code" data-run data-title="Данные в разных местах">
+let ownerName = "Мадина";
+let balance = 150;
+let operations = 2;
+let lastOperation = "пополнение";
+
+function showWallet() {
+  console.log(`${ownerName}: ${balance} сомони, операций: ${operations}, последняя — ${lastOperation}`);
+}
+
+showWallet();
+</pre>
+      <p>Пока переменных четыре, это терпимо. Но когда их двадцать, нельзя ответить на простые вопросы: что именно нужно сохранить? Что передать функции? Что очистить при выходе пользователя?</p>
+
+      <h3>Как делают в настоящих проектах: один объект</h3>
+      <p>Все изменяемые данные приложения складывают в <b>один объект</b> — обычно его называют <code>state</code>.</p>
+<pre class="code" data-run data-title="Всё состояние в одном объекте">
+const state = {
+  ownerName: "Мадина",
+  balance: 150,
+  history: ["пополнение", "покупка"],
+};
+
+function showWallet(state) {
+  const last = state.history[state.history.length - 1];
+  console.log(`${state.ownerName}: ${state.balance} сомони, последняя операция — ${last}`);
+}
+
+showWallet(state);
+console.log(JSON.stringify(state)); // всё приложение — одним взглядом
+</pre>
+      <p>Выгоды сразу видны: функции получают <code>state</code> и больше ничего не ищут; «что сохранять» — это просто <code>state</code>; отладка проще — достаточно вывести один объект и увидеть всё приложение.</p>
+
+      <figure class="diagram">
+        <div class="loop-flow">
+          <div class="step d"><b>Действие</b><code>пользователь нажал «Добавить»</code></div>
+          <span class="arrow">→</span>
+          <div class="step s"><b>Состояние</b><code>state.todos стал на одну задачу больше</code></div>
+          <span class="arrow">→</span>
+          <div class="step r"><b>Экран</b><code>render(state) перерисовал список</code></div>
+        </div>
+        <figcaption>Главный цикл любого интерфейса: действие меняет состояние, экран рисуется по состоянию. Весь урок — про этот цикл.</figcaption>
+      </figure>
+
+      <h3>Что класть в состояние, а что — нет</h3>
+      <p>В состоянии хранят <b>исходные факты</b>, которые нельзя вывести из других данных. Всё, что можно посчитать из состояния, в нём хранить не нужно — это <b>производные данные</b>.</p>
+      <div class="cols">
+        <div class="col bad"><b>Лишнее в состоянии</b>
+          <p>Сумма и счётчик «живут отдельно» от списка — легко забыть обновить один из них, и они разойдутся.</p>
+<pre class="code">
+const state = {
+  items: [{ title: "Самбуса", price: 5, qty: 3 }],
+  total: 15,        // можно посчитать
+  itemsCount: 1,    // можно посчитать
+};
+</pre>
+        </div>
+        <div class="col good"><b>Только факты</b>
+          <p>В состоянии — товары. Сумму считает функция, и она всегда актуальна.</p>
+<pre class="code">
+const state = {
+  items: [{ title: "Самбуса", price: 5, qty: 3 }],
+};
+const getTotal = (state) =&gt;
+  state.items.reduce((sum, i) =&gt; sum + i.price * i.qty, 0);
+</pre>
+        </div>
+      </div>
+
+      <dl class="terms">
+        <dt>В состояние</dt><dd>Список задач, выбранный фильтр, тема, товары в корзине, имя пользователя, номер текущего шага.</dd>
+        <dt>Не в состояние</dt><dd>Сумма корзины, количество невыполненных задач, готовые HTML-строки — всё, что можно вычислить из состояния.</dd>
+        <dt>Решаем осознанно</dt><dd>Временные вещи вроде набираемого в поле текста. Их можно держать в состоянии, а можно не сохранять — об этом ещё поговорим в разделе про ИИ.</dd>
+      </dl>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Копирование числа из состояния в локальную переменную и изменение копии. Числа и строки копируются <b>по значению</b>: изменили копию — состояние осталось прежним.</p>
+      </div>
+<pre class="code" data-run data-title="Состояние не изменилось">
+const state = { visitors: 10 };
+
+let visitors = state.visitors; // скопировали число
+visitors = visitors + 1;       // изменили копию
+
+console.log(visitors);         // → 11
+console.log(state.visitors);   // → 10 — в состоянии ничего не поменялось
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/object" target="_blank" rel="noopener">learn.javascript.ru — Объекты</a> · <a href="https://learn.javascript.ru/object-copy" target="_blank" rel="noopener">Копирование объектов и ссылки</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Соберём разрозненные данные в состояние, научимся не хранить лишнее и найдём баг.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Кошелёк в одном объекте</h4><span class="level easy">лёгкая</span></header>
+          <p>Данные кошелька разбросаны по трём переменным. Соберите их в один объект <code>state</code> с теми же именами полей и выведите его через <code>JSON.stringify</code>.</p>
+<pre class="code" data-run>
+let owner = "Мадина";
+let balance = 150;
+let currency = "сомони";
+
+// создайте const state = { ... } с полями owner, balance, currency
+
+
+console.log(JSON.stringify(state));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"owner":"Мадина","balance":150,"currency":"сомони"}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Объект пишется в фигурных скобках: <code>{ ключ: значение, ключ: значение }</code>. Значения можно взять из переменных выше.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Если ключ и переменная называются одинаково, можно записать коротко: <code>{ owner, balance, currency }</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Корзина: считаем, а не храним</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите функцию <code>getTotal(state)</code>, которая <b>вычисляет</b> сумму корзины по <code>state.items</code> (цена × количество). Сумму в состояние класть не нужно: покупатель меняет количество, а функция всегда считает заново.</p>
+<pre class="code" data-run>
+const state = {
+  items: [
+    { title: "Самбуса", price: 5, qty: 3 },
+    { title: "Чой", price: 8, qty: 2 },
+    { title: "Нон", price: 4, qty: 1 },
+  ],
+};
+
+// function getTotal(state) { ... }
+
+console.log(getTotal(state));
+state.items[2].qty = 3; // покупатель взял ещё нон
+console.log(getTotal(state));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>35
+43</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Заведите переменную <code>sum = 0</code>, пройдите по <code>state.items</code> циклом и прибавляйте <code>item.price * item.qty</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Или короче: <code>state.items.reduce((sum, item) =&gt; sum + item.price * item.qty, 0)</code>. Не забудьте <code>return</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Найди баг: счётчик, который не считает</h4><span class="level mid">средняя</span></header>
+          <p>Администратор нажимает «+1» на входе в Илмхону, но число посетителей не растёт. Найдите причину и исправьте функцию <code>addVisitor</code>: она должна менять <b>именно состояние</b>.</p>
+<pre class="code" data-run>
+const state = { visitors: 0 };
+
+function addVisitor(state) {
+  let visitors = state.visitors;
+  visitors = visitors + 1;
+}
+
+addVisitor(state);
+addVisitor(state);
+addVisitor(state);
+console.log("Посетителей:", state.visitors);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Посетителей: 3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Прочитайте пример выше про «копию по значению». Что именно увеличивает функция — число в состоянии или свою переменную?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Меняйте поле напрямую: <code>state.visitors = state.visitors + 1;</code> (или <code>state.visitors++</code>).</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 02 -->
+    <section class="topic" id="render">
+      <h2 data-toc="Рендер от состояния"><span class="num">02</span> Рендер от состояния: render(state)</h2>
+
+      <p>Следующая идея — самая важная в уроке. Экран <b>не живёт своей жизнью</b>: он каждый раз рисуется заново по состоянию. Для этого пишут функцию <code>render</code>. Она получает состояние и показывает его. Больше она ничего не делает: ничего не меняет и ничего не решает.</p>
+
+      <p>Чтобы пока не отвлекаться на HTML, «экраном» в первом примере будет консоль:</p>
+<pre class="code" data-run>
+const state = {
+  todos: [
+    { id: 1, text: "Купить нон", done: true },
+    { id: 2, text: "Сделать домашку по JS", done: false },
+  ],
+};
+
+function render(state) {
+  console.log("--- Список дел ---");
+  state.todos.forEach((todo) =&gt; {
+    const mark = todo.done ? "[x]" : "[ ]";
+    console.log(`${mark} ${todo.text}`);
+  });
+}
+
+render(state);
+</pre>
+
+      <p>Теперь то же самое на настоящей странице. Обратите внимание на структуру скрипта: сверху состояние, потом <code>render</code>, потом действие и обработчик клика. Нажмите «Добавить блюдо» и посмотрите, как меняется список:</p>
+
+      <div class="playground" data-mode="dom" data-title="Первый рендер: список блюд">
+<pre class="code" data-lang="html">
+&lt;button id="add"&gt;Добавить блюдо&lt;/button&gt;
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+&lt;p id="info"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+ul { padding-left: 20px; }
+li { margin: 4px 0; }
+#info { color: #6b7280; }
+</pre>
+<pre class="code" data-lang="js">
+const menu = document.querySelector("#menu");
+const info = document.querySelector("#info");
+const addBtn = document.querySelector("#add");
+
+// 1. Состояние
+const state = {
+  dishes: ["Оши палав", "Самбуса"],
+};
+const NEXT = ["Курутоб", "Шакароб", "Манту", "Чакка"];
+
+// 2. Рендер: рисует экран по состоянию
+function render() {
+  menu.textContent = ""; // очистили список
+  state.dishes.forEach((name) =&gt; {
+    const li = document.createElement("li");
+    li.textContent = name;
+    menu.append(li);
+  });
+  info.textContent = `Блюд в меню: ${state.dishes.length}`;
+}
+
+// 3. Действие: меняет состояние и просит перерисовать
+addBtn.addEventListener("click", () =&gt; {
+  const next = NEXT[state.dishes.length - 2];
+  if (next) state.dishes.push(next);
+  render();
+});
+
+render();
+console.log("блюд в состоянии:", state.dishes.length);
+</pre>
+      </div>
+
+      <h3>Правила хорошего render</h3>
+      <ol class="steps">
+        <li><b>Читает только состояние.</b> Данные для экрана берём из <code>state</code>, а не из DOM. Не <code>list.children.length</code>, а <code>state.todos.length</code>.</li>
+        <li><b>Ничего не меняет.</b> Внутри <code>render</code> нет <code>push</code>, <code>state.x = …</code> и других изменений данных.</li>
+        <li><b>Рисует всё целиком.</b> Очистили контейнер и построили заново. Для списков из десятков элементов это мгновенно, а ошибок меньше: не нужно думать, «что именно поменялось».</li>
+        <li><b>Вызывается после каждого действия.</b> Изменили состояние — вызвали <code>render()</code>. Забыли — экран «врёт».</li>
+        <li><b>Умеет рисовать пустое состояние.</b> Если задач нет, показываем «Список пуст», а не белую пустоту.</li>
+      </ol>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Повар в чайхоне собирает заказ по чеку, а не по памяти. Изменился заказ — посмотрел в чек и приготовил заново. Чек — это состояние. Блюдо на столе — экран. Спорить с чеком бессмысленно: если в чеке «без лука», лука не будет.</p>
+      </div>
+
+      <div class="cols">
+        <div class="col bad"><b>Два источника правды</b>
+          <p>Число задач хранится и в массиве, и «на странице». Забыли обновить одно из них — они расходятся.</p>
+<pre class="code">
+// ❌ данные берём из DOM
+const count = list.children.length;
+if (count &gt;= 5) {
+  alert("Слишком много задач");
+}
+</pre>
+        </div>
+        <div class="col good"><b>Один источник правды</b>
+          <p>Правда — в <code>state</code>. DOM — просто его отражение.</p>
+<pre class="code">
+// ✓ данные берём из состояния
+if (state.todos.length &gt;= 5) {
+  alert("Слишком много задач");
+}
+</pre>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Менять данные и тут же «подправлять» экран вручную (<code>li.textContent = …</code>, <code>li.remove()</code>) в каждом обработчике. Пока элемент один — работает. Когда появятся фильтры, счётчики и сохранение, вы будете забывать обновлять то одно, то другое. Меняем <code>state</code>, вызываем <code>render()</code> — и всё.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/dom-nodes" target="_blank" rel="noopener">learn.javascript.ru — DOM-дерево</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Document_Object_Model/Introduction" target="_blank" rel="noopener">MDN — Введение в DOM</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Пишем <code>render</code> для консоли: это та же логика, что и для страницы.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Первый render</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите <code>render(state)</code>: для каждой задачи выведите строку <code>[x] текст</code> (если выполнена) или <code>[ ] текст</code> (если нет).</p>
+<pre class="code" data-run>
+const state = {
+  todos: [
+    { id: 1, text: "Купить нон", done: true },
+    { id: 2, text: "Сделать домашку по JS", done: false },
+    { id: 3, text: "Позвонить маме", done: false },
+  ],
+};
+
+// function render(state) { ... }
+
+render(state);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>[x] Купить нон
+[ ] Сделать домашку по JS
+[ ] Позвонить маме</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Переберите <code>state.todos</code> через <code>forEach</code> или <code>for...of</code> и для каждой задачи выведите одну строку.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Пометку выбирайте тернарным оператором: <code>todo.done ? "[x]" : "[ ]"</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Пустой список</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите <code>render</code> с пустым состоянием: если задач нет, выведите <code>Список пуст — добавьте первую задачу</code> и больше ничего. Формат непустого списка прежний (<code>[ ]</code> и <code>[x]</code>).</p>
+<pre class="code" data-run>
+function render(state) {
+  // ваш код
+}
+
+render({ todos: [] });
+render({ todos: [{ id: 1, text: "Выучить localStorage", done: false }] });
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Список пуст — добавьте первую задачу
+[ ] Выучить localStorage</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Проверьте <code>state.todos.length === 0</code> в самом начале функции.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри <code>if</code> выведите сообщение и сделайте <code>return</code> — тогда остальной код не выполнится (ранний выход).</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Найди баг: забыли перерисовать</h4><span class="level mid">средняя</span></header>
+          <p>После добавления задач экран остаётся старым. Исправьте код так, чтобы <code>render</code> вызывался после <b>каждого</b> действия — но писать вызов нужно один раз, внутри <code>addTodo</code>, а не после каждого вызова снаружи.</p>
+<pre class="code" data-run>
+const state = { todos: [{ id: 1, text: "Хлеб", done: false }] };
+
+function render(state) {
+  console.log("--- Экран ---");
+  state.todos.forEach((todo) =&gt; console.log(`${todo.done ? "[x]" : "[ ]"} ${todo.text}`));
+}
+
+function addTodo(text) {
+  state.todos.push({ id: state.todos.length + 1, text, done: false });
+}
+
+render(state);
+addTodo("Молоко");
+addTodo("Чой");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>--- Экран ---
+[ ] Хлеб
+--- Экран ---
+[ ] Хлеб
+[ ] Молоко
+--- Экран ---
+[ ] Хлеб
+[ ] Молоко
+[ ] Чой</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Состояние поменялось, а экран нет. Кто должен сказать экрану «перерисуйся»?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавьте <code>render(state);</code> последней строкой в тело <code>addTodo</code>. Тогда любое добавление автоматически обновит экран.</p></details>
+        </article>
+
+        <article class="task" id="t2-4">
+          <header><span class="task-num">ЗАДАЧА 2.4</span><h4>Фильтр и счётчик</h4><span class="level hard">сложная</span></header>
+          <p>В состоянии появилось поле <code>filter</code>: <code>"all"</code>, <code>"active"</code> (только невыполненные) или <code>"done"</code> (только выполненные). Напишите <code>render</code>: первой строкой <code>Фильтр: …</code>, затем подходящие задачи в формате <code>[x]</code>/<code>[ ]</code>, и последней строкой <code>Осталось: N</code> — число невыполненных задач <b>во всём списке</b>, а не только среди видимых.</p>
+<pre class="code" data-run>
+const state = {
+  filter: "all",
+  todos: [
+    { id: 1, text: "Нон", done: true },
+    { id: 2, text: "Молоко", done: false },
+    { id: 3, text: "Чой", done: true },
+    { id: 4, text: "Зира", done: false },
+  ],
+};
+
+// function render(state) { ... }
+
+render(state);
+state.filter = "active";
+render(state);
+state.filter = "done";
+render(state);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Фильтр: all
+[x] Нон
+[ ] Молоко
+[x] Чой
+[ ] Зира
+Осталось: 2
+Фильтр: active
+[ ] Молоко
+[ ] Зира
+Осталось: 2
+Фильтр: done
+[x] Нон
+[x] Чой
+Осталось: 2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала получите список для показа: через <code>filter</code> оставьте задачи, подходящие под <code>state.filter</code>. Для <code>"all"</code> фильтровать не нужно.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Счётчик — отдельное вычисление по <code>state.todos</code>: <code>state.todos.filter((t) =&gt; !t.done).length</code>. Видимый список на него не влияет.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 03 -->
+    <section class="topic" id="actions">
+      <h2 data-toc="Действия над состоянием"><span class="num">03</span> Действия: как правильно менять состояние</h2>
+
+      <p>Состояние меняют <b>небольшие функции-действия</b> (actions): <code>addTodo</code>, <code>toggleTodo</code>, <code>removeTodo</code>. Обработчики событий не лезут в данные сами — они только вызывают нужное действие. Каждое действие делает три вещи: <b>меняет состояние → вызывает <code>render()</code></b> (а в следующих разделах — ещё и сохраняет).</p>
+
+      <figure class="diagram">
+        <div class="loop-flow">
+          <div class="step d"><b>Событие</b><code>click по кнопке или по задаче</code></div>
+          <span class="arrow">→</span>
+          <div class="step s"><b>Действие</b><code>addTodo(text)<br>toggleTodo(id)<br>removeTodo(id)</code></div>
+          <span class="arrow">→</span>
+          <div class="step r"><b>render()</b><code>экран заново рисуется по state</code></div>
+        </div>
+        <figcaption>Обработчик → действие → рендер. Данные меняются только в действиях.</figcaption>
+      </figure>
+
+      <h3>Три приёма для массивов в состоянии</h3>
+      <p>Все изменения списка сводятся к трём операциям. Условимся менять массив <b>не «на месте»</b>, а <b>присваивать новый</b> — так проще отследить, что именно поменялось, и именно этот стиль потребуется вам дальше в React.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что делаем</th><th>Метод</th><th>Запись</th></tr></thead>
+          <tbody>
+            <tr><td><b>Добавить</b></td><td>spread <code>...</code></td><td><code>state.todos = [...state.todos, newTodo];</code></td></tr>
+            <tr><td><b>Изменить одну</b></td><td><code>map</code></td><td><code>state.todos = state.todos.map((t) =&gt; t.id === id ? { ...t, done: !t.done } : t);</code></td></tr>
+            <tr><td><b>Удалить</b></td><td><code>filter</code></td><td><code>state.todos = state.todos.filter((t) =&gt; t.id !== id);</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre class="code" data-run data-title="Три действия и render">
+const state = { nextId: 1, todos: [] };
+
+function render() {
+  console.log("--- Экран ---");
+  if (state.todos.length === 0) console.log("(пусто)");
+  state.todos.forEach((t) =&gt; console.log(`${t.id}. ${t.done ? "[x]" : "[ ]"} ${t.text}`));
+}
+
+function addTodo(text) {
+  const todo = { id: state.nextId, text, done: false };
+  state.nextId = state.nextId + 1;
+  state.todos = [...state.todos, todo];
+  render();
+}
+
+function toggleTodo(id) {
+  state.todos = state.todos.map((t) =&gt; (t.id === id ? { ...t, done: !t.done } : t));
+  render();
+}
+
+function removeTodo(id) {
+  state.todos = state.todos.filter((t) =&gt; t.id !== id);
+  render();
+}
+
+addTodo("Купить нон");
+addTodo("Выучить JSON");
+toggleTodo(1);
+removeTodo(2);
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Касса в магазине на Зелёном базаре. Покупатель не лезет в кассу руками — он говорит продавцу: «добавьте», «уберите», «отметьте». Продавец (действие) вносит запись в журнал (состояние) и показывает итог на дисплее (рендер). Одни и те же понятные операции — каждый раз. Никто не правит дисплей карандашом.</p>
+      </div>
+
+      <h3>Откуда брать id</h3>
+      <p>У каждой задачи должен быть уникальный <code>id</code>: по нему мы находим её для отметки или удаления. Соблазн — брать <code>state.todos.length + 1</code>. Он ломается после первого же удаления:</p>
+<pre class="code" data-run data-title="Ловушка: id по длине массива">
+let todos = [{ id: 1 }, { id: 2 }, { id: 3 }];
+
+todos = todos.filter((t) =&gt; t.id !== 1);          // удалили первую: осталось две
+todos = [...todos, { id: todos.length + 1 }];     // новая получила id = 3
+
+console.log(todos.map((t) =&gt; t.id).join(","));    // → 2,3,3 — два одинаковых id!
+</pre>
+      <p>Поэтому в состоянии хранят отдельный счётчик <code>nextId</code>: он только растёт и никогда не выдаёт один номер дважды.</p>
+
+      <h3>Действия в настоящей странице</h3>
+      <p>Вспомните делегирование из урока 9: один обработчик на списке, а нужный элемент находим через <code>event.target.closest(...)</code>. Нужную задачу определяем по <code>data-id</code>:</p>
+<pre class="code" data-title="Связка: клик → id → действие">
+list.addEventListener("click", (event) =&gt; {
+  const li = event.target.closest("li");
+  if (!li) return;                     // клик мимо задач
+  toggleTodo(Number(li.dataset.id));   // data-id — строка, переводим в число
+});
+</pre>
+      <p>Обратите внимание на <code>Number(...)</code>: значения из <code>dataset</code> всегда строки, а <code>id</code> в состоянии — число. Без перевода <code>t.id === id</code> никогда не сработает: <code>1 === "1"</code> — это <code>false</code>.</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Изменить состояние и сохранить результат в отдельной переменной, забыв присвоить обратно в <code>state</code>. Методы <code>map</code> и <code>filter</code> <b>не меняют</b> исходный массив — они возвращают новый.</p>
+      </div>
+<pre class="code" data-run data-title="Результат map потерян">
+const state = { todos: [{ id: 1, done: false }] };
+
+state.todos.map((t) =&gt; ({ ...t, done: true })); // новый массив никуда не записали
+console.log(state.todos[0].done);               // → false — ничего не изменилось
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/array-methods" target="_blank" rel="noopener">learn.javascript.ru — Методы массивов</a> · <a href="https://learn.javascript.ru/event-delegation" target="_blank" rel="noopener">Делегирование событий</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Пишем действия для списка дел и корзины. А в последней задаче раздела — действие на настоящей странице.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Действие addTodo</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите <code>addTodo(state, text)</code>: создаёт задачу <code>{ id, text, done: false }</code> с <code>id</code> из <code>state.nextId</code>, добавляет её в <code>state.todos</code> и увеличивает <code>nextId</code> на 1.</p>
+<pre class="code" data-run>
+const state = { nextId: 1, todos: [] };
+
+// function addTodo(state, text) { ... }
+
+addTodo(state, "Купить нон");
+addTodo(state, "Выучить JSON");
+console.log(JSON.stringify(state));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"nextId":3,"todos":[{"id":1,"text":"Купить нон","done":false},{"id":2,"text":"Выучить JSON","done":false}]}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала соберите объект задачи, взяв <code>id</code> из <code>state.nextId</code>. Порядок полей: <code>id</code>, <code>text</code>, <code>done</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Три строки: создать <code>todo</code>; <code>state.todos = [...state.todos, todo];</code>; <code>state.nextId = state.nextId + 1;</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Отметить выполненной</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>toggleTodo(state, id)</code> через <code>map</code>: у задачи с нужным <code>id</code> значение <code>done</code> меняется на противоположное, остальные задачи остаются как были. Функция <code>marks</code> уже написана — она показывает, какие задачи выполнены.</p>
+<pre class="code" data-run>
+const state = {
+  todos: [
+    { id: 1, text: "Нон", done: false },
+    { id: 2, text: "Молоко", done: false },
+    { id: 3, text: "Чой", done: false },
+  ],
+};
+
+const marks = (state) =&gt; state.todos.map((t) =&gt; (t.done ? "x" : "-")).join("");
+
+// function toggleTodo(state, id) { ... }
+
+toggleTodo(state, 2);
+console.log(marks(state));
+toggleTodo(state, 1);
+console.log(marks(state));
+toggleTodo(state, 2);
+console.log(marks(state));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>-x-
+xx-
+x--</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри <code>map</code> для каждой задачи спросите: это нужная? Если да — верните копию с обратным <code>done</code>, если нет — саму задачу.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>state.todos = state.todos.map((t) =&gt; (t.id === id ? { ...t, done: !t.done } : t));</code></p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Удаление без дубликатов id</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>removeTodo(state, id)</code> через <code>filter</code>. Функция <code>addTodo</code> уже готова и берёт <code>id</code> из <code>nextId</code>. Проверьте: после удаления и добавления новой задачи все <code>id</code> должны остаться уникальными.</p>
+<pre class="code" data-run>
+const state = {
+  nextId: 4,
+  todos: [
+    { id: 1, text: "Нон", done: false },
+    { id: 2, text: "Молоко", done: false },
+    { id: 3, text: "Чой", done: false },
+  ],
+};
+
+function addTodo(state, text) {
+  state.todos = [...state.todos, { id: state.nextId, text, done: false }];
+  state.nextId = state.nextId + 1;
+}
+
+// function removeTodo(state, id) { ... }
+
+removeTodo(state, 2);
+addTodo(state, "Зира");
+console.log(state.todos.map((t) =&gt; t.id).join(","));
+console.log("Задач:", state.todos.length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1,3,4
+Задач: 3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>filter</code> оставляет элементы, для которых функция вернула <code>true</code>. Какие задачи надо оставить при удалении?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>state.todos = state.todos.filter((t) =&gt; t.id !== id);</code> — оставляем все, кроме задачи с этим <code>id</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ЗАДАЧА 3.4</span><h4>Корзина: изменить количество</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>changeQty(state, id, delta)</code>: прибавляет <code>delta</code> (может быть отрицательным) к количеству товара. Если после этого количество стало <b>0 или меньше</b>, товар удаляется из корзины. Функция <code>summary</code> уже готова.</p>
+<pre class="code" data-run>
+const state = {
+  items: [
+    { id: 1, title: "Самбуса", qty: 2 },
+    { id: 2, title: "Чой", qty: 1 },
+  ],
+};
+
+const summary = (state) =&gt;
+  state.items.map((i) =&gt; `${i.title}×${i.qty}`).join(", ") || "пусто";
+
+// function changeQty(state, id, delta) { ... }
+
+changeQty(state, 1, +1);
+console.log(summary(state));
+changeQty(state, 2, -1);
+console.log(summary(state));
+changeQty(state, 1, -5);
+console.log(summary(state));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Самбуса×3, Чой×1
+Самбуса×3
+пусто</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Два шага: сначала <code>map</code> — меняем количество у нужного товара; потом <code>filter</code> — оставляем только товары с <code>qty &gt; 0</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>state.items = state.items.map((i) =&gt; (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) =&gt; i.qty &gt; 0);</code></p></details>
+        </article>
+
+        <article class="task" id="t3-5">
+          <header><span class="task-num">ЗАДАЧА 3.5</span><h4>Счётчик на странице</h4><span class="level mid">средняя</span></header>
+          <p>Допишите счётчик посетителей: <code>render</code> показывает число из <code>state.visitors</code> в элементе <code>#count</code>; кнопка «+1» увеличивает его, а кнопка «−1» уменьшает, но <b>не ниже нуля</b>. Менять нужно состояние, а потом вызывать <code>render()</code>. Нижние строки скрипта нажимают кнопки сами и выводят проверку — не удаляйте их.</p>
+          <div class="playground" data-mode="dom" data-title="Счётчик посетителей Илмхоны">
+<pre class="code" data-lang="html">
+&lt;p&gt;Посетителей: &lt;b id="count"&gt;&lt;/b&gt;&lt;/p&gt;
+&lt;button id="plus"&gt;+1&lt;/button&gt;
+&lt;button id="minus"&gt;−1&lt;/button&gt;
+</pre>
+<pre class="code" data-lang="css">
+button { font-size: 18px; padding: 6px 16px; margin-right: 8px; }
+#count { font-size: 28px; }
+</pre>
+<pre class="code" data-lang="js">
+const countEl = document.querySelector("#count");
+const plusBtn = document.querySelector("#plus");
+const minusBtn = document.querySelector("#minus");
+
+const state = { visitors: 0 };
+
+function render() {
+  // TODO: показать state.visitors в countEl
+}
+
+plusBtn.addEventListener("click", () =&gt; {
+  // TODO: увеличить state.visitors и вызвать render()
+});
+
+minusBtn.addEventListener("click", () =&gt; {
+  // TODO: уменьшить, но не ниже 0, и вызвать render()
+});
+
+render();
+
+// ---- автопроверка: не меняйте ----
+for (let i = 0; i &lt; 3; i++) plusBtn.click();
+console.log("после +1:", state.visitors, countEl.textContent);
+for (let i = 0; i &lt; 5; i++) minusBtn.click();
+console.log("после −1:", state.visitors, countEl.textContent);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>после +1: 3 3
+после −1: 0 0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>render</code> достаточно одной строки: <code>countEl.textContent = state.visitors;</code>. Остальное — в обработчиках, и в каждом в конце вызывается <code>render()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Не ниже нуля: <code>state.visitors = Math.max(0, state.visitors - 1);</code> или проверка <code>if (state.visitors &gt; 0)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 04 -->
+    <section class="topic" id="localstorage">
+      <h2 data-toc="localStorage"><span class="num">04</span> localStorage: память браузера</h2>
+
+      <p>Сейчас всё состояние живёт в переменной. Обновили страницу — переменные создаются заново, и состояние обнуляется. Чтобы данные пережили перезагрузку, их нужно положить туда, где они не пропадают вместе со страницей. Для этого у браузера есть <b><code>localStorage</code></b> — небольшое хранилище «ключ → строка», привязанное к сайту.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Камера хранения на вокзале. Вы сдаёте сумку и получаете номерок. Уходите, гуляете по городу, возвращаетесь на следующий день — сумка на месте. Номерок — это <b>ключ</b>, сумка — <b>значение</b>. Но в эту камеру можно положить только запакованные вещи: <code>localStorage</code> принимает <b>только строки</b>. Всё остальное придётся упаковать — об этом ниже.</p>
+      </div>
+
+      <h3>Что нужно знать о localStorage</h3>
+      <ul>
+        <li>Хранит пары «ключ — строка». Ключи тоже строки.</li>
+        <li>Данные <b>не исчезают</b> при перезагрузке страницы, закрытии вкладки и даже перезапуске браузера.</li>
+        <li>У каждого сайта своё хранилище: <code>ilmhona.tj</code> не видит данные <code>example.com</code>.</li>
+        <li>Объём — около 5 МБ на сайт: для списка дел или настроек этого с запасом.</li>
+        <li>Пользователь может очистить его в настройках или вручную изменить в DevTools. Данным из него доверять нельзя так же, как и вводу в форму.</li>
+        <li><b>Не храните там пароли и секреты:</b> любой скрипт на странице может их прочитать.</li>
+      </ul>
+
+      <h3>Методы</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Метод</th><th>Что делает</th><th>Пример</th></tr></thead>
+          <tbody>
+            <tr><td><code>setItem(key, value)</code></td><td>Записывает значение (строку) по ключу. Старое значение заменяет.</td><td><code>localStorage.setItem("theme", "dark")</code></td></tr>
+            <tr><td><code>getItem(key)</code></td><td>Читает значение. Если ключа нет — возвращает <code>null</code>.</td><td><code>localStorage.getItem("theme")</code></td></tr>
+            <tr><td><code>removeItem(key)</code></td><td>Удаляет одну запись.</td><td><code>localStorage.removeItem("theme")</code></td></tr>
+            <tr><td><code>clear()</code></td><td>Удаляет все записи этого сайта.</td><td><code>localStorage.clear()</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>Важно: в песочнице этого курса настоящего localStorage нет</b>
+        <p>Весь код на этой странице выполняется в изолированном окне-«песочнице» — так мы защищаем ваш компьютер от случайного вредного кода. У такого окна нет «своего сайта», поэтому браузер запрещает ему доступ к <code>localStorage</code>. Проверьте сами:</p>
+      </div>
+<pre class="code" data-run data-title="В песочнице выдаст ошибку">
+localStorage.setItem("theme", "dark");
+console.log(localStorage.getItem("theme"));
+</pre>
+      <p>Ошибка доступа — это не ваша вина и не баг урока. Чтобы вы всё равно могли тренироваться, мы даём <b>заглушку</b>: объект <code>storage</code> с теми же методами <code>setItem</code>, <code>getItem</code>, <code>removeItem</code>, <code>clear</code>. Она хранит данные в памяти, пока работает ваш код. А чтобы «перезагрузку страницы» можно было показать и в песочнице, мы будем вызывать функцию запуска приложения несколько раз подряд в одном скрипте: хранилище при этом остаётся, а переменные приложения — нет.</p>
+
+<pre class="code" data-run data-title="Заглушка storage — тот же API, что у localStorage">
+// ── заглушка localStorage ─────────────────────────────────────
+// В песочнице настоящий localStorage недоступен — на вашем компьютере
+// используйте window.localStorage. Остальной код при этом не меняется.
+function createStorage() {
+  let data = {};
+  return {
+    getItem(key) {
+      return Object.hasOwn(data, key) ? data[key] : null;
+    },
+    setItem(key, value) {
+      data[key] = String(value); // как и настоящий: всё превращается в строку
+    },
+    removeItem(key) {
+      delete data[key];
+    },
+    clear() {
+      data = {};
+    },
+  };
+}
+const storage = createStorage();
+// ─────────────────────────────────────────────────────────────
+
+storage.setItem("theme", "dark");
+console.log(storage.getItem("theme"));    // → dark
+console.log(storage.getItem("language")); // → null — такого ключа нет
+storage.removeItem("theme");
+console.log(storage.getItem("theme"));    // → null
+</pre>
+
+      <div class="callout tip">
+        <b>Как перейти на настоящий localStorage</b>
+        <p>Весь код в уроке пишите через переменную <code>storage</code>. На вашем компьютере, в обычном HTML-файле, достаточно заменить заглушку одной строкой — всё остальное работает без изменений:</p>
+<pre class="code" data-title="На своём компьютере">
+const storage = window.localStorage;
+</pre>
+        <p>Хотите попробовать настоящий прямо сейчас? Откройте любой сайт (хоть этот), нажмите <b>F12</b> → вкладка <b>Console</b> и введите <code>localStorage.setItem("test", "привет")</code>, затем <code>localStorage.getItem("test")</code>. Увидеть записи можно на вкладке <b>Application</b> (в Firefox — <b>Storage</b>) → <b>Local Storage</b>. Там же их можно редактировать и удалять.</p>
+      </div>
+
+      <h3>Всё превращается в строку</h3>
+      <p>Это главная ловушка. Положили число — получили строку. Положили объект — получили текст <code>"[object Object]"</code>.</p>
+<pre class="code" data-run data-title="Ловушка: только строки">
+function createStorage() {
+  let data = {};
+  return {
+    getItem: (key) => (Object.hasOwn(data, key) ? data[key] : null),
+    setItem: (key, value) => { data[key] = String(value); },
+    removeItem: (key) => { delete data[key]; },
+    clear: () => { data = {}; },
+  };
+}
+const storage = createStorage();
+
+storage.setItem("visits", 5);
+const visits = storage.getItem("visits");
+console.log(typeof visits);   // → string, а не number
+console.log(visits + 1);      // → 51 — строки склеиваются!
+console.log(Number(visits) + 1); // → 6 — вот так правильно
+
+storage.setItem("user", { name: "Фарход" });
+console.log(storage.getItem("user")); // → [object Object] — данные потеряны
+</pre>
+      <p>Числа переводим обратно через <code>Number(...)</code>. А для объектов и массивов есть специальный инструмент — JSON. Он как раз и нужен, чтобы «упаковать» объект в строку и «распаковать» обратно. Ему посвящён следующий раздел.</p>
+
+      <h3>«Перезагрузка» в песочнице</h3>
+      <p>Вот как мы будем имитировать перезагрузку: функция <code>openSite</code> — это «открытие страницы». Каждый вызов начинает с нуля, но хранилище помнит прошлые визиты:</p>
+<pre class="code" data-run data-title="Счётчик визитов: каждый вызов — «новая загрузка»">
+function createStorage() {
+  let data = {};
+  return {
+    getItem: (key) => (Object.hasOwn(data, key) ? data[key] : null),
+    setItem: (key, value) => { data[key] = String(value); },
+    removeItem: (key) => { delete data[key]; },
+    clear: () => { data = {}; },
+  };
+}
+const storage = createStorage();
+
+function openSite() {
+  const saved = storage.getItem("visits");        // первый раз — null
+  const visits = saved === null ? 1 : Number(saved) + 1;
+  storage.setItem("visits", visits);
+  console.log(`Добро пожаловать! Это визит №${visits}`);
+}
+
+openSite(); // пользователь открыл сайт
+openSite(); // перезагрузил страницу
+openSite(); // открыл на следующий день
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Забыть, что при первом запуске <code>getItem</code> вернёт <code>null</code>. Если сразу сделать <code>Number(null) + 1</code>, получится <code>1</code> — случайно сработает, а вот <code>null.length</code> или <code>JSON.parse(...).items</code> уже упадут. Всегда думайте: «а что, если здесь пусто?».</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/localstorage" target="_blank" rel="noopener">learn.javascript.ru — LocalStorage, sessionStorage</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Window/localStorage" target="_blank" rel="noopener">MDN — Window.localStorage</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>В задачах ниже используйте готовую заглушку <code>storage</code> (она записана в первых строках — менять её не нужно).</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Записать и прочитать</h4><span class="level easy">лёгкая</span></header>
+          <p>Сохраните в хранилище ключ <code>academy</code> со значением <code>Ilmhona</code>. Затем прочитайте и выведите его. Потом прочитайте и выведите ключ <code>teacher</code>, которого нет.</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+// ваш код
+
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Ilmhona
+null</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запись: <code>storage.setItem("academy", "Ilmhona")</code>. Чтение: <code>storage.getItem("academy")</code> — результат нужно вывести через <code>console.log</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для ключа, которого нет, <code>getItem</code> вернёт <code>null</code> — исключения не будет.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Предскажите: число или строка?</h4><span class="level easy">лёгкая</span></header>
+          <p>Сначала <b>предскажите</b> вывод и запустите. Вторая строка сейчас покажет <code>905</code>, а нужно <code>95</code>. Исправьте код: первая строка должна по-прежнему выводить <code>string</code>.</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+storage.setItem("score", 90);
+const score = storage.getItem("score");
+console.log(typeof score);
+console.log(score + 5);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>string
+95</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Из <code>getItem</code> всегда приходит строка. А <code>"90" + 5</code> — это склейка строк.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Переведите значение в число перед сложением: <code>Number(score) + 5</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Счётчик визитов</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>openSite()</code>: читает из хранилища ключ <code>visits</code> (если его нет — считаем, что визитов 0), увеличивает на 1, сохраняет и выводит <code>Визит №N</code>. После трёх «открытий» выведите, что лежит в хранилище.</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+// function openSite() { ... }
+
+openSite();
+openSite();
+openSite();
+console.log("В хранилище:", storage.getItem("visits"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Визит №1
+Визит №2
+Визит №3
+В хранилище: 3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Прочитайте <code>saved = storage.getItem("visits")</code>. Если <code>saved === null</code> — это первый визит, иначе <code>Number(saved)</code> плюс 1.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Запишите новое число обратно через <code>storage.setItem("visits", visits)</code> — заглушка сама превратит его в строку.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ЗАДАЧА 4.4</span><h4>Тёмная тема, которая помнит выбор</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>toggleTheme()</code>: читает ключ <code>theme</code> (если его нет — тема <code>light</code>), переключает на противоположную (<code>light</code> ↔ <code>dark</code>), сохраняет и выводит новую тему. В конце удалите ключ и убедитесь, что чтение даёт <code>null</code>.</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+// function toggleTheme() { ... }
+
+toggleTheme();
+toggleTheme();
+toggleTheme();
+storage.removeItem("theme");
+console.log(storage.getItem("theme"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>dark
+light
+dark
+null</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Текущая тема: <code>storage.getItem("theme") || "light"</code> — если пришёл <code>null</code>, возьмётся <code>"light"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Новая тема: <code>current === "light" ? "dark" : "light"</code>. Сохраните её и выведите.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 05 -->
+    <section class="topic" id="json">
+      <h2 data-toc="JSON и состояние"><span class="num">05</span> JSON: упаковываем состояние в строку</h2>
+
+      <p>С JSON вы познакомились на уроке 7. Здесь он решает конкретную задачу: <code>localStorage</code> принимает только строки, а наше состояние — объект с массивами. Поэтому перед записью мы <b>упаковываем</b> объект в строку (<code>JSON.stringify</code>), а после чтения — <b>распаковываем</b> обратно (<code>JSON.parse</code>).</p>
+
+      <figure class="diagram">
+        <div class="loop-flow">
+          <div class="step s"><b>state</b><code>{ todos: [...] }</code></div>
+          <span class="arrow">stringify →</span>
+          <div class="step d"><b>строка</b><code>'{"todos":[...]}'</code></div>
+          <span class="arrow">setItem →</span>
+          <div class="step r"><b>localStorage</b><code>ключ → строка</code></div>
+        </div>
+        <figcaption>Сохранение: объект → строка JSON → хранилище. Чтение идёт в обратную сторону: getItem → parse → объект.</figcaption>
+      </figure>
+
+<pre class="code" data-run data-title="Туда и обратно">
+const state = {
+  filter: "all",
+  todos: [{ id: 1, text: "Купить нон", done: false }],
+};
+
+const raw = JSON.stringify(state);    // объект → строка
+console.log(raw);
+console.log(typeof raw);              // → string
+
+const restored = JSON.parse(raw);     // строка → объект
+console.log(restored.todos[0].text);  // → Купить нон
+console.log(restored === state);      // → false — это новая копия, а не тот же объект
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Переезд. Диван в машину целиком не поместится, поэтому его разбирают, пакуют в коробки и везут. На новой квартире собирают обратно по инструкции. <code>stringify</code> — «разобрать и упаковать», <code>parse</code> — «собрать». Диван тот же, но это уже новый собранный экземпляр, а не тот самый.</p>
+      </div>
+
+      <h3>Пара функций saveState / loadState</h3>
+      <p>Чтобы не писать <code>JSON.stringify</code> и <code>setItem</code> в десяти местах, прячем их в две функции. Всё приложение обращается к хранилищу только через них:</p>
+<pre class="code" data-title="Шаблон: сохранить и прочитать состояние">
+const KEY = "todo-app:v1";   // ключ: имя приложения + версия формата
+
+function saveState(state) {
+  storage.setItem(KEY, JSON.stringify(state));
+}
+
+function loadState() {
+  const raw = storage.getItem(KEY);
+  return raw === null ? null : JSON.parse(raw);
+}
+</pre>
+      <p>Ключ с префиксом <code>todo-app:</code> защищает от конфликта с другими приложениями на том же сайте, а <code>:v1</code> пригодится, когда вы поменяете формат состояния: новая версия сможет читать новый ключ и не споткнётся о старые данные.</p>
+
+      <h3>Что не переживёт упаковку</h3>
+      <p>JSON — это только текст с простыми значениями. Не всё, что есть в объекте, можно в него превратить:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что в объекте</th><th>Что получится после stringify → parse</th></tr></thead>
+          <tbody>
+            <tr><td>Строки, числа, <code>true</code>/<code>false</code>, <code>null</code>, массивы, объекты</td><td>Без изменений</td></tr>
+            <tr><td><code>undefined</code></td><td>Поле пропадает</td></tr>
+            <tr><td>Функции и методы</td><td>Поле пропадает</td></tr>
+            <tr><td>Дата <code>new Date()</code></td><td>Становится <b>строкой</b> (ISO-формат), а не датой</td></tr>
+            <tr><td><code>NaN</code>, <code>Infinity</code></td><td>Становятся <code>null</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+<pre class="code" data-run data-title="Что потерялось по дороге">
+const task = {
+  title: "Сдать проект",
+  deadline: new Date(0),    // дата → строка
+  note: undefined,          // пропадёт
+  remind() { console.log("!"); }, // пропадёт
+};
+
+const copy = JSON.parse(JSON.stringify(task));
+console.log(JSON.stringify(copy));
+console.log(typeof copy.deadline);  // → string
+console.log(typeof copy.remind);    // → undefined
+</pre>
+      <p><b>Вывод:</b> в состоянии храните «простые» данные — строки, числа, булевы значения, массивы и объекты. Даты — как числа (<code>Date.now()</code>) или строки. Функции в состояние не кладут вообще: функции — это действия, они живут в коде.</p>
+
+      <h3>Ошибки JSON</h3>
+      <p>Правила формата строгие: ключи и строки только в <b>двойных</b> кавычках, без запятой после последнего элемента, без комментариев. Нарушили — <code>JSON.parse</code> бросит исключение <code>SyntaxError</code>, и приложение упадёт. Мы научимся этому противостоять в следующем разделе.</p>
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+const raw = "{'text': 'нон'}";       // одинарные кавычки — это не JSON
+const data = JSON.parse(raw);        // ✖ SyntaxError
+console.log(data);
+</pre>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>Чтобы быстро «разглядеть» большое состояние в консоли, вызывайте <code>JSON.stringify(state, null, 2)</code> — вывод будет с отступами, по две пробела на уровень. Для сохранения в <code>localStorage</code> отступы не нужны.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/json" target="_blank" rel="noopener">learn.javascript.ru — Формат JSON, метод toJSON</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/JSON" target="_blank" rel="noopener">MDN — JSON</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Упаковываем, распаковываем и ищем, что теряется по дороге.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Упаковать настройки</h4><span class="level easy">лёгкая</span></header>
+          <p>Превратите объект настроек в строку JSON. Выведите саму строку, а затем её тип.</p>
+<pre class="code" data-run>
+const settings = {
+  theme: "dark",
+  fontSize: 16,
+  favorites: ["курутоб", "шакароб"],
+};
+
+// ваш код: получите строку и выведите её и её тип
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"theme":"dark","fontSize":16,"favorites":["курутоб","шакароб"]}
+string</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужный метод — <code>JSON.stringify(settings)</code>. Результат сохраните в переменную.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Тип выводится так: <code>console.log(typeof raw)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Распаковать данные</h4><span class="level easy">лёгкая</span></header>
+          <p>Из хранилища пришла строка. Распакуйте её и выведите: имя, количество тегов и тип поля <code>age</code>.</p>
+<pre class="code" data-run>
+const raw = '{"name":"Фарход","age":21,"tags":["js","css","html"]}';
+
+// ваш код
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Фарход
+3
+number</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>const data = JSON.parse(raw);</code> — после этого <code>data</code> обычный объект.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>data.name</code>, <code>data.tags.length</code> и <code>typeof data.age</code> — три вызова <code>console.log</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Предскажите: что потеряется</h4><span class="level mid">средняя</span></header>
+          <p>Сначала <b>на бумаге</b> предскажите, что выведут четыре строки. Запустите и сверьтесь. Затем добавьте пятую строку: восстановите дату из строки через <code>new Date(copy.deadline)</code> и выведите её год через <code>getUTCFullYear()</code>.</p>
+<pre class="code" data-run>
+const task = {
+  title: "Сдать проект",
+  done: false,
+  deadline: new Date(0),
+  note: undefined,
+  remind() {
+    console.log("!");
+  },
+};
+
+const copy = JSON.parse(JSON.stringify(task));
+console.log(JSON.stringify(copy));
+console.log(typeof copy.deadline);
+console.log("note" in copy);
+console.log(typeof copy.remind);
+// пятая строка — ваша
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"title":"Сдать проект","done":false,"deadline":"1970-01-01T00:00:00.000Z"}
+string
+false
+undefined
+1970</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Вспомните таблицу выше: дата превращается в строку, а <code>undefined</code> и функции пропадают.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>console.log(new Date(copy.deadline).getUTCFullYear());</code> — новая дата собирается из строки.</p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>saveState и loadState</h4><span class="level mid">средняя</span></header>
+          <p>Напишите пару <code>saveState(state)</code> и <code>loadState()</code> с ключом <code>todo-app:v1</code>. Проверка: сохраните состояние, «сломайте» его в памяти и убедитесь, что <code>loadState()</code> вернул сохранённый вариант.</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+const KEY = "todo-app:v1";
+
+// function saveState(state) { ... }
+// function loadState() { ... }
+
+let state = {
+  todos: [
+    { id: 1, text: "Нон", done: true },
+    { id: 2, text: "Чой", done: false },
+  ],
+};
+
+saveState(state);
+state = { todos: [] }; // «перезагрузка»: в памяти всё потеряно
+
+const restored = loadState();
+console.log(restored.todos.length);
+console.log(restored.todos[0].text);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>2
+Нон</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>saveState</code> — одна строка: <code>storage.setItem(KEY, JSON.stringify(state))</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>loadState</code>: <code>return JSON.parse(storage.getItem(KEY));</code> — для этой задачи данные уже есть, пустой случай разберём в следующем разделе.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 06 -->
+    <section class="topic" id="empty-data">
+      <h2 data-toc="Пустые и битые данные"><span class="num">06</span> Пустые, битые и устаревшие данные</h2>
+
+      <p>Код, который работает «когда всё хорошо», — это половина дела. Вторая половина — что произойдёт, когда данных нет, они повреждены или были записаны старой версией приложения. С <code>localStorage</code> такое случается постоянно:</p>
+      <ul>
+        <li><b>Первый запуск.</b> Пользователь пришёл впервые — в хранилище пусто, <code>getItem</code> вернёт <code>null</code>.</li>
+        <li><b>Мусор.</b> Кто-то поправил запись в DevTools, запись оборвалась, другое приложение записало под тем же ключом что-то своё.</li>
+        <li><b>Устаревший формат.</b> Вчера в состоянии не было поля <code>filter</code>, сегодня вы его добавили, а в браузере пользователя лежит вчерашний снимок.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Склад в Илмхоне перед началом занятий. Администратор открывает шкаф за маркерами: а вдруг шкаф пуст (первый день), маркеры высохли (битые данные) или вместо них лежат стикеры от прошлого семестра (старый формат)? Хороший администратор не паникует: у него есть запасной комплект. Запасной комплект в коде — это <b>состояние по умолчанию</b>.</p>
+      </div>
+
+      <h3>Пустое хранилище</h3>
+      <p>Если ключа нет, <code>getItem</code> возвращает <code>null</code>. Проверьте это явно и верните состояние по умолчанию:</p>
+<pre class="code" data-run data-title="Первый запуск: null → состояние по умолчанию">
+function createStorage() {
+  let data = {};
+  return {
+    getItem: (key) => (Object.hasOwn(data, key) ? data[key] : null),
+    setItem: (key, value) => { data[key] = String(value); },
+    removeItem: (key) => { delete data[key]; },
+    clear: () => { data = {}; },
+  };
+}
+const storage = createStorage();
+
+const KEY = "todo-app:v1";
+const DEFAULT_STATE = { nextId: 1, todos: [] };
+
+function loadState() {
+  const raw = storage.getItem(KEY);
+  if (raw === null) return { ...DEFAULT_STATE, todos: [] }; // первый запуск
+  return JSON.parse(raw);
+}
+
+console.log(JSON.stringify(loadState())); // хранилище пустое
+</pre>
+      <p>Обратите внимание на <code>{ ...DEFAULT_STATE, todos: [] }</code>: мы возвращаем <b>копию</b> по умолчанию, а не сам объект. Иначе все изменения попадут в «запасной комплект», и при следующем сбросе он будет уже не пустым.</p>
+
+      <h3>Битый JSON: try / catch</h3>
+      <p>Если в хранилище лежит строка, которая не является корректным JSON, <code>JSON.parse</code> бросает исключение. Его перехватывают через <code>try / catch</code> (вы уже видели это в уроке 7) и возвращаются к состоянию по умолчанию:</p>
+<pre class="code" data-run data-title="try / catch вокруг JSON.parse">
+function safeParse(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.log("Данные повреждены:", error.name);
+    return null;
+  }
+}
+
+console.log(safeParse('{"ok":true}'));  // → { ok: true }
+console.log(safeParse("{oops"));        // → Данные повреждены: SyntaxError, потом null
+</pre>
+
+      <h3>Неверная форма: проверяем, что внутри</h3>
+      <p>Строка может быть <b>корректным JSON</b>, но совсем не тем, что мы ждали: число <code>42</code>, строка, <code>null</code>, объект вместо массива. Поэтому после <code>parse</code> проверяем форму данных:</p>
+<pre class="code" data-run data-title="Проверка формы данных">
+function isValidTodos(value) {
+  return Array.isArray(value);
+}
+
+console.log(isValidTodos([]));            // → true
+console.log(isValidTodos({ a: 1 }));      // → false — объект, а не массив
+console.log(isValidTodos(JSON.parse("42"))); // → false — число
+console.log(isValidTodos(JSON.parse("null"))); // → false
+</pre>
+
+      <div class="callout warn">
+        <b>Любопытная ловушка</b>
+        <p><code>JSON.parse(null)</code> не падает, а возвращает <code>null</code> — потому что <code>null</code> сначала превращается в строку <code>"null"</code>, а это корректный JSON. В итоге <code>JSON.parse(storage.getItem(key))</code> при пустом хранилище «работает», но возвращает <code>null</code>, и уже следующая строка <code>state.todos</code> падает с <code>TypeError</code>. Поэтому проверка <code>raw === null</code> нужна всегда.</p>
+      </div>
+
+      <h3>Состояние устарело: подмешиваем значения по умолчанию</h3>
+      <p>Когда в состоянии появляются новые поля, старые снимки их не содержат. Решение — начать с состояния по умолчанию и «наложить» поверх него то, что нашли в хранилище:</p>
+<pre class="code" data-run data-title="Слияние: старые данные + новые поля">
+const DEFAULT_STATE = { filter: "all", theme: "light", todos: [] };
+
+// вчерашний снимок: полей filter и theme ещё не было
+const saved = { todos: [{ id: 1, text: "Нон", done: false }] };
+
+const state = { ...DEFAULT_STATE, ...saved };
+console.log(JSON.stringify(state));
+// → поля filter и theme взяты по умолчанию, todos — из сохранённого
+</pre>
+
+      <h3>Всё вместе: надёжный loadState</h3>
+      <ol class="steps">
+        <li><b>Достали строку</b> через <code>getItem</code>. Если <code>null</code> — вернули состояние по умолчанию.</li>
+        <li><b>Распаковали</b> внутри <code>try / catch</code>. Ошибка — вернули состояние по умолчанию.</li>
+        <li><b>Проверили форму:</b> это вообще объект (а не число, строка, <code>null</code>, массив)? Нет — состояние по умолчанию.</li>
+        <li><b>Подмешали</b> значения по умолчанию для недостающих полей и проверили важные поля: например, <code>todos</code> обязан быть массивом.</li>
+      </ol>
+<pre class="code" data-title="Шаблон надёжной загрузки">
+function loadState() {
+  const raw = storage.getItem(KEY);
+  if (raw === null) return createDefaultState();     // 1. пусто
+
+  let saved;
+  try {
+    saved = JSON.parse(raw);                         // 2. битый JSON
+  } catch {
+    return createDefaultState();
+  }
+
+  if (typeof saved !== "object" || saved === null || Array.isArray(saved)) {
+    return createDefaultState();                     // 3. это не объект состояния
+  }
+
+  const state = { ...createDefaultState(), ...saved }; // 4. добавили недостающее
+  if (!Array.isArray(state.todos)) state.todos = [];   //    и починили важное поле
+  return state;
+}
+</pre>
+      <p>Выглядит громоздко, но написать это нужно <b>один раз</b>. Зато приложение не упадёт, что бы ни лежало в хранилище. Эту функцию вы возьмёте в свой проект.</p>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/try-catch" target="_blank" rel="noopener">learn.javascript.ru — Обработка ошибок, try…catch</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray" target="_blank" rel="noopener">MDN — Array.isArray()</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Учимся не падать. Заглушка <code>storage</code> уже включена в каждую задачу.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Первый запуск</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите <code>loadTodos()</code>: возвращает массив задач из ключа <code>todos</code>, а если ключа нет — пустой массив. Функция <code>saveTodos</code> уже готова.</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+function saveTodos(todos) {
+  storage.setItem("todos", JSON.stringify(todos));
+}
+
+// function loadTodos() { ... }
+
+console.log(loadTodos().length); // первый запуск
+saveTodos(["Нон", "Чой"]);
+console.log(loadTodos().length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>0
+2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала прочитайте <code>raw = storage.getItem("todos")</code> и проверьте, не <code>null</code> ли он.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>if (raw === null) return [];</code> и затем <code>return JSON.parse(raw);</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Повреждённые данные</h4><span class="level mid">средняя</span></header>
+          <p>В хранилище кто-то записал мусор. Дополните <code>loadTodos()</code>: если <code>JSON.parse</code> упал, выведите <code>Данные повреждены — начинаем с пустого списка</code> и верните пустой массив.</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+function loadTodos() {
+  const raw = storage.getItem("todos");
+  if (raw === null) return [];
+  // ваш код: обработайте повреждённые данные
+  return JSON.parse(raw);
+}
+
+storage.setItem("todos", "{oops");
+console.log(loadTodos().length);
+storage.setItem("todos", '["Нон","Чой"]');
+console.log(loadTodos().length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Данные повреждены — начинаем с пустого списка
+0
+2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Оберните только строку с <code>JSON.parse</code> в <code>try { ... } catch { ... }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>try</code> — <code>return JSON.parse(raw);</code>, в <code>catch</code> — <code>console.log(...)</code> с сообщением и <code>return [];</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Валидный JSON, но не то</h4><span class="level mid">средняя</span></header>
+          <p>Теперь в хранилище лежит корректный JSON, но не массив. Допишите проверку формы: <code>loadTodos()</code> должна возвращать только массив — во всех остальных случаях пустой массив.</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+function loadTodos() {
+  const raw = storage.getItem("todos");
+  if (raw === null) return [];
+  try {
+    const data = JSON.parse(raw);
+    // ваш код: проверьте, что data — массив
+    return data;
+  } catch {
+    return [];
+  }
+}
+
+for (const raw of ['{"a":1}', "42", '["Нон"]', "null"]) {
+  storage.setItem("todos", raw);
+  console.log(loadTodos().length);
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>0
+0
+1
+0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Для проверки «это массив?» есть готовая функция <code>Array.isArray(data)</code>. Обычная проверка <code>typeof</code> тут не поможет: массив тоже «объект».</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return Array.isArray(data) ? data : [];</code></p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ЗАДАЧА 6.4</span><h4>Надёжный loadState</h4><span class="level hard">сложная</span></header>
+          <p>Соберите полную функцию <code>loadState()</code> по шаблону из урока. Состояние по умолчанию: <code>{ filter: "all", theme: "light", todos: [] }</code>. Правила: пусто, битый JSON или не объект (число, строка, <code>null</code>, массив) — вернуть состояние по умолчанию. Иначе подмешать недостающие поля, а если <code>todos</code> оказался не массивом — заменить его на <code>[]</code> (остальные сохранённые поля, например <code>filter</code>, остаются).</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+const KEY = "todo-app:v1";
+const createDefaultState = () => ({ filter: "all", theme: "light", todos: [] });
+
+// function loadState() { ... }
+
+console.log(JSON.stringify(loadState()));                 // 1. пусто
+
+storage.setItem(KEY, '{"todos":[{"id":1,"text":"Нон","done":false}]}');
+console.log(JSON.stringify(loadState()));                 // 2. старый формат
+
+storage.setItem(KEY, "}{");
+console.log(JSON.stringify(loadState()));                 // 3. мусор
+
+storage.setItem(KEY, '{"filter":"done","todos":"oops"}');
+console.log(JSON.stringify(loadState()));                 // 4. todos неверного типа
+
+storage.setItem(KEY, "42");
+console.log(JSON.stringify(loadState()));                 // 5. не объект
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"filter":"all","theme":"light","todos":[]}
+{"filter":"all","theme":"light","todos":[{"id":1,"text":"Нон","done":false}]}
+{"filter":"all","theme":"light","todos":[]}
+{"filter":"done","theme":"light","todos":[]}
+{"filter":"all","theme":"light","todos":[]}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Идите по шагам шаблона: <code>null</code> → <code>try / catch</code> → проверка формы → слияние. Каждый «плохой» случай заканчивается <code>return createDefaultState()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Слияние: <code>const state = { ...createDefaultState(), ...saved };</code>. После него проверьте <code>Array.isArray(state.todos)</code> — если нет, поставьте <code>state.todos = [];</code>. Для случая «не объект» проверьте <code>typeof saved !== "object" || saved === null</code> сразу после <code>parse</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 07 -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: структура состояния"><span class="num">07</span> ИИ-блок: просим предложить структуру состояния</h2>
+
+      <p>Самый важный момент в любом приложении — <b>какие данные вы храните и в каком виде</b>. Ошибка здесь дорого обходится: переделывать структуру состояния, когда уже написаны <code>render</code>, действия и сохранение, — всё равно что перестраивать фундамент у готового дома. Поэтому именно сюда стоит привлечь ИИ — но как <b>второго мнения</b>, а не как автора.</p>
+
+      <div class="callout ai">
+        <b>Правила курса, которые здесь особенно важны</b>
+        <p>1) Сначала <b>15 минут сами</b>: нарисуйте свой <code>state</code> на бумаге или в коде. 2) Только потом промпт. 3) Не вставляйте в проект код, который не можете объяснить строчку за строчкой. 4) Решение принимаете вы: ИИ предлагает, вы сравниваете и выбираете.</p>
+      </div>
+
+      <h3>Порядок работы</h3>
+      <ol class="steps">
+        <li><b>Своя версия.</b> Опишите приложение одним предложением и набросайте объект <code>state</code>. Отметьте, что из него вы сохраните в <code>localStorage</code>.</li>
+        <li><b>Промпт по формуле:</b> контекст → задача → ограничения → формат ответа → проверка.</li>
+        <li><b>Сравнение.</b> Выпишите отличия в таблицу: поле — у меня — у ИИ — что решил и почему.</li>
+        <li><b>Проверка.</b> Для каждого спорного места спросите себя: «что будет, если здесь пусто или лежит мусор?».</li>
+      </ol>
+
+      <h3>Плохой и хороший промпт</h3>
+<div class="prompt bad-prompt">Придумай как хранить данные для моего приложения</div>
+      <p>Почему плохо: ИИ не знает ни приложения, ни ваш уровень, ни где хранятся данные. Он выдаст общий совет или сразу огромную архитектуру на фреймворке, которого у вас нет.</p>
+
+<div class="prompt good-prompt">Контекст: я новичок, пишу на чистом JavaScript без библиотек, учебный проект — трекер привычек. Пользователь может добавить привычку, отметить её выполненной сегодня, удалить, и переключать фильтр «все / не выполненные». Данные должны переживать перезагрузку страницы.
+Задача: предложи структуру объекта состояния и объясни, что из него класть в localStorage.
+Ограничения: только строки, числа, булевы значения, массивы и объекты (то, что переживёт JSON); не хранить то, что можно вычислить; у каждой привычки уникальный id.
+Формат ответа: сначала пример объекта state как JS-код; затем список полей — по строке «поле — зачем нужно»; затем что сохраняем, а что нет.
+Проверка: назови 2 случая, когда сохранённые данные могут оказаться некорректными, и как с ними справиться.</div>
+      <p>Это развёрнутый вариант шаблона из шпаргалки курса: <i>«Предложи структуру объекта состояния для приложения [описание]. Объясни, почему такие поля и что положить в localStorage»</i>. Мы добавили контекст, ограничения и проверку — и получили ответ, который можно сравнивать.</p>
+
+      <h3>Чек-лист: как проверять ответ ИИ</h3>
+      <ul>
+        <li><b>Нет ли производных данных.</b> Если в состоянии лежит <code>total</code>, <code>doneCount</code> или готовый HTML — их можно вычислить, значит, они лишние.</li>
+        <li><b>Уникальные id.</b> Откуда они берутся? Есть ли <code>nextId</code>, или ИИ предлагает <code>length + 1</code> (мы видели, чем это кончается)?</li>
+        <li><b>Простые типы.</b> Нет ли дат, функций, <code>undefined</code>, которые не переживут JSON?</li>
+        <li><b>Что сохранять.</b> Нужно ли сохранять временное — например, текст, который пользователь набирает в поле прямо сейчас? Часто нет: после перезагрузки он не нужен.</li>
+        <li><b>Версия формата.</b> Предложил ли ИИ ключ вида <code>app:v1</code>? Что произойдёт при смене структуры?</li>
+        <li><b>Пустые и битые данные.</b> ИИ часто «забывает» про первый запуск и повреждённые данные — добавьте это сами.</li>
+      </ul>
+
+      <h3>Таблица сравнения</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Вопрос</th><th>Моя версия</th><th>Версия ИИ</th><th>Решение и причина</th></tr></thead>
+          <tbody>
+            <tr><td>Как хранить привычки?</td><td><code>habits: []</code></td><td><code>habits: [{ id, title, doneDates }]</code></td><td>Беру массив объектов с <code>id</code> — нужен для удаления</td></tr>
+            <tr><td>Где счётчик id?</td><td>нет</td><td><code>nextId</code></td><td>Добавляю <code>nextId</code> — защита от дубликатов</td></tr>
+            <tr><td>Что сохранять?</td><td>всё состояние</td><td>всё, кроме текста в поле ввода</td><td>Согласен: поле ввода не сохраняю</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Если у вас совпало всё — отлично, вы мыслите так же, как опытный разработчик. Если расходится — это самое ценное место: выясните, у кого аргумент сильнее. Так ИИ учит, а не просто делает за вас.</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Сначала своя структура, потом проверка «ответа ИИ» с ошибками.</p>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Моя структура против структуры ИИ</h4><span class="level mid">средняя</span></header>
+          <p>Придумайте состояние для приложения «Расписание Илмхоны» (занятия с названием, днём недели и временем; можно отметить «посетил»; есть выбранный день для просмотра). Сначала запишите свою версию как объект <code>state</code> и выведите её через <code>JSON.stringify(state, null, 2)</code>. Затем отправьте ИИ промпт по образцу выше, заполните таблицу сравнения в тетради и отметьте, что вы поменяли и почему. Эта задача проверяется преподавателем — отметьте её сами, когда закончите.</p>
+<pre class="code" data-run>
+// 15 минут сами, без ИИ
+const state = {
+  // ваша структура
+};
+
+console.log(JSON.stringify(state, null, 2));
+</pre>
+          <details class="hint"><summary>Подсказка 1</summary><p>Подумайте: что здесь «исходные факты» (занятия, отметки, выбранный день), а что можно вычислить (сколько занятий посещено, список занятий на выбранный день)?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>У каждого занятия нужен <code>id</code>, а в корне состояния — <code>nextId</code>. День недели проще хранить строкой или числом 1–7, а не датой.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Проверьте «ответ ИИ»: три ошибки</h4><span class="level hard">сложная</span></header>
+          <p>ИИ написал сохранение списка привычек, но в коде <b>три ошибки</b> — все из чек-листа. Найдите их и исправьте так, чтобы вывод был таким, как ниже. Менять можно функции и состояние; три нижних блока вывода не трогайте.</p>
+<pre class="code" data-run>
+// заглушка localStorage — не меняйте
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+const habits = { nextId: 1, items: [] };
+
+function addHabit(title) {
+  habits.items = [...habits.items, { id: habits.items.length + 1, title }];
+}
+
+function save() {
+  storage.setItem("habits", habits);
+}
+
+function load() {
+  return JSON.parse(storage.getItem("habits"));
+}
+
+addHabit("Зарядка");
+addHabit("Чтение");
+addHabit("Вода");
+habits.items = habits.items.filter((h) =&gt; h.id !== 1); // удалили «Зарядку»
+addHabit("Сон");
+console.log(habits.items.map((h) =&gt; h.id).join(","));
+
+save();
+console.log(load().items.length);
+
+storage.clear(); // «чистый» браузер
+console.log(load().items.length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>2,3,4
+3
+0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запускайте после каждой правки и читайте ошибку. Первая проблема видна по строке с <code>id</code> (повторы!), вторая — по тому, что именно записывается в хранилище, третья — по тому, что вернёт <code>load()</code> при пустом хранилище.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>1) Берите <code>id</code> из <code>habits.nextId</code> и увеличивайте его. 2) Перед записью — <code>JSON.stringify(habits)</code>. 3) В <code>load</code> при <code>null</code> верните <code>{ nextId: 1, items: [] }</code> вместо <code>JSON.parse(null)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 08 -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">08</span> Практика на уроке: список дел, который помнит всё</h2>
+
+      <p>Собираем всё вместе: список дел с состоянием, рендером, действиями и сохранением. Делаем в три этапа, и каждый заканчивается проверкой в консоли. Сверху над кодом — вкладки <b>index.html</b>, <b>style.css</b>, <b>script.js</b>. Решаем в <b>script.js</b>: ищите комментарии <code>TODO</code>.</p>
+
+      <figure class="diagram">
+        <div class="loop-flow">
+          <div class="step d"><b>Этап 1</b><code>состояние + render + действия</code></div>
+          <span class="arrow">→</span>
+          <div class="step s"><b>Этап 2</b><code>saveState / loadState, «перезагрузка»</code></div>
+          <span class="arrow">→</span>
+          <div class="step r"><b>Этап 3</b><code>битые данные + удаление</code></div>
+        </div>
+        <figcaption>Каждый этап работает сам по себе. Не переходите к следующему, пока не пройдена проверка.</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Про «перезагрузку» в песочнице</b>
+        <p>Настоящую перезагрузку страницы здесь не сделать: она сотрёт и заглушку <code>storage</code>. Поэтому нижние строки скрипта имитируют её сами: очищают экран, забывают переменную <code>state</code> и снова вызывают <code>boot()</code>. Выжить после этого может только то, что лежит в <code>storage</code> — как и в настоящем браузере. Автопроверку внизу трогать не нужно.</p>
+      </div>
+
+      <h3>Этап 1. Состояние, render и действия</h3>
+      <p>Сначала никакого сохранения: одно состояние, одна функция <code>render</code>, действия <code>addTodo</code> и <code>toggleTodo</code> и два обработчика. Форма добавляет задачу, клик по задаче переключает «сделано» (делегирование из урока 9).</p>
+
+      <div class="practice">
+        <h3>Практика: этап 1</h3>
+        <article class="task" id="t8-1">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Этап 1: список дел из состояния</h4><span class="level mid">средняя</span></header>
+        <p>Допишите всё, что помечено <code>TODO</code>: счётчик «Осталось: N» в <code>render</code>, действия <code>addTodo</code> и <code>toggleTodo</code>, обработчики формы и списка. Пустой текст (в том числе из одних пробелов) добавляться не должен.</p>
+        <div class="playground" data-mode="dom" data-title="Список дел, этап 1">
+<pre class="code" data-lang="html">
+&lt;form id="form"&gt;
+  &lt;input id="text" placeholder="Что нужно сделать?" autocomplete="off"&gt;
+  &lt;button&gt;Добавить&lt;/button&gt;
+&lt;/form&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+&lt;p id="counter"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+form { display: flex; gap: 8px; margin-bottom: 12px; }
+input { flex: 1; padding: 8px 10px; font-size: 16px; }
+button { padding: 8px 14px; font-size: 15px; cursor: pointer; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; cursor: pointer; }
+li.done span { text-decoration: line-through; color: #9ca3af; }
+li .remove { padding: 2px 8px; }
+#counter { color: #6b7280; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#form");
+const input = document.querySelector("#text");
+const list = document.querySelector("#list");
+const counter = document.querySelector("#counter");
+
+// 1. Состояние — единственный источник правды
+const state = { nextId: 1, todos: [] };
+
+// 2. Рендер: рисует экран по состоянию
+function render() {
+  list.textContent = "";
+  state.todos.forEach((todo) =&gt; {
+    const li = document.createElement("li");
+    li.dataset.id = todo.id;
+    li.className = todo.done ? "done" : "";
+    li.textContent = todo.text;
+    list.append(li);
+  });
+  // TODO: записать в counter текст «Осталось: N», где N — число невыполненных задач
+}
+
+// 3. Действия
+function addTodo(text) {
+  // TODO: добавить { id: state.nextId, text, done: false } в state.todos,
+  //       увеличить state.nextId и вызвать render()
+}
+
+function toggleTodo(id) {
+  // TODO: у задачи с этим id перевернуть done и вызвать render()
+}
+
+// 4. События
+form.addEventListener("submit", (event) =&gt; {
+  // TODO: отменить отправку формы, взять input.value без пробелов по краям,
+  //       если текст не пустой — вызвать addTodo, затем очистить поле
+});
+
+list.addEventListener("click", (event) =&gt; {
+  // TODO: найти ближайший li (event.target.closest("li")); если нашли —
+  //       вызвать toggleTodo(Number(li.dataset.id))
+});
+
+// ---- автопроверка: не меняйте ----
+function submitText(text) {
+  input.value = text;
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+}
+render();
+submitText("Купить нон");
+submitText("   ");
+submitText("Выучить localStorage");
+list.firstElementChild.click();
+console.log(state.todos.length, list.children.length);
+console.log(list.firstElementChild.className, counter.textContent);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>2 2
+done Осталось: 1</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Счётчик: <code>const left = state.todos.filter((t) =&gt; !t.done).length;</code>, затем <code>counter.textContent = "Осталось: " + left;</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Действия — как в разделе 03: <code>addTodo</code> делает <code>state.todos = [...state.todos, {...}]</code> и увеличивает <code>nextId</code>; <code>toggleTodo</code> использует <code>map</code>; обе заканчиваются <code>render()</code>. В обработчике формы не забудьте <code>event.preventDefault()</code>.</p></details>
+      </article>
+      </div>
+
+      <h3>Этап 2. Сохраняем и восстанавливаем</h3>
+      <p>Теперь добавим память. Нужны три вещи: две функции <code>saveState</code> и <code>loadState</code>, вызов <code>saveState()</code> в конце каждого действия и функция <code>boot()</code> — «запуск страницы»: загрузить состояние и нарисовать экран. В настоящем проекте последней строкой скрипта стоит просто <code>boot();</code>.</p>
+
+      <div class="practice">
+        <h3>Практика: этап 2</h3>
+        <article class="task" id="t8-2">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Этап 2: список переживает перезагрузку</h4><span class="level mid">средняя</span></header>
+        <p>Реализуйте <code>saveState</code> (запись <code>JSON.stringify(state)</code> в <code>storage</code> по ключу <code>KEY</code>) и <code>loadState</code> (если в хранилище пусто — вернуть <code>{ nextId: 1, todos: [] }</code>, иначе распаковать). Вызовите <code>saveState()</code> в <code>addTodo</code> и <code>toggleTodo</code> — перед <code>render()</code>. Остальной код этапа 1 уже готов.</p>
+        <div class="playground" data-mode="dom" data-title="Список дел, этап 2">
+<pre class="code" data-lang="html">
+&lt;form id="form"&gt;
+  &lt;input id="text" placeholder="Что нужно сделать?" autocomplete="off"&gt;
+  &lt;button&gt;Добавить&lt;/button&gt;
+&lt;/form&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+&lt;p id="counter"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+form { display: flex; gap: 8px; margin-bottom: 12px; }
+input { flex: 1; padding: 8px 10px; font-size: 16px; }
+button { padding: 8px 14px; font-size: 15px; cursor: pointer; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; cursor: pointer; }
+li.done span { text-decoration: line-through; color: #9ca3af; }
+li .remove { padding: 2px 8px; }
+#counter { color: #6b7280; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#form");
+const input = document.querySelector("#text");
+const list = document.querySelector("#list");
+const counter = document.querySelector("#counter");
+
+// заглушка localStorage: в песочнице настоящий недоступен.
+// На своём компьютере замените эти строки на: const storage = window.localStorage;
+const storage = (() =&gt; { let d = {}; return {
+  getItem: (k) =&gt; (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) =&gt; { d[k] = String(v); },
+  removeItem: (k) =&gt; { delete d[k]; }, clear: () =&gt; { d = {}; } }; })();
+
+const KEY = "todo-app:v1";
+let state; // заполняется в boot()
+
+function saveState() {
+  // TODO: записать JSON.stringify(state) в storage по ключу KEY
+}
+
+function loadState() {
+  // TODO: прочитать из storage. Пусто — вернуть { nextId: 1, todos: [] }.
+  //       Иначе — вернуть JSON.parse(...) прочитанной строки
+}
+
+function render() {
+  list.textContent = "";
+  state.todos.forEach((todo) =&gt; {
+    const li = document.createElement("li");
+    li.dataset.id = todo.id;
+    li.className = todo.done ? "done" : "";
+    li.textContent = todo.text;
+    list.append(li);
+  });
+  const left = state.todos.filter((t) =&gt; !t.done).length;
+  counter.textContent = "Осталось: " + left;
+}
+
+function addTodo(text) {
+  state.todos = [...state.todos, { id: state.nextId, text, done: false }];
+  state.nextId = state.nextId + 1;
+  // TODO: сохранить состояние
+  render();
+}
+
+function toggleTodo(id) {
+  state.todos = state.todos.map((t) =&gt; (t.id === id ? { ...t, done: !t.done } : t));
+  // TODO: сохранить состояние
+  render();
+}
+
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  const text = input.value.trim();
+  if (text) addTodo(text);
+  input.value = "";
+});
+
+list.addEventListener("click", (event) =&gt; {
+  const li = event.target.closest("li");
+  if (li) toggleTodo(Number(li.dataset.id));
+});
+
+// «Запуск страницы»: загрузить состояние и нарисовать экран
+function boot() {
+  state = loadState();
+  render();
+}
+
+// ---- автопроверка: не меняйте ----
+function submitText(text) {
+  input.value = text;
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+}
+boot();
+submitText("Купить нон");
+submitText("Выучить localStorage");
+list.firstElementChild.click();
+console.log("до перезагрузки:", list.children.length, counter.textContent);
+
+// «перезагрузка»: экран очищен, переменные забыты — остался только storage
+list.textContent = "";
+counter.textContent = "";
+state = null;
+boot();
+console.log("после:", list.children.length, list.firstElementChild.className, counter.textContent);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>до перезагрузки: 2 Осталось: 1
+после: 2 done Осталось: 1</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p><code>saveState</code> — одна строка с <code>storage.setItem</code>. <code>loadState</code> — вспомните шаблон из раздела 05, только вместо <code>null</code> возвращается начальное состояние.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const raw = storage.getItem(KEY); return raw === null ? { nextId: 1, todos: [] } : JSON.parse(raw);</code>. В действиях: <code>saveState();</code> перед <code>render();</code>.</p></details>
+      </article>
+      </div>
+
+      <h3>Этап 3. Защита от мусора и удаление</h3>
+      <p>Приложение, которое падает от одной сломанной записи, — не приложение. Сделаем <code>loadState</code> надёжным (шаблон из раздела 06) и добавим кнопку «×» для удаления задачи. Кнопка находится внутри <code>li</code>, а клик по <code>li</code> уже переключает задачу — поэтому в общем обработчике сначала проверяем, куда именно нажали.</p>
+
+      <div class="practice">
+        <h3>Практика: этап 3</h3>
+        <article class="task" id="t8-3">
+        <header><span class="task-num">ЗАДАЧА 8.3</span><h4>Этап 3: надёжная загрузка и удаление</h4><span class="level hard">сложная</span></header>
+        <p>1) В <code>loadState</code> обработайте: пустое хранилище, битый JSON, и неверную форму — состояние должно быть объектом, у которого <code>todos</code> — массив, а <code>nextId</code> — число; иначе возвращайте состояние по умолчанию. 2) Допишите <code>removeTodo(id)</code> через <code>filter</code> и обработку кнопки «×» в клике по списку — нажатие на «×» должно удалять задачу, а не переключать её.</p>
+        <div class="playground" data-mode="dom" data-title="Список дел, этап 3">
+<pre class="code" data-lang="html">
+&lt;form id="form"&gt;
+  &lt;input id="text" placeholder="Что нужно сделать?" autocomplete="off"&gt;
+  &lt;button&gt;Добавить&lt;/button&gt;
+&lt;/form&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+&lt;p id="counter"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+form { display: flex; gap: 8px; margin-bottom: 12px; }
+input { flex: 1; padding: 8px 10px; font-size: 16px; }
+button { padding: 8px 14px; font-size: 15px; cursor: pointer; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; cursor: pointer; }
+li.done span { text-decoration: line-through; color: #9ca3af; }
+li .remove { padding: 2px 8px; }
+#counter { color: #6b7280; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#form");
+const input = document.querySelector("#text");
+const list = document.querySelector("#list");
+const counter = document.querySelector("#counter");
+
+// заглушка localStorage: на своём компьютере — const storage = window.localStorage;
+const storage = (() =&gt; { let d = {}; return {
+  getItem: (k) =&gt; (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) =&gt; { d[k] = String(v); },
+  removeItem: (k) =&gt; { delete d[k]; }, clear: () =&gt; { d = {}; } }; })();
+
+const KEY = "todo-app:v1";
+const createDefaultState = () =&gt; ({ nextId: 1, todos: [] });
+let state;
+
+function saveState() {
+  storage.setItem(KEY, JSON.stringify(state));
+}
+
+function loadState() {
+  // TODO: сейчас функция падает на мусоре. Сделайте по шаблону:
+  //  1) пусто (null) — createDefaultState()
+  //  2) JSON.parse в try / catch — при ошибке createDefaultState()
+  //  3) не объект, todos не массив или nextId не число — createDefaultState()
+  return JSON.parse(storage.getItem(KEY));
+}
+
+function render() {
+  list.textContent = "";
+  state.todos.forEach((todo) =&gt; {
+    const li = document.createElement("li");
+    li.dataset.id = todo.id;
+    li.className = todo.done ? "done" : "";
+    const text = document.createElement("span");
+    text.textContent = todo.text;
+    const remove = document.createElement("button");
+    remove.className = "remove";
+    remove.textContent = "×";
+    li.append(text, remove);
+    list.append(li);
+  });
+  const left = state.todos.filter((t) =&gt; !t.done).length;
+  counter.textContent = "Осталось: " + left;
+}
+
+function addTodo(text) {
+  state.todos = [...state.todos, { id: state.nextId, text, done: false }];
+  state.nextId = state.nextId + 1;
+  saveState();
+  render();
+}
+
+function toggleTodo(id) {
+  state.todos = state.todos.map((t) =&gt; (t.id === id ? { ...t, done: !t.done } : t));
+  saveState();
+  render();
+}
+
+function removeTodo(id) {
+  // TODO: убрать задачу с этим id (filter), сохранить состояние, вызвать render()
+}
+
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  const text = input.value.trim();
+  if (text) addTodo(text);
+  input.value = "";
+});
+
+list.addEventListener("click", (event) =&gt; {
+  const li = event.target.closest("li");
+  if (!li) return;
+  const id = Number(li.dataset.id);
+  // TODO: если нажали на кнопку «×» (event.target.matches(".remove")) — removeTodo(id),
+  //       иначе — toggleTodo(id)
+});
+
+function boot() {
+  state = loadState();
+  render();
+}
+
+// ---- автопроверка: не меняйте ----
+function submitText(text) {
+  input.value = text;
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+}
+storage.setItem(KEY, "{oops"); // в хранилище мусор
+boot();
+console.log("битые данные:", list.children.length);
+
+submitText("Нон");
+submitText("Чой");
+submitText("Зира");
+list.children[1].querySelector(".remove").click();
+console.log(state.todos.map((t) =&gt; t.text).join(", "), counter.textContent);
+
+list.textContent = "";
+state = null;
+boot();
+console.log("после перезагрузки:", list.children.length);
+
+storage.setItem(KEY, '{"todos":"oops"}'); // корректный JSON, но не то
+boot();
+console.log("неверная форма:", list.children.length);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>битые данные: 0
+Нон, Зира Осталось: 2
+после перезагрузки: 2
+неверная форма: 0</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Надёжная загрузка — это три <code>return createDefaultState()</code> в трёх разных случаях. Проверка формы: <code>typeof saved === "object" &amp;&amp; saved !== null &amp;&amp; Array.isArray(saved.todos) &amp;&amp; typeof saved.nextId === "number"</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Клик по списку: <code>if (event.target.matches(".remove")) removeTodo(id); else toggleTodo(id);</code>. Внутри <code>removeTodo</code> — <code>state.todos = state.todos.filter((t) =&gt; t.id !== id);</code>, потом <code>saveState()</code> и <code>render()</code>.</p></details>
+      </article>
+      </div>
+
+      <div class="callout tip">
+        <b>Что вы построили</b>
+        <p>Это скелет, на котором держатся почти все интерфейсы: <b>состояние → действия → render → сохранение</b>. Трекер задач и привычек из мини-проекта на уроке 12 — это тот же скелет с другими полями. Попробуйте добавить в него фильтр «все / активные / выполненные» (задача 2.4) и сохранить выбранный фильтр.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== HOMEWORK -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание: добавить сохранение в проект урока 9</h2>
+
+      <p>Возьмите свой проект с урока 9 (интерактивная страница с событиями и делегированием) и научите его <b>помнить данные</b>. Здесь вы работаете на своём компьютере — значит, используете <b>настоящий</b> <code>localStorage</code>: <code>const storage = window.localStorage;</code>.</p>
+
+      <h3>Что нужно сделать</h3>
+      <ul class="goals">
+        <li>В проекте одно состояние — объект <code>state</code>. Нигде нет данных, которые «живут» только в DOM.</li>
+        <li>Экран рисует функция <code>render()</code>. Обработчики событий вызывают действия, а те — <code>render()</code>.</li>
+        <li>Есть <code>saveState()</code> и <code>loadState()</code>; ключ с префиксом проекта и версией, например <code>myproject:v1</code>.</li>
+        <li>Состояние сохраняется после каждого действия и восстанавливается при открытии страницы: закрыли вкладку, открыли снова — всё на месте.</li>
+        <li><code>loadState()</code> переживает: пустое хранилище, битый JSON, неверную форму данных и отсутствующие новые поля.</li>
+        <li>Есть кнопка «Сбросить», которая очищает данные приложения (<code>removeItem</code> по вашему ключу) и возвращает начальное состояние.</li>
+        <li>В состоянии нет производных данных, функций и дат-объектов.</li>
+      </ul>
+
+      <h3>Как проверить свою работу</h3>
+      <ol class="steps">
+        <li>Добавьте несколько элементов, обновите страницу (<b>F5</b>) — всё на месте?</li>
+        <li>Откройте DevTools (<b>F12</b>) → <b>Application</b> → <b>Local Storage</b>. Найдите свой ключ, посмотрите, как выглядит значение.</li>
+        <li>Испортите значение вручную: удалите последнюю скобку. Обновите страницу — приложение должно запуститься с начальным состоянием, а не упасть с ошибкой в консоли.</li>
+        <li>Удалите ключ — страница должна открыться «как в первый раз».</li>
+        <li>Нажмите «Сбросить» — данные исчезли и из экрана, и из хранилища?</li>
+      </ol>
+
+      <div class="callout ai">
+        <b>ИИ в домашнем задании</b>
+        <p>Правило курса: 15 минут сами. Запишите свою структуру состояния в файл <code>NOTES.md</code>. Потом спросите ИИ по образцу из раздела 07 и добавьте в тот же файл таблицу «моё / ИИ / решение». В коде оставляйте только то, что можете объяснить построчно. Обязательно спросите: «назови 2 случая, когда сохранённые данные окажутся некорректными» — и проверьте их руками.</p>
+      </div>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Папку проекта (архив или ссылка) с работающим сохранением.</li>
+        <li>Файл <code>NOTES.md</code>: ваша структура состояния, ключ в <code>localStorage</code>, что сохраняется и что нет, таблица сравнения с ИИ.</li>
+        <li>Короткую запись экрана (до 30 секунд): добавили данные → обновили страницу → данные на месте → испортили значение → приложение не упало.</li>
+      </ul>
+
+      <h3>Как оценивается (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Критерий</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Одно состояние <code>state</code> и <code>render()</code>, без «правды в DOM»</td><td>2</td></tr>
+            <tr><td>Данные сохраняются и восстанавливаются после перезагрузки</td><td>3</td></tr>
+            <tr><td>Корректная работа при пустом и повреждённом хранилище</td><td>2</td></tr>
+            <tr><td>Чистая структура: простые типы, уникальные id, ключ с версией, кнопка сброса</td><td>1</td></tr>
+            <tr><td><code>NOTES.md</code> и сравнение с ИИ: решение объяснено своими словами</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>Если страница открыта как файл</b>
+        <p>В большинстве браузеров <code>localStorage</code> работает и для файлов <code>file://</code>, но у разных файлов могут быть общие или раздельные данные — это зависит от браузера. Надёжнее запускать проект через Live Server в VS Code: тогда у него обычный адрес вида <code>localhost:5500</code> и своё хранилище.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Состояние</b> — все изменяемые данные приложения в одном объекте <code>state</code>. Хранить только исходные факты; то, что можно посчитать (сумма, счётчик), считаем функцией.</li>
+        <li><b>render(state)</b> рисует экран целиком и только по состоянию: ничего не меняет, не читает данные из DOM, умеет рисовать пустой список.</li>
+        <li><b>Цикл:</b> событие → действие (<code>addTodo</code>, <code>toggleTodo</code>, <code>removeTodo</code>) → изменили <code>state</code> → <code>render()</code> → <code>saveState()</code>.</li>
+        <li><b>Массивы в состоянии:</b> добавить — <code>[...arr, item]</code>, изменить — <code>map</code>, удалить — <code>filter</code>. Присваиваем результат обратно в <code>state</code>. Id берём из <code>nextId</code>, а не из <code>length + 1</code>.</li>
+        <li><b>localStorage:</b> <code>setItem(k, v)</code>, <code>getItem(k)</code> (нет ключа — <code>null</code>), <code>removeItem(k)</code>, <code>clear()</code>. Хранит только строки, живёт после перезагрузки, около 5 МБ, свой для каждого сайта. Секреты не хранить.</li>
+        <li><b>В песочнице курса</b> настоящий <code>localStorage</code> недоступен — используем заглушку <code>storage</code> с тем же API. На своём компьютере: <code>const storage = window.localStorage;</code>. Проверить настоящий можно в DevTools → Application → Local Storage.</li>
+        <li><b>JSON:</b> <code>JSON.stringify(state)</code> перед записью, <code>JSON.parse(raw)</code> после чтения. Не переживают: <code>undefined</code>, функции, даты (станут строками).</li>
+        <li><b>Надёжный loadState:</b> <code>null</code> → состояние по умолчанию; <code>JSON.parse</code> в <code>try / catch</code>; проверка формы; <code>{ ...defaults, ...saved }</code> для новых полей. Ключ с префиксом и версией: <code>app:v1</code>.</li>
+        <li><b>ИИ:</b> сначала своя структура состояния (15 минут), потом промпт по формуле и сравнение в таблице. Проверять: нет ли производных данных, откуда id, что сохранять, что с пустыми и битыми данными.</li>
+      </ul>
+    </section>
