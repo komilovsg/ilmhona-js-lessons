@@ -1,0 +1,1743 @@
+<style>
+  /* дерево папок проекта и дерево компонентов */
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--muted, #6b7280); font-style: normal; font-weight: 400; }
+  /* схема «страница = вложенные компоненты» */
+  .comp-box { border: 2px solid var(--blue); border-radius: 14px; padding: 10px 14px 14px; margin-top: 10px; background: var(--paper); }
+  .comp-box > .comp-title { font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--blue); }
+  .comp-box .comp-box { border-color: var(--gold); }
+  .comp-box .comp-box > .comp-title { color: var(--gold); }
+  .comp-box .comp-box .comp-box { border-color: var(--accent); }
+  .comp-box .comp-box .comp-box > .comp-title { color: var(--accent); }
+  .comp-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .comp-row > .comp-box { flex: 1 1 150px; }
+  /* схема этапов */
+  .loop-flow { display: flex; align-items: stretch; flex-wrap: wrap; gap: 10px; }
+  .loop-flow .step { flex: 1 1 150px; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
+  .loop-flow .step b { display: block; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .loop-flow .step code { display: block; margin-top: 6px; background: none; padding: 0; white-space: normal; }
+  .loop-flow .step.s { border-color: var(--gold); }  .loop-flow .step.s b { color: var(--gold); }
+  .loop-flow .step.r { border-color: var(--accent); } .loop-flow .step.r b { color: var(--accent); }
+  .loop-flow .step.d { border-color: var(--blue); }  .loop-flow .step.d b { color: var(--blue); }
+  .loop-flow .arrow { align-self: center; font: 700 18px var(--mono); color: var(--ink-3); }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 22 · React Lite (бонус)</p>
+      <h1>React: зачем он нужен. Vite, JSX и первый компонент</h1>
+      <p class="lead">В уроке 11 вы написали <code>render(state)</code>, который заново рисует экран по данным. Это правильная идея, но кода вокруг неё много: найти элемент, создать, заполнить, вставить, не забыть обновить. React берёт эту работу на себя: вы описываете, <b>что должно быть на экране</b>, а как добраться до этого — решает он. Сегодня вы увидите, почему так делают большие сайты, создадите проект на Vite и соберёте страницу из компонентов.</p>
+      <ul class="goals">
+        <li>Назвать, чем ручной DOM мешает расти приложению, и сравнить один и тот же интерфейс на чистом JS и на React</li>
+        <li>Разбить страницу на компоненты и дать им правильные имена</li>
+        <li>Создать проект командой <code>npm create vite@latest -- --template react</code> и прочитать его структуру</li>
+        <li>Писать JSX и знать, чем он отличается от HTML: <code>className</code>, <code>htmlFor</code>, закрытые теги, один корень, <code>{…}</code>, <code>style={{…}}</code></li>
+        <li>Объявлять компоненты, экспортировать их и импортировать в <code>App.jsx</code></li>
+        <li>Попросить ИИ переписать знакомый JS-блок на React и разобрать ответ построчно</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Примеры на React открываются в <b>песочнице с превью</b>: вкладка <b>App.jsx</b> с кодом, под ней — готовая страница и консоль. Меняйте код и нажимайте <b>▶ Запустить</b> (или <b>Ctrl + Enter</b>). React подгружается из интернета, поэтому нужен доступ в сеть. В песочнице один файл — компоненты лежат рядом друг с другом; в настоящем проекте на Vite каждый будет в отдельном файле. Строка <code>setTimeout(() =&gt; console.log(…), 100)</code> внизу примеров — <b>служебная автопроверка</b>: она печатает в консоль HTML, который построил React, чтобы задачу можно было проверить. В задачах её не удаляйте; в обычном проекте она не нужна. Блоки с заголовком «Терминал» и именем файла — это команды и файлы для вашего компьютера, у них нет кнопки запуска.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="manual-dom">
+      <h2 data-toc="Пределы ручного DOM"><span class="num">01</span> Зачем React: где ручной DOM начинает мешать</h2>
+
+      <p>Всё, что вы делали с экраном до сих пор, — это <b>императивный</b> подход: вы пошагово командуете браузеру. «Найди этот элемент. Создай новый. Запиши в него текст. Вставь сюда». Для карточки с заголовком это выглядит так:</p>
+
+      <div class="playground" data-mode="dom" data-title="Карточка курса: чистый JS">
+<pre class="code" data-lang="html">
+&lt;div id="app"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.card { border: 2px solid #1f6feb; border-radius: 12px; padding: 12px 16px; max-width: 280px; }
+.card h2 { margin: 0 0 6px; }
+</pre>
+<pre class="code" data-lang="js">
+const app = document.querySelector("#app");
+
+const card = document.createElement("div");
+card.className = "card";
+
+const title = document.createElement("h2");
+title.textContent = "JavaScript с нуля";
+
+const info = document.createElement("p");
+info.textContent = "24 урока · 8 недель";
+
+const button = document.createElement("button");
+button.textContent = "Записаться";
+
+card.append(title, info, button);
+app.append(card);
+
+console.log(app.innerHTML);
+</pre>
+      </div>
+
+      <p>Тот же результат на React. Сравните: здесь нет ни одного <code>createElement</code>, ни одного <code>querySelector</code>. Вы пишете то, что хотите увидеть, — функция просто «возвращает» разметку.</p>
+
+      <div class="playground" data-mode="react" data-title="Карточка курса: React">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  return (
+    &lt;div className="card"&gt;
+      &lt;h2&gt;JavaScript с нуля&lt;/h2&gt;
+      &lt;p&gt;24 урока · 8 недель&lt;/p&gt;
+      &lt;button&gt;Записаться&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML), 100);
+</pre>
+<pre class="code" data-lang="css">
+.card { border: 2px solid #1f6feb; border-radius: 12px; padding: 12px 16px; max-width: 280px; }
+.card h2 { margin: 0 0 6px; }
+</pre>
+      </div>
+
+      <p>В консоли обеих песочниц — одна и та же разметка. Разница в том, <b>как</b> вы к ней пришли: в первом случае 12 строк команд, во втором — «картинка» того, что нужно.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Чойхона. Ручной DOM — это когда вы сами идёте на кухню и говорите повару: «Возьми казан. Налей масло. Положи лук. Через пять минут добавь морковь…» На каждый плов — вся инструкция заново. React — это когда вы говорите официанту: «Плов и чай на двоих». Что именно и в каком порядке делать на кухне — забота заведения. Вы описываете <b>результат</b> (так это называется — декларативный подход), а не шаги.</p>
+      </div>
+
+      <h3>Четыре боли ручного DOM</h3>
+      <dl class="terms">
+        <dt>1. Разметку не видно</dt><dd>Структура страницы спрятана за десятками <code>createElement</code> и <code>append</code>. Чтобы понять, что получится, нужно мысленно «выполнить» код.</dd>
+        <dt>2. Легко забыть обновить</dt><dd>Одни и те же данные показаны в нескольких местах. Поменяли в одном — в другом осталось старое, и экран врёт.</dd>
+        <dt>3. Нет «своих тегов»</dt><dd>Карточка курса нужна в десяти местах — приходится писать функции-фабрики и склеивать вручную. Нет единого способа сказать «вот мой блок, используй его как обычный тег».</dd>
+        <dt>4. Состояние и экран расходятся</dt><dd>В уроке 11 вы решили это функцией <code>render()</code>, которая перестраивает экран целиком. Работает, но при каждом изменении браузер пересоздаёт всё — и теряются фокус в поле ввода, прокрутка и выделение.</dd>
+      </dl>
+
+      <p>Посмотрите на вторую боль вживую. Цена курса показана в двух местах, а обновлена только в одном:</p>
+<pre class="code" data-run data-title="Экран врёт: забыли обновить второе место">
+document.body.innerHTML = `
+  &lt;p&gt;Курс: &lt;b id="price-top"&gt;500&lt;/b&gt; сомони&lt;/p&gt;
+  &lt;p&gt;Итого: &lt;b id="price-total"&gt;500&lt;/b&gt; сомони&lt;/p&gt;`;
+
+let price = 500;
+price = 450; // сделали скидку
+
+document.querySelector("#price-top").textContent = price;
+// про #price-total забыли
+
+console.log(document.querySelector("#price-top").textContent);
+console.log(document.querySelector("#price-total").textContent);
+</pre>
+      <p>Вверху 450, в «Итого» всё ещё 500. В маленькой странице это видно сразу, в большом приложении с сотней экранов — нет. React устроен так, что <b>экран всегда считается из данных</b>, и «забыть» обновить место просто нечем.</p>
+
+      <h3>Что такое React</h3>
+      <p><b>React</b> — библиотека для построения интерфейсов, её создала компания Meta (бывший Facebook), и сейчас она, пожалуй, самая популярная в мире для сайтов и приложений. Ключевая идея: интерфейс — это <b>функция от данных</b>. Данные поменялись — React сам сравнит «было» и «стало» и изменит в DOM только то, что нужно. Всё остальное (маршруты, серверный рендеринг) подключается отдельно: на следующем уровне курса вы встретите Next.js — это фреймворк на основе React.</p>
+
+      <div class="callout warn">
+        <b>React нужен не всегда</b>
+        <p>Лендинг из пяти блоков и пары кнопок прекрасно живёт на чистом HTML, CSS и JS — и загружается быстрее. React окупается там, где много интерактивных экранов, одни и те же блоки повторяются, а данные часто меняются: личные кабинеты, магазины, дашборды, чаты. Мы учим React не вместо JS, а <b>поверх</b> него: всё, что вы знаете про функции, массивы и объекты, пригодится на каждой строке.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Сначала прочитаем ручной DOM, потом починим экран, который «врёт», и наконец переведём код на JSX.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Предскажите: что построил код</h4><span class="level easy">лёгкая</span></header>
+          <p>Сначала предскажите три строки вывода, потом запустите. Обратите внимание, как много кода нужно ради одного списка из трёх пунктов.</p>
+<pre class="code" data-run>
+const list = document.createElement("ul");
+
+for (const dish of ["Оши палав", "Самбуса", "Курутоб"]) {
+  const li = document.createElement("li");
+  li.textContent = dish;
+  list.append(li);
+}
+
+console.log(list.children.length);
+console.log(list.firstElementChild.textContent);
+console.log(list.outerHTML);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+Оши палав
+&lt;ul&gt;&lt;li&gt;Оши палав&lt;/li&gt;&lt;li&gt;Самбуса&lt;/li&gt;&lt;li&gt;Курутоб&lt;/li&gt;&lt;/ul&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>list.children</code> — это дочерние элементы списка. Цикл создаёт по одному <code>li</code> на каждое блюдо.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>outerHTML</code> показывает элемент вместе с его собственными тегами — строкой, без пробелов между <code>li</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Починить «врущий» экран</h4><span class="level mid">средняя</span></header>
+          <p>Цена показана в трёх местах: «Курс», «Итого» и «Взнос в месяц» (цена, делённая на 4). Допишите <code>render()</code> так, чтобы он обновлял <b>все три</b> места из <code>state.price</code>. Нижние строки менять не нужно: они меняют цену, вызывают <code>render()</code> и печатают результат. Это ровно та работа, которую в React вы не пишете.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;p&gt;Курс: &lt;b id="price-top"&gt;500&lt;/b&gt; сомони&lt;/p&gt;
+  &lt;p&gt;Итого: &lt;b id="price-total"&gt;500&lt;/b&gt; сомони&lt;/p&gt;
+  &lt;p&gt;Взнос в месяц: &lt;b id="price-month"&gt;125&lt;/b&gt; сомони&lt;/p&gt;`;
+
+const state = { price: 500 };
+
+function render() {
+  // TODO: обновите все три места по state.price
+}
+
+state.price = 480;
+render();
+
+console.log(document.querySelector("#price-top").textContent);
+console.log(document.querySelector("#price-total").textContent);
+console.log(document.querySelector("#price-month").textContent);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>480
+480
+120</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Для каждого места: <code>document.querySelector("#id").textContent = …</code>. Три элемента — три строки внутри <code>render</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Взнос — это <code>state.price / 4</code>. Число запишется в <code>textContent</code> как строка само.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Из createElement в JSX</h4><span class="level mid">средняя</span></header>
+          <p>Ниже — ручной код, который строит блок тарифа. Верните из <code>App</code> такую же разметку на JSX. Все теги и текст должны совпасть. Класс в JSX пишется как <code>className</code>.</p>
+<pre class="code">
+const plan = document.createElement("section");
+plan.className = "plan";
+
+const h = document.createElement("h3");
+h.textContent = "Тариф «Старт»";
+
+const ul = document.createElement("ul");
+const li1 = document.createElement("li");
+li1.textContent = "24 урока";
+const li2 = document.createElement("li");
+li2.textContent = "Проект в портфолио";
+ul.append(li1, li2);
+
+plan.append(h, ul);
+</pre>
+          <div class="playground" data-mode="react" data-title="Тариф «Старт»">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  return (
+    // TODO: верните разметку тарифа
+    &lt;div&gt;&lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;section class="plan"&gt;
+&lt;h3&gt;Тариф «Старт»&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;24 урока&lt;/li&gt;
+&lt;li&gt;Проект в портфолио&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/section&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Корневой элемент — <code>&lt;section className="plan"&gt;</code>, внутри него <code>h3</code> и <code>ul</code> с двумя <code>li</code>. Вложенность в JSX — как в HTML.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замените заглушку <code>&lt;div&gt;&lt;/div&gt;</code> целиком, вместе с комментарием: комментарий внутри <code>return (…)</code> перед тегом можно просто удалить.</p></details>
+        </article>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn" target="_blank" rel="noopener">react.dev — Quick Start</a> · <a href="https://learn.javascript.ru/dom-nodes" target="_blank" rel="noopener">learn.javascript.ru — DOM-дерево</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="components">
+      <h2 data-toc="Компоненты"><span class="num">02</span> Мыслим компонентами</h2>
+
+      <p>Откройте любой сайт и мысленно обведите рамками «кирпичики»: шапка, меню, карточка товара, кнопка, подвал. Это и есть <b>компоненты</b>. Компонент — <b>функция, которая возвращает кусок интерфейса</b>. Раз это функция, вы уже умеете с ней обращаться: объявить один раз, вызвать сколько нужно.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Конструктор или набор формочек для самбусы. Одну форму вы сделали один раз — и лепите ею хоть сто штук. Страница сайта — это не одна большая лепёшка, а набор готовых деталей: шапка, список курсов, подвал. Нужно поменять подвал — меняете в одном месте, и он обновится на всех страницах.</p>
+      </div>
+
+      <h3>Страница — это дерево</h3>
+      <p>Компоненты вкладываются друг в друга, как вложенные коробки. Самая внешняя — <code>App</code>, главный компонент приложения. Внутри неё лежат остальные:</p>
+
+      <figure class="diagram">
+        <div class="comp-box"><div class="comp-title">App</div>
+          <div class="comp-row">
+            <div class="comp-box"><div class="comp-title">Header</div>
+              <div class="comp-row">
+                <div class="comp-box"><div class="comp-title">Logo</div></div>
+                <div class="comp-box"><div class="comp-title">Nav</div></div>
+              </div>
+            </div>
+            <div class="comp-box"><div class="comp-title">Courses</div></div>
+            <div class="comp-box"><div class="comp-title">Footer</div></div>
+          </div>
+        </div>
+        <figcaption>Одна страница — одно дерево компонентов. В коде оно читается сверху вниз так же, как вложенный HTML</figcaption>
+      </figure>
+
+<div class="ftree"><b>App</b>
+├─ <b>Header</b>
+│  ├─ <b>Logo</b>
+│  └─ <b>Nav</b>
+├─ <b>Courses</b>
+└─ <b>Footer</b></div>
+
+      <h3>Как найти границы компонентов</h3>
+      <ul>
+        <li><b>Блок повторяется</b> (карточка курса, пункт меню) — почти всегда это отдельный компонент.</li>
+        <li><b>У блока своя задача</b> («показать шапку», «показать подвал») — отдельный компонент, как отдельная функция в уроке 5.</li>
+        <li><b>Файл разросся</b>, и в нём не найти нужное — режем на части.</li>
+        <li><b>Не дробите до пылинок.</b> Тег <code>&lt;h2&gt;</code> компонентом делать незачем. Хорошее правило: если для блока можно придумать понятное имя, оно получится и у компонента.</li>
+      </ul>
+
+      <h3>Первый компонент</h3>
+      <p>Компонент выглядит так же, как функция из урока 5, только он возвращает не число, а разметку. Два правила: <b>имя начинается с большой буквы</b> и <b>использовать его нужно как тег</b>:</p>
+
+      <div class="playground" data-mode="react" data-title="Три компонента на одной странице">
+<pre class="code" data-lang="jsx">
+function Header() {
+  return (
+    &lt;header className="top"&gt;
+      &lt;h1&gt;Ilmhona&lt;/h1&gt;
+    &lt;/header&gt;
+  );
+}
+
+function Footer() {
+  return &lt;footer&gt;© Ilmhona, Душанбе&lt;/footer&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;div className="page"&gt;
+      &lt;Header /&gt;
+      &lt;main&gt;Здесь будут курсы&lt;/main&gt;
+      &lt;Footer /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+<pre class="code" data-lang="css">
+.page { border: 2px solid #1f6feb; border-radius: 12px; overflow: hidden; }
+.top { background: #1f6feb; color: #fff; padding: 4px 16px; }
+main { padding: 16px; }
+footer { background: #f3f4f6; padding: 8px 16px; color: #6b7280; }
+</pre>
+      </div>
+
+      <p>Обратите внимание на три вещи. <code>&lt;Header /&gt;</code> с большой буквы — это <b>наш</b> компонент: React вызывает функцию <code>Header</code> и подставляет результат. <code>&lt;main&gt;</code> с маленькой — обычный тег HTML. <code>App</code> тоже компонент, просто самый главный. Его мы пишем как <code>export default function App()</code>: именно его песочница (и проект Vite) показывает на странице.</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка: имя с маленькой буквы</b>
+        <p>React различает теги и компоненты <b>по первой букве</b>. <code>&lt;header /&gt;</code> — это тег HTML, а <code>&lt;Header /&gt;</code> — ваша функция. Если назвали компонент <code>header</code> или <code>menu</code>, React не найдёт функцию и нарисует пустой тег (а <code>&lt;menu&gt;</code> — вообще настоящий тег HTML). Ошибки не будет — просто пустота на экране, и это самое неприятное.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Это имя компонента?</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите функцию <code>isComponentName(name)</code>: она возвращает <code>true</code>, если имя начинается с <b>заглавной латинской буквы</b>, и <code>false</code> — если нет.</p>
+<pre class="code" data-run>
+function isComponentName(name) {
+  // TODO: вернуть true или false
+  return false;
+}
+
+for (const name of ["Header", "footer", "CourseCard", "nav", "App"]) {
+  console.log(name + ": " + isComponentName(name));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Header: true
+footer: false
+CourseCard: true
+nav: false
+App: true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первая буква строки: <code>name[0]</code>. Нужно проверить, что она заглавная.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сравните букву с её версией в верхнем регистре: <code>name[0] === name[0].toUpperCase()</code>. Либо регулярное выражение <code>/^[A-Z]/.test(name)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Допишите подвал</h4><span class="level mid">средняя</span></header>
+          <p>В <code>App</code> уже стоит <code>&lt;Footer /&gt;</code>, но самого компонента нет — страница падает с ошибкой. Объявите <code>Footer</code>: он возвращает тег <code>&lt;footer&gt;</code> с текстом <code>© Ilmhona, Душанбе</code>.</p>
+          <div class="playground" data-mode="react" data-title="Подвал страницы">
+<pre class="code" data-lang="jsx">
+function Header() {
+  return (
+    &lt;header&gt;
+      &lt;h1&gt;Ilmhona&lt;/h1&gt;
+    &lt;/header&gt;
+  );
+}
+
+// TODO: объявите компонент Footer
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Header /&gt;
+      &lt;main&gt;
+        &lt;p&gt;Курсы скоро&lt;/p&gt;
+      &lt;/main&gt;
+      &lt;Footer /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;div&gt;
+&lt;header&gt;
+&lt;h1&gt;Ilmhona&lt;/h1&gt;
+&lt;/header&gt;
+&lt;main&gt;
+&lt;p&gt;Курсы скоро&lt;/p&gt;
+&lt;/main&gt;
+&lt;footer&gt;© Ilmhona, Душанбе&lt;/footer&gt;
+&lt;/div&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Образец — <code>Header</code> выше. Функция называется <code>Footer</code> (с большой буквы) и возвращает один тег.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>function Footer() { return &lt;footer&gt;© Ilmhona, Душанбе&lt;/footer&gt;; }</code></p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Найдите баг: пустое меню</h4><span class="level mid">средняя</span></header>
+          <p>Меню должно показывать два блюда, но на странице пусто, а ошибок в консоли нет. Найдите причину и исправьте.</p>
+          <div class="playground" data-mode="react" data-title="Пустое меню">
+<pre class="code" data-lang="jsx">
+function menu() {
+  return (
+    &lt;ul&gt;
+      &lt;li&gt;Оши палав&lt;/li&gt;
+      &lt;li&gt;Самбуса&lt;/li&gt;
+    &lt;/ul&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;h2&gt;Меню&lt;/h2&gt;
+      &lt;menu /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;div&gt;
+&lt;h2&gt;Меню&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Оши палав&lt;/li&gt;
+&lt;li&gt;Самбуса&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запустите и посмотрите на консоль: вместо <code>&lt;ul&gt;</code> там пустой тег <code>&lt;menu&gt;&lt;/menu&gt;</code>. React принял <code>&lt;menu /&gt;</code> за обычный HTML-тег.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Имя компонента должно начинаться с большой буквы — и в объявлении функции, и в месте использования.</p></details>
+        </article>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/your-first-component" target="_blank" rel="noopener">react.dev — Your First Component</a> · <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="vite-react">
+      <h2 data-toc="Проект на Vite"><span class="num">03</span> Создаём проект: Vite + React</h2>
+
+      <p>В уроке 17 вы создавали проект на Vite с шаблоном <code>vanilla</code>. Для React меняется один параметр — шаблон. Всё остальное вам знакомо: <code>npm</code>, <code>package.json</code>, dev-сервер.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Шаблон проекта — как типовая планировка квартиры. Можно самому класть кирпичи и тянуть проводку (настраивать сборщик вручную), а можно получить дом «под ключ» с готовой проводкой и водой и сразу заселяться — добавлять свою мебель. Vite даёт именно такой «дом под ключ» для React.</p>
+      </div>
+
+      <h3>Пошаговая инструкция</h3>
+      <ol class="steps">
+        <li><b>Откройте терминал в папке для проектов</b> (без кириллицы и пробелов в пути; не в OneDrive/iCloud). Node.js уже установлен с урока 17 — проверьте: <code>node -v</code>.</li>
+        <li><b>Создайте проект.</b> Часть <code>-- --template react</code> говорит Vite: «возьми шаблон React». Двойное <code>--</code> передаёт опцию дальше, в <code>create-vite</code> (мы уже видели это на уроке 17).</li>
+        <li><b>Перейдите в папку и установите зависимости</b> — <code>npm install</code> скачает React и Vite в <code>node_modules</code>.</li>
+        <li><b>Запустите сервер разработки</b> и откройте адрес из терминала.</li>
+      </ol>
+
+<pre class="code" data-title="Терминал">
+npm create vite@latest my-react-app -- --template react
+cd my-react-app
+npm install
+npm run dev
+</pre>
+
+      <p>Если вы запустите <code>npm create vite@latest</code> без опций, мастер задаст вопросы: название проекта, фреймворк (выберите <b>React</b>), вариант (<b>JavaScript</b>). В зависимости от версии он может ещё предложить сразу установить зависимости и запустить сервер — можно согласиться, а можно ответить «нет» и выполнить команды вручную, как выше. После <code>npm run dev</code> вы увидите:</p>
+
+<pre class="code" data-title="Терминал — вывод">
+&amp;gt; my-react-app@0.0.0 dev
+&amp;gt; vite
+
+  VITE v8.3.4  ready in 210 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+</pre>
+
+      <p>Откройте <code>http://localhost:5173/</code>: вы увидите стартовую страницу React со счётчиком. Измените что-нибудь в <code>src/App.jsx</code> и сохраните — страница обновится сама, без перезагрузки (HMR из урока 17).</p>
+
+      <div class="callout warn">
+        <b>Если что-то пошло не так</b>
+        <p><b>«npm: command not found»</b> — Node.js не установлен или терминал нужно перезапустить. <b>Ошибка про версию Node</b> — обновите Node.js до LTS. <b>Страница пустая</b> — откройте DevTools (F12) → Console: там написано, в каком файле ошибка (чаще всего опечатка в JSX). <b>Порт занят</b> — Vite сам выберет 5174 и напишет об этом.</p>
+      </div>
+
+      <h3>Что создал Vite</h3>
+<div class="ftree"><b>my-react-app/</b>
+├─ index.html           <i>единственная HTML-страница; внутри — пустой &lt;div id="root"&gt;</i>
+├─ package.json         <i>react и react-dom в dependencies; скрипты dev / build / preview</i>
+├─ vite.config.js       <i>подключает плагин React: он умеет читать JSX</i>
+├─ .gitignore           <i>уже содержит node_modules и dist</i>
+├─ <b>public/</b>             <i>файлы «как есть» (иконка сайта)</i>
+└─ <b>src/</b>
+   ├─ main.jsx          <i>точка входа: «посадить» React на страницу</i>
+   ├─ App.jsx           <i>главный компонент — сюда пишем свой код</i>
+   ├─ App.css           <i>стили App</i>
+   ├─ index.css         <i>общие стили страницы</i>
+   └─ <b>assets/</b>          <i>картинки, которые импортируются из JS</i></div>
+      <p>Точный набор файлов зависит от версии шаблона (например, там могут быть настройки линтера), но три файла всегда одни и те же: <code>index.html</code>, <code>src/main.jsx</code> и <code>src/App.jsx</code>. Рассмотрим их по цепочке.</p>
+
+      <h3>Цепочка запуска: index.html → main.jsx → App.jsx</h3>
+<pre class="code" data-lang="html" data-title="index.html (фрагмент)">
+&lt;body&gt;
+  &lt;div id="root"&gt;&lt;/div&gt;
+  &lt;script type="module" src="/src/main.jsx"&gt;&lt;/script&gt;
+&lt;/body&gt;
+</pre>
+      <p>Страница пустая: только контейнер <code>#root</code> и подключённый модуль <code>main.jsx</code>. Всё остальное нарисует React.</p>
+
+<pre class="code" data-lang="jsx" data-title="src/main.jsx">
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(
+  &lt;StrictMode&gt;
+    &lt;App /&gt;
+  &lt;/StrictMode&gt;,
+)
+</pre>
+      <ol class="steps">
+        <li><code>import … from 'react-dom/client'</code> — подключаем часть React, которая умеет работать с браузерным DOM. Имя без <code>./</code> — это пакет из <code>node_modules</code> (урок 17).</li>
+        <li><code>import App from './App.jsx'</code> — берём главный компонент из соседнего файла. Он экспортирован через <code>export default</code>, поэтому в импорте нет фигурных скобок.</li>
+        <li><code>document.getElementById('root')</code> — наш старый знакомый: находим контейнер из <code>index.html</code>. Это <b>последний</b> раз, когда вы вручную ищете элемент в DOM.</li>
+        <li><code>createRoot(…).render(…)</code> — «рисуй компонент <code>&lt;App /&gt;</code> внутри этого контейнера». Дальше за всем DOM следит React.</li>
+        <li><code>StrictMode</code> — режим подсказок для разработки: он нарочно вызывает компоненты <b>дважды</b>, чтобы быстрее выявить ошибки. В собранном сайте (<code>npm run build</code>) этого нет.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Почему <code>console.log</code> в компоненте печатается дважды</b>
+        <p>Если в проекте на Vite вы напишете <code>console.log("render Header")</code> внутри компонента, то увидите две одинаковые строки. Это не баг: так работает <code>StrictMode</code> в режиме разработки. В песочнице курса его нет, поэтому здесь каждая строка печатается один раз. Подробнее об этом поговорим на уроке 24.</p>
+      </div>
+
+<pre class="code" data-lang="jsx" data-title="src/App.jsx (то, что вы увидите в шаблоне — сокращённо)">
+import { useState } from 'react'
+import './App.css'
+
+function App() {
+  const [count, setCount] = useState(0)
+
+  return (
+    &lt;&gt;
+      &lt;h1&gt;Get started&lt;/h1&gt;
+      &lt;button onClick={() =&gt; setCount((count) =&gt; count + 1)}&gt;
+        Count is {count}
+      &lt;/button&gt;
+    &lt;/&gt;
+  )
+}
+
+export default App
+</pre>
+      <p>В шаблоне уже есть счётчик с <code>useState</code> — это тема урока 23, сегодня он нам не нужен. Первое, что делают с новым проектом, — <b>чистят шаблон</b>.</p>
+
+      <h3>Чистим шаблон</h3>
+      <ol class="steps">
+        <li>Удалите картинки из <code>src/assets/</code> (и импорты на них в <code>App.jsx</code>).</li>
+        <li>Очистите <code>src/App.css</code> (оставьте пустым) — свои стили напишем позже.</li>
+        <li>Замените содержимое <code>src/App.jsx</code> на минимальный компонент:</li>
+      </ol>
+<pre class="code" data-lang="jsx" data-title="src/App.jsx — чистый старт">
+function App() {
+  return (
+    &lt;div&gt;
+      &lt;h1&gt;Привет, Ilmhona!&lt;/h1&gt;
+    &lt;/div&gt;
+  )
+}
+
+export default App
+</pre>
+      <p>Сохраните: в браузере появится ваш заголовок. Мы будем писать <code>function App()</code> и отдельной строкой <code>export default App</code> — шаблон Vite делает именно так, а песочница на странице допускает короткий вариант <code>export default function App()</code>. Оба варианта делают одно и то же.</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Прочитайте package.json</h4><span class="level easy">лёгкая</span></header>
+          <p>Ниже — <code>package.json</code> нового проекта, записанный строкой. Разберите его через <code>JSON.parse</code> и выведите три строки: имя проекта, команду скрипта <code>dev</code> и список зависимостей (<code>dependencies</code>) через запятую.</p>
+<pre class="code" data-run>
+const raw = `{
+  "name": "my-react-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
+  "dependencies": { "react": "^19.2.8", "react-dom": "^19.2.8" },
+  "devDependencies": { "@vitejs/plugin-react": "^6.1.1", "vite": "^8.3.0" }
+}`;
+
+const pkg = JSON.parse(raw);
+
+// TODO: имя проекта
+// TODO: команда dev
+// TODO: имена зависимостей через запятую
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>my-react-app
+vite
+react, react-dom</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Имя — <code>pkg.name</code>, команда — <code>pkg.scripts.dev</code>. Каждое выведите через <code>console.log</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Имена зависимостей — это ключи объекта: <code>Object.keys(pkg.dependencies).join(", ")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Порядок команд</h4><span class="level mid">средняя</span></header>
+          <p>Преподаватель продиктовал команды вперемешку. Отсортируйте массив <code>typed</code> в правильном порядке запуска проекта, ориентируясь на массив <code>order</code>: команда стоит на месте того начала из <code>order</code>, с которого она начинается. Выведите команды по одной в строке.</p>
+<pre class="code" data-run>
+const order = ["npm create", "cd", "npm install", "npm run dev"];
+
+const typed = [
+  "npm run dev",
+  "cd my-react-app",
+  "npm create vite@latest my-react-app -- --template react",
+  "npm install",
+];
+
+// TODO: отсортируйте typed по порядку из order и выведите
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>npm create vite@latest my-react-app -- --template react
+cd my-react-app
+npm install
+npm run dev</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужна функция, которая по команде находит её позицию: <code>order.findIndex((start) =&gt; cmd.startsWith(start))</code>. Сортируем по этой позиции.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Осторожно: <code>"npm install"</code> и <code>"npm run dev"</code> оба начинаются с <code>"npm "</code>, но в <code>order</code> стоят более длинные начала — они различаются. Используйте <code>typed.sort((a, b) =&gt; pos(a) - pos(b))</code>, где <code>pos</code> — ваша функция позиции.</p></details>
+        </article>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/#scaffolding-your-first-vite-project" target="_blank" rel="noopener">vite.dev — Scaffolding Your First Vite Project</a> · <a href="https://react.dev/learn/build-a-react-app-from-scratch" target="_blank" rel="noopener">react.dev — Build a React app from Scratch</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="jsx">
+      <h2 data-toc="JSX и HTML"><span class="num">04</span> JSX: похож на HTML, но не HTML</h2>
+
+      <p><b>JSX</b> — это способ писать разметку прямо внутри JavaScript. Браузер JSX не понимает: Vite (а в нашей песочнице — встроенный компилятор) превращает каждый тег в вызов функции. Для вас это значит одно: <b>JSX — это JavaScript</b>, а значит, правила у него строже, чем у HTML.</p>
+
+<pre class="code" data-lang="jsx" data-title="Что вы пишете и во что это превращается (упрощённо)">
+// вы пишете:
+const title = &lt;h1 className="big"&gt;Салом&lt;/h1&gt;;
+
+// сборщик превращает в обычный JS:
+const title = jsx("h1", { className: "big", children: "Салом" });
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>HTML — это разговорная речь: можно пропустить слово, поставить запятую как угодно, и всё равно поймут. JSX — официальное заявление: каждый тег закрыт, у документа один заголовок, все слова по форме. Зато заявление можно автоматически проверить. Поэтому JSX сразу ругается на опечатку, а браузер молча «догадывается».</p>
+      </div>
+
+      <h3>Шесть отличий JSX от HTML</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>HTML</th><th>JSX</th><th>Почему</th></tr></thead>
+          <tbody>
+            <tr><td><code>class="card"</code></td><td><code>className="card"</code></td><td><code>class</code> — зарезервированное слово JS</td></tr>
+            <tr><td><code>for="name"</code></td><td><code>htmlFor="name"</code></td><td><code>for</code> — это цикл в JS</td></tr>
+            <tr><td><code>&lt;br&gt;</code>, <code>&lt;img …&gt;</code>, <code>&lt;input …&gt;</code></td><td><code>&lt;br /&gt;</code>, <code>&lt;img … /&gt;</code>, <code>&lt;input … /&gt;</code></td><td>В JSX каждый тег обязан быть закрыт</td></tr>
+            <tr><td>Несколько элементов подряд</td><td>Один корневой элемент или <code>&lt;&gt;…&lt;/&gt;</code></td><td>Функция возвращает одно значение</td></tr>
+            <tr><td>Текст и числа «как есть»</td><td><code>{выражение}</code> в фигурных скобках</td><td>Так JS-значения попадают в разметку</td></tr>
+            <tr><td><code>style="color: red"</code></td><td><code>style={{ color: "red" }}</code></td><td>Стиль — это объект, свойства в camelCase</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>1–3. className, htmlFor и закрытые теги</h3>
+      <div class="playground" data-mode="react" data-title="Форма на JSX">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  return (
+    &lt;form className="signup"&gt;
+      &lt;label htmlFor="name"&gt;Ваше имя&lt;/label&gt;
+      &lt;input id="name" type="text" placeholder="Мадина" /&gt;
+      &lt;br /&gt;
+      &lt;button type="button"&gt;Записаться&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+<pre class="code" data-lang="css">
+.signup { display: flex; flex-direction: column; gap: 8px; max-width: 260px; }
+input { padding: 8px; font-size: 16px; }
+</pre>
+      </div>
+      <p>В консоли видно, что в итоговой разметке всё стало обычным HTML: <code>class</code>, <code>for</code>. Измените <code>className</code> на <code>class</code> и запустите: в React 19 страница ещё работает, но это считается ошибкой стиля — в правильном JSX пишем <code>className</code>.</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка: незакрытый тег</b>
+        <p>В HTML <code>&lt;input&gt;</code> и <code>&lt;br&gt;</code> закрывать не нужно. В JSX — нужно, иначе компилятор остановится с ошибкой.</p>
+      </div>
+<pre class="code" data-lang="jsx" data-title="Это ошибка: Unexpected token / Unterminated JSX contents">
+&lt;div&gt;
+  &lt;input type="text"&gt;     {/* ✖ тег не закрыт */}
+  &lt;br&gt;                    {/* ✖ и этот тоже */}
+&lt;/div&gt;
+
+&lt;div&gt;
+  &lt;input type="text" /&gt;   {/* ✓ */}
+  &lt;br /&gt;                  {/* ✓ */}
+&lt;/div&gt;
+</pre>
+
+      <h3>4. Один корневой элемент</h3>
+      <p>Компонент — это функция, а функция возвращает <b>одно</b> значение. Поэтому два тега рядом вернуть нельзя: их нужно обернуть. Если лишний <code>&lt;div&gt;</code> не нужен, используют <b>фрагмент</b> — пустые теги <code>&lt;&gt;…&lt;/&gt;</code>. Он группирует детей, но в итоговом HTML ничего не добавляет.</p>
+<pre class="code" data-lang="jsx" data-title="Две версии: с div и с фрагментом">
+// ✖ ошибка: "Adjacent JSX elements must be wrapped in an enclosing tag"
+return (
+  &lt;h2&gt;Расписание&lt;/h2&gt;
+  &lt;p&gt;Пн, Ср, Пт — 18:00&lt;/p&gt;
+);
+
+// ✓ с обёрткой
+return (
+  &lt;div&gt;
+    &lt;h2&gt;Расписание&lt;/h2&gt;
+    &lt;p&gt;Пн, Ср, Пт — 18:00&lt;/p&gt;
+  &lt;/div&gt;
+);
+
+// ✓ с фрагментом: лишнего div в HTML не будет
+return (
+  &lt;&gt;
+    &lt;h2&gt;Расписание&lt;/h2&gt;
+    &lt;p&gt;Пн, Ср, Пт — 18:00&lt;/p&gt;
+  &lt;/&gt;
+);
+</pre>
+      <p>Круглые скобки после <code>return</code> нужны не React, а JavaScript: если после <code>return</code> перейти на новую строку без скобок, JS решит, что возвращать нечего (<code>return;</code>), и вернёт <code>undefined</code>. Скобки — страховка для многострочной разметки.</p>
+
+      <h3>5. Фигурные скобки: JavaScript внутри разметки</h3>
+      <p>Всё, что внутри <code>{ }</code>, — обычное <b>JS-выражение</b>: переменная, арифметика, вызов функции, тернарный оператор <code>? :</code>. Результат подставляется в разметку. Скобки можно ставить и в тексте, и в значении атрибута.</p>
+
+      <div class="playground" data-mode="react" data-title="Выражения в {…}">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  const student = "Мадина";
+  const lessons = 24;
+  const hour = 19;
+
+  return (
+    &lt;div className="box" title={"Студент " + student}&gt;
+      &lt;h2&gt;Салом, {student}!&lt;/h2&gt;
+      &lt;p&gt;Осталось уроков: {lessons - 22}&lt;/p&gt;
+      &lt;p&gt;Имя в верхнем регистре: {student.toUpperCase()}&lt;/p&gt;
+      &lt;p&gt;{hour &lt; 20 ? "Занятия ещё идут" : "Занятия закончились"}&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+<pre class="code" data-lang="css">
+.box { border: 2px dashed #1f6feb; border-radius: 12px; padding: 4px 16px; }
+</pre>
+      </div>
+
+      <dl class="terms">
+        <dt>Можно в {…}</dt><dd>Переменные, числа, строки, арифметика, вызовы функций, <code>? :</code>, <code>&amp;&amp;</code>, <code>||</code>, методы строк и массивов.</dd>
+        <dt>Нельзя в {…}</dt><dd>Инструкции: <code>if</code>, <code>for</code>, <code>const x = …</code>. Это не выражения. Условие внутри разметки пишем через <code>? :</code> или <code>&amp;&amp;</code>; а <code>if</code> и переменные — выше, перед <code>return</code>.</dd>
+        <dt>Комментарий в JSX</dt><dd><code>{/* вот так */}</code> — это пустое выражение с комментарием внутри. Обычный <code>// …</code> внутри разметки превратится в текст на странице.</dd>
+      </dl>
+
+      <h3>Что React рисует, а что нет</h3>
+      <p>Значения <code>true</code>, <code>false</code>, <code>null</code> и <code>undefined</code> React <b>не показывает вообще</b> — на этом построено условное отображение. Но <b>число <code>0</code> показывается</b>, и об этом часто забывают.</p>
+
+      <div class="playground" data-mode="react" data-title="Что исчезает, а что нет">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  const isOpen = true;
+  const messages = 0;
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;true: [{true}]&lt;/p&gt;
+      &lt;p&gt;null: [{null}]&lt;/p&gt;
+      &lt;p&gt;0: [{0}]&lt;/p&gt;
+      &lt;p&gt;{isOpen &amp;&amp; "Мы открыты"}&lt;/p&gt;
+      &lt;p&gt;Новых сообщений: {messages &amp;&amp; &lt;b&gt;есть&lt;/b&gt;}&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+      </div>
+      <p>В последней строке вы ожидали пустоту, а получили <code>0</code>: выражение <code>0 && …</code> равно <code>0</code>, а ноль React рисует. Безопасный вариант — сделать условие настоящим булевым: <code>messages &gt; 0 &amp;&amp; …</code> или тернарный оператор.</p>
+
+      <h3>6. style — это объект</h3>
+      <p>В HTML стиль — строка. В JSX <code>style</code> принимает <b>объект</b>, значит, фигурные скобки получаются двойными: внешние — «здесь JS», внутренние — сам объект. Свойства пишутся в camelCase (<code>backgroundColor</code>), числа без единиц считаются пикселями.</p>
+
+      <div class="playground" data-mode="react" data-title="style как объект">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  const badge = {
+    backgroundColor: "gold",
+    padding: 8,
+    borderRadius: 8,
+    fontWeight: "bold",
+  };
+
+  return (
+    &lt;div&gt;
+      &lt;p style={badge}&gt;Новинка&lt;/p&gt;
+      &lt;p style={{ color: "crimson", fontSize: 20 }}&gt;Скидка 10%&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+      </div>
+      <p>Для основного оформления всё равно используйте CSS-классы (<code>className</code> + <code>style.css</code>): <code>style</code> пригодится, когда значение вычисляется из данных (ширина полосы прогресса, цвет по условию).</p>
+
+      <div class="callout ai">
+        <b>ИИ-подсказка</b>
+        <p>Скопированный из интернета HTML — главный источник ошибок JSX. Если вставили готовую вёрстку и страница не открывается, попросите ИИ: «Переведи этот HTML в JSX: замени class и for, закрой одиночные теги, стили-строки переведи в объекты, оберни в один корень. Перечисли, что изменил». Список изменений сверьте с таблицей выше — так вы сразу запоминаете правила.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Переведите HTML в JSX</h4><span class="level easy">лёгкая</span></header>
+          <p>Ниже — готовая HTML-вёрстка. Переведите её в JSX внутри <code>&lt;div className="form"&gt;</code>: замените <code>class</code> и <code>for</code>, закройте одиночные теги.</p>
+<pre class="code" data-lang="html">
+&lt;label for="name"&gt;Ваше имя&lt;/label&gt;
+&lt;input id="name" type="text" placeholder="Мадина"&gt;
+&lt;br&gt;
+&lt;p class="hint"&gt;Мы перезвоним&lt;/p&gt;
+</pre>
+          <div class="playground" data-mode="react" data-title="HTML → JSX">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  return (
+    &lt;div className="form"&gt;
+      {/* TODO: вставьте сюда вёрстку в виде JSX */}
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;div class="form"&gt;
+&lt;label for="name"&gt;Ваше имя&lt;/label&gt;
+&lt;input id="name" placeholder="Мадина" type="text"&gt;
+&lt;br&gt;
+&lt;p class="hint"&gt;Мы перезвоним&lt;/p&gt;
+&lt;/div&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Четыре замены: <code>for</code> → <code>htmlFor</code>, <code>class</code> → <code>className</code>, <code>&lt;input …&gt;</code> → <code>&lt;input … /&gt;</code>, <code>&lt;br&gt;</code> → <code>&lt;br /&gt;</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Заглушку-комментарий <code>{/* … */}</code> замените четырьмя строками разметки. Порядок атрибутов оставьте как в HTML.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Подставьте значения</h4><span class="level easy">лёгкая</span></header>
+          <p>Вместо знаков <code>???</code> подставьте выражения в фигурных скобках: имя студента, цену курса и цену одного урока (цена, делённая на число уроков). Числа писать вручную нельзя — только переменные и арифметика.</p>
+          <div class="playground" data-mode="react" data-title="Выражения в JSX">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  const student = "Мадина";
+  const price = 480;
+  const lessons = 24;
+
+  return (
+    &lt;div&gt;
+      &lt;h2&gt;Добро пожаловать, ???!&lt;/h2&gt;
+      &lt;p&gt;Курс стоит ??? сомони, это ??? сомони за урок.&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;div&gt;
+&lt;h2&gt;Добро пожаловать, Мадина!&lt;/h2&gt;
+&lt;p&gt;Курс стоит 480 сомони, это 20 сомони за урок.&lt;/p&gt;
+&lt;/div&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Каждое <code>???</code> заменяется на <code>{student}</code>, <code>{price}</code> и т. д. Текст вокруг остаётся как есть.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Цена за урок — выражение прямо в скобках: <code>{price / lessons}</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Найдите баг: style-строка</h4><span class="level mid">средняя</span></header>
+          <p>Карточка акции выводится с ошибкой. Исправьте так, чтобы стиль применялся: переведите его в объект (свойства в camelCase, число <code>12</code> — пиксели).</p>
+          <div class="playground" data-mode="react" data-title="Акция недели">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  return (
+    &lt;div style="background-color: gold; padding: 12px; border-radius: 8px;"&gt;
+      Акция недели
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;div style="background-color: gold; padding: 12px; border-radius: 8px;"&gt;Акция недели&lt;/div&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В консоли будет «Minified React error #62» — это как раз про <code>style</code>: React ждёт объект, а получил строку. Нужны двойные фигурные скобки: <code>style={{ … }}</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>style={{ backgroundColor: "gold", padding: 12, borderRadius: 8 }}</code> — порядок свойств оставьте таким же, как в строке.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ЗАДАЧА 4.4</span><h4>Найдите баг: два корня</h4><span class="level mid">средняя</span></header>
+          <p>Компонент возвращает два элемента подряд, и страница не запускается. Исправьте <b>без лишнего <code>div</code></b> — в итоговом HTML должны остаться только <code>h2</code> и <code>p</code>.</p>
+          <div class="playground" data-mode="react" data-title="Расписание">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  return (
+    &lt;h2&gt;Расписание&lt;/h2&gt;
+    &lt;p&gt;Пн, Ср, Пт — 18:00&lt;/p&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;h2&gt;Расписание&lt;/h2&gt;
+&lt;p&gt;Пн, Ср, Пт — 18:00&lt;/p&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужна обёртка, которая не попадает в HTML. Как называется такая «невидимая» обёртка?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Фрагмент: откройте <code>&lt;&gt;</code> перед <code>h2</code> и закройте <code>&lt;/&gt;</code> после <code>p</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-5">
+          <header><span class="task-num">ЗАДАЧА 4.5</span><h4>Предскажите: что React нарисует</h4><span class="level easy">лёгкая</span></header>
+          <p>Предскажите, что окажется в каждой паре квадратных скобок, потом запустите. Пара <code>[]</code> означает «пусто».</p>
+          <div class="playground" data-mode="react" data-title="Что нарисует React">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  return (
+    &lt;p&gt;
+      [{5 + 3}] [{false}] [{null}] [{0}] [{"a" + "b"}] [{true ? "да" : "нет"}] [{undefined}] [{10 &gt; 5}]
+    &lt;/p&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;p&gt;[8] [] [] [0] [ab] [да] [] []&lt;/p&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Не рисуются четыре значения: <code>true</code>, <code>false</code>, <code>null</code>, <code>undefined</code>. Число 0 рисуется.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Выражение <code>10 &gt; 5</code> равно <code>true</code>, а <code>true</code> React не показывает.</p></details>
+        </article>
+
+        <article class="task" id="t4-6">
+          <header><span class="task-num">ЗАДАЧА 4.6</span><h4>Ловушка нуля</h4><span class="level hard">сложная</span></header>
+          <p>В корзине пусто, но вместо ничего на странице появился ноль. Исправьте так, чтобы при пустой корзине выводилось <code>&lt;p&gt;Корзина пуста&lt;/p&gt;</code>, а при непустой — <code>&lt;p&gt;Товаров: N&lt;/p&gt;</code>. Затем замените <code>cart</code> на <code>["Самбуса", "Чой"]</code> и убедитесь, что показывается «Товаров: 2» (после проверки верните пустой массив).</p>
+          <div class="playground" data-mode="react" data-title="Корзина">
+<pre class="code" data-lang="jsx">
+const cart = [];
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;h3&gt;Корзина&lt;/h3&gt;
+      {cart.length &amp;&amp; &lt;p&gt;Товаров: {cart.length}&lt;/p&gt;}
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;div&gt;
+&lt;h3&gt;Корзина&lt;/h3&gt;
+&lt;p&gt;Корзина пуста&lt;/p&gt;
+&lt;/div&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>0 &amp;&amp; …</code> даёт <code>0</code>, а ноль React рисует. Нужен тернарный оператор: <code>условие ? А : Б</code> — он выбирает одну из двух веток.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>{cart.length &gt; 0 ? &lt;p&gt;Товаров: {cart.length}&lt;/p&gt; : &lt;p&gt;Корзина пуста&lt;/p&gt;}</code></p></details>
+        </article>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/writing-markup-with-jsx" target="_blank" rel="noopener">react.dev — Writing Markup with JSX</a> · <a href="https://react.dev/learn/javascript-in-jsx-with-curly-braces" target="_blank" rel="noopener">react.dev — JavaScript in JSX with Curly Braces</a> · <a href="https://react.dev/learn/conditional-rendering" target="_blank" rel="noopener">react.dev — Conditional Rendering</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="export-import">
+      <h2 data-toc="App.jsx, export и import"><span class="num">05</span> App.jsx: экспорт и импорт компонентов</h2>
+
+      <p>Пока компоненты лежали в одном файле. В реальном проекте так не делают: <b>один компонент — один файл</b>. Это те же модули из урока 17: файл экспортирует функцию, другой файл её импортирует. Для компонентов принято <code>export default</code>.</p>
+
+      <h3>Структура проекта с компонентами</h3>
+<div class="ftree"><b>src/</b>
+├─ main.jsx
+├─ App.jsx               <i>собирает страницу из компонентов</i>
+└─ <b>components/</b>
+   ├─ Header.jsx         <i>export default function Header()</i>
+   ├─ CourseCard.jsx     <i>export default function CourseCard()</i>
+   └─ Footer.jsx         <i>export default function Footer()</i></div>
+      <ul>
+        <li>Имя файла = имя компонента, с большой буквы: <code>Header.jsx</code>, <code>CourseCard.jsx</code>.</li>
+        <li>Расширение <code>.jsx</code> — признак того, что внутри JSX. Vite требует его для файлов с разметкой.</li>
+        <li>Папка <code>components</code> — просто договорённость, чтобы не сваливать всё в <code>src/</code>.</li>
+      </ul>
+
+      <h3>Как это выглядит в файлах</h3>
+<pre class="code" data-lang="jsx" data-title="src/components/Header.jsx">
+export default function Header() {
+  return (
+    &lt;header className="top"&gt;
+      &lt;h1&gt;Ilmhona&lt;/h1&gt;
+    &lt;/header&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="jsx" data-title="src/components/Footer.jsx">
+export default function Footer() {
+  return &lt;footer&gt;© Ilmhona, Душанбе&lt;/footer&gt;
+}
+</pre>
+<pre class="code" data-lang="jsx" data-title="src/App.jsx">
+import Header from './components/Header.jsx'
+import Footer from './components/Footer.jsx'
+
+export default function App() {
+  return (
+    &lt;div className="page"&gt;
+      &lt;Header /&gt;
+      &lt;main&gt;Здесь будут курсы&lt;/main&gt;
+      &lt;Footer /&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+      <p>Строка <code>import Header from './components/Header.jsx'</code> читается так: «возьми то, что <code>Header.jsx</code> экспортирует по умолчанию, и назови <code>Header</code>». Путь начинается с <code>./</code> (рядом с этим файлом), расширение <code>.jsx</code> пишем целиком — как мы договорились на уроке 17. Не было бы <code>export default</code> — импортировать было бы нечего.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Кухня большого ресторана. Салаты делает холодный цех, горячее — горячий цех, десерты — кондитерский. Каждый цех работает в своём помещении (файле) и отдаёт готовое блюдо (экспорт). Официант-сборщик (<code>App.jsx</code>) ничего не готовит: он берёт блюда из цехов (импорт) и составляет из них заказ на столе. Перепутать цеха нельзя, а новый повар приходит в конкретный цех, а не на всю кухню сразу.</p>
+      </div>
+
+      <h3>Именованный экспорт тоже работает</h3>
+<pre class="code" data-lang="jsx" data-title="Два способа — выберите один и держитесь его">
+// 1) по умолчанию — один компонент на файл (наш выбор)
+export default function Header() { … }
+import Header from './components/Header.jsx'
+
+// 2) именованный — можно экспортировать несколько штук из файла
+export function Header() { … }
+import { Header } from './components/Header.jsx'
+</pre>
+      <p>Главное — чтобы экспорт и импорт совпали по стилю: у <code>export default</code> импорт без скобок, у именованного — со скобками. В этом курсе компоненты экспортируем по умолчанию.</p>
+
+      <div class="callout warn">
+        <b>Три типичные ошибки импорта</b>
+        <p>1) Забыли <code>export default</code> — ошибка <i>«does not provide an export named 'default'»</i>. 2) Импортировали без <code>./</code>: <code>import Header from 'components/Header.jsx'</code> — Vite ищет такой пакет в <code>node_modules</code> и не находит. 3) Назвали компонент в импорте с маленькой буквы: <code>import header from …</code> — получится тег, а не ваш компонент (см. раздел 02).</p>
+      </div>
+
+      <h3>Один компонент — много раз</h3>
+      <p>Главный выигрыш компонентов — <b>повторное использование</b>: объявили один раз, расставили сколько нужно. Изменили компонент — поменялись все копии.</p>
+
+      <div class="playground" data-mode="react" data-title="Один компонент, три копии">
+<pre class="code" data-lang="jsx">
+function CourseCard() {
+  return (
+    &lt;article className="card"&gt;
+      &lt;h3&gt;JavaScript&lt;/h3&gt;
+      &lt;p&gt;24 урока&lt;/p&gt;
+    &lt;/article&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;main className="grid"&gt;
+      &lt;CourseCard /&gt;
+      &lt;CourseCard /&gt;
+      &lt;CourseCard /&gt;
+    &lt;/main&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+<pre class="code" data-lang="css">
+.grid { display: flex; gap: 10px; flex-wrap: wrap; }
+.card { border: 2px solid #1f6feb; border-radius: 12px; padding: 4px 16px; background: #eef4ff; }
+.card h3 { margin: 8px 0; }
+</pre>
+      </div>
+      <p>Попробуйте изменить текст внутри <code>CourseCard</code> — изменятся все три карточки. Сразу возникает вопрос: а если нужны разные названия — «HTML», «JavaScript», «React»? Для этого у компонентов есть <b>props</b>, мы разберём их на следующем уроке.</p>
+
+      <div class="callout tip">
+        <b>Заглянем на урок вперёд</b>
+        <p>Два самых важных слова урока 23: <b>props</b> — параметры компонента (как параметры функции из урока 5) и <b>useState</b> — память компонента, которая заставляет React заново рисовать экран при изменении данных. Нажмите на кнопку и посмотрите — код пока просто читайте, объяснять его мы будем на следующем занятии.</p>
+      </div>
+
+      <div class="playground" data-mode="react" data-title="Тизер урока 23: счётчик">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Нажато раз: {count}&lt;/p&gt;
+      &lt;button onClick={() =&gt; setCount(count + 1)}&gt;+1&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+      <p>Сравните с уроком 11: там были <code>state</code>, <code>render()</code>, <code>querySelector</code> и <code>addEventListener</code>. Здесь — один компонент, и ни одной строки про поиск элементов. Данные лежат в <code>count</code>, экран описан в <code>return</code>, а связку «изменили данные → перерисовали» React обеспечивает сам.</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Строки импорта</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите функцию <code>importLine(name)</code>, которая по имени компонента возвращает строку импорта для проекта на Vite: файл лежит в <code>./components/</code>, имеет то же имя и расширение <code>.jsx</code>, в конце — точка с запятой.</p>
+<pre class="code" data-run>
+const components = ["Header", "CourseCard", "Footer"];
+
+function importLine(name) {
+  // TODO: вернуть строку вида import Имя from "./components/Имя.jsx";
+  return "";
+}
+
+for (const name of components) {
+  console.log(importLine(name));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>import Header from "./components/Header.jsx";
+import CourseCard from "./components/CourseCard.jsx";
+import Footer from "./components/Footer.jsx";</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Имя встречается в строке дважды: после <code>import</code> и в пути. Удобно собрать строку шаблонной строкой в обратных кавычках.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return `import ${name} from "./components/${name}.jsx";`;</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Уберите копипасту</h4><span class="level mid">средняя</span></header>
+          <p>Три карточки в <code>App</code> набраны копипастой, а компонент <code>CourseCard</code> объявлен, но не используется. Замените три копии на три использования <code>&lt;CourseCard /&gt;</code>. Проверка видит, что компонент действительно вызвался три раза: в консоли должны появиться три строки «CourseCard готов».</p>
+          <div class="playground" data-mode="react" data-title="Карточки курсов">
+<pre class="code" data-lang="jsx">
+function CourseCard() {
+  console.log("CourseCard готов");
+  return (
+    &lt;article className="card"&gt;
+      &lt;h3&gt;JavaScript&lt;/h3&gt;
+      &lt;p&gt;24 урока&lt;/p&gt;
+    &lt;/article&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;article className="card"&gt;
+        &lt;h3&gt;JavaScript&lt;/h3&gt;
+        &lt;p&gt;24 урока&lt;/p&gt;
+      &lt;/article&gt;
+      &lt;article className="card"&gt;
+        &lt;h3&gt;JavaScript&lt;/h3&gt;
+        &lt;p&gt;24 урока&lt;/p&gt;
+      &lt;/article&gt;
+      &lt;article className="card"&gt;
+        &lt;h3&gt;JavaScript&lt;/h3&gt;
+        &lt;p&gt;24 урока&lt;/p&gt;
+      &lt;/article&gt;
+    &lt;/main&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>CourseCard готов
+CourseCard готов
+CourseCard готов
+&lt;main&gt;
+&lt;article class="card"&gt;
+&lt;h3&gt;JavaScript&lt;/h3&gt;
+&lt;p&gt;24 урока&lt;/p&gt;
+&lt;/article&gt;
+&lt;article class="card"&gt;
+&lt;h3&gt;JavaScript&lt;/h3&gt;
+&lt;p&gt;24 урока&lt;/p&gt;
+&lt;/article&gt;
+&lt;article class="card"&gt;
+&lt;h3&gt;JavaScript&lt;/h3&gt;
+&lt;p&gt;24 урока&lt;/p&gt;
+&lt;/article&gt;
+&lt;/main&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри <code>&lt;main&gt;</code> должны остаться только три тега-компонента. Внутри них ничего писать не нужно: содержимое уже внутри функции.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;CourseCard /&gt;</code> — самозакрывающийся тег с большой буквы. Напишите его три раза подряд.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Четыре компонента, один вложен в другой</h4><span class="level hard">сложная</span></header>
+          <p>Соберите страницу из <b>четырёх</b> компонентов: <code>Logo</code> (тег <code>&lt;span className="logo"&gt;Ilmhona&lt;/span&gt;</code>), <code>Navbar</code> (тег <code>&lt;nav&gt;</code>, внутри <b>компонент</b> <code>Logo</code> и ссылка <code>&lt;a href="#courses"&gt;Курсы&lt;/a&gt;</code>), <code>Hero</code> (<code>&lt;section className="hero"&gt;</code> с заголовком <code>h1</code> «Frontend + ИИ») и <code>Footer</code> (<code>&lt;footer&gt;© 2026 Ilmhona&lt;/footer&gt;</code>). Корнем <code>App</code> сделайте фрагмент <code>&lt;&gt;…&lt;/&gt;</code>: <code>Navbar</code>, <code>Hero</code>, <code>Footer</code> по порядку.</p>
+          <div class="playground" data-mode="react" data-title="Лендинг из компонентов">
+<pre class="code" data-lang="jsx">
+// TODO: объявите Logo, Navbar, Hero и Footer
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Соберите страницу из компонентов&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;nav&gt;
+&lt;span class="logo"&gt;Ilmhona&lt;/span&gt;
+&lt;a href="#courses"&gt;Курсы&lt;/a&gt;
+&lt;/nav&gt;
+&lt;section class="hero"&gt;
+&lt;h1&gt;Frontend + ИИ&lt;/h1&gt;
+&lt;/section&gt;
+&lt;footer&gt;© 2026 Ilmhona&lt;/footer&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала объявите <code>Logo</code> — он нужен <code>Navbar</code>. В JS порядок объявления функций не критичен, но читать удобнее от простого к сложному.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>Navbar</code> возвращает <code>&lt;nav&gt;&lt;Logo /&gt;&lt;a href="#courses"&gt;Курсы&lt;/a&gt;&lt;/nav&gt;</code>, а <code>App</code> — <code>&lt;&gt;&lt;Navbar /&gt;&lt;Hero /&gt;&lt;Footer /&gt;&lt;/&gt;</code>.</p></details>
+        </article>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/importing-and-exporting-components" target="_blank" rel="noopener">react.dev — Importing and Exporting Components</a> · <a href="https://learn.javascript.ru/import-export" target="_blank" rel="noopener">learn.javascript.ru — Экспорт и импорт</a></p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: JS → React"><span class="num">06</span> ИИ-блок: переписываем знакомый JS на React</h2>
+
+      <p>Лучший способ понять новый подход — взять код, который вы <b>уже понимаете</b>, и сравнить его с версией на React. ИИ здесь — переводчик, а вы — проверяющий. Вы знаете оригинал, значит, сразу видите, где перевод неточен.</p>
+
+      <div class="callout ai">
+        <b>Правила курса</b>
+        <p>1) Сначала <b>15 минут сами</b>: попробуйте переписать блок на JSX без подсказок — в песочнице или в проекте на Vite. 2) Только потом промпт. 3) Не вставляйте в проект код, который не можете объяснить строчку за строчкой. 4) Результат проверяет запуск, а не уверенный тон ИИ.</p>
+      </div>
+
+      <h3>Исходный блок на чистом JS</h3>
+      <p>Это блок, похожий на те, что вы писали на уроках 8 и 11: карточка студента строится вручную.</p>
+<pre class="code">
+const app = document.querySelector("#app");
+const student = { name: "Мадина", group: "JS-12", score: 87 };
+
+const box = document.createElement("div");
+box.className = "profile";
+
+const h = document.createElement("h2");
+h.textContent = student.name;
+
+const p = document.createElement("p");
+p.textContent = `Группа ${student.group}, баллы: ${student.score}`;
+
+box.append(h, p);
+app.append(box);
+</pre>
+
+      <h3>Плохой и хороший промпт</h3>
+<div class="prompt bad-prompt">Переделай в React</div>
+      <p>Почему плохо: ИИ не знает, где вы учитесь, какие инструменты у вас есть, и выдаст «всё и сразу» — с состоянием, эффектами и сторонними библиотеками, которых мы ещё не проходили. И вы не получите объяснений.</p>
+
+<div class="prompt good-prompt">Контекст: я новичок, второй месяц учу JavaScript, сегодня впервые увидел React. Проект на Vite, шаблон React, JavaScript (не TypeScript), без дополнительных библиотек.
+Задача: вот код на чистом JS: [вставьте блок выше]. Перепиши его как один React-компонент App.
+Ограничения: только разметка и данные. Без useState, useEffect и обработчиков событий. Без document.querySelector и createElement. Никаких новых пакетов.
+Формат ответа: 1) код компонента; 2) таблица «строка в JS — что заменило её в React» — по строке на каждую строку исходного кода; 3) три отличия JSX от HTML, которые встретились в этом примере.
+Проверка: скажи, какие ошибки новички чаще всего делают при таком переводе.</div>
+      <p>Это развёрнутый вариант шаблона из шпаргалки курса: <i>«Вот код на чистом JS: [код]. Перепиши как React-компонент и объясни построчно, что заменило querySelector и addEventListener»</i>. Мы добавили контекст, ограничения и формат — и убрали события, которые появятся на уроке 23.</p>
+
+      <h3>Что должен вернуть ИИ</h3>
+<pre class="code" data-lang="jsx" data-title="Ответ ИИ (типичный)">
+export default function App() {
+  const student = { name: "Мадина", group: "JS-12", score: 87 };
+
+  return (
+    &lt;div className="profile"&gt;
+      &lt;h2&gt;{student.name}&lt;/h2&gt;
+      &lt;p&gt;Группа {student.group}, баллы: {student.score}&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+
+      <h3>Разбор построчно: что заменило что</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Чистый JS</th><th>React</th><th>Что изменилось</th></tr></thead>
+          <tbody>
+            <tr><td><code>document.querySelector("#app")</code></td><td>— (нет)</td><td>Контейнер <code>#root</code> находит <code>main.jsx</code>, один раз за весь проект</td></tr>
+            <tr><td><code>const student = { … }</code></td><td>та же строка</td><td>Данные — обычный JS, ничего не меняется</td></tr>
+            <tr><td><code>createElement("div")</code> + <code>box.className = "profile"</code></td><td><code>&lt;div className="profile"&gt;</code></td><td>Вместо двух команд — один тег; <code>class</code> стал <code>className</code></td></tr>
+            <tr><td><code>createElement("h2")</code> + <code>h.textContent = student.name</code></td><td><code>&lt;h2&gt;{student.name}&lt;/h2&gt;</code></td><td>Вместо <code>textContent</code> — фигурные скобки с выражением</td></tr>
+            <tr><td>Шаблонная строка <code>`Группа ${…}`</code></td><td><code>Группа {student.group}, …</code></td><td>Текст и значения смешиваются прямо в разметке</td></tr>
+            <tr><td><code>box.append(h, p)</code>, <code>app.append(box)</code></td><td>вложенность тегов</td><td>Кто в ком лежит — видно по отступам, не по вызовам</td></tr>
+            <tr><td>(нет)</td><td><code>function App() { return … }</code> и <code>export default</code></td><td>Блок стал компонентом: его можно вставить как <code>&lt;App /&gt;</code> и использовать повторно</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Чек-лист: как проверять ответ ИИ</h3>
+      <ul>
+        <li><b>Имена компонентов</b> с большой буквы и в объявлении, и в использовании.</li>
+        <li><b>className, htmlFor, закрытые теги, один корень</b> — таблица из раздела 04.</li>
+        <li><b>style — объект</b>, а не строка.</li>
+        <li><b>Лишнее.</b> Если ИИ добавил <code>useState</code>, <code>useEffect</code>, <code>axios</code> или <code>styled-components</code>, хотя вы просили без них, — спросите «зачем это здесь?» и попросите убрать.</li>
+        <li><b>Запуск.</b> Вставьте в песочницу или проект и откройте консоль: ошибок нет, результат совпадает с оригиналом.</li>
+      </ul>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверьте «ответ ИИ»: четыре ошибки</h4><span class="level hard">сложная</span></header>
+          <p>ИИ перевёл карточку студента на React, но допустил четыре ошибки из чек-листа. Найдите их все и исправьте. Страница должна показать карточку студента и под ней абзац «Данные студента». Запускайте после каждой правки и читайте консоль.</p>
+          <div class="playground" data-mode="react" data-title="Ответ ИИ с ошибками">
+<pre class="code" data-lang="jsx">
+function profile() {
+  const student = { name: "Мадина", group: "JS-12", score: 87 };
+  return (
+    &lt;div class="profile" style="border: 1px solid gray"&gt;
+      &lt;h2&gt;{student.name}&lt;/h2&gt;
+      &lt;p&gt;Группа {student.group}, баллы: {student.score}&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;profile /&gt;
+    &lt;p&gt;Данные студента&lt;/p&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;div class="profile" style="border: 1px solid gray;"&gt;
+&lt;h2&gt;Мадина&lt;/h2&gt;
+&lt;p&gt;Группа JS-12, баллы: 87&lt;/p&gt;
+&lt;/div&gt;
+&lt;p&gt;Данные студента&lt;/p&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Ошибки по порядку: имя компонента с маленькой буквы; <code>class</code> вместо <code>className</code>; <code>style</code> строкой; два элемента в <code>return</code> без общей обёртки.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>function Profile</code> и <code>&lt;Profile /&gt;</code>; <code>className="profile"</code>; <code>style={{ border: "1px solid gray" }}</code>; в <code>App</code> оберните два элемента в <code>&lt;&gt;…&lt;/&gt;</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Реальный запрос к ИИ</h4><span class="level mid">средняя</span></header>
+          <p>Возьмите свой блок из урока 8 или 11 (карточка, пункт списка, заголовок страницы) — только без обработчиков событий. Сначала 15 минут переписывайте его на JSX сами. Потом отправьте ИИ промпт по образцу выше с вашим кодом, получите ответ и составьте таблицу «строка в JS — что в React — что изменилось» (как в разборе выше). Положите результат в песочницу, запустите, убедитесь, что экран совпал с оригиналом. Эта задача проверяется преподавателем — отметьте её сами, когда закончите.</p>
+          <details class="hint"><summary>Подсказка 1</summary><p>Если ответ ИИ не запускается, не просите «исправь» вслепую: скопируйте текст ошибки из консоли и спросите, что она означает и в какой строке причина.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Таблицу удобно вести в файле <code>NOTES.md</code> — она пригодится в домашнем задании.</p></details>
+        </article>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/writing-markup-with-jsx" target="_blank" rel="noopener">react.dev — Writing Markup with JSX</a></p>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">07</span> Практика на уроке: разбиваем страницу на компоненты</h2>
+
+      <p>Берём готовую страницу «Ilmhona», которая целиком написана в одном компоненте <code>App</code>, и режем её на компоненты. Этапов три, каждый заканчивается проверкой в консоли. В конце вы повторите то же в настоящем проекте на Vite — уже по отдельным файлам.</p>
+
+      <figure class="diagram">
+        <div class="loop-flow">
+          <div class="step d"><b>Этап 1</b><code>вынести Header</code></div>
+          <span class="arrow">→</span>
+          <div class="step s"><b>Этап 2</b><code>вынести Courses</code></div>
+          <span class="arrow">→</span>
+          <div class="step r"><b>Этап 3</b><code>вынести Footer и Nav (внутри Header)</code></div>
+        </div>
+        <figcaption>HTML на выходе остаётся тем же. Меняется только то, как собрана страница</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Как проверяется «разбиение»</b>
+        <p>Итоговая разметка при разбиении не меняется — поэтому проверка смотрит ещё и на строки <code>render …</code>. Каждый новый компонент должен первой строкой печатать своё имя: <code>console.log("render Header")</code>. React вызывает компоненты по порядку «сверху вниз, вглубь», так что в консоли вы увидите порядок вызовов — и сразу поймёте, что код действительно разрезан на компоненты, а не просто переписан.</p>
+      </div>
+
+      <h3>Этап 1. Вынесем Header</h3>
+      <p>Перенесите кусок <code>&lt;header&gt;…&lt;/header&gt;</code> в отдельную функцию <code>Header</code> и поставьте на его место <code>&lt;Header /&gt;</code>.</p>
+
+      <div class="practice">
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Этап 1: компонент Header</h4><span class="level mid">средняя</span></header>
+          <p>Создайте компонент <code>Header</code> с первой строкой <code>console.log("render Header")</code>. В нём — вся шапка (заголовок и <code>nav</code> со ссылками). В <code>App</code> вместо шапки поставьте <code>&lt;Header /&gt;</code>. Остальное не трогайте.</p>
+          <div class="playground" data-mode="react" data-title="Страница Ilmhona: этап 1">
+<pre class="code" data-lang="jsx">
+// TODO: объявите компонент Header
+
+export default function App() {
+  console.log("render App");
+  return (
+    &lt;div className="page"&gt;
+      &lt;header className="top"&gt;
+        &lt;h1&gt;Ilmhona&lt;/h1&gt;
+        &lt;nav&gt;
+          &lt;a href="#courses"&gt;Курсы&lt;/a&gt;
+          &lt;a href="#contacts"&gt;Контакты&lt;/a&gt;
+        &lt;/nav&gt;
+      &lt;/header&gt;
+      &lt;main id="courses"&gt;
+        &lt;h2&gt;Наши курсы&lt;/h2&gt;
+        &lt;ul&gt;
+          &lt;li&gt;HTML и CSS&lt;/li&gt;
+          &lt;li&gt;JavaScript&lt;/li&gt;
+          &lt;li&gt;React&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/main&gt;
+      &lt;footer id="contacts"&gt;Душанбе · Ilmhona&lt;/footer&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+<pre class="code" data-lang="css">
+.page { border: 2px solid #1f6feb; border-radius: 12px; overflow: hidden; }
+.top { background: #1f6feb; color: #fff; padding: 4px 16px; display: flex; justify-content: space-between; align-items: center; }
+.top a { color: #fff; margin-left: 12px; }
+main { padding: 4px 16px; }
+footer { background: #f3f4f6; padding: 8px 16px; color: #6b7280; }
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>render App
+render Header
+&lt;div class="page"&gt;
+&lt;header class="top"&gt;
+&lt;h1&gt;Ilmhona&lt;/h1&gt;
+&lt;nav&gt;
+&lt;a href="#courses"&gt;Курсы&lt;/a&gt;
+&lt;a href="#contacts"&gt;Контакты&lt;/a&gt;
+&lt;/nav&gt;
+&lt;/header&gt;
+&lt;main id="courses"&gt;
+&lt;h2&gt;Наши курсы&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;HTML и CSS&lt;/li&gt;
+&lt;li&gt;JavaScript&lt;/li&gt;
+&lt;li&gt;React&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/main&gt;
+&lt;footer id="contacts"&gt;Душанбе · Ilmhona&lt;/footer&gt;
+&lt;/div&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Образец — компоненты из раздела 02. <code>function Header() { console.log("render Header"); return ( … ); }</code> — в <code>return</code> вставьте весь тег <code>&lt;header&gt;</code> вместе с содержимым.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>App</code> на месте шапки остаётся одна строка <code>&lt;Header /&gt;</code>. Всё, что было внутри <code>header</code>, теперь живёт в функции <code>Header</code>.</p></details>
+        </article>
+      </div>
+
+      <h3>Этап 2. Вынесем Courses</h3>
+      <p>Теперь то же самое с блоком курсов. Он называется <code>Courses</code>.</p>
+
+      <div class="practice">
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Этап 2: компонент Courses</h4><span class="level mid">средняя</span></header>
+          <p><code>Header</code> уже вынесен. Вынесите блок <code>&lt;main&gt;</code> в компонент <code>Courses</code> с первой строкой <code>console.log("render Courses")</code> и поставьте <code>&lt;Courses /&gt;</code> в <code>App</code>.</p>
+          <div class="playground" data-mode="react" data-title="Страница Ilmhona: этап 2">
+<pre class="code" data-lang="jsx">
+function Header() {
+  console.log("render Header");
+  return (
+    &lt;header className="top"&gt;
+      &lt;h1&gt;Ilmhona&lt;/h1&gt;
+      &lt;nav&gt;
+        &lt;a href="#courses"&gt;Курсы&lt;/a&gt;
+        &lt;a href="#contacts"&gt;Контакты&lt;/a&gt;
+      &lt;/nav&gt;
+    &lt;/header&gt;
+  );
+}
+
+// TODO: объявите компонент Courses
+
+export default function App() {
+  console.log("render App");
+  return (
+    &lt;div className="page"&gt;
+      &lt;Header /&gt;
+      &lt;main id="courses"&gt;
+        &lt;h2&gt;Наши курсы&lt;/h2&gt;
+        &lt;ul&gt;
+          &lt;li&gt;HTML и CSS&lt;/li&gt;
+          &lt;li&gt;JavaScript&lt;/li&gt;
+          &lt;li&gt;React&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/main&gt;
+      &lt;footer id="contacts"&gt;Душанбе · Ilmhona&lt;/footer&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+<pre class="code" data-lang="css">
+.page { border: 2px solid #1f6feb; border-radius: 12px; overflow: hidden; }
+.top { background: #1f6feb; color: #fff; padding: 4px 16px; display: flex; justify-content: space-between; align-items: center; }
+.top a { color: #fff; margin-left: 12px; }
+main { padding: 4px 16px; }
+footer { background: #f3f4f6; padding: 8px 16px; color: #6b7280; }
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>render App
+render Header
+render Courses
+&lt;div class="page"&gt;
+&lt;header class="top"&gt;
+&lt;h1&gt;Ilmhona&lt;/h1&gt;
+&lt;nav&gt;
+&lt;a href="#courses"&gt;Курсы&lt;/a&gt;
+&lt;a href="#contacts"&gt;Контакты&lt;/a&gt;
+&lt;/nav&gt;
+&lt;/header&gt;
+&lt;main id="courses"&gt;
+&lt;h2&gt;Наши курсы&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;HTML и CSS&lt;/li&gt;
+&lt;li&gt;JavaScript&lt;/li&gt;
+&lt;li&gt;React&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/main&gt;
+&lt;footer id="contacts"&gt;Душанбе · Ilmhona&lt;/footer&gt;
+&lt;/div&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Действуйте так же, как с <code>Header</code>: функция с большой буквы, <code>console.log</code> первой строкой, весь тег <code>&lt;main&gt;</code> — в <code>return</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Порядок строк в консоли — это порядок вызова компонентов: сначала <code>App</code>, затем его дети по очереди — <code>Header</code>, потом <code>Courses</code>.</p></details>
+        </article>
+      </div>
+
+      <h3>Этап 3. Footer и вложенный Nav</h3>
+      <p>Компонент может содержать другой компонент. В шапке выделим меню в отдельный <code>Nav</code> — получится дерево из раздела 02.</p>
+
+      <div class="practice">
+        <article class="task" id="t7-3">
+          <header><span class="task-num">ЗАДАЧА 7.3</span><h4>Этап 3: Footer и Nav внутри Header</h4><span class="level hard">сложная</span></header>
+          <p>Вынесите <code>&lt;footer&gt;</code> в компонент <code>Footer</code>, а <code>&lt;nav&gt;</code> из шапки — в компонент <code>Nav</code>, который используется <b>внутри</b> <code>Header</code>. У каждого новый <code>console.log("render Footer")</code> и <code>console.log("render Nav")</code> первой строкой. В итоге в консоли порядок вызовов: <code>App</code>, <code>Header</code>, <code>Nav</code>, <code>Courses</code>, <code>Footer</code>.</p>
+          <div class="playground" data-mode="react" data-title="Страница Ilmhona: этап 3">
+<pre class="code" data-lang="jsx">
+// TODO: объявите Nav и Footer
+
+function Header() {
+  console.log("render Header");
+  return (
+    &lt;header className="top"&gt;
+      &lt;h1&gt;Ilmhona&lt;/h1&gt;
+      &lt;nav&gt;
+        &lt;a href="#courses"&gt;Курсы&lt;/a&gt;
+        &lt;a href="#contacts"&gt;Контакты&lt;/a&gt;
+      &lt;/nav&gt;
+    &lt;/header&gt;
+  );
+}
+
+function Courses() {
+  console.log("render Courses");
+  return (
+    &lt;main id="courses"&gt;
+      &lt;h2&gt;Наши курсы&lt;/h2&gt;
+      &lt;ul&gt;
+        &lt;li&gt;HTML и CSS&lt;/li&gt;
+        &lt;li&gt;JavaScript&lt;/li&gt;
+        &lt;li&gt;React&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/main&gt;
+  );
+}
+
+export default function App() {
+  console.log("render App");
+  return (
+    &lt;div className="page"&gt;
+      &lt;Header /&gt;
+      &lt;Courses /&gt;
+      &lt;footer id="contacts"&gt;Душанбе · Ilmhona&lt;/footer&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+<pre class="code" data-lang="css">
+.page { border: 2px solid #1f6feb; border-radius: 12px; overflow: hidden; }
+.top { background: #1f6feb; color: #fff; padding: 4px 16px; display: flex; justify-content: space-between; align-items: center; }
+.top a { color: #fff; margin-left: 12px; }
+main { padding: 4px 16px; }
+footer { background: #f3f4f6; padding: 8px 16px; color: #6b7280; }
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>render App
+render Header
+render Nav
+render Courses
+render Footer
+&lt;div class="page"&gt;
+&lt;header class="top"&gt;
+&lt;h1&gt;Ilmhona&lt;/h1&gt;
+&lt;nav&gt;
+&lt;a href="#courses"&gt;Курсы&lt;/a&gt;
+&lt;a href="#contacts"&gt;Контакты&lt;/a&gt;
+&lt;/nav&gt;
+&lt;/header&gt;
+&lt;main id="courses"&gt;
+&lt;h2&gt;Наши курсы&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;HTML и CSS&lt;/li&gt;
+&lt;li&gt;JavaScript&lt;/li&gt;
+&lt;li&gt;React&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/main&gt;
+&lt;footer id="contacts"&gt;Душанбе · Ilmhona&lt;/footer&gt;
+&lt;/div&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>Footer</code> — как <code>Header</code> на этапе 1. А <code>Nav</code> объявляется отдельно, и <code>Header</code> теперь содержит <code>&lt;h1&gt;</code> и <code>&lt;Nav /&gt;</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Порядок строк <code>render …</code> зависит от порядка вызова в дереве, а не от порядка объявления функций в файле.</p></details>
+        </article>
+      </div>
+
+      <h3>Повторяем в проекте на Vite</h3>
+      <p>Теперь то же самое «по-взрослому» — каждый компонент в своём файле. Откройте проект <code>my-react-app</code> из раздела 03 (или создайте новый), очистите шаблон и сделайте так:</p>
+      <ol class="steps">
+        <li>Создайте папку <code>src/components/</code> и четыре файла в ней: <code>Header.jsx</code>, <code>Nav.jsx</code>, <code>Courses.jsx</code>, <code>Footer.jsx</code>.</li>
+        <li>В каждый перенесите свой компонент из песочницы и допишите <code>export default</code>.</li>
+        <li>Там, где компонент использует другой, добавьте <code>import</code> (<code>Header</code> импортирует <code>Nav</code>).</li>
+        <li>В <code>App.jsx</code> импортируйте <code>Header</code>, <code>Courses</code>, <code>Footer</code> и соберите страницу.</li>
+        <li>Стили из вкладки <b>style.css</b> перенесите в <code>src/App.css</code> и убедитесь, что <code>App.jsx</code> его импортирует: <code>import './App.css'</code>.</li>
+        <li>Запустите <code>npm run dev</code>, откройте консоль браузера и проверьте: строки <code>render …</code> печатаются, и (из-за <code>StrictMode</code>) каждая — дважды.</li>
+      </ol>
+<pre class="code" data-lang="jsx" data-title="src/components/Header.jsx">
+import Nav from './Nav.jsx'
+
+export default function Header() {
+  return (
+    &lt;header className="top"&gt;
+      &lt;h1&gt;Ilmhona&lt;/h1&gt;
+      &lt;Nav /&gt;
+    &lt;/header&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="jsx" data-title="src/App.jsx">
+import './App.css'
+import Header from './components/Header.jsx'
+import Courses from './components/Courses.jsx'
+import Footer from './components/Footer.jsx'
+
+export default function App() {
+  return (
+    &lt;div className="page"&gt;
+      &lt;Header /&gt;
+      &lt;Courses /&gt;
+      &lt;Footer /&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+      <div class="callout tip">
+        <b>Дерево компонентов в браузере</b>
+        <p>Установите расширение <b>React Developer Tools</b> для вашего браузера: в DevTools появится вкладка <b>Components</b>, где видно то самое дерево — <code>App</code> → <code>Header</code> → <code>Nav</code> и так далее. Это быстрый способ убедиться, что разбиение сделано так, как задумано.</p>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">08</span> Домашнее задание: страница из 5 компонентов</h2>
+
+      <p>Соберите свою страницу на React: личную визитку, страницу кафе, афишу мероприятия — на ваш выбор. Это первый проект на React + Vite. Модуль «React Lite» — бонусный, оценка в журнал не ставится, но разбор по критериям ниже вы получите от преподавателя.</p>
+
+      <h3>Что нужно сделать</h3>
+      <ul class="goals">
+        <li>☐ Создать проект командой <code>npm create vite@latest</code> с шаблоном React (JavaScript), очистить шаблон: убрать счётчик, картинки и лишние стили.</li>
+        <li>☐ Страница состоит минимум из <b>5 компонентов</b>, каждый в своём файле в <code>src/components/</code>, с <code>export default</code>.</li>
+        <li>☐ Минимум один компонент вложен в другой (например, <code>Logo</code> внутри <code>Header</code>), и минимум один используется на странице <b>два раза и больше</b>.</li>
+        <li>☐ <code>App.jsx</code> только собирает страницу из компонентов: у него нет «своей» большой разметки.</li>
+        <li>☐ В JSX использованы <code>className</code>, <code>htmlFor</code> (если есть форма), закрытые теги, выражения в <code>{…}</code> (например, год в подвале) и хотя бы один <code>style={{…}}</code> или условный вывод.</li>
+        <li>☐ Свои стили в <code>App.css</code> или отдельных <code>.css</code> файлах; страница выглядит аккуратно и на телефоне (ширина 390 px).</li>
+        <li>☐ <code>npm run build</code> проходит без ошибок. В репозитории нет <code>node_modules</code> и <code>dist</code>, есть <code>package-lock.json</code>.</li>
+        <li>☐ Не менее 3 осмысленных коммитов; репозиторий на GitHub.</li>
+        <li>☐ <code>README.md</code>: что за страница, как запустить, <b>дерево ваших компонентов</b> и 2–3 предложения своими словами: чем компонентный подход удобнее ручного DOM.</li>
+      </ul>
+
+      <div class="callout ai">
+        <b>ИИ в домашнем задании</b>
+        <p>Правило курса: 15 минут сами. Сначала нарисуйте дерево компонентов на бумаге. Потом можно попросить ИИ: «Вот моё дерево компонентов [дерево]. Какие блоки я могу вынести в отдельные компоненты и что здесь можно переиспользовать?» — и сравнить со своим. Код, который не можете объяснить построчно, в проект не вставляйте. В README напишите, где использовали ИИ и что пришлось исправить.</p>
+      </div>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Ссылку на репозиторий GitHub в чат группы.</li>
+        <li>Скриншот страницы и скриншот вкладки Components (React Developer Tools) с деревом компонентов.</li>
+        <li>В сообщении: сколько компонентов у вас получилось и какой из них вы используете повторно.</li>
+      </ul>
+
+      <h3>Разбор по критериям (для самопроверки)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Критерий</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Проект на Vite запускается, <code>npm run build</code> проходит, шаблон очищен</td><td>2</td></tr>
+            <tr><td>5+ компонентов в отдельных файлах, верные имена, <code>export default</code> и <code>import</code></td><td>3</td></tr>
+            <tr><td>Есть вложенность и повторное использование компонента; <code>App.jsx</code> только собирает страницу</td><td>2</td></tr>
+            <tr><td>JSX написан правильно: <code>className</code>, закрытые теги, выражения, один корень</td><td>1</td></tr>
+            <tr><td>README с деревом компонентов и своими словами; аккуратные коммиты</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Баллы нужны для самопроверки: бонусный модуль не влияет на итоговую оценку курса.</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Ручной DOM</b> — императив: «найди, создай, вставь, обнови». Много кода, легко забыть обновить место, разметки не видно. <b>React</b> — декларатив: описываем, что должно быть на экране, а React сам меняет DOM.</li>
+        <li><b>Компонент</b> — функция, которая возвращает JSX. Имя с <b>большой буквы</b>, использование как тег: <code>&lt;Header /&gt;</code>. Имя с маленькой буквы — это обычный HTML-тег.</li>
+        <li><b>Страница = дерево компонентов.</b> Режем по смыслу: повторяющийся блок, блок со своей задачей. Один компонент — один файл.</li>
+        <li><b>Проект:</b> <code>npm create vite@latest my-app -- --template react</code> → <code>cd my-app</code> → <code>npm install</code> → <code>npm run dev</code>.</li>
+        <li><b>Цепочка запуска:</b> <code>index.html</code> (<code>&lt;div id="root"&gt;</code>) → <code>src/main.jsx</code> (<code>createRoot(…).render(&lt;App /&gt;)</code>) → <code>src/App.jsx</code> (главный компонент).</li>
+        <li><b>JSX ≠ HTML:</b> <code>className</code>, <code>htmlFor</code>, все теги закрыты (<code>&lt;br /&gt;</code>, <code>&lt;input /&gt;</code>), один корень или фрагмент <code>&lt;&gt;…&lt;/&gt;</code>, <code>{выражение}</code>, <code>style={{ backgroundColor: "gold" }}</code>, комментарий <code>{/* … */}</code>.</li>
+        <li><b>В {…}</b> — только выражения: переменные, арифметика, вызовы, <code>? :</code>, <code>&amp;&amp;</code>. Не рисуются <code>true</code>, <code>false</code>, <code>null</code>, <code>undefined</code>; <code>0</code> рисуется — условие <code>n &amp;&amp; …</code> пишите как <code>n &gt; 0 &amp;&amp; …</code>.</li>
+        <li><b>Экспорт и импорт:</b> <code>export default function Header() {…}</code> → <code>import Header from './components/Header.jsx'</code>. Путь с <code>./</code>, расширение <code>.jsx</code> целиком.</li>
+        <li><b>StrictMode</b> в режиме разработки вызывает компоненты дважды — <code>console.log</code> в компоненте печатается два раза. В собранном сайте так не бывает.</li>
+        <li><b>ИИ:</b> сначала сами 15 минут; в промпте — контекст, «без useState и событий», формат «таблица строка → строка». Проверяем: имена, <code>className</code>, один корень, <code>style</code>-объект, лишние библиотеки, запуск.</li>
+        <li><b>Дальше (урок 23):</b> <code>props</code> — параметры компонента, <code>useState</code> — его память, списки и <code>key</code>.</li>
+      </ul>
+    </section>

@@ -1,0 +1,1857 @@
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 20 · Инструменты и финал</p>
+      <h1>Чистый код, рефакторинг и деплой</h1>
+      <p class="lead">Код пишут один раз, а читают — десятки. Через месяц вы сами не поймёте, что имели в виду под <code>x2</code>, а работодатель на собеседовании открывает ваш репозиторий за 30 секунд. Сегодня учимся наводить в коде порядок так, чтобы он не ломался, а потом выкладываем проекты в интернет — чтобы по ссылке их мог открыть любой человек, от мамы до рекрутёра.</p>
+      <ul class="goals">
+        <li>Давать имена переменным и функциям, которые не нужно расшифровывать</li>
+        <li>Дробить большие функции, убирать вложенность ранним <code>return</code>, не повторяться (DRY)</li>
+        <li>Выносить «магические числа» в константы и отделять расчёты от отображения</li>
+        <li>Проверять код по чек-листу и рефакторить так, чтобы поведение не менялось</li>
+        <li>Собрать проект командой <code>npm run build</code> и настроить переменные окружения без утечки секретов</li>
+        <li>Задеплоить проект на Vercel и GitHub Pages, а советы ИИ-ревью — разделять на полезные и вредные</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Код с кнопкой <b>▶ Запустить</b> — живой: меняйте его и смотрите результат в консоли. Блоки с подписью «Терминал» и конфигурационные файлы запускать нельзя — их вы повторите у себя на компьютере. В задачах на рефакторинг <b>поведение кода менять нельзя</b>: проверка сравнивает вывод, поэтому в каждой такой задаче внизу уже есть строки-тесты. Не трогайте их — они ваша страховка. Подсказки спрятаны: сначала сами.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="naming">
+      <h2 data-toc="Имена"><span class="num">01</span> Имена: код читают чаще, чем пишут</h2>
+
+      <p>Компьютеру всё равно, как назвать переменную: <code>a</code>, <code>x2</code> или <code>somoniForOnePlov</code>. Но программу читает не только компьютер — её читаете вы через неделю, ваш напарник по проекту и ИИ-помощник. Хорошее имя избавляет от комментария: из него сразу понятно, <b>что это</b> и <b>зачем</b>.</p>
+
+      <div class="cols">
+        <div class="col bad"><b>Придётся расшифровывать</b>
+<pre class="code">
+const d = 7;
+const l = [5, 35, 15];
+function proc(x) {
+  return x * 11;
+}
+let flag = false;
+</pre>
+        </div>
+        <div class="col good"><b>Читается как текст</b>
+<pre class="code">
+const daysInWeek = 7;
+const dishPrices = [5, 35, 15];
+function convertUsdToSomoni(usd) {
+  return usd * 11;
+}
+let isPaid = false;
+</pre>
+        </div>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Представьте кухню в чайхоне, где все банки подписаны «Банка 1», «Банка 2», «Банка 3». Повар-новичок положит в плов не зиру, а красный перец. А теперь банки с надписями «Зира», «Соль», «Барбарис» — ошибиться почти невозможно. Имена переменных — это подписи на банках вашей программы.</p>
+      </div>
+
+      <h3>Правила хороших имён</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что называем</th><th>Как</th><th>Пример</th></tr></thead>
+          <tbody>
+            <tr><td><b>Переменная с данными</b></td><td>существительное, описывает содержимое</td><td><code>studentName</code>, <code>totalPrice</code></td></tr>
+            <tr><td><b>Массив</b></td><td>существительное во множественном числе</td><td><code>students</code>, <code>prices</code></td></tr>
+            <tr><td><b>Функция</b></td><td>глагол + что делает</td><td><code>calcTotal</code>, <code>renderMenu</code>, <code>getUserName</code></td></tr>
+            <tr><td><b>Булево значение</b></td><td>вопрос: <code>is</code>, <code>has</code>, <code>can</code></td><td><code>isPaid</code>, <code>hasTicket</code>, <code>canEnroll</code></td></tr>
+            <tr><td><b>Константа</b></td><td>ЗАГЛАВНЫМИ через подчёркивание</td><td><code>MAX_TRIES</code>, <code>USD_RATE</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ul>
+        <li><b>Без сокращений</b>, которые знаете только вы: <code>cnt</code>, <code>usr</code>, <code>tmp</code>. Лишние пять букв — дешёвая цена за понятность. Исключение — общепринятые: <code>i</code> в коротком цикле, <code>id</code>, <code>url</code>.</li>
+        <li><b>Без «мусорных» слов</b>: <code>data</code>, <code>info</code>, <code>temp</code>, <code>thing</code>, <code>list2</code>. Спросите себя: «Какие именно данные?»</li>
+        <li><b>Одно слово — одно понятие.</b> Если в одном месте <code>getUser</code>, в другом <code>fetchOrder</code>, а в третьем <code>loadProduct</code> — выберите один глагол для одного вида действий и держитесь его.</li>
+        <li><b>Длина имени зависит от «жизни» переменной.</b> Переменная на три строки может быть короткой (<code>item</code>), а видная всему файлу — подробной (<code>selectedDishId</code>).</li>
+        <li><b>Только латиница</b>, язык — английский. Комментарии и тексты для пользователя пишем по-русски.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Худшее, что бывает: имя врёт</b>
+        <p>Функция <code>getUser</code>, которая заодно удаляет пользователя. Переменная <code>isEmpty</code>, равная <code>true</code>, когда список <b>не</b> пуст. Такой код опаснее, чем с плохими именами: вы полагаетесь на название — и ошибаетесь. Если поменяли поведение — поменяйте и имя.</p>
+      </div>
+<pre class="code" data-run data-title="Имя врёт — и код читается наоборот">
+const items = [5, 35];
+const isEmpty = items.length &gt; 0;   // ✖ на самом деле «не пусто»
+
+if (isEmpty) {
+  console.log("Корзина пуста");     // ← а корзина-то полная!
+}
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/coding-style" target="_blank" rel="noopener">learn.javascript.ru — Стиль кода</a>, <a href="https://learn.javascript.ru/ninja-code" target="_blank" rel="noopener">learn.javascript.ru — Ниндзя-код (как делать не надо)</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Учимся замечать плохие имена и чинить их.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Хорошее имя или плохое</h4><span class="level easy">лёгкая</span></header>
+          <p>Ниже восемь фрагментов. Впишите в массив <code>badNames</code> <b>номера</b> тех, где имя плохое (непонятное, мусорное или не говорит, что внутри). Номера — по возрастанию. Выведите их через запятую.</p>
+<pre class="code" data-run>
+// 1
+const d = 7;
+// 2
+const daysInWeek = 7;
+// 3
+function proc(x) { return x * 2; }
+// 4
+const isPaid = true;
+// 5
+const flag = false;   // здесь хранится «оплачен ли заказ»
+// 6
+const students = ["Рустам", "Нилуфар"];
+// 7
+function getStudentCount(students) { return students.length; }
+// 8
+const data2 = [1, 2, 3];
+
+const badNames = [/* номера плохих имён */];
+console.log(badNames.join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1, 3, 5, 8</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Для каждого имени спросите: «Если увижу его через месяц — пойму, что это?» Одна буква, <code>proc</code>, <code>flag</code>, <code>data2</code> — не скажут ничего.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Хорошие имена здесь под номерами 2, 4, 6 и 7. Остальные четыре — ваш ответ.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Три буквы вместо смысла</h4><span class="level easy">лёгкая</span></header>
+          <p>Переменные <code>p</code>, <code>n</code>, <code>t</code> нужно переименовать: <code>price</code> (цена одной самбусы), <code>count</code> (сколько штук), <code>total</code> (сумма). Последняя строка уже использует новые имена — поэтому сейчас код падает. Поведение не меняется.</p>
+<pre class="code" data-run>
+const p = 25;
+const n = 4;
+const t = p * n;
+
+console.log(`${price} × ${count} = ${total}`);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>25 × 4 = 100</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Переименуйте каждую переменную <b>везде</b>, где она встречается, — и в объявлении, и в расчёте <code>p * n</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В VS Code клавиша <b>F2</b> на имени переменной переименует её сразу во всём файле. Но в этом упражнении наберите руками.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Говорящие функции</h4><span class="level mid">средняя</span></header>
+          <p>Три функции работают, но названы так, что ничего не понятно. Переименуйте их в <code>isAdult</code>, <code>getTotal</code>, <code>formatPrice</code>, а заодно дайте понятные имена параметрам и переменным внутри (<code>age</code>, <code>prices</code>, <code>total</code>, <code>amount</code>). Вызовы внизу уже используют новые имена. Результат не меняется.</p>
+<pre class="code" data-run>
+function check(a) {
+  return a &gt;= 18;
+}
+
+function calc(arr) {
+  let s = 0;
+  for (const x of arr) {
+    s += x;
+  }
+  return s;
+}
+
+function fmt(n) {
+  return n + " сомони";
+}
+
+console.log(isAdult(20), isAdult(15));
+console.log(getTotal([5, 35, 15]));
+console.log(formatPrice(getTotal([5, 35, 15])));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>true false
+55
+55 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Имя функции — глагол: <code>getTotal</code> «получает итог», <code>formatPrice</code> «форматирует цену». Булева <code>isAdult</code> отвечает на вопрос «взрослый?».</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В цикле <code>for (const x of arr)</code> замените <code>x</code> на <code>price</code>, а <code>arr</code> — на <code>prices</code>: так цикл читается почти как предложение.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="functions">
+      <h2 data-toc="Функции и ранний return"><span class="num">02</span> Маленькие функции и ранний возврат</h2>
+
+      <p>Правило номер один для функций: <b>одна функция — одна задача</b>. Если вы описываете её словом «и» («считает сумму <i>и</i> применяет скидку <i>и</i> печатает чек»), это три функции. Короткая функция проще читать, называть, проверять и использовать в другом месте.</p>
+      <ul>
+        <li><b>Размер.</b> Ориентир — помещается на один экран, 10–20 строк. Не закон, а сигнал: если пролистываете — пора делить.</li>
+        <li><b>Параметры.</b> Два–три — нормально. Пять и больше — повод подумать, не стоит ли передать объект.</li>
+        <li><b>Один уровень детализации.</b> Верхняя функция рассказывает «что происходит» (<code>validate → calc → render</code>), а подробности спрятаны в маленьких функциях.</li>
+      </ul>
+
+<pre class="code" data-run data-title="Большая функция делает всё сразу">
+function processOrder(prices) {
+  let sum = 0;
+  for (const price of prices) {
+    sum += price;
+  }
+  const discount = sum &gt;= 100 ? sum / 10 : 0;
+  console.log("К оплате: " + (sum - discount));
+}
+
+processOrder([40, 70, 20]);
+</pre>
+<pre class="code" data-run data-title="Три маленькие функции — «главная» читается как план">
+function calcSum(prices) {
+  let sum = 0;
+  for (const price of prices) {
+    sum += price;
+  }
+  return sum;
+}
+
+function calcDiscount(sum) {
+  return sum &gt;= 100 ? sum / 10 : 0;
+}
+
+function processOrder(prices) {
+  const sum = calcSum(prices);
+  const discount = calcDiscount(sum);
+  console.log("К оплате: " + (sum - discount));
+}
+
+processOrder([40, 70, 20]);
+</pre>
+
+      <h3>Ранний возврат (guard clauses)</h3>
+      <p>Когда проверки вкладываются друг в друга, получается «стрелка» из скобок: основная логика уехала вправо на три уровня, а в голове приходится держать все условия сразу. Лекарство — <b>ранний возврат</b>: сначала отсекаем плохие случаи и сразу выходим из функции, а основная логика остаётся на одном уровне.</p>
+
+      <div class="cols">
+        <div class="col bad"><b>Стрелка из вложенных if</b>
+<pre class="code">
+function getFare(age, hasCard) {
+  if (age &gt;= 0) {
+    if (hasCard) {
+      if (age &lt; 7) {
+        return 0;
+      } else {
+        return 3;
+      }
+    } else {
+      return 5;
+    }
+  } else {
+    return -1;
+  }
+}
+</pre>
+        </div>
+        <div class="col good"><b>Ранний возврат — плоско</b>
+<pre class="code">
+function getFare(age, hasCard) {
+  if (age &lt; 0) return -1;
+  if (!hasCard) return 5;
+  if (age &lt; 7) return 0;
+  return 3;
+}
+</pre>
+        </div>
+      </div>
+
+      <p>Обе функции возвращают одно и то же, но вторую читаешь сверху вниз как список правил. Заметили? Слово <code>else</code> пропало: после <code>return</code> оно не нужно, функция уже закончилась.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Контролёр на входе в метро проверяет билет <b>сразу у турникета</b> и не пускает без него. Представьте, что вас пустили внутрь, довезли до конечной — и только там сообщили, что билета не было. Ранний возврат — это турникет в начале функции.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Частая ошибка: забыли return в «охране»</b>
+        <p>Если в проверке написать только сообщение, а <code>return</code> забыть — функция продолжит работать с плохими данными.</p>
+      </div>
+<pre class="code" data-run data-title="Проверка есть, а выхода нет">
+function divide(a, b) {
+  if (b === 0) {
+    console.log("Делить на ноль нельзя");   // сообщили, но не вышли!
+  }
+  return a / b;                             // всё равно делим
+}
+
+console.log(divide(10, 0));   // → Infinity, а хотели остановиться
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/function-basics" target="_blank" rel="noopener">learn.javascript.ru — Функции</a>, <a href="https://refactoring.guru/ru/refactoring" target="_blank" rel="noopener">refactoring.guru — Рефакторинг</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Учимся делить функции и убирать вложенность. Поведение функций остаётся прежним.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Охрана на входе в зал</h4><span class="level mid">средняя</span></header>
+          <p>Перепишите функцию с ранними возвратами: <b>без единого <code>else</code></b>. Ответы для всех входов должны остаться такими же. Последняя строка проверяет, что слова <code>else</code> в тексте функции не осталось (в комментариях его тоже не пишите).</p>
+<pre class="code" data-run>
+function getAccessMessage(age, hasTicket, isVip) {
+  if (age &gt;= 18) {
+    if (hasTicket) {
+      if (isVip) {
+        return "Добро пожаловать в VIP-зал";
+      } else {
+        return "Добро пожаловать в зал";
+      }
+    } else {
+      return "Купите билет";
+    }
+  } else {
+    return "Только с 18 лет";
+  }
+}
+
+console.log(getAccessMessage(20, true, true));
+console.log(getAccessMessage(20, true, false));
+console.log(getAccessMessage(20, false, true));
+console.log(getAccessMessage(15, true, true));
+console.log(getAccessMessage.toString().includes("else"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Добро пожаловать в VIP-зал
+Добро пожаловать в зал
+Купите билет
+Только с 18 лет
+false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Начните с «плохих» случаев: <code>if (age &lt; 18) return "Только с 18 лет";</code>. Проверки идут в том же порядке, что и вложенность в исходнике.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Остаётся три строки-охранника: возраст → билет → VIP. Последний <code>return</code> — для обычного посетителя «в зал».</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Чек из кучи в три функции</h4><span class="level mid">средняя</span></header>
+          <p>Разделите <code>printReceipt</code> на <code>calcSum(prices)</code> (возвращает сумму), <code>calcDiscount(sum)</code> (скидка 10% от 100 сомони и выше, иначе 0) и саму <code>printReceipt</code>, которая только вызывает их и печатает. Вывод чека должен остаться прежним.</p>
+<pre class="code" data-run>
+function printReceipt(prices) {
+  let sum = 0;
+  for (const price of prices) {
+    sum += price;
+  }
+  let discount = 0;
+  if (sum &gt;= 100) {
+    discount = sum * 0.1;
+  }
+  const total = sum - discount;
+  console.log("Сумма: " + sum);
+  console.log("Скидка: " + discount);
+  console.log("Итого: " + total);
+}
+
+printReceipt([40, 70, 20]);
+printReceipt([30, 20]);
+
+console.log(calcSum([10, 20, 30]));
+console.log(calcDiscount(200));
+console.log(calcDiscount(50));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Сумма: 130
+Скидка: 13
+Итого: 117
+Сумма: 50
+Скидка: 0
+Итого: 50
+60
+20
+0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Вынесите цикл суммирования в <code>calcSum</code> с <code>return sum</code>. Условие со скидкой — в <code>calcDiscount</code>: она получает сумму и возвращает число.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри <code>printReceipt</code> остаётся: два вызова (<code>const sum = calcSum(prices)</code>, <code>const discount = calcDiscount(sum)</code>), расчёт <code>total</code> и три <code>console.log</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Охранник без выхода</h4><span class="level easy">лёгкая</span></header>
+          <p>Функция <code>divide</code> должна при делении на ноль вывести сообщение и <b>вернуть <code>null</code></b>, а не считать дальше. Найдите, чего не хватает.</p>
+<pre class="code" data-run>
+function divide(a, b) {
+  if (b === 0) {
+    console.log("Делить на ноль нельзя");
+  }
+  return a / b;
+}
+
+console.log(divide(10, 0));
+console.log(divide(10, 2));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Делить на ноль нельзя
+null
+5</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сообщение выведено, но функция не закончилась: следующая строка <code>return a / b</code> всё равно выполнится.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавьте внутрь блока <code>if</code> строку <code>return null;</code> после <code>console.log</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-4">
+          <header><span class="task-num">ЗАДАЧА 2.4</span><h4>Цена билета в маршрутке</h4><span class="level mid">средняя</span></header>
+          <p>Функция считает цену проезда в сомони: возраст вне диапазона 0–120 → <code>-1</code>; дети до 7 лет → 0; студенты → 2; в выходные → 4; иначе 5. Перепишите её без <code>else</code> и без переменной <code>price</code> — только ранние <code>return</code>. Результаты не меняются.</p>
+<pre class="code" data-run>
+function getTicketPrice(age, isStudent, isWeekend) {
+  let price;
+  if (age &lt; 0 || age &gt; 120) {
+    price = -1;
+  } else {
+    if (age &lt; 7) {
+      price = 0;
+    } else {
+      if (isStudent) {
+        price = 2;
+      } else {
+        if (isWeekend) {
+          price = 4;
+        } else {
+          price = 5;
+        }
+      }
+    }
+  }
+  return price;
+}
+
+console.log(getTicketPrice(5, false, false));
+console.log(getTicketPrice(20, true, false));
+console.log(getTicketPrice(30, false, true));
+console.log(getTicketPrice(30, false, false));
+console.log(getTicketPrice(-3, false, false));
+console.log(getTicketPrice(200, true, true));
+console.log(getTicketPrice.toString().includes("else"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>0
+2
+4
+5
+-1
+-1
+false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Порядок проверок важен: сначала «невозможный возраст», потом дети, потом студенты, потом выходные. Каждая — одна строка <code>if (...) return ...;</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Последняя строка функции — просто <code>return 5;</code> для всех оставшихся случаев.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="dry">
+      <h2 data-toc="DRY и константы"><span class="num">03</span> DRY и магические числа</h2>
+
+      <p><b>DRY</b> — Don't Repeat Yourself, «не повторяйся». Скопировали кусок кода три раза — значит, при любой правке придётся найти и исправить все три копии. Одну забудете — получите баг, который проявляется «иногда». Решение то же, что в уроке про функции: одно место, где написано, и много мест, где вызвано.</p>
+
+<pre class="code" data-run data-title="Копипаста: поменять формат — править в трёх местах">
+console.log("Самбуса: " + 5 + " сомони");
+console.log("Курутоб: " + 35 + " сомони");
+console.log("Шакароб: " + 15 + " сомони");
+</pre>
+<pre class="code" data-run data-title="DRY: формат описан один раз">
+function printPriceTag(name, price) {
+  console.log(`${name}: ${price} сомони`);
+}
+
+const menu = [
+  { name: "Самбуса", price: 5 },
+  { name: "Курутоб", price: 35 },
+  { name: "Шакароб", price: 15 },
+];
+
+for (const dish of menu) {
+  printPriceTag(dish.name, dish.price);
+}
+</pre>
+
+      <div class="callout tip">
+        <b>Правило трёх</b>
+        <p>Повторилось второй раз — потерпите. Повторилось <b>в третий</b> — выносите в функцию или данные. Не абстрагируйтесь слишком рано: два похожих куска кода иногда похожи случайно и завтра будут отличаться. Если «общая» функция обрастает параметрами-флагами (<code>isStudent</code>, <code>isSenior</code>, <code>isSpecial</code>…), вы объединили то, что объединять не стоило.</p>
+      </div>
+
+      <h3>Магические числа</h3>
+      <p><b>Магическое число</b> — число (или строка) в коде, смысл которого непонятен без объяснений. Что значит <code>* 11</code>? А <code>&gt;= 300</code>? Через месяц не вспомните сами. Лекарство — <b>именованная константа</b>: вынести значение наверх файла и дать ему имя.</p>
+
+      <div class="cols">
+        <div class="col bad"><b>Магия</b>
+<pre class="code">
+function deliveryCost(sum) {
+  if (sum &gt;= 300) return 0;
+  return 25;
+}
+</pre>
+        </div>
+        <div class="col good"><b>Константы объясняют смысл</b>
+<pre class="code">
+const FREE_DELIVERY_FROM = 300; // сомони
+const DELIVERY_PRICE = 25;      // сомони
+
+function deliveryCost(sum) {
+  if (sum &gt;= FREE_DELIVERY_FROM) return 0;
+  return DELIVERY_PRICE;
+}
+</pre>
+        </div>
+      </div>
+
+      <ul>
+        <li>Константы пишем <b>ЗАГЛАВНЫМИ_С_ПОДЧЁРКИВАНИЕМ</b> и собираем в начале файла — так видно все «настройки» программы.</li>
+        <li>Единицу измерения — в имя или комментарий: <code>TIMEOUT_MS</code>, <code>FREE_DELIVERY_FROM</code> // сомони.</li>
+        <li>Нужно поменять курс или порог — меняете в одном месте.</li>
+        <li><b>Не магия:</b> <code>0</code>, <code>1</code>, <code>-1</code>, <code>2</code> в очевидных местах (<code>i % 2</code>, <code>list.length - 1</code>). Выносить их — перебор.</li>
+        <li>Строки-статусы тоже магия: вместо <code>"paid"</code> в десяти местах заведите <code>const STATUS_PAID = "paid"</code> — опечатка в имени константы поймается сразу, в строке — никогда.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>В бозоре табличка «Курс доллара — 11 сомони» висит одна. Если бы продавец каждому покупателю объявлял курс заново «из головы», то в какой-то момент один сказал бы 11, а другой — 10,5. Константа — это табличка, на которую смотрят все.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://refactoring.guru/ru/replace-magic-number-with-symbolic-constant" target="_blank" rel="noopener">refactoring.guru — Замена магического числа константой</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Выносим числа в константы и убираем копипасту. Результаты остаются прежними.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Курс и доставка</h4><span class="level easy">лёгкая</span></header>
+          <p>Вынесите числа в константы с <b>точными именами</b>: <code>USD_RATE</code> (курс), <code>FREE_DELIVERY_FROM</code> (порог бесплатной доставки), <code>DELIVERY_PRICE</code> (цена доставки). Объявите их над функциями. Последняя строка проверяет, что константы существуют.</p>
+<pre class="code" data-run>
+function priceInSomoni(usd) {
+  return usd * 11;
+}
+
+function deliveryCost(sum) {
+  if (sum &gt;= 300) return 0;
+  return 25;
+}
+
+console.log(priceInSomoni(10));
+console.log(deliveryCost(100));
+console.log(deliveryCost(300));
+console.log(typeof USD_RATE, typeof FREE_DELIVERY_FROM, typeof DELIVERY_PRICE);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>110
+25
+0
+number number number</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три строки <code>const ... = число;</code> в самом верху, до функций. Имена — ровно как в условии.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри функций замените числа на имена: <code>usd * USD_RATE</code>, <code>sum &gt;= FREE_DELIVERY_FROM</code>, <code>return DELIVERY_PRICE</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Ценники без копипасты</h4><span class="level mid">средняя</span></header>
+          <p>Три блока вывода ценника с НДС отличаются только названием и ценой. Замените их функцией <code>printPriceTag(name, price)</code> и вызывайте её в цикле по массиву <code>menu</code>. Коэффициент НДС — константа <code>VAT_RATE</code> (1.1). Вывод остаётся прежним.</p>
+<pre class="code" data-run>
+const menu = [
+  { name: "Самбуса", price: 5 },
+  { name: "Курутоб", price: 35 },
+  { name: "Шакароб", price: 15 },
+];
+
+const samsaPrice = 5;
+console.log("Самбуса: " + samsaPrice + " сомони, с НДС " + (samsaPrice * 1.1).toFixed(2));
+const kurutobPrice = 35;
+console.log("Курутоб: " + kurutobPrice + " сомони, с НДС " + (kurutobPrice * 1.1).toFixed(2));
+const shakarobPrice = 15;
+console.log("Шакароб: " + shakarobPrice + " сомони, с НДС " + (shakarobPrice * 1.1).toFixed(2));
+
+console.log(printPriceTag.length, typeof VAT_RATE);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Самбуса: 5 сомони, с НДС 5.50
+Курутоб: 35 сомони, с НДС 38.50
+Шакароб: 15 сомони, с НДС 16.50
+2 number</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Функция принимает два параметра и выводит одну строку. Три отдельные переменные с ценами больше не нужны — данные уже лежат в <code>menu</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Цикл: <code>for (const dish of menu) { printPriceTag(dish.name, dish.price); }</code>. Строку соберите шаблоном: <code>`${name}: ${price} сомони, с НДС ${(price * VAT_RATE).toFixed(2)}`</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Три скидки — одна функция</h4><span class="level hard">сложная</span></header>
+          <p>Три функции скидок — копии друг друга. Сделайте одну общую <code>applyDiscount(price, percent)</code> (результат округляется <code>Math.round</code>). Три старые функции оставьте — но каждая теперь должна быть <b>одной строкой</b> с вызовом общей. Проценты вынесите в константы <code>STUDENT_DISCOUNT</code> (20), <code>SENIOR_DISCOUNT</code> (30), <code>CHILD_DISCOUNT</code> (50).</p>
+<pre class="code" data-run>
+function studentPrice(price) {
+  const result = price - price * 20 / 100;
+  return Math.round(result);
+}
+
+function seniorPrice(price) {
+  const result = price - price * 30 / 100;
+  return Math.round(result);
+}
+
+function childPrice(price) {
+  const result = price - price * 50 / 100;
+  return Math.round(result);
+}
+
+console.log(studentPrice(55), seniorPrice(55), childPrice(55));
+console.log(applyDiscount(200, 25));
+console.log(typeof STUDENT_DISCOUNT, typeof SENIOR_DISCOUNT, typeof CHILD_DISCOUNT);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>44 39 28
+150
+number number number</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Общая часть у всех трёх: <code>price - price * percent / 100</code> и округление. Меняется только процент — он становится параметром.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Итог: <code>function studentPrice(price) { return applyDiscount(price, STUDENT_DISCOUNT); }</code> — и так для остальных двух.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="logic-view">
+      <h2 data-toc="Логика и отображение · комментарии"><span class="num">04</span> Логика отдельно от отображения. Комментарии</h2>
+
+      <p>В каждой программе есть две разные работы: <b>считать</b> (логика: отфильтровать товары, посчитать средний балл) и <b>показывать</b> (отображение: собрать HTML, вывести в консоль). Когда они свалены в одну функцию, её нельзя проверить без браузера, нельзя использовать повторно и страшно менять: тронешь вёрстку — сломаешь математику.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Повар и официант. Повар готовит блюдо — это логика. Официант красиво подаёт — отображение. Если бы повар сам выходил в зал, а официант бегал на кухню помешивать плов, то смена оформления зала замедлила бы кухню. Пусть каждый занимается своим, а передают друг другу готовое блюдо — <b>данные</b>.</p>
+      </div>
+
+      <h3>Схема: три роли</h3>
+      <ol class="steps">
+        <li><b>Функция-расчёт</b> (<code>getAffordableDishes</code>, <code>calcStats</code>): получает данные, возвращает данные. Не трогает DOM, не печатает, не меняет внешние переменные. Её легко проверить через <code>console.log</code>.</li>
+        <li><b>Функция-отображение</b> (<code>renderMenu</code>, <code>formatStats</code>): получает готовые данные, строит строку или элементы. Ничего не считает.</li>
+        <li><b>«Склейка»</b> (обработчик события, главная функция): вызывает первую, результат отдаёт второй.</li>
+      </ol>
+
+<pre class="code" data-run data-title="Смесь: расчёт и вывод в одной функции">
+function showStats(grades) {
+  let sum = 0;
+  for (const grade of grades) sum += grade;
+  console.log("Средний балл: " + sum / grades.length);
+}
+
+showStats([90, 55, 72]);
+</pre>
+<pre class="code" data-run data-title="Раздельно: считаем, потом показываем">
+function calcAverage(grades) {
+  let sum = 0;
+  for (const grade of grades) sum += grade;
+  return sum / grades.length;
+}
+
+function formatAverage(average) {
+  return "Средний балл: " + average;
+}
+
+console.log(formatAverage(calcAverage([90, 55, 72])));
+console.log(calcAverage([100, 50]));  // расчёт легко проверить отдельно
+</pre>
+      <p>В уроках про DOM и события вы делали <code>render()</code> — это именно оно. Правило тянется дальше: в React (уроки 22–24) компонент получает данные и отображает их, а расчёты живут отдельно.</p>
+
+      <h3>Комментарии: объясняйте «почему», а не «что»</h3>
+      <p>Что делает код, видно из самого кода — если имена хорошие. А вот <b>почему</b> он так написан, из кода не видно никак. Это и есть место для комментария: бизнес-правило, обходной путь, неочевидное ограничение.</p>
+
+      <div class="cols">
+        <div class="col bad"><b>Комментарий повторяет код</b>
+<pre class="code">
+// увеличиваем i на 1
+i++;
+
+// если цена больше 100
+if (price &gt; 100) { ... }
+
+// return total * 0.9;
+return total;
+</pre>
+        </div>
+        <div class="col good"><b>Комментарий даёт новое знание</b>
+<pre class="code">
+// касса не принимает монеты меньше
+// 1 сомони, поэтому округляем вверх
+const payment = Math.ceil(total);
+
+// TODO(Мадина, до пятницы): заменить
+// на запрос к API, когда он будет готов
+</pre>
+        </div>
+      </div>
+
+      <ul>
+        <li><b>Закомментированный код — удалите.</b> Он засоряет файл, а в Git (урок 19) вся история сохранена — вернуть можно в любой момент.</li>
+        <li><b>Устаревший комментарий хуже, чем его отсутствие</b> — он врёт. Меняете код — проверьте комментарий над ним.</li>
+        <li><b>Хочется объяснить, что делает кусок кода?</b> Сначала попробуйте вынести его в функцию с хорошим именем — имя станет «комментарием», который не устаревает.</li>
+        <li><code>TODO</code> — допустимо, если с автором и сроком. Забытые «потом исправлю» гниют годами.</li>
+      </ul>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/comments" target="_blank" rel="noopener">learn.javascript.ru — Комментарии</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Разделяем расчёт и вывод, учимся отличать полезные комментарии от шума.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Шум или полезный комментарий</h4><span class="level easy">лёгкая</span></header>
+          <p>Восемь комментариев из реальных проектов. Впишите в массив <code>noise</code> номера тех, которые <b>бесполезны</b> (повторяют код, закомментированный код, пересказ имени функции). Номера по возрастанию.</p>
+<pre class="code" data-run>
+/*
+// 1
+total = total + price; // прибавляем цену к итогу
+
+// 2
+const MAX_TRIES = 3; // после 3 неверных паролей блокируем вход — требование службы безопасности
+
+// 3
+// return total * 0.9;
+
+// 4
+users.sort(byName); // сортируем пользователей по имени
+
+// 5
+if (hour &lt; 6) return "ночь"; // до 6 утра маршруты не ходят, поэтому тариф «ночной»
+
+// 6
+// TODO(Шахром, до пятницы): заменить на запрос к API
+
+// 7
+let x = 5; // x равно пяти
+
+// 8
+// Функция считает сумму
+function calcTotal(prices) { ... }
+*/
+
+const noise = [/* номера */];
+console.log(noise.join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1, 3, 4, 7, 8</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Закройте код пальцем и прочитайте только комментарий: если после него вы узнали что-то, чего не сказал бы сам код, — комментарий полезный.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Полезные — 2 (причина лимита), 5 (причина тарифа), 6 (TODO с автором и сроком). Остальные пять — шум.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Статистика группы</h4><span class="level mid">средняя</span></header>
+          <p><code>showStats</code> считает и печатает одновременно. Разделите: <code>calcStats(grades)</code> возвращает объект <code>{ average, best, passedCount }</code> (проходной балл — константа <code>PASS_SCORE</code> = 56), <code>formatStats(stats, total)</code> возвращает <b>массив из трёх строк</b> для печати (<code>total</code> — сколько всего оценок), а <code>showStats</code> только соединяет их и печатает. Вывод не меняется.</p>
+<pre class="code" data-run>
+function showStats(grades) {
+  let sum = 0;
+  let best = 0;
+  let passed = 0;
+  for (const grade of grades) {
+    sum += grade;
+    if (grade &gt; best) best = grade;
+    if (grade &gt;= 56) passed++;
+  }
+  console.log("Средний балл: " + sum / grades.length);
+  console.log("Лучший: " + best);
+  console.log("Сдали: " + passed + " из " + grades.length);
+}
+
+showStats([90, 55, 72, 38, 85]);
+
+console.log(JSON.stringify(calcStats([60, 40])));
+console.log(typeof formatStats, typeof PASS_SCORE);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Средний балл: 68
+Лучший: 90
+Сдали: 3 из 5
+{"average":50,"best":60,"passedCount":1}
+function number</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>calcStats</code> — весь цикл, в конце <code>return { average: ..., best, passedCount: passed }</code>. Внутри нет ни одного <code>console.log</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>showStats</code> станет короткой: <code>const lines = formatStats(calcStats(grades), grades.length);</code> и цикл <code>for (const line of lines) console.log(line);</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Меню чайхоны: фильтр и вёрстка отдельно</h4><span class="level hard">сложная</span></header>
+          <p>Сейчас фильтрация блюд и создание <code>&lt;li&gt;</code> перемешаны в одном цикле. Сделайте две функции: <code>getAffordableDishes(dishes, maxPrice)</code> возвращает массив блюд с ценой не выше <code>maxPrice</code> (ничего не трогает в DOM), <code>renderMenu(list)</code> рисует список в <code>#menu</code>. Затем вызовите <code>renderMenu(getAffordableDishes(dishes, 30))</code>. Нижние строки проверки не меняйте.</p>
+          <div class="playground" data-mode="dom" data-title="Меню чайхоны">
+<pre class="code" data-lang="html">
+&lt;h3&gt;Меню до 30 сомони&lt;/h3&gt;
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const dishes = [
+  { name: "Самбуса", price: 5 },
+  { name: "Курутоб", price: 35 },
+  { name: "Шакароб", price: 15 },
+  { name: "Оши палав", price: 30 },
+];
+const menu = document.getElementById("menu");
+
+// всё в куче: и фильтр, и вёрстка
+for (const dish of dishes) {
+  if (dish.price &lt;= 30) {
+    const li = document.createElement("li");
+    li.textContent = dish.name + " — " + dish.price + " сомони";
+    menu.append(li);
+  }
+}
+
+// ПРОВЕРКА — не меняйте
+console.log(typeof getAffordableDishes, typeof renderMenu);
+console.log(menu.children.length);
+console.log(getAffordableDishes(dishes, 15).length);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>function function
+3
+2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>getAffordableDishes</code> — это <code>dishes.filter(...)</code> или цикл с <code>push</code>; она <b>возвращает</b> массив и не знает ни про <code>menu</code>, ни про <code>document</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>renderMenu(list)</code> оставьте цикл по <code>list</code> с созданием <code>li</code>. Старый цикл со всем сразу удалите — иначе в списке будут дубли и проверка покажет 6 вместо 3.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="refactoring">
+      <h2 data-toc="Рефакторинг"><span class="num">05</span> Рефакторинг: меняем форму, не поведение</h2>
+
+      <p><b>Рефакторинг</b> — это улучшение устройства кода <b>без изменения того, что он делает</b>. Для пользователя ничего не поменялось: те же кнопки, те же цифры. Для вас поменялось всё: код стал понятнее и дальше его легче развивать. Главное слово здесь — «без изменения»: если по пути вы нечаянно изменили поведение, это уже не рефакторинг, а новый баг.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Уборка на кухне чайхоны во время работы: ножи в один ящик, специи по алфавиту, чистые доски. Посетители продолжают получать плов, но повара стали готовить быстрее и реже ошибаться. Нельзя начать уборку и заодно изменить рецепт плова — иначе непонятно, что именно ухудшило вкус.</p>
+      </div>
+
+      <h3>Безопасный рабочий цикл</h3>
+      <ol class="steps">
+        <li><b>Зафиксируйте поведение.</b> Прежде чем что-то менять, запустите код и запишите, что он выводит для нескольких входов — включая граничные (0, пусто, ровно порог). Это ваши «тесты».</li>
+        <li><b>Один маленький шаг:</b> переименовали → запустили → вывод тот же. Вынесли константу → запустили → тот же. Не делайте десять правок подряд.</li>
+        <li><b>Порядок шагов</b> от простого к сложному: имена → константы → удалить мусор и мёртвый код → ранний возврат → выделить функции → убрать повторы → разделить логику и вывод.</li>
+        <li><b>Сломалось — откатитесь</b> к последнему рабочему состоянию. В Git это одна команда; поэтому после каждого удачного шага делаем коммит (урок 19), например <code>rename vars in cart.js</code>.</li>
+        <li><b>Две шляпы.</b> Либо вы рефакторите, либо чините баг/добавляете функцию. Одновременно — нельзя. Нашли баг по пути — запишите и вернитесь к нему отдельным коммитом.</li>
+      </ol>
+
+      <h3>Мини-тесты в одну функцию</h3>
+      <p>Для проверки рефакторинга не нужны специальные инструменты. Достаточно маленькой функции, которая сравнивает ответ с ожидаемым:</p>
+<pre class="code" data-run data-title="check — самодельный тест">
+function check(name, actual, expected) {
+  console.log(`${actual === expected ? "OK  " : "FAIL"} ${name}`);
+}
+
+const isAdult = age =&gt; age &gt;= 18;
+
+check("18 — взрослый", isAdult(18), true);
+check("17 — не взрослый", isAdult(17), false);
+check("0 — не взрослый", isAdult(0), false);
+</pre>
+
+      <h3>Единый чек-лист качества кода</h3>
+      <p>Чтобы «чистый» не означало «как мне нравится», у нас общий чек-лист из 12 пунктов — полная печатная версия в конце урока. Пункты 1–8 про код, 9–12 про проект. Сейчас нужны первые восемь:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>№</th><th>Пункт чек-листа</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><b>Имена</b> говорят, что это (нет <code>a</code>, <code>data</code>, <code>temp</code>; булевы — <code>is/has/can</code>)</td></tr>
+            <tr><td>2</td><td><b>Размер:</b> функция делает одну вещь и помещается на экран</td></tr>
+            <tr><td>3</td><td><b>DRY:</b> нет копипасты — повторяющееся вынесено</td></tr>
+            <tr><td>4</td><td><b>Ранний возврат:</b> вложенность не глубже 2–3 уровней, нет лишних <code>else</code></td></tr>
+            <tr><td>5</td><td><b>Константы:</b> нет магических чисел и строк</td></tr>
+            <tr><td>6</td><td><b>Логика ≠ отображение:</b> расчёты не трогают DOM и консоль</td></tr>
+            <tr><td>7</td><td><b>Комментарии</b> объясняют «почему»; нет закомментированного кода</td></tr>
+            <tr><td>8</td><td><b>Чисто:</b> нет отладочных <code>console.log</code>, неиспользуемого кода, <code>var</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://refactoring.guru/ru/refactoring/what-is-refactoring" target="_blank" rel="noopener">refactoring.guru — Что такое рефакторинг</a></p>
+
+      <div class="practice">
+        <h3>Практика: оцениваем и рефакторим</h3>
+        <p>Сначала учимся <b>видеть</b> проблемы — оцениваем код по чек-листу. Потом правим.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Оцените код по чек-листу</h4><span class="level easy">лёгкая</span></header>
+          <p>Прочитайте функцию (она в комментарии, запускать её не нужно) и впишите в массив <code>violations</code> номера <b>нарушенных</b> пунктов чек-листа (1–8, по возрастанию).</p>
+<pre class="code" data-run>
+/*
+function calc(l) {
+  let t = 0;
+  console.log("calc вызвана");
+  for (let i = 0; i &lt; l.length; i++) {
+    t = t + l[i].p * l[i].q;
+  }
+  if (t &gt; 500) {
+    t = t - t * 0.05;
+  }
+  return t;
+}
+*/
+
+const violations = [/* номера пунктов */];
+console.log(violations.join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1, 5, 8</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Имена <code>calc</code>, <code>l</code>, <code>t</code>, <code>p</code>, <code>q</code> — пункт 1. Числа <code>500</code> и <code>0.05</code> без имён — пункт 5. А что делает строка с <code>console.log</code> внутри расчёта?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Функция короткая, повторов нет, вложенность одна, комментариев нет — пункты 2, 3, 4, 6, 7 здесь не нарушены.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Что не так с карточкой профиля</h4><span class="level mid">средняя</span></header>
+          <p>Ещё одна функция. Найдите нарушения (пункты 1–8). Внимательно: одно нарушение может прятаться в обычном на вид числе.</p>
+<pre class="code" data-run>
+/*
+function showProfile(user) {
+  const box = document.createElement("div");   // создаём div
+  if (user) {
+    if (user.name) {
+      if (user.birthYear) {
+        const age = 2026 - user.birthYear;
+        box.textContent = user.name + ", возраст: " + age;
+        document.body.append(box);
+      }
+    }
+  }
+}
+*/
+
+const violations = [/* номера пунктов */];
+console.log(violations.join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>4, 5, 6, 7</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Вложенность из трёх <code>if</code> — это пункт 4. Комментарий «создаём div» повторяет код — пункт 7.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Число <code>2026</code> — год, зашитый в код: через год возраст посчитается неверно (пункт 5). И ещё: функция считает возраст <b>и</b> рисует на странице — какой пункт про это?</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Корзина магазина: полный рефакторинг</h4><span class="level hard">сложная</span></header>
+          <p>Функция <code>f</code> считает сумму заказа: товары → промокод (<code>NAVRUZ</code> −15%, <code>STUDENT</code> −10%) → доставка 25 сомони, если сумма меньше 300 → округление. Приведите её в порядок по чек-листу и сохраните результаты:</p>
+          <ul>
+            <li>функция называется <code>calcOrderTotal(items, promoCode)</code>, у товаров поля <code>price</code> и <code>quantity</code> (в тестах они уже так названы);</li>
+            <li>константы <code>FREE_DELIVERY_FROM</code>, <code>DELIVERY_PRICE</code> и объект <code>PROMO_DISCOUNTS</code> (код → процент);</li>
+            <li>без <code>else</code>; расчёт подытога — отдельная функция <code>calcSubtotal(items)</code>.</li>
+          </ul>
+<pre class="code" data-run>
+function f(a, c) {
+  let r = 0;
+  for (let i = 0; i &lt; a.length; i++) {
+    r += a[i].p * a[i].q;
+  }
+  if (c === "NAVRUZ") {
+    r = r - r * 15 / 100;
+  } else {
+    if (c === "STUDENT") {
+      r = r - r * 10 / 100;
+    }
+  }
+  if (r &lt; 300) {
+    r = r + 25;
+  }
+  return Math.round(r);
+}
+
+const small = [{ price: 50, quantity: 2 }, { price: 120, quantity: 1 }];
+const big = [{ price: 200, quantity: 3 }];
+
+console.log(calcOrderTotal(small, ""));
+console.log(calcOrderTotal(small, "NAVRUZ"));
+console.log(calcOrderTotal(small, "STUDENT"));
+console.log(calcOrderTotal(big, ""));
+console.log(calcOrderTotal(big, "NAVRUZ"));
+console.log(calcOrderTotal(big, "UNKNOWN"));
+console.log(calcSubtotal(small));
+console.log(typeof FREE_DELIVERY_FROM, typeof DELIVERY_PRICE, typeof PROMO_DISCOUNTS);
+console.log(calcOrderTotal.toString().includes("else"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>245
+212
+223
+600
+510
+600
+220
+number number object
+false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>План по шагам: 1) переименуйте, 2) вынесите константы, 3) <code>calcSubtotal</code> через цикл <code>for...of</code> или <code>reduce</code>, 4) промокод: <code>const percent = PROMO_DISCOUNTS[promoCode] || 0;</code> — вместо двух вложенных <code>if</code>. После каждого шага запускайте и сверяйте.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Скидка: <code>const discounted = subtotal - subtotal * percent / 100;</code>. Доставка: ранний <code>return Math.round(discounted)</code> для суммы от порога, иначе <code>Math.round(discounted + DELIVERY_PRICE)</code>. Порог сравнивается с суммой <b>после</b> скидки — как в исходном коде.</p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>Рефакторинг, который сломал код</h4><span class="level mid">средняя</span></header>
+          <p>Коллега «отрефакторил» функцию оценки: красиво, но поведение изменилось. Тесты (<code>check</code>) выводят <code>FAIL</code> там, где что-то сломано. Найдите причину и исправьте так, чтобы все тесты стали <code>OK</code>. Тесты не меняйте: правильные оценки — 86 и выше → 5, от 71 → 4, от 56 → 3, ниже → 2.</p>
+<pre class="code" data-run>
+const PASS_SCORE = 56;
+
+function getGrade(score) {
+  if (score &gt; 86) return 5;
+  if (score &gt;= 71) return 4;
+  if (score &gt; PASS_SCORE) return 3;
+  return 2;
+}
+
+function check(name, actual, expected) {
+  console.log(`${actual === expected ? "OK  " : "FAIL"} ${name}`);
+}
+
+check("90 → 5", getGrade(90), 5);
+check("86 → 5", getGrade(86), 5);
+check("71 → 4", getGrade(71), 4);
+check("56 → 3", getGrade(56), 3);
+check("55 → 2", getGrade(55), 2);
+check("0 → 2", getGrade(0), 2);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>OK 90 → 5
+OK 86 → 5
+OK 71 → 4
+OK 56 → 3
+OK 55 → 2
+OK 0 → 2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>FAIL бывает ровно на границах. Посмотрите на знаки сравнения: где вместо <code>&gt;=</code> стоит <code>&gt;</code>?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Ошибок две: в первой строке с <code>86</code> и в строке с <code>PASS_SCORE</code>. Урок: граничные значения обязательно входят в тесты.</p></details>
+        </article>
+
+        <article class="task" id="t5-5">
+          <header><span class="task-num">ЗАДАЧА 5.5</span><h4>Посещаемость: циклы → методы массивов</h4><span class="level hard">сложная</span></header>
+          <p>Функция <code>report</code> считает «отличников» (посетили 8+ занятий; имена — заглавными) и среднюю посещаемость. Разбейте на <code>getExcellentNames(students)</code> (через <code>filter</code> и <code>map</code>) и <code>calcAverageVisits(students)</code> (через <code>reduce</code>), порог вынесите в <code>MIN_VISITS_FOR_EXCELLENT</code>. В итоге ни в одной из трёх функций не должно быть цикла <code>for (</code>. Вывод прежний.</p>
+<pre class="code" data-run>
+function report(students) {
+  const names = [];
+  for (let i = 0; i &lt; students.length; i++) {
+    if (students[i].visited &gt;= 8) {
+      names.push(students[i].name.toUpperCase());
+    }
+  }
+  let total = 0;
+  for (let i = 0; i &lt; students.length; i++) {
+    total = total + students[i].visited;
+  }
+  const avg = total / students.length;
+  return names.join(", ") + " | среднее: " + avg;
+}
+
+const group = [
+  { name: "Рустам", visited: 10 },
+  { name: "Зарина", visited: 7 },
+  { name: "Нилуфар", visited: 8 },
+  { name: "Далер", visited: 4 },
+];
+
+console.log(report(group));
+console.log(report([{ name: "Фарход", visited: 9 }]));
+console.log(report([{ name: "Анора", visited: 3 }]));
+console.log(typeof MIN_VISITS_FOR_EXCELLENT);
+console.log([report, getExcellentNames, calcAverageVisits].some(fn =&gt; fn.toString().includes("for (")));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>РУСТАМ, НИЛУФАР | среднее: 7.25
+ФАРХОД | среднее: 9
+| среднее: 3
+number
+false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>getExcellentNames</code>: сначала <code>students.filter(s =&gt; s.visited &gt;= MIN_VISITS_FOR_EXCELLENT)</code>, затем к результату <code>.map(s =&gt; s.name.toUpperCase())</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>calcAverageVisits</code>: <code>students.reduce((sum, s) =&gt; sum + s.visited, 0) / students.length</code>. Тогда <code>report</code> — одна строка, которая склеивает результаты двух функций.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="build">
+      <h2 data-toc="Сборка Vite"><span class="num">06</span> Сборка проекта: <code>npm run build</code></h2>
+
+      <p>В уроке 17 вы создали проект на Vite и запускали <code>npm run dev</code>. Это <b>режим разработки</b>: Vite отдаёт файлы «как есть», мгновенно обновляет страницу и добавляет подсказки для разработчика. Для настоящего сайта такой режим не годится — код не сжат, лишний, а сервер работает только у вас на ноутбуке. Для публикации нужна <b>сборка</b> (build).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Режим разработки — это кухня во время готовки: кастрюли, ножи, очистки на столе. Сборка — готовый обед, красиво упакованный в контейнер навынос. Клиенту нужен контейнер, а не вся кухня. Папка <code>dist</code> — это и есть упакованный «контейнер» вашего сайта.</p>
+      </div>
+
+      <h3>Что делает сборка</h3>
+      <ol class="steps">
+        <li><b>Собирает</b> все ваши модули (<code>import</code>/<code>export</code>) в несколько файлов.</li>
+        <li><b>Минифицирует:</b> убирает пробелы, комментарии, сокращает имена переменных. Файл становится в несколько раз меньше — страница грузится быстрее.</li>
+        <li><b>Выкидывает неиспользуемое</b> (tree shaking): если вы подключили библиотеку, но пользуетесь одной функцией, лишнее не попадёт на сайт.</li>
+        <li><b>Добавляет хеш в имена файлов</b> (<code>index-Ab12Cd34.js</code>): изменили код — имя поменялось, и браузер скачает свежую версию, а не возьмёт старую из кэша.</li>
+        <li><b>Кладёт результат в папку <code>dist/</code></b> — её и отдают на хостинг.</li>
+      </ol>
+
+<pre class="code" data-title="Терминал — собираем и смотрим результат">
+npm install        # если ещё не ставили зависимости
+npm run build      # запускает «vite build», результат — в папке dist/
+npm run preview    # локальный сервер для готовой сборки: http://localhost:4173
+</pre>
+
+      <p>Что лежит в <code>dist/</code> после сборки небольшого проекта:</p>
+<pre class="code" data-title="Структура dist/">
+dist/
+├── index.html                  ← точка входа, ссылки на файлы из assets/
+├── favicon.svg                 ← всё из папки public/ копируется как есть
+└── assets/
+    ├── index-Ab12Cd34.js       ← весь ваш JavaScript, сжатый
+    └── index-Ef56Gh78.css      ← весь CSS, сжатый
+</pre>
+
+      <div class="callout warn">
+        <b>Три частые ошибки</b>
+        <p><b>1. «В dev работает, а в build — нет».</b> Сборка строже: она не прощает битые импорты и опечатки в путях. Всегда запускайте <code>npm run build</code> до деплоя.<br>
+        <b>2. Регистр букв в именах файлов.</b> На Windows и macOS <code>import "./Header.js"</code> найдёт файл <code>header.js</code>. Но хостинги работают на Linux, где <code>Header.js</code> и <code>header.js</code> — разные файлы: на вашем компьютере всё хорошо, а на Vercel сборка падает. Пишите имена файлов и импорты <b>в точности одинаково</b>.<br>
+        <b>3. Открыть <code>dist/index.html</code> двойным кликом.</b> Пути в нём начинаются с <code>/assets/…</code> и из файловой системы не находятся — страница будет пустой. Для проверки есть <code>npm run preview</code>.</p>
+      </div>
+
+      <div class="callout">
+        <b>Windows и macOS</b>
+        <p>Команды <code>npm</code> одинаковы везде. На Windows запускайте их в PowerShell, «Терминале» VS Code или Git Bash; на macOS — в «Терминале» или во встроенном терминале VS Code (<code>Ctrl + `</code>). Проверьте, что Node установлен: <code>node -v</code>. Если <code>npm run build</code> пишет «vite: command not found» — вы не в папке проекта или не выполнили <code>npm install</code>.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Папку dist в Git не коммитим</b>
+        <p>Это «производный» файл: его всегда можно получить командой <code>build</code>. В <code>.gitignore</code> (урок 19) должны быть строки <code>node_modules</code> и <code>dist</code> — в шаблоне Vite они уже есть. Хостинг сам запустит сборку из вашего кода.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/build" target="_blank" rel="noopener">vite.dev — Сборка для продакшена</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Что верно про сборку</h4><span class="level easy">лёгкая</span></header>
+          <p>Шесть утверждений. Впишите в массив <code>correct</code> <b>буквы</b> верных (в алфавитном порядке, в кавычках).</p>
+<pre class="code" data-run>
+// A. Папку dist нужно коммитить в репозиторий.
+// B. В dist лежат минифицированные файлы JS и CSS.
+// C. npm run preview показывает локально собранную версию сайта.
+// D. Хеш в имени файла (index-Ab12Cd34.js) нужен, чтобы браузер брал свежую версию после обновления.
+// E. Если в режиме dev всё работает, то и сборка точно пройдёт.
+// F. dist/index.html надёжно открывается двойным кликом из папки.
+
+const correct = [/* "A", "B" ... */];
+console.log(correct.join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>B, C, D</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три утверждения неверны: dist — результат сборки, а не исходник; в dev и build код проверяется по-разному; пути в index.html абсолютные.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Неверные: A, E, F. Верные — остальные три.</p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Охотник за регистром</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>findCaseMismatches(files, imports)</code> — она возвращает те импорты, которые на Windows/macOS сработают, а на Linux-хостинге сломают сборку: файл с таким путём есть, но <b>только если не различать регистр</b> букв. Импорт несуществующего файла в любом регистре в ответ не попадает. Порядок — как в <code>imports</code>.</p>
+<pre class="code" data-run>
+const files = ["src/Header.js", "src/footer.js", "src/utils/format.js", "public/Logo.png"];
+const imports = ["src/header.js", "src/footer.js", "src/utils/Format.js", "public/Logo.png", "src/missing.js"];
+
+function findCaseMismatches(files, imports) {
+  // ваш код
+}
+
+console.log(JSON.stringify(findCaseMismatches(files, imports)));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>["src/header.js","src/utils/Format.js"]</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Импорт «сломан», если <code>!files.includes(path)</code>, но найдётся файл, у которого <code>file.toLowerCase() === path.toLowerCase()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return imports.filter(path =&gt; ...)</code>, где условие — это <code>!files.includes(path)</code> <b>и</b> <code>files.some(...)</code> со сравнением в нижнем регистре.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="env">
+      <h2 data-toc="Переменные окружения"><span class="num">07</span> Переменные окружения и секреты</h2>
+
+      <p>Адрес API на вашем компьютере — один, в «боевой» версии сайта — другой. Размер страницы, название приложения, ключ к сервису погоды — всё это <b>настройки</b>, которые не нужно зашивать в код. Их выносят в <b>переменные окружения</b> — отдельный файл, который читается при запуске и сборке.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Рецепт плова один, а количество порций зависит от случая: на семью — килограмм риса, на свадьбу — десять. Вы не переписываете рецепт, а меняете «настройку» в записке на двери кухни. Переменные окружения — такая записка: код один, а значения для каждой среды (ваш ноутбук, сайт в интернете) свои.</p>
+      </div>
+
+      <h3>Как это работает в Vite</h3>
+      <p>Создайте в корне проекта (рядом с <code>package.json</code>) файл <code>.env</code>:</p>
+<pre class="code" data-title=".env" data-lang="js">
+VITE_API_URL=https://dummyjson.com
+VITE_PAGE_SIZE=12
+VITE_APP_NAME=Лавка Ilmhona
+DB_PASSWORD=не-попадёт-в-браузер
+</pre>
+      <p>В коде читаем через <code>import.meta.env</code>:</p>
+<pre class="code" data-title="src/config.js" data-lang="js">
+export const API_URL = import.meta.env.VITE_API_URL;
+export const PAGE_SIZE = Number(import.meta.env.VITE_PAGE_SIZE);   // все значения — строки!
+
+console.log(import.meta.env.DB_PASSWORD);   // undefined: без префикса VITE_ переменная скрыта
+console.log(import.meta.env.MODE);          // "development" при dev, "production" при build
+console.log(import.meta.env.DEV);           // true только в режиме разработки
+</pre>
+
+      <ul>
+        <li><b>Префикс <code>VITE_</code></b> — единственные переменные, которые Vite отдаёт в браузерный код. Остальные остаются невидимыми.</li>
+        <li><b>Значения — всегда строки.</b> <code>VITE_PAGE_SIZE=12</code> даёт <code>"12"</code>, а <code>VITE_DEBUG=false</code> — строку <code>"false"</code>, которая в условии считается <b>истиной</b>! Преобразуйте сами: <code>Number(...)</code>, <code>value === "true"</code>.</li>
+        <li><b>После правки <code>.env</code> перезапустите</b> <code>npm run dev</code> — переменные читаются при старте.</li>
+        <li>Встроенные: <code>import.meta.env.MODE</code>, <code>DEV</code>, <code>PROD</code>, <code>BASE_URL</code>.</li>
+      </ul>
+
+      <h3>Какие бывают файлы <code>.env</code></h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Файл</th><th>Когда загружается</th><th>В Git?</th></tr></thead>
+          <tbody>
+            <tr><td><code>.env</code></td><td>всегда</td><td>можно, если там нет секретов</td></tr>
+            <tr><td><code>.env.local</code></td><td>всегда, ваши личные значения</td><td><b>нет</b> (<code>*.local</code> в <code>.gitignore</code>)</td></tr>
+            <tr><td><code>.env.development</code></td><td>только <code>npm run dev</code></td><td>можно</td></tr>
+            <tr><td><code>.env.production</code></td><td>только <code>npm run build</code></td><td>можно</td></tr>
+            <tr><td><code>.env.production.local</code></td><td>только build, личные значения</td><td><b>нет</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Файл «своего режима» перекрывает общий <code>.env</code>. А переменные, уже заданные в системе или на хостинге, перекрывают всё.</p>
+
+      <div class="callout warn">
+        <b>Главное правило: в браузере нет секретов</b>
+        <p>Значения <code>VITE_*</code> при сборке <b>подставляются прямо в JavaScript-файл</b> — любой пользователь откроет DevTools → Sources и прочитает их. Поэтому <code>VITE_</code> — для публичных настроек (адрес API, название, размер страницы). Платёжные ключи, пароли от баз данных, токены с правом записи в такие переменные класть <b>нельзя</b>: для них нужен собственный сервер или серверные функции — это тема следующего курса.</p>
+      </div>
+<pre class="code" data-title="Терминал — убеждаемся сами: значение лежит в сборке">
+# macOS / Linux
+grep -r "dummyjson" dist/assets
+
+# Windows (PowerShell)
+Select-String -Path dist\assets\*.js -Pattern "dummyjson"
+</pre>
+
+      <h3>Что делать, чтобы не было утечки</h3>
+      <ol class="steps">
+        <li><b>Личные файлы в .gitignore:</b> строки <code>.env.local</code> и <code>*.local</code>. Проверьте командой <code>git status</code> — файла в списке быть не должно.</li>
+        <li><b>Заведите <code>.env.example</code></b> — копию <code>.env</code> с пустыми значениями. Он идёт в Git и подсказывает напарнику, какие переменные нужны: <code>VITE_API_URL=</code></li>
+        <li><b>В README</b> напишите: «скопируйте <code>.env.example</code> в <code>.env</code> и заполните».</li>
+        <li><b>На хостинге</b> значения вводят в панели (Vercel — Settings → Environment Variables, GitHub — Settings → Secrets and variables), а не в репозитории.</li>
+        <li><b>Если ключ случайно попал в коммит</b> — считайте его украденным: немедленно отзовите и выпустите новый в сервисе. Удалить коммит недостаточно: история Git и боты, сканирующие GitHub, уже успели его забрать.</li>
+      </ol>
+
+<pre class="code" data-title=".gitignore" data-lang="js">
+node_modules
+dist
+.env.local
+*.local
+</pre>
+
+      <div class="callout">
+        <b>Windows и macOS</b>
+        <p>Скопировать файл: macOS — <code>cp .env.example .env</code>, Windows PowerShell — <code>copy .env.example .env</code>. Имя файла начинается с точки — в Проводнике Windows и Finder на macOS такие файлы могут быть скрыты (Finder: <code>Cmd + Shift + .</code>); в VS Code они видны всегда.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/env-and-mode" target="_blank" rel="noopener">vite.dev — Переменные окружения и режимы</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p><code>import.meta.env</code> работает только внутри проекта на Vite, поэтому здесь мы тренируем <b>логику</b> на обычных объектах и строках.</p>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Что увидит браузер</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите <code>getPublicEnv(env)</code>: она возвращает новый объект только с теми переменными, которые Vite отдал бы в браузер (имена начинаются с <code>VITE_</code>).</p>
+<pre class="code" data-run>
+const env = {
+  VITE_API_URL: "https://api.example.com",
+  VITE_APP_NAME: "Мой магазин",
+  DB_PASSWORD: "x1",
+  SECRET_KEY: "y2",
+  MODE: "production",
+};
+
+function getPublicEnv(env) {
+  // ваш код
+}
+
+console.log(JSON.stringify(getPublicEnv(env)));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"VITE_API_URL":"https://api.example.com","VITE_APP_NAME":"Мой магазин"}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>Object.entries(env)</code> превращает объект в массив пар <code>[ключ, значение]</code>. Оставьте пары, у которых ключ <code>key.startsWith("VITE_")</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>Object.fromEntries(</code> собирает объект обратно из пар: <code>Object.entries(env).filter(...)</code> внутри, <code>return</code> перед всем выражением.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Читаем .env руками</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>parseEnv(text)</code>: разбирает текст файла <code>.env</code> в объект. Правила: пустые строки и строки, начинающиеся с <code>#</code>, пропускаются; формат <code>КЛЮЧ=значение</code>; пробелы вокруг ключа и значения убираются; значение в кавычках — без кавычек; знак <code>=</code> внутри значения допустим (делим только по <b>первому</b>). Все значения остаются строками.</p>
+<pre class="code" data-run>
+const text = `
+# адрес API
+VITE_API_URL=https://dummyjson.com
+
+VITE_APP_NAME="Лавка Ilmhona"
+VITE_PAGE_SIZE = 12
+VITE_FILTER=sort=asc
+`;
+
+function parseEnv(text) {
+  // ваш код
+}
+
+console.log(JSON.stringify(parseEnv(text)));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"VITE_API_URL":"https://dummyjson.com","VITE_APP_NAME":"Лавка Ilmhona","VITE_PAGE_SIZE":"12","VITE_FILTER":"sort=asc"}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Идите по <code>text.split("\n")</code>. Для каждой строки: <code>line.trim()</code>; если пусто или начинается с <code>#</code> — <code>continue</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Позиция первого равно: <code>const index = line.indexOf("=")</code>. Ключ — <code>line.slice(0, index).trim()</code>, значение — <code>line.slice(index + 1).trim()</code>. Кавычки: если значение начинается и заканчивается на <code>"</code>, отрежьте по символу с каждой стороны: <code>value.slice(1, -1)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-3">
+          <header><span class="task-num">ЗАДАЧА 7.3</span><h4>Ловушка со строкой "false"</h4><span class="level mid">средняя</span></header>
+          <p>Сначала <b>предскажите</b>, что выведет первая строка <code>Boolean("false")</code>. Затем напишите <code>readFlag(value)</code> — <code>true</code> только для строки <code>"true"</code>, иначе <code>false</code> — и <code>readNumber(value, fallback)</code> — число из строки, а если значения нет (<code>undefined</code>), оно пустое или не число, то <code>fallback</code>.</p>
+<pre class="code" data-run>
+console.log(Boolean("false"));
+
+function readFlag(value) {
+  // ваш код
+}
+
+function readNumber(value, fallback) {
+  // ваш код
+}
+
+console.log(readFlag("true"), readFlag("false"), readFlag(undefined));
+console.log(readNumber("12", 6), readNumber(undefined, 6), readNumber("abc", 6), readNumber("", 6));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>true
+true false false
+12 6 6 6</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Любая непустая строка — истина, даже <code>"false"</code>. Поэтому флаг сравниваем со строкой: <code>value === "true"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для числа: если <code>value === undefined || value === ""</code> — вернуть <code>fallback</code>. Иначе <code>const number = Number(value);</code> и <code>Number.isNaN(number) ? fallback : number</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-4">
+          <header><span class="task-num">ЗАДАЧА 7.4</span><h4>Охотник за секретами</h4><span class="level hard">сложная</span></header>
+          <p>Перед коммитом полезно просканировать код. Напишите <code>findSecrets(lines)</code>: возвращает <b>номера строк</b> (считая с 1), где имени, содержащему <code>key</code>, <code>token</code>, <code>secret</code> или <code>password</code> (в любом регистре), присваивается строковый литерал <b>длиной от 8 символов</b> (через <code>=</code> или <code>:</code>). Чтение из <code>import.meta.env</code>, пустые и короткие строки секретом не считаются.</p>
+<pre class="code" data-run>
+const lines = [
+  'const API_URL = import.meta.env.VITE_API_URL;',
+  'const apiKey = "sk_live_51Hh83jKd92hs";',
+  'fetch(`${API_URL}/products`);',
+  "const password = 'qwerty12345';",
+  'const token = import.meta.env.VITE_TOKEN;',
+  'const secret = "";',
+  'const authToken = "Bearer eyJhbGciOiJI";',
+  'const title = "My secret garden";',
+];
+
+function findSecrets(lines) {
+  // ваш код
+}
+
+console.log(findSecrets(lines).join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>2, 4, 7</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Здесь поможет регулярное выражение. Скелет: <code>/(key|token|secret|password)\w*\s*[:=]\s*["'`][^"'`]{8,}["'`]/i</code> — разберите по частям, что значит каждая из них.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Пройдите по строкам с индексом и соберите в массив <code>index + 1</code> для тех, где <code>pattern.test(line)</code> истинно. Строка 8 не подходит: слово <code>secret</code> стоит <b>внутри</b> текста, а не в имени переменной.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="deploy">
+      <h2 data-toc="Деплой: Vercel и GitHub Pages"><span class="num">08</span> Деплой: Vercel и GitHub Pages</h2>
+
+      <p><b>Деплой</b> — публикация сайта в интернете, чтобы его открывал любой человек по ссылке. Пока проект лежит у вас на ноутбуке, это упражнение. Когда у него есть ссылка — это портфолио. Мы разберём два бесплатных способа для статических сайтов (а ваши проекты на Vite — именно такие).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы испекли самбусу дома — вкусно, но попробуют только родные. Деплой — открыть лоток на базаре: тот же продукт, но теперь у него есть адрес, и к нему могут прийти все. Хостинг — это место на базаре, а ссылка — номер вашего лотка.</p>
+      </div>
+
+      <h3>Перед деплоем: короткий чек-лист</h3>
+      <ul>
+        <li><code>npm run build</code> проходит без ошибок, <code>npm run preview</code> показывает рабочий сайт.</li>
+        <li>Проект лежит в репозитории на GitHub (урок 19), ветка с рабочим кодом отправлена: <code>git push</code>.</li>
+        <li>В репозитории <b>нет</b> <code>.env.local</code> и секретов; есть <code>.env.example</code>.</li>
+        <li>Регистр имён файлов и импортов совпадает.</li>
+      </ul>
+
+      <h3>Способ 1. Vercel</h3>
+      <p>Vercel сам находит Vite, сам собирает проект и после каждого <code>git push</code> обновляет сайт. Для новичка — самый короткий путь.</p>
+      <ol class="steps">
+        <li>Откройте <b>vercel.com</b> и войдите через кнопку <b>Continue with GitHub</b> (тариф Hobby бесплатный для личных проектов).</li>
+        <li>Нажмите <b>Add New… → Project</b>. Vercel покажет ваши репозитории: найдите нужный и нажмите <b>Import</b> (при первом разе разрешите доступ к репозиториям).</li>
+        <li>На экране настройки проверьте: <b>Framework Preset — Vite</b> (определяется сам), <b>Build Command — <code>npm run build</code></b>, <b>Output Directory — <code>dist</code></b>.</li>
+        <li>Раскройте <b>Environment Variables</b> и добавьте переменные из вашего <code>.env</code> (например, <code>VITE_API_URL</code>) — по одной: имя и значение. Файл <code>.env</code> Vercel из репозитория не читает.</li>
+        <li>Нажмите <b>Deploy</b>. Через минуту появится адрес вида <code>название-проекта.vercel.app</code>. Это ваша живая ссылка.</li>
+        <li>Дальше: каждый <code>git push</code> в основную ветку обновляет сайт, а каждая другая ветка получает отдельный адрес-превью — удобно показывать правки до слияния.</li>
+      </ol>
+<pre class="code" data-title="Терминал — обновление сайта = обычный push">
+git add .
+git commit -m "fix price format"
+git push
+# Vercel сам запустит npm run build и обновит сайт
+</pre>
+
+      <div class="callout warn">
+        <b>Если сайт открылся, но данные не грузятся</b>
+        <p>Откройте DevTools → Network (урок 19). Запрос уходит на <code>undefined/products</code>? Значит, переменная не добавлена в Vercel или у неё нет префикса <code>VITE_</code>. Добавили переменную <b>после</b> деплоя — этого мало: переменные подставляются при <b>сборке</b>, поэтому откройте <b>Deployments → … → Redeploy</b>.</p>
+      </div>
+
+      <h3>Способ 2. GitHub Pages</h3>
+      <p>Бесплатный хостинг прямо в репозитории (для публичных репозиториев). Адрес — <code>https://ваш-логин.github.io/имя-репозитория/</code>. Обратите внимание на последнюю часть: сайт живёт не в корне, а <b>в подпапке</b>. Поэтому Vite нужно сказать, откуда брать файлы — настройка <code>base</code>.</p>
+
+<pre class="code" data-title="vite.config.js" data-lang="js">
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  base: "/my-shop/",   // ← точное имя репозитория между слэшами
+});
+</pre>
+      <p>Без <code>base</code> страница загрузится пустой: в консоли будет 404 на <code>/assets/index-….js</code>, потому что браузер ищет файл в корне <code>github.io</code>, а не в вашем репозитории. В коде ссылки на файлы из <code>public/</code> строим через <code>import.meta.env.BASE_URL</code>, а не пишем <code>"/logo.png"</code> руками.</p>
+
+      <ol class="steps">
+        <li>Задайте <code>base</code> в <code>vite.config.js</code>, выполните <code>npm run build</code> и <code>npm run preview</code> (адрес превью будет включать <code>/my-shop/</code>).</li>
+        <li>Отправьте код на GitHub: <code>git push</code>.</li>
+        <li>В репозитории: <b>Settings → Pages</b> → в поле <b>Source</b> выберите <b>GitHub Actions</b>.</li>
+        <li>Создайте файл <code>.github/workflows/deploy.yml</code> (ниже), закоммитьте и отправьте.</li>
+        <li>Вкладка <b>Actions</b>: дождитесь зелёной галочки. Адрес сайта появится в <b>Settings → Pages</b>.</li>
+        <li>Нужны переменные? <b>Settings → Secrets and variables → Actions → Variables</b>, а в workflow передайте их шагу сборки (см. <code>env</code> ниже).</li>
+      </ol>
+
+<pre class="code" data-title=".github/workflows/deploy.yml" data-lang="js">
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./dist
+      - id: deployment
+        uses: actions/deploy-pages@v5
+</pre>
+      <p class="muted">Номера версий действий (<code>@v7</code>, <code>@v5</code>…) со временем меняются — перед копированием сверьтесь с актуальным примером на <a href="https://vite.dev/guide/static-deploy" target="_blank" rel="noopener">vite.dev/guide/static-deploy</a>. Это нормально: инструкции по деплою всегда стоит открывать свежие, а не доверять памяти (и памяти ИИ).</p>
+
+      <h3>Что выбрать</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Vercel</th><th>GitHub Pages</th></tr></thead>
+          <tbody>
+            <tr><td><b>Адрес</b></td><td><code>проект.vercel.app</code></td><td><code>логин.github.io/репозиторий/</code></td></tr>
+            <tr><td><b>Настройка</b></td><td>мышкой, за 3 минуты</td><td>файл workflow + <code>base</code></td></tr>
+            <tr><td><b>Переменные окружения</b></td><td>в панели проекта</td><td>Variables в настройках репозитория</td></tr>
+            <tr><td><b>Превью веток</b></td><td>да, автоматически</td><td>нет</td></tr>
+            <tr><td><b>Нужен <code>base</code></b></td><td>нет</td><td>да, <code>/имя-репозитория/</code></td></tr>
+            <tr><td><b>Приватный репозиторий</b></td><td>можно</td><td>бесплатно — только публичный</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Для курса: первый проект — на Vercel, второй — на GitHub Pages. Так вы попробуете оба подхода, а в портфолио будет две живые ссылки.</p>
+
+      <div class="callout">
+        <b>Windows и macOS</b>
+        <p>Команды Git и npm одинаковы. Различие в терминале: на Windows используйте PowerShell или Git Bash, на macOS — «Терминал». Если Git ругается на «LF will be replaced by CRLF» на Windows — это предупреждение о переводах строк, сборке оно не мешает. И главное для обеих систем: проверяйте сайт <b>после деплоя</b> — откройте ссылку в режиме инкогнито и с телефона.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/static-deploy" target="_blank" rel="noopener">vite.dev — Деплой статического сайта</a>, <a href="https://vercel.com/docs/frameworks/frontend/vite" target="_blank" rel="noopener">Vercel — Vite</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Путь к файлам на GitHub Pages</h4><span class="level mid">средняя</span></header>
+          <p>Напишите две функции. <code>getBase(repoName)</code> возвращает значение <code>base</code> для Vite: <code>"/" + имя + "/"</code>, а для «пользовательского» сайта (имя заканчивается на <code>.github.io</code>) — просто <code>"/"</code>. <code>assetUrl(base, path)</code> склеивает базу и путь к файлу так, чтобы между ними был ровно один слэш (в <code>path</code> слэш в начале может быть, а может и не быть).</p>
+<pre class="code" data-run>
+function getBase(repoName) {
+  // ваш код
+}
+
+function assetUrl(base, path) {
+  // ваш код
+}
+
+console.log(getBase("my-shop"));
+console.log(getBase("komilovsg.github.io"));
+console.log(assetUrl("/my-shop/", "img/logo.png"));
+console.log(assetUrl("/my-shop/", "/img/logo.png"));
+console.log(assetUrl("/", "/favicon.svg"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>/my-shop/
+/
+/my-shop/img/logo.png
+/my-shop/img/logo.png
+/favicon.svg</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Для <code>getBase</code>: <code>if (repoName.endsWith(".github.io")) return "/";</code> — ранний возврат, затем <code>return `/${repoName}/`;</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для <code>assetUrl</code> уберите слэш в начале пути: <code>const cleanPath = path.startsWith("/") ? path.slice(1) : path;</code> — и склейте <code>base + cleanPath</code> (база всегда заканчивается слэшем).</p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Диагноз: что сломалось после деплоя</h4><span class="level easy">лёгкая</span></header>
+          <p>Четыре ситуации после деплоя и четыре причины. Сопоставьте: в массиве <code>answers</code> для каждой ситуации по порядку впишите букву причины.</p>
+<pre class="code" data-run>
+// Ситуации:
+// 1. Локально картинка logo.png видна, на Vercel — нет. В коде написано "./Logo.png".
+// 2. Сайт открылся, но запросы идут на адрес "undefined/products".
+// 3. GitHub Pages: страница пустая, в консоли 404 на /assets/index-xxx.js.
+// 4. Переменную добавили в панель Vercel, но сайт показывает старое значение.
+//
+// Причины:
+// A. Не задан base в vite.config.js.
+// B. Не совпадает регистр букв в имени файла.
+// C. Переменная окружения не добавлена на хостинг.
+// D. После добавления переменной не сделали Redeploy.
+
+const answers = [/* "?", "?", "?", "?" */];
+console.log(answers.join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>B, C, A, D</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Ситуация 3 — про GitHub Pages и «файл не найден в корне»: какая настройка отвечает за подпапку?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В ситуациях 2 и 4 речь про переменные, но в 2 значения нет совсем, а в 4 — значение есть, только старое (пересборки не было).</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: ревью и README"><span class="num">09</span> ИИ-блок: ревью кода и README</h2>
+
+      <p>Сегодня ИИ работает в двух ролях: <b>ревьюер</b> (читает ваш код и замечает проблемы) и <b>помощник по текстам</b> (README и описание проекта для портфолио). В обоих случаях главный навык не «получить ответ», а <b>отделить хорошее от плохого</b>: ИИ уверенно советует и полезное, и вредное.</p>
+
+      <div class="callout ai">
+        <b>Правила курса, которые здесь особенно важны</b>
+        <p><b>1.</b> Сначала 15 минут сами: пройдите по чек-листу и запишите свои замечания. <b>2.</b> Только потом просите ревью — и сравните со своим списком. <b>3.</b> Не принимайте правку, которую не можете объяснить своими словами. <b>4.</b> После каждой правки запускайте код: поведение не должно измениться. <b>5.</b> README и портфолио-текст — переписывайте своими словами: по шаблонным фразам ИИ-текст видно сразу.</p>
+      </div>
+
+      <h3>Ревью по чек-листу: плохо и хорошо</h3>
+      <p>Формула промпта курса: <b>контекст → задача → ограничения → формат ответа → проверка</b>.</p>
+
+      <div class="prompt bad-prompt">улучши мой код</div>
+      <div class="prompt good-prompt">Я учу JavaScript: знаю функции, массивы, объекты, DOM и fetch. Ниже функция из моего мини-проекта «каталог товаров». Проверь её по чек-листу: 1) имена; 2) размер функции; 3) дублирование; 4) ранний возврат; 5) магические числа; 6) разделение логики и отображения; 7) комментарии. Формат ответа: нумерованный список замечаний «пункт чек-листа → где в коде → в чём проблема → почему это важно». Только замечания, без переписывания кода целиком. Не предлагай библиотеки и новые технологии, не меняй поведение функции. Если по пункту всё в порядке — так и напиши. Код: [вставьте функцию]</div>
+
+      <p>Почему второй промпт работает лучше: ИИ знает ваш уровень, получил конкретный список критериев, не может «улучшить» то, о чём не просили, и ответ вы можете сразу сверить со своим списком.</p>
+
+      <h3>Фильтр советов: принять или отклонить</h3>
+      <p>Каждый совет ИИ проходит через пять вопросов. Достаточно одного «нет» — и совет не принимаем (или откладываем):</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Вопрос</th><th>Если «нет»</th></tr></thead>
+          <tbody>
+            <tr><td><b>1. Я могу объяснить правку своими словами?</b></td><td>Не принимаем — пока не разберёмся</td></tr>
+            <tr><td><b>2. Поведение кода осталось прежним?</b></td><td>Это уже не рефакторинг: отдельная задача и отдельный коммит</td></tr>
+            <tr><td><b>3. Это решает реальную проблему (есть пункт чек-листа)?</b></td><td>Отклоняем: «улучшение ради улучшения»</td></tr>
+            <tr><td><b>4. Метод или библиотека существует?</b></td><td>Проверяем в MDN. ИИ иногда выдумывает несуществующие методы</td></tr>
+            <tr><td><b>5. Код стал проще, а не сложнее?</b></td><td>Отклоняем: лишние зависимости, паттерны и «умные» однострочники</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cols">
+        <div class="col good"><b>Обычно стоит принять</b>
+          <ul>
+            <li>Вынести магическое число в константу</li>
+            <li>Переименовать <code>x</code>, <code>data</code> во что-то понятное</li>
+            <li>Удалить мёртвый код и отладочный <code>console.log</code></li>
+            <li>Заменить вложенные <code>if</code> ранним <code>return</code></li>
+            <li>Вынести повторяющийся кусок в функцию</li>
+          </ul>
+        </div>
+        <div class="col bad"><b>Обычно стоит отклонить</b>
+          <ul>
+            <li>«Подключите библиотеку / TypeScript / Redux» ради одной функции</li>
+            <li>Комментарий к каждой строке</li>
+            <li>Имена на 40 символов</li>
+            <li>«Оберните всё в try/catch»</li>
+            <li>Ключ или пароль «для удобства» прямо в коде</li>
+            <li>Метод, которого нет в MDN</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <b>Опасный совет: тихое изменение поведения</b>
+        <p>Самые коварные правки выглядят как «улучшение читаемости», но чуть-чуть меняют результат: <code>&gt;=</code> превращается в <code>&gt;</code>, пропадает проверка на пустой массив. Ловит их только запуск на граничных значениях — как в задаче 5.4.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: ревью с ИИ</h3>
+        <p>Ниже — настоящие по духу ответы ИИ-ревью. Ваша задача — быть ревьюером ревьюера.</p>
+
+        <article class="task" id="t9-1">
+          <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Принять или отклонить</h4><span class="level mid">средняя</span></header>
+          <p>ИИ проверил функцию и выдал восемь советов. Для каждого впишите в массив <code>verdicts</code>: <code>"A"</code> (принять) или <code>"R"</code> (отклонить). Опирайтесь на пять вопросов выше.</p>
+<pre class="code" data-run>
+/*
+function calcTotal(items, promo) {
+  let total = 0;
+  for (const item of items) {
+    total += item.price * item.qty;
+  }
+  if (promo === "NAVRUZ") {
+    total = total * 0.85;
+  }
+  if (total &gt; 300) {
+    total = total + 0;
+  } else {
+    total = total + 25;
+  }
+  return total;
+}
+*/
+
+// Советы ИИ:
+// 1. Числа 0.85, 300 и 25 вынесите в именованные константы.
+// 2. Замените цикл for...of на reduce — reduce всегда лучше циклов.
+// 3. Строка «total = total + 0» ничего не делает — удалите её.
+// 4. Добавьте комментарий над каждой строкой функции.
+// 5. Переименуйте total в finalTotalAmountWithPromoAndDeliveryCalculated.
+// 6. Расчёт по промокоду вынесите в отдельную функцию applyPromo.
+// 7. Оберните всё тело функции в try/catch на случай ошибки.
+// 8. Подключите lodash, чтобы суммировать цены.
+
+const verdicts = [/* "A" или "R" для советов 1–8 */];
+console.log(verdicts.join(","));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>A,R,A,R,R,A,R,R</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Принимаем то, что делает код понятнее без изменения поведения: константы (1), мёртвая строка (3), отдельная функция (6).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Разбор отказов. 2 — «всегда лучше» неверно: цикл здесь читается не хуже. 4 — шум вместо пользы. 5 — имя в 50 символов хуже, чем <code>total</code>. 7 — try/catch без причины прячет ошибки. 8 — зависимость ради одной суммы.</p></details>
+        </article>
+
+        <article class="task" id="t9-2">
+          <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Принять, отклонить или проверить</h4><span class="level hard">сложная</span></header>
+          <p>Второе ревью, потоньше. Теперь три вердикта: <code>"A"</code> — принять сразу (понятнее, поведение то же); <code>"T"</code> — полезно, но <b>меняет поведение</b>: отдельной задачей с тестами, не в рефакторинге; <code>"R"</code> — отклонить (не нужно, вредно или выдумано).</p>
+<pre class="code" data-run>
+/*
+function getCheapProducts(products) {
+  const result = [];
+  for (let i = 0; i &lt; products.length; i++) {
+    if (products[i].price &lt; 20) {
+      result.push(products[i]);
+    }
+  }
+  return result;
+}
+*/
+
+// Советы ИИ:
+// 1. Замените цикл на products.filter(...), а число 20 вынесите в константу MAX_PRICE.
+// 2. Используйте встроенный метод products.filterByPrice(20) — он делает то же самое быстрее.
+// 3. Замените «&lt;» на «&lt;=»: «до 20 сомони» логичнее включать границу.
+// 4. Загружайте цены с сервера, вписав ключ прямо в функцию: const KEY = "sk_live_...".
+// 5. Переименуйте result в cheapProducts.
+// 6. Перед возвратом отсортируйте товары по цене по возрастанию.
+// 7. Добавьте TypeScript и Redux — так функция станет надёжнее.
+
+const verdicts = [/* "A", "T" или "R" для советов 1–7 */];
+console.log(verdicts.join(","));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>A,R,T,R,A,T,R</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Проверьте метод из совета 2 в MDN: у массивов нет <code>filterByPrice</code>. Это выдумка (R). Ключ в коде (4) — утечка секрета (R).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Советы 3 и 6 — не про читаемость: граница 20 попадёт в результат, а порядок товаров изменится. Может, так и нужно — но это решение владельца продукта, отдельный коммит. Поэтому «T».</p></details>
+        </article>
+
+        <article class="task" id="t9-3">
+          <header><span class="task-num">ЗАДАЧА 9.3</span><h4>Проверяем рефакторинг ИИ</h4><span class="level mid">средняя</span></header>
+          <p>ИИ «упростил» функцию доставки в одну строку. Он клянётся, что поведение то же. Проверьте: пройдите по списку входов, вызовите обе версии и выведите <b>только те входы, где ответы различаются</b>, в формате <code>сумма член: было → стало</code> (например, <code>100 false: 25 → 0</code>).</p>
+<pre class="code" data-run>
+function getShipping(sum, isMember) {
+  if (isMember) return 0;
+  if (sum &gt;= 300) return 0;
+  return 25;
+}
+
+function getShippingAI(sum, isMember) {
+  return isMember || sum &gt; 300 ? 0 : 25;
+}
+
+const inputs = [[100, false], [300, false], [300, true], [500, false], [0, true], [299.99, false]];
+
+// ваш код: цикл по inputs и сравнение
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>300 false: 0 → 25</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>for (const [sum, isMember] of inputs)</code> — деструктуризация пары. Внутри сравните <code>getShipping(sum, isMember)</code> и <code>getShippingAI(sum, isMember)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Если не равны — <code>console.log(`${sum} ${isMember}: ${before} → ${after}`)</code>. Ошибка ИИ: исходный код считал бесплатной доставку от 300 включительно, а «упрощённый» — только больше 300.</p></details>
+        </article>
+      </div>
+
+      <h3>README и текст для портфолио с ИИ</h3>
+      <p>README — первое, что видит рекрутёр на странице репозитория. Хорошо, когда он отвечает на четыре вопроса: <b>что это, на чём сделано, как запустить, где посмотреть</b>. ИИ быстро соберёт каркас, но есть правило: <b>ИИ получает только факты, которые вы ему дали</b>. Иначе он дорисует функции, которых нет.</p>
+
+      <div class="prompt bad-prompt">напиши readme для моего сайта</div>
+      <div class="prompt good-prompt">Помоги написать README для учебного проекта. Факты (используй только их, ничего не выдумывай): название — «Каталог товаров»; что делает — показывает товары с dummyjson.com, есть поиск по названию и пагинация; стек — HTML, CSS, JavaScript, Vite; запуск — npm install, затем npm run dev; демо — [ссылка]. Структура: что это (2 предложения) → стек → как запустить (команды в блоке кода) → скриншот (оставь место для картинки ./screenshot.png) → что дальше (3 идеи). Тон простой, без громких слов вроде «революционный». Если фактов не хватает — задай вопросы, а не придумывай. Проверка: все команды в тексте должны быть реальными для проекта на Vite.</div>
+
+      <div class="prompt good-prompt">Напиши 4 предложения о моём проекте для портфолио начинающего frontend-разработчика: какую задачу решает; что сделал я лично (поиск, пагинация, состояния загрузки и ошибки); стек; ссылка на демо [ссылка]. Первое лицо, без воды и клише вроде «страстный разработчик». Покажи два варианта разной длины.</div>
+
+      <h3>Что проверять в тексте ИИ</h3>
+      <ul>
+        <li><b>Выдуманные функции и технологии.</b> «Авторизация», «база данных», «покрытие тестами 95%» — если этого нет в проекте, вычёркиваем.</li>
+        <li><b>Команды.</b> Выполните каждую из README на чистой папке: <code>npm install</code>, <code>npm run dev</code>. Работает — оставляем.</li>
+        <li><b>Скриншот и ссылка на демо</b> — ставите вы сами, ИИ их не знает.</li>
+        <li><b>Шаблонные обороты</b> («данный проект представляет собой…», «современное решение») — перепишите своими словами. Рекрутёр слышит голос человека, а не нейросети.</li>
+        <li><b>Честность.</b> Что сделали сами, а что с помощью ИИ — можно сказать прямо. Никто не ждёт, что вы писали без помощников; ждут, что вы понимаете код.</li>
+      </ul>
+
+      <div class="practice">
+        <h3>Практика: README без выдумок</h3>
+
+        <article class="task" id="t9-4">
+          <header><span class="task-num">ЗАДАЧА 9.4</span><h4>Найди выдумки в README</h4><span class="level easy">лёгкая</span></header>
+          <p>Факты о проекте: HTML, CSS, JavaScript, Vite; данные берутся с dummyjson.com; есть поиск и пагинация; вёрстка адаптивная; <b>нет</b> входа в аккаунт, базы данных и тестов. ИИ написал семь утверждений для README. Впишите в массив <code>invented</code> номера <b>выдуманных</b> (по возрастанию).</p>
+<pre class="code" data-run>
+// Черновик README от ИИ:
+// 1. Поиск по названию товара и постраничный вывод.
+// 2. Вход через аккаунт Google.
+// 3. Запуск: npm install, затем npm run dev.
+// 4. Данные хранятся в базе PostgreSQL.
+// 5. Адаптивная вёрстка: сайт удобно открывать на телефоне.
+// 6. Покрытие автотестами — 95%.
+// 7. Данные о товарах берутся с dummyjson.com.
+
+const invented = [/* номера */];
+console.log(invented.join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>2, 4, 6</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сверяйте каждое утверждение со списком фактов: входа, базы данных и тестов в проекте нет.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Выдумки — вход через Google, PostgreSQL и 95% покрытия. Остальные четыре пункта правдивы.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 10 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">10</span> Практика на уроке: ревью соседа и деплой группы</h2>
+
+      <p>Вторая половина урока — командная: вы проверяете и улучшаете проект соседа, а потом вся группа выкладывает свои проекты в интернет. Это ровно то, что происходит в реальной команде: код-ревью → правки → релиз.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Время</th><th>Что делаем</th></tr></thead>
+          <tbody>
+            <tr><td>10 мин</td><td>Разбор типичных проблем на проекторе, повтор чек-листа</td></tr>
+            <tr><td>10 мин</td><td>Часть A: ревью проекта соседа по чек-листу (сначала сами, без ИИ)</td></tr>
+            <tr><td>25 мин</td><td>Часть B: рефакторинг по замечаниям — на отдельной ветке</td></tr>
+            <tr><td>30 мин</td><td>Часть C: деплой всех проектов группы</td></tr>
+            <tr><td>10 мин</td><td>Часть D: README с ИИ и общий список ссылок</td></tr>
+            <tr><td>5 мин</td><td>Итоги: сколько баллов набрал проект до и после</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Часть A. Ревью проекта соседа (в парах)</h3>
+      <ol class="steps">
+        <li>Обменяйтесь ссылками на репозитории. Клонируйте проект соседа: <code>git clone ссылка</code>, затем <code>npm install</code> и <code>npm run dev</code>. Убедитесь, что он запускается.</li>
+        <li>Откройте <b>печатный чек-лист</b> (раздел 11). Пройдите по 12 пунктам и поставьте отметки в колонке «До».</li>
+        <li>Запишите <b>5–8 замечаний</b> в одном формате: <code>файл:строка — пункт № — что не так и почему — как исправить</code>. Пример: <code>src/cart.js:14</code> — <code>пункт 5</code> — число 300 без имени, непонятно, что это порог доставки — вынести в <code>FREE_DELIVERY_FROM</code>.</li>
+        <li>Замечания должны быть <b>вежливыми и конкретными</b>: «функция <code>calc</code> называется непонятно» — плохо; «в <code>calc</code> переименовать <code>t</code> в <code>total</code>, чтобы было видно, что суммируем» — хорошо. Критикуем код, а не человека.</li>
+        <li>Обсудите замечания голосом: автор вправе не согласиться, если объяснит, почему.</li>
+      </ol>
+
+      <h3>Часть B. Рефакторинг по замечаниям</h3>
+      <ol class="steps">
+        <li>Автор создаёт ветку: <code>git switch -c refactor/clean-code</code>.</li>
+        <li>Идёт по замечаниям <b>по одному</b>. После каждого: запуск → всё работает так же → <code>git commit -m "extract delivery constants"</code> (сообщение — по правилам урока 19).</li>
+        <li>Проверка поведения: открыть приложение и пройти те же сценарии, что до правок (поиск, пагинация, ошибка сети). Что-то поменялось — откат: <code>git restore .</code>.</li>
+        <li>В конце: <code>npm run build</code> без ошибок. Затем <code>git push</code> ветки.</li>
+        <li>Повторно пройдите чек-лист, заполните колонку «После». Цель — не меньше 10 из 12.</li>
+      </ol>
+
+      <h3>Часть C. Деплой всех проектов группы</h3>
+      <ol class="steps">
+        <li><b>Проект 1 → Vercel</b> по шагам из раздела 08. Время цели — 10 минут. Не получилось? Читайте лог сборки: ошибка почти всегда указана в последних строках.</li>
+        <li><b>Проект 2 → GitHub Pages:</b> <code>base</code>, workflow, Settings → Pages. Те, кто закончил раньше, помогают соседям по очереди — объяснять, а не нажимать за другого.</li>
+        <li>Проверка ссылки: откройте в режиме инкогнито и на телефоне, в DevTools → Console не должно быть красных ошибок, в Network — ни одного 404.</li>
+        <li>Все ссылки вписываются в общую таблицу группы (формат: имя, проект, ссылка на сайт, ссылка на репозиторий).</li>
+      </ol>
+
+      <h3>Часть D. README с ИИ</h3>
+      <ol class="steps">
+        <li>Подготовьте <b>факты</b> о проекте: что делает, стек, команды запуска, ссылка на демо.</li>
+        <li>Попросите ИИ собрать README по промпту из раздела 09.</li>
+        <li>Проверьте по списку «Что проверять»: вычеркните выдумки, запустите команды, добавьте скриншот и ссылку, перепишите шаблонные фразы.</li>
+        <li>Закоммитьте <code>README.md</code> в корень и отправьте.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Готово, когда</b>
+        <p>У проекта есть: чек-лист ≥ 10/12, живая ссылка, README со скриншотом, <code>.env.example</code> и нет секретов в истории. Покажите результат соседу и преподавателю.</p>
+      </div>
+    </section>
+
+    <!-- ============ 11 ============ -->
+    <section class="topic" id="checklist">
+      <h2 data-toc="Чек-лист качества"><span class="num">11</span> Чек-лист качества кода (печатная версия)</h2>
+
+      <p>Один чек-лист на всю группу: по нему вы проверяете свои проекты, проекты соседей и (позже) финальный проект. Распечатайте страницу (<b>Ctrl + P</b> на Windows, <b>Cmd + P</b> на macOS) — панель и подсказки при печати скроются, а таблица останется. Либо сохраните её в PDF.</p>
+
+      <p>Проект: ____________________</p>
+      <p>Автор: ____________________</p>
+      <p>Ревьюер: ____________________</p>
+      <p>Дата: ______________</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>№</th><th>Пункт</th><th>Как проверить</th><th>До</th><th>После</th></tr></thead>
+          <tbody>
+            <tr><td colspan="5"><b>Код</b></td></tr>
+            <tr><td>1</td><td><b>Имена</b> говорят, что это</td><td>Нет <code>a</code>, <code>x1</code>, <code>data</code>, <code>temp</code>; булевы — <code>is/has/can</code>; функции — глаголы</td><td>☐</td><td>☐</td></tr>
+            <tr><td>2</td><td><b>Маленькие функции</b></td><td>Каждая делает одну вещь, в имени нет «и», помещается на экран</td><td>☐</td><td>☐</td></tr>
+            <tr><td>3</td><td><b>DRY</b></td><td>Нет скопированных блоков; повторяющееся вынесено в функцию или данные</td><td>☐</td><td>☐</td></tr>
+            <tr><td>4</td><td><b>Ранний возврат</b></td><td>Вложенность не глубже 2–3 уровней, нет лишних <code>else</code> после <code>return</code></td><td>☐</td><td>☐</td></tr>
+            <tr><td>5</td><td><b>Константы</b></td><td>Нет магических чисел и строк — всё в <code>UPPER_SNAKE_CASE</code> вверху файла</td><td>☐</td><td>☐</td></tr>
+            <tr><td>6</td><td><b>Логика отдельно от отображения</b></td><td>Функции-расчёты не трогают DOM и не печатают в консоль</td><td>☐</td><td>☐</td></tr>
+            <tr><td>7</td><td><b>Комментарии</b></td><td>Объясняют «почему»; нет закомментированного кода и комментариев-повторов</td><td>☐</td><td>☐</td></tr>
+            <tr><td>8</td><td><b>Чистота</b></td><td>Нет отладочных <code>console.log</code>, неиспользуемых переменных и функций, <code>var</code></td><td>☐</td><td>☐</td></tr>
+            <tr><td colspan="5"><b>Проект</b></td></tr>
+            <tr><td>9</td><td><b>Секреты</b></td><td>Ключей нет в коде и истории; <code>.env.local</code> в <code>.gitignore</code>; есть <code>.env.example</code></td><td>☐</td><td>☐</td></tr>
+            <tr><td>10</td><td><b>Сборка</b></td><td><code>npm run build</code> проходит без ошибок и предупреждений</td><td>☐</td><td>☐</td></tr>
+            <tr><td>11</td><td><b>README</b></td><td>Что это, стек, как запустить, скриншот, ссылка на демо</td><td>☐</td><td>☐</td></tr>
+            <tr><td>12</td><td><b>Живая ссылка</b></td><td>Открывается в инкогнито и на телефоне; в Console нет ошибок, в Network нет 404</td><td>☐</td><td>☐</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Итого: до рефакторинга ____ / 12, после ____ / 12.</p>
+      <p>Три главных замечания ревьюера:</p>
+      <p>1. ______________________________</p>
+      <p>2. ______________________________</p>
+      <p>3. ______________________________</p>
+
+      <div class="callout tip">
+        <b>Как оценивать</b>
+        <p>Пункт засчитывается, только если выполнен <b>во всём проекте</b>, а не в одном файле. 10–12 баллов — проект готов показывать; 7–9 — нужна доработка; ниже 7 — начните с пунктов 1, 5 и 8: они проще всего и сильнее всего улучшают впечатление.</p>
+      </div>
+    </section>
+
+    <!-- ============ 12 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">12</span> Домашнее задание</h2>
+
+      <p>Задание: <b>отрефакторить мини-проект 2, задеплоить два проекта, оформить README и прислать ссылки.</b> Результат урока — заполненный чек-лист качества кода и живые ссылки на проекты.</p>
+
+      <ol>
+        <li><b>Оцените до.</b> Пройдите мини-проект 2 по чек-листу из раздела 11 <b>до</b> любых правок. Запишите результат (X из 12) и список нарушений.</li>
+        <li><b>Отрефакторьте.</b> Создайте ветку <code>refactor/clean-code</code>. Не меньше пяти осмысленных коммитов — каждый про одну правку («rename cart variables», «extract delivery constants», «split render from calc»). Поведение приложения не меняется.</li>
+        <li><b>Оцените после.</b> Повторите чек-лист. Цель — не меньше 10 из 12. Слейте ветку в основную обычным способом (через PR, как в уроке 19).</li>
+        <li><b>Задеплойте два проекта.</b> Мини-проект 2 — на Vercel; ещё один проект (мини-проект 1 или любой другой) — на GitHub Pages. Обе ссылки должны открываться без ошибок в консоли.</li>
+        <li><b>Секреты и окружение.</b> В обоих репозиториях есть <code>.env.example</code>, нет настоящих ключей, переменные (если есть) заданы на хостинге.</li>
+        <li><b>README.</b> В каждом репозитории: что это, стек, как запустить, скриншот, ссылка на демо, «что дальше». Черновик можно сделать с ИИ, но переписать своими словами и проверить все команды.</li>
+        <li><b>Текст для портфолио.</b> 3–4 предложения о мини-проекте 2: задача, что сделали вы лично, стек, ссылка.</li>
+      </ol>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Ссылки на два репозитория и две живые ссылки на сайты.</li>
+        <li>Заполненный чек-лист (колонки «До» и «После») со счётом.</li>
+        <li><b>Журнал рефакторинга:</b> таблица минимум из пяти строк — «пункт чек-листа → что изменили → название коммита».</li>
+        <li>Текст для портфолио (в README или в отдельном файле).</li>
+      </ul>
+
+      <h3>Как оцениваем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Рефакторинг: чек-лист после ≥ 10 из 12, поведение не изменилось</td><td>3</td></tr>
+            <tr><td>Деплой: обе ссылки открываются, нет ошибок в консоли и 404</td><td>3</td></tr>
+            <tr><td>README: все разделы, скриншот, рабочие команды, нет выдуманных функций</td><td>2</td></tr>
+            <tr><td>Секреты и <code>.env.example</code>; сборка проходит</td><td>1</td></tr>
+            <tr><td>Журнал рефакторинга и честная оценка «до» (≥ 5 осмысленных коммитов)</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Имена:</b> переменная — существительное, функция — глагол, булево — <code>is/has/can</code>, константа — <code>UPPER_SNAKE</code>. Без <code>data</code>, <code>temp</code>, <code>x1</code>.</li>
+        <li><b>Функция делает одну вещь.</b> «И» в описании — повод разделить. Ориентир — один экран.</li>
+        <li><b>Ранний возврат:</b> сначала отсекаем плохие случаи <code>if (...) return ...;</code>, основная логика остаётся плоской, <code>else</code> после <code>return</code> не нужен.</li>
+        <li><b>DRY:</b> повторилось в третий раз — вынесите в функцию или данные. Не объединяйте то, что похоже случайно.</li>
+        <li><b>Магические числа</b> → именованные константы вверху файла, единицы измерения в имени.</li>
+        <li><b>Логика ≠ отображение:</b> расчёт возвращает данные, <code>render</code> показывает, обработчик склеивает.</li>
+        <li><b>Комментарий отвечает «почему»,</b> а не «что». Закомментированный код — удалять (Git помнит).</li>
+        <li><b>Рефакторинг</b> меняет форму, не поведение: тест → маленький шаг → запуск → коммит. Либо рефакторим, либо чиним баг — не одновременно.</li>
+        <li><b>Сборка:</b> <code>npm run build</code> → <code>dist/</code>, проверка — <code>npm run preview</code>. <code>dist</code> в Git не кладём. Регистр имён файлов должен совпадать.</li>
+        <li><b>Переменные окружения:</b> <code>import.meta.env.VITE_*</code>, значения — строки, после правки <code>.env</code> перезапуск. <code>.env.local</code> — в <code>.gitignore</code>, <code>.env.example</code> — в репозиторий. В браузере нет секретов.</li>
+        <li><b>Vercel:</b> Import репозитория → preset Vite → переменные → Deploy; после смены переменных — Redeploy. <b>GitHub Pages:</b> <code>base: "/репозиторий/"</code> + Settings → Pages → GitHub Actions + workflow.</li>
+        <li><b>ИИ-ревью:</b> просим замечания по чек-листу, а не «улучши». Совет принимаем, если понимаем его, поведение то же, проблема реальна, метод существует и код проще. README — только по фактам, переписать своими словами.</li>
+      </ul>
+    </section>

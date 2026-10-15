@@ -76,8 +76,38 @@ function fmt(v, depth, seen) {
   return (isArr ? '[' : '{') + '\n' + parts.map(function (p) { return pad + p; }).join(',\n') + '\n' + '  '.repeat(depth) + (isArr ? ']' : '}');
 }
 const send = function (kind, text) { parent.postMessage({ ilmRun: ID, kind: kind, text: text }, '*'); };
-for (const k of ['log', 'info', 'debug', 'table', 'warn', 'error'])
+for (const k of ['log', 'info', 'debug', 'warn', 'error'])
   console[k] = function () { send(k, Array.prototype.map.call(arguments, function (x) { return fmt(x); }).join(' ')); };
+function cell(v) { return fmt(v, v !== null && typeof v === 'object' ? 1 : 0).replace(/\s*\n\s*/g, ' '); }
+function isRec(v) { return v !== null && typeof v === 'object' && !(v instanceof Error) && !(typeof Element !== 'undefined' && v instanceof Element); }
+function tableLines(data) {
+  if (!isRec(data)) return null;
+  const rows = Array.isArray(data) ? Array.from(data, function (v, i) { return [String(i), v]; }) : Object.keys(data).map(function (k) { return [k, data[k]]; });
+  const cols = [];
+  let hasValues = false;
+  rows.forEach(function (r) {
+    const v = r[1];
+    if (isRec(v)) (Array.isArray(v) ? Array.from(v, function (x, i) { return String(i); }) : Object.keys(v)).forEach(function (c) { if (cols.indexOf(c) < 0) cols.push(c); });
+    else hasValues = true;
+  });
+  const head = ['(index)'].concat(cols, hasValues ? ['Values'] : []);
+  const body = rows.map(function (r) {
+    const v = r[1];
+    return [r[0]].concat(cols.map(function (c) { return isRec(v) && Object.prototype.hasOwnProperty.call(v, c) ? cell(v[c]) : ''; }), hasValues ? [isRec(v) ? '' : cell(v)] : []);
+  });
+  const len = function (t) { return Array.from(t).length; };
+  const w = head.map(function (h, i) { return Math.max.apply(null, [len(h)].concat(body.map(function (r) { return len(r[i]); }))); });
+  const pad = function (t, n) { return t + ' '.repeat(n - len(t)); };
+  const line = function (l, m, r) { return l + w.map(function (n) { return '─'.repeat(n + 2); }).join(m) + r; };
+  const row = function (r) { return '│ ' + r.map(function (t, i) { return pad(t, w[i]); }).join(' │ ') + ' │'; };
+  return [line('┌', '┬', '┐'), row(head), line('├', '┼', '┤')].concat(body.map(row), [line('└', '┴', '┘')]);
+}
+console.table = function (data) {
+  const out = tableLines(data);
+  if (!out) return send('log', fmt(data));
+  out.forEach(function (l) { send('log', l); });
+};
+console.trace = function () { send('log', ['console.trace'].concat(Array.prototype.map.call(arguments, function (x) { return fmt(x); })).join(' ')); };
 addEventListener('error', function (e) { send('err', e.error && e.error.name ? e.error.name + ': ' + e.error.message : e.message); });
 addEventListener('unhandledrejection', function (e) {
   const r = e.reason;
@@ -264,7 +294,6 @@ function onMessage(e: MessageEvent) {
     const hint = explain(msg, r.opts.strings.explain);
     if (hint) push(r, { text: '↳ ' + hint, cls: 'warn-line' });
   } else {
-    if (d.kind === 'error') r.hadError = true;
     push(r, { text: String(d.text), cls: d.kind === 'warn' ? 'warn-line' : d.kind === 'error' ? 'err' : '' });
   }
 }
@@ -277,22 +306,32 @@ const bootScript = (id: string, mode: string) =>
 
 const BASE_CSS =
   'html{color-scheme:light}body{margin:0;padding:12px;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1c2230;background:#fff}';
+/**
+ * Student code becomes a blob module mapped (import map, injected by a classic script) to the bare
+ * specifier "ilm-user". An inline module script imports it (so it runs at the usual place, before
+ * DOMContentLoaded); a second module script re-imports the same module record, so it resumes only after
+ * the student module has fully evaluated, including top-level await, and then signals the end.
+ * Errors (syntax / runtime) are reported by the first script through the window error event, as before;
+ * the second one just swallows them. blob: is allowed by our CSP (data: is not).
+ */
+const userModule = (code: string) =>
+  `<script>(function(){var s=document.createElement('script');s.type='importmap';` +
+  `s.textContent=JSON.stringify({imports:{'ilm-user':URL.createObjectURL(new Blob([${safe(JSON.stringify(code))}],{type:'text/javascript'}))}});` +
+  `document.currentScript.after(s);})()<\/script>`;
+const studentScript = `<script type="module">import 'ilm-user';<\/script>`;
+const endScript = `<script type="module">try { await import('ilm-user'); } catch {} __ilmEnd();<\/script>`;
 const END = `<script type="module">__ilmEnd()<\/script>`;
 
 function consoleDoc(id: string, code: string) {
-  return (
-    bootScript(id, 'console') +
-    // type="module": own scope (const top / name don't clash with window), strict mode, order kept
-    `<script type="module">\n${safe(code)}\n<\/script>` +
-    END
-  );
+  // module: own scope (const top / name don't clash with window), strict mode, order kept
+  return bootScript(id, 'console') + userModule(code) + studentScript + endScript;
 }
 
 function domDoc(id: string, s: { html: string; css: string; js: string }) {
   return (
     `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
-    `<style>${BASE_CSS}</style><style>${safeStyle(s.css)}</style>${bootScript(id, 'dom')}</head><body>${s.html}` +
-    `<script type="module">\n${safe(s.js)}\n<\/script>${END}</body></html>`
+    `<style>${BASE_CSS}</style><style>${safeStyle(s.css)}</style>${bootScript(id, 'dom')}${userModule(s.js)}</head><body>${s.html}` +
+    `${studentScript}${endScript}</body></html>`
   );
 }
 

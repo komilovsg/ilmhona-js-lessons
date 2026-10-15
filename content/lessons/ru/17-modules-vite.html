@@ -1,0 +1,1571 @@
+<style>
+  /* дерево папок проекта */
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--muted, #6b7280); font-style: normal; font-weight: 400; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 17 · Инструменты разработчика</p>
+      <h1>Модули, npm и сборка Vite</h1>
+      <p class="lead">Пока ваше приложение живёт в одном файле на 300 строк, всё хорошо. Но настоящий сайт — это десятки файлов, чужие библиотеки и сборка перед публикацией. Сегодня вы научитесь разбивать код на модули, подключать пакеты через npm, запускать проект на Vite — и перенесёте на него приложение из урока 16.</p>
+      <ul class="goals">
+        <li>Писать <code>export</code> и <code>import</code>: именованные, по умолчанию, с переименованием, и «витринный» файл <code>index.js</code></li>
+        <li>Правильно указывать пути к модулям и раскладывать проект по папкам</li>
+        <li>Читать и править <code>package.json</code>: поля, <code>dependencies</code> и <code>devDependencies</code>, версии <code>^</code> и <code>~</code></li>
+        <li>Запускать команды через npm-скрипты: <code>npm run dev</code>, <code>npm run build</code></li>
+        <li>Создать проект командой <code>npm create vite@latest</code> и объяснить разницу между dev-сервером и сборкой</li>
+        <li>Перенести приложение в Vite, разбить его на модули и залить в репозиторий</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Это урок про инструменты, поэтому часть примеров — <b>терминал</b> и файлы проекта: они на тёмном фоне, но <b>без кнопки «Запустить»</b>. Команды вы повторяете у себя на компьютере (заголовок блока подскажет: «Терминал» или имя файла). Всё, что можно честно проверить в браузере, — живое: модули, импорты и разбор <code>package.json</code> запускаются кнопкой <b>▶ Запустить</b>. В браузере нет файлов, поэтому «файл» модуля мы храним в строке и загружаем настоящим <code>import()</code> — это тот же механизм, который браузер использует для файлов. Строка <code>setTimeout(() =&gt; {}, 300)</code> в этих примерах — служебная: она просит песочницу немного подождать, пока модуль загрузится. В настоящем проекте она не нужна.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="export-import">
+      <h2 data-toc="export и import"><span class="num">01</span> Зачем нужны модули. export и import</h2>
+
+      <p>Откройте любой серьёзный проект — вы не найдёте там одного огромного <code>script.js</code>. Код разложен по файлам: один отвечает за запросы к API, другой — за отрисовку, третий — за вспомогательные функции. Такой файл называется <b>модулем</b>.</p>
+
+      <p>Почему один файл — плохо? Во-первых, в нём трудно ориентироваться. Во-вторых, если подключать несколько обычных скриптов подряд, все их переменные попадают в <b>одно общее пространство</b>: две функции с именем <code>format</code> затрут друг друга. Модуль решает обе проблемы: у него <b>своя область видимости</b>, и наружу попадает только то, что вы явно разрешили.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Кухня большой чойхоны. Один повар делает плов, другой — шашлык, третий — лепёшки. У каждого свой стол и свои продукты — это <b>модуль со своей областью видимости</b>. Но готовое блюдо повар отдаёт через <b>окно выдачи</b> — это <code>export</code>. Официант, который берёт блюдо и несёт его в зал, — это <code>import</code>. Всё, что осталось на столе повара, — его «личное дело», в зал оно не попадёт.</p>
+      </div>
+
+      <h3>Именованный экспорт</h3>
+      <p>Чтобы открыть что-то наружу, перед объявлением пишут слово <code>export</code>. Чтобы взять это в другом файле — <code>import</code> с именами в фигурных скобках:</p>
+
+<pre class="code" data-title="src/currency.js">
+const RATE = 11; // без export — виден только внутри этого файла
+
+export function toSomoni(usd) {
+  return usd * RATE;
+}
+
+export function toUsd(somoni) {
+  return somoni / RATE;
+}
+</pre>
+
+<pre class="code" data-title="src/main.js">
+import { toSomoni, toUsd } from "./currency.js";
+
+console.log(toSomoni(100)); // → 1100
+console.log(toUsd(550));    // → 50
+</pre>
+
+      <p>Имена в фигурных скобках должны <b>точно совпадать</b> с экспортированными, включая регистр. Порядок не важен. Если вы импортируете то, чего нет, — ошибка появится ещё до запуска кода.</p>
+
+      <h3>Запускаем настоящий import прямо здесь</h3>
+      <p>На этой странице нет файлов на диске, но есть функция <code>import()</code>, которая умеет загружать модуль по адресу. Мы упаковываем «файл» в строку, превращаем её в адрес (<code>Blob</code> и <code>URL.createObjectURL</code>) и загружаем. Для вас это просто строка в обратных кавычках — представляйте, что это содержимое файла.</p>
+
+<pre class="code" data-run data-title="Модуль в строке: настоящий import()">
+// «файл» → адрес → модуль
+const load = (code) => {
+  setTimeout(() => {}, 300); // нужен только этой странице: песочница ждёт, пока модуль загрузится
+  return import(URL.createObjectURL(new Blob([code], { type: "text/javascript" })));
+};
+
+const currency = await load(`
+  const RATE = 11;
+  export function toSomoni(usd) { return usd * RATE; }
+  export function toUsd(somoni) { return somoni / RATE; }
+`);
+
+console.log(currency.toSomoni(100)); // 1100
+console.log(currency.toUsd(550));    // 50
+console.log(currency.RATE);          // undefined — без export снаружи не видно
+</pre>
+
+      <p>Результат загрузки — объект со всем, что модуль экспортировал. Константа <code>RATE</code> не экспортирована — снаружи её нет. Это и есть «приватность» модуля.</p>
+
+      <h3>Модуль, который импортирует другой модуль</h3>
+      <p>Теперь два «файла»: второй подключает первый обычной строкой <code>import ... from</code>. Вместо пути <code>"./currency.js"</code> мы подставляем адрес первого модуля — на настоящем диске там стоял бы путь.</p>
+
+<pre class="code" data-run data-title="Два модуля: main импортирует currency">
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+// файл currency.js
+const currencyUrl = url(`
+  const RATE = 11;
+  export const toSomoni = (usd) => usd * RATE;
+  export const toUsd = (somoni) => somoni / RATE;
+`);
+
+// файл main.js (на диске: import { toSomoni } from "./currency.js")
+await import(url(`
+  import { toSomoni, toUsd } from "${currencyUrl}";
+  console.log("100 USD =", toSomoni(100), "сомони");
+  console.log("550 сомони =", toUsd(550), "USD");
+`));
+</pre>
+
+      <h3>Что ещё умеет import</h3>
+      <dl class="terms">
+        <dt>Переименование: <code>as</code></dt><dd>Если имена конфликтуют: <code>import { format as formatDate } from "./dates.js"</code>. Теперь внутри файла функция называется <code>formatDate</code>.</dd>
+        <dt>Всё сразу: <code>* as</code></dt><dd><code>import * as currency from "./currency.js"</code> — один объект, к функциям обращаемся через точку: <code>currency.toSomoni(5)</code>. Удобно, когда нужно много и хочется видеть, откуда что.</dd>
+        <dt>Экспорт списком</dt><dd>Не обязательно ставить <code>export</code> перед каждой строкой — можно собрать всё внизу файла: <code>export { toSomoni, toUsd };</code></dd>
+        <dt>Только запуск</dt><dd><code>import "./style.css"</code> — без имён: файл просто подключается. В Vite так подключают стили.</dd>
+      </dl>
+
+<pre class="code" data-run data-title="as и * as">
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const dates = url(`export function format(d) { return d.day + "." + d.month; }`);
+const money = url(`export function format(n) { return n + " сомони"; }`);
+
+await import(url(`
+  import { format as formatDate } from "${dates}";
+  import * as moneyUtils from "${money}";
+
+  console.log(formatDate({ day: 15, month: 10 }));
+  console.log(moneyUtils.format(250));
+`));
+</pre>
+
+      <div class="callout warn">
+        <b>Частые ошибки</b>
+        <p>1) Импортировать имя, которого модуль не экспортирует (опечатка, регистр, забытый <code>export</code>). 2) Забыть <code>./</code> в пути: <code>"currency.js"</code> без точки — это не ваш файл, а пакет из npm (об этом ниже). 3) Написать <code>import</code> в обычном скрипте без <code>type="module"</code>.</p>
+      </div>
+
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const shop = url(`
+  export function totalPrice(a, b) { return a + b; }
+`);
+
+// ✖ модуль экспортирует totalPrice, а мы просим calcTotal
+await import(url(`
+  import { calcTotal } from "${shop}";
+  console.log(calcTotal(10, 20));
+`));
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/import-export" target="_blank" rel="noopener">learn.javascript.ru — Экспорт и импорт</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Guide/Modules" target="_blank" rel="noopener">MDN — Модули JavaScript</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Во всех задачах «файл» лежит в строке-шаблоне. Менять нужно только то, что подсказано в комментариях и условии.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Что видно снаружи</h4><span class="level easy">лёгкая</span></header>
+          <p><b>Предскажите вывод</b>, не запуская: какие имена модуль отдаёт наружу (они выводятся через запятую; ключи модуля идут по алфавиту, заглавные буквы раньше строчных) и что будет с <code>secret</code>? Затем запустите и сверьтесь.</p>
+<pre class="code" data-run>
+const load = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return import(URL.createObjectURL(new Blob([code], { type: "text/javascript" })));
+};
+
+const city = await load(`
+  export const CITY = "Душанбе";
+  export function hello() { return "Салом, " + CITY; }
+  const secret = "не для чужих";
+  export const year = 2026;
+`);
+
+console.log(Object.keys(city).join(", "));
+console.log(typeof city.secret);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>CITY, hello, year
+undefined</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Наружу попадает только то, что помечено словом <code>export</code>. Посчитайте такие строки.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сравнение имён идёт по коду символа: <code>C</code> (заглавная) раньше <code>h</code>, а <code>h</code> раньше <code>y</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Допишите export</h4><span class="level easy">лёгкая</span></header>
+          <p>Модуль <code>currency.js</code> написан, но в нём забыли открыть функции наружу — <code>main.js</code> падает с ошибкой. Добавьте <code>export</code> там, где нужно, и добейтесь правильного вывода.</p>
+<pre class="code" data-run>
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const currencyUrl = url(`
+  const RATE = 11;
+  function toSomoni(usd) { return usd * RATE; }
+  function toUsd(somoni) { return somoni / RATE; }
+`);
+
+await import(url(`
+  import { toSomoni, toUsd } from "${currencyUrl}";
+  console.log(toSomoni(100));
+  console.log(toUsd(550));
+`));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1100
+50</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Прочитайте ошибку: в ней сказано, что модуль не предоставляет экспорт с таким именем. Какие два имени запрашивает <code>main.js</code>?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Поставьте слово <code>export</code> перед <code>function toSomoni</code> и <code>function toUsd</code>. Константе <code>RATE</code> оно не нужно.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Две функции format</h4><span class="level mid">средняя</span></header>
+          <p>Модули <code>dates.js</code> и <code>money.js</code> оба экспортируют функцию с именем <code>format</code>. Импортируйте обе в <code>main.js</code> так, чтобы они не конфликтовали: даты — как <code>formatDate</code>, деньги — как <code>formatMoney</code>.</p>
+<pre class="code" data-run>
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const datesUrl = url(`export function format(d) { return d.day + "." + d.month + "." + d.year; }`);
+const moneyUrl = url(`export function format(n) { return n + " сомони"; }`);
+
+await import(url(`
+  // импортируйте обе функции под разными именами
+  import { format } from "${datesUrl}";
+
+  console.log(formatDate({ day: 15, month: 10, year: 2026 }));
+  console.log(formatMoney(250));
+`));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>15.10.2026
+250 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Конструкция <code>{ имя as новоеИмя }</code> меняет имя внутри текущего файла. Нужны две строки <code>import</code> — по одной на каждый модуль.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>import { format as formatDate } from "${datesUrl}";</code> — и такая же строка для <code>moneyUrl</code> с именем <code>formatMoney</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ЗАДАЧА 1.4</span><h4>Модуль корзины с нуля</h4><span class="level mid">средняя</span></header>
+          <p>Напишите модуль <code>cart.js</code>: он экспортирует массив <code>items</code> (три цены: 15, 40, 5) и функцию <code>total(list)</code>, возвращающую сумму. Затем в <code>main.js</code> импортируйте обе вещи и выведите итог.</p>
+<pre class="code" data-run>
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const cartUrl = url(`
+  // напишите: export const items = [...]; и export function total(list) { ... }
+`);
+
+await import(url(`
+  // импортируйте items и total из "${cartUrl}"
+
+  console.log("Товаров:", items.length);
+  console.log("Итого:", total(items));
+`));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Товаров: 3
+Итого: 60</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В модуле: <code>export const items = [15, 40, 5];</code> и <code>export function total(list) { ... }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сумма: <code>return list.reduce((sum, p) =&gt; sum + p, 0);</code>. В <code>main.js</code>: <code>import { items, total } from "${cartUrl}";</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="default-paths">
+      <h2 data-toc="default, ре-экспорт, пути, папки"><span class="num">02</span> Экспорт по умолчанию, ре-экспорт, пути и папки</h2>
+
+      <h3>export default</h3>
+      <p>У модуля может быть один «главный» экспорт — <code>export default</code>. При импорте он берётся <b>без фигурных скобок</b> и под любым именем, которое вы придумаете:</p>
+
+<pre class="code" data-title="src/ui/greet.js">
+export default function greet(name) {
+  return `Салом, ${name}!`;
+}
+
+export const LANG = "tg"; // именованный экспорт тоже можно держать рядом
+</pre>
+
+<pre class="code" data-title="src/main.js">
+import greet, { LANG } from "./ui/greet.js";   // default — без скобок, остальное — в скобках
+import hello from "./ui/greet.js";              // то же самое, имя выбираем сами
+
+console.log(greet("Мадина"), LANG);
+</pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Именованный экспорт</th><th>Экспорт по умолчанию</th></tr></thead>
+          <tbody>
+            <tr><td><b>Запись</b></td><td><code>export function f() {}</code></td><td><code>export default function f() {}</code></td></tr>
+            <tr><td><b>Импорт</b></td><td><code>import { f } from "./a.js"</code></td><td><code>import f from "./a.js"</code></td></tr>
+            <tr><td><b>Сколько на модуль</b></td><td>Сколько угодно</td><td>Не больше одного</td></tr>
+            <tr><td><b>Имя при импорте</b></td><td>Должно совпасть (или <code>as</code>)</td><td>Любое</td></tr>
+            <tr><td><b>Когда выбирать</b></td><td>По умолчанию — удобнее поиск и автодополнение</td><td>Модуль «про одну вещь»: компонент, класс, конфиг</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>В своём коде отдавайте предпочтение <b>именованным</b> экспортам: имя одинаково во всех файлах, и редактор сам подскажет импорт. <code>default</code> вы всё равно встретите — в ответах ИИ, в документации библиотек и в React (компоненты чаще экспортируют по умолчанию).</p>
+      </div>
+
+<pre class="code" data-run data-title="default и named в одном модуле">
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const greetUrl = url(`
+  export default function greet(name) { return "Салом, " + name + "!"; }
+  export const LANG = "tg";
+`);
+
+await import(url(`
+  import hello, { LANG } from "${greetUrl}";   // hello — наше имя для default
+  console.log(hello("Мадина"), LANG);
+`));
+
+// посмотрим, что лежит в модуле: default — это просто ключ с именем "default"
+const mod = await import(greetUrl);
+console.log(Object.keys(mod).join(", "));
+</pre>
+
+      <h3>Ре-экспорт: файл-витрина index.js</h3>
+      <p>Когда в папке много модулей, неудобно писать пять строк <code>import</code> из пяти разных файлов. Принято класть в папку файл <code>index.js</code>, который <b>собирает</b> всё нужное и отдаёт одним окном — как витрина в магазине. Для этого есть «пересылающий» экспорт:</p>
+
+<pre class="code" data-title="src/api/index.js">
+export { getUsers, getPosts } from "./users.js";   // отдельные имена
+export * from "./products.js";                      // всё именованное сразу
+export { default as http } from "./http.js";        // default → именованный
+</pre>
+
+<pre class="code" data-title="src/main.js">
+// снаружи не важно, в каком файле что лежит: путь ведёт к папке
+import { getUsers, searchProducts, http } from "./api/index.js";
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Рынок Корвон. Вы не ходите по каждому складу — вы идёте к нужному ряду, где продавец принимает заказ и сам достаёт товар из разных складов. <code>index.js</code> — этот продавец: покупатель (другой модуль) знает только ряд, а не склады.</p>
+      </div>
+
+      <h3>Правила, которые нужно знать</h3>
+      <ol class="steps">
+        <li><b>Модуль выполняется один раз.</b> Сколько бы файлов его ни импортировало, код внутри запускается один раз, а все получают одно и то же состояние (счётчик, кэш, настройки).</li>
+        <li><b>Своя область видимости.</b> Переменные модуля не попадают в <code>window</code>. Поэтому в Vite-проекте вы не сможете случайно перезаписать чужую переменную.</li>
+        <li><b>Строгий режим включён сам.</b> Не нужно писать <code>"use strict"</code>.</li>
+        <li><b>import — только наверху файла</b> и не внутри <code>if</code> или функции. Для загрузки «по требованию» есть <code>import()</code> — именно его мы используем на этой странице.</li>
+        <li><b>Циклы запрещать не надо, но избегать.</b> Если <code>a.js</code> импортирует <code>b.js</code>, а <code>b.js</code> — <code>a.js</code>, получится путаница с порядком выполнения. Решение: вынести общее в третий файл.</li>
+      </ol>
+
+<pre class="code" data-run data-title="Модуль выполняется один раз">
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const counterUrl = url(`
+  console.log("counter.js загружен");   // сколько раз увидим эту строку?
+  export let count = 0;
+  export function inc() { count++; }
+`);
+
+await import(url(`import { inc } from "${counterUrl}"; inc(); inc();`));
+await import(url(`import { count } from "${counterUrl}"; console.log("count в b:", count);`));
+</pre>
+
+      <h3>Пути в import</h3>
+      <dl class="terms">
+        <dt><code>"./api.js"</code></dt><dd>Файл рядом с текущим (в той же папке).</dd>
+        <dt><code>"../api.js"</code></dt><dd>На одну папку выше. Две папки выше — <code>"../../api.js"</code>.</dd>
+        <dt><code>"./api/index.js"</code></dt><dd>Файл в подпапке. Слэш всегда прямой <code>/</code>, даже на Windows.</dd>
+        <dt><code>"dayjs"</code></dt><dd>Без <code>./</code> и <code>../</code> — это <b>пакет из npm</b>. Vite найдёт его в папке <code>node_modules</code>.</dd>
+        <dt>Расширение <code>.js</code></dt><dd>В браузере и в Vite пишем его всегда: <code>"./api.js"</code>, а не <code>"./api"</code>.</dd>
+      </dl>
+
+      <div class="callout warn">
+        <b>Регистр букв и Windows</b>
+        <p>На Windows и macOS файл <code>Api.js</code> можно по ошибке импортировать как <code>"./api.js"</code> — и локально всё заработает. Но сервер, на который вы зальёте сайт (GitHub Pages, Netlify), чувствителен к регистру: там будет ошибка 404. Называйте файлы одним стилем — <code>kebab-case</code> или <code>camelCase</code> с маленькой буквы — и пишите путь буква в букву.</p>
+      </div>
+
+      <h3>Как подключить модуль на странице</h3>
+<pre class="code" data-lang="html" data-title="index.html">
+&lt;!-- type="module" — и main.js может использовать import --&gt;
+&lt;script type="module" src="./src/main.js"&gt;&lt;/script&gt;
+</pre>
+      <p>Если просто открыть такой <code>index.html</code> двойным щелчком (адрес начинается с <code>file://</code>), браузер откажется загружать модули. Им нужен <b>сервер</b>, адрес вида <code>http://localhost:5173</code>. Для разработки сервер даёт Vite — ниже вы его запустите.</p>
+
+      <h3>Как раскладывать проект по папкам</h3>
+      <p>Единого закона нет, но для приложений из урока 15–16 хорошо работает такая схема:</p>
+      <div class="ftree"><b>my-shop/</b>
+├─ index.html            <i>страница, подключает src/main.js</i>
+├─ package.json          <i>паспорт проекта и команды</i>
+├─ .gitignore            <i>что не отправлять в Git</i>
+├─ <b>public/</b>              <i>файлы «как есть»: favicon, картинки</i>
+└─ <b>src/</b>
+   ├─ main.js            <i>точка входа: только «собрать» приложение</i>
+   ├─ <b>api/</b>
+   │  └─ products.js     <i>запросы к API (fetch)</i>
+   ├─ <b>ui/</b>
+   │  └─ render.js       <i>отрисовка: список, статусы loading / error</i>
+   ├─ <b>utils/</b>
+   │  └─ debounce.js     <i>мелкие помощники без привязки к странице</i>
+   └─ <b>styles/</b>
+      └─ style.css</div>
+      <ul>
+        <li><b>Один модуль — одна задача.</b> Если в файле и <code>fetch</code>, и работа с DOM, и подсчёты — пора делить.</li>
+        <li><b>main.js — «дирижёр».</b> Он подключает остальные и связывает: «получили данные из api → отдали в ui». Своей логики в нём почти нет.</li>
+        <li><b>Зависимости идут в одну сторону:</b> <code>main</code> знает про <code>api</code> и <code>ui</code>, а они про <code>main</code> — нет.</li>
+        <li><b>utils не знают про приложение.</b> <code>debounce</code> подойдёт любому проекту — значит, ему место в <code>utils</code>.</li>
+      </ul>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/modules-intro" target="_blank" rel="noopener">learn.javascript.ru — Модули, введение</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Statements/export" target="_blank" rel="noopener">MDN — export</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Приветствие не найдено</h4><span class="level easy">лёгкая</span></header>
+          <p>Модуль экспортирует <code>greet</code> «по умолчанию», а <code>main.js</code> просит его как именованный — получается ошибка. Исправьте <b>только импорт</b> в <code>main.js</code>.</p>
+<pre class="code" data-run>
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const greetUrl = url(`
+  export default function greet(name) { return "Салом, " + name + "!"; }
+  export const LANG = "tg";
+`);
+
+await import(url(`
+  import { greet, LANG } from "${greetUrl}";
+  console.log(greet("Мадина"));
+  console.log(LANG);
+`));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Салом, Мадина!
+tg</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Экспорт по умолчанию импортируется без фигурных скобок, а именованный — в скобках. Здесь нужно и то и другое сразу.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>import greet, { LANG } from "${greetUrl}";</code></p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Один модуль — одно состояние</h4><span class="level mid">средняя</span></header>
+          <p>Сначала <b>предскажите</b>, что выведет код (сколько раз появится «counter.js загружен» и чему равен <code>count</code> во втором импортёре). Затем доработайте: добавьте в <code>counter.js</code> функцию <code>reset()</code>, обнуляющую счётчик, и допишите третий импортёр, который вызовет <code>reset()</code> и выведет <code>count после reset: 0</code>.</p>
+<pre class="code" data-run>
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const counterUrl = url(`
+  console.log("counter.js загружен");
+  export let count = 0;
+  export function inc() { count++; }
+  // добавьте export function reset() ...
+`);
+
+await import(url(`import { inc } from "${counterUrl}"; inc(); inc();`));
+await import(url(`import { count } from "${counterUrl}"; console.log("count в b:", count);`));
+// третий импортёр — здесь
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>counter.js загружен
+count в b: 2
+count после reset: 0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Адрес <code>counterUrl</code> один и тот же, поэтому модуль загружается и выполняется один раз, а состояние общее для всех импортёров.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Третий импортёр: <code>await import(url(`import { count, reset } from "${counterUrl}"; reset(); console.log("count после reset:", count);`));</code> Значение <code>count</code> «живое»: после <code>reset()</code> оно уже нулевое.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Витрина index.js</h4><span class="level hard">сложная</span></header>
+          <p>Собран маленький проект из трёх модулей. Напишите содержимое файла <code>index.js</code> (<code>indexUrl</code>) так, чтобы он пересылал: функцию <code>getUsers</code> из <code>api.js</code>, <b>все</b> именованные экспорты из <code>format.js</code> и <code>default</code> из <code>store.js</code> под именем <code>store</code>. <code>main.js</code> менять не нужно.</p>
+<pre class="code" data-run>
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const apiUrl = url(`export function getUsers() { return ["Рустам", "Зарина"]; }`);
+const formatUrl = url(`
+  export const upper = (s) => s.toUpperCase();
+  export const exclaim = (s) => s + "!";
+`);
+const storeUrl = url(`
+  const items = [];
+  export default { add(x) { items.push(x); }, size() { return items.length; } };
+`);
+
+const indexUrl = url(`
+  // ре-экспортируйте всё нужное из apiUrl, formatUrl и storeUrl
+`);
+
+await import(url(`
+  import { getUsers, upper, exclaim, store } from "${indexUrl}";
+  for (const user of getUsers()) {
+    console.log(exclaim(upper(user)));
+    store.add(user);
+  }
+  console.log(store.size());
+`));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>РУСТАМ!
+ЗАРИНА!
+2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три строки в стиле <code>export ... from "..."</code>: одна с фигурными скобками, одна со звёздочкой, одна с <code>default as</code>. Адреса подставляются как <code>"${apiUrl}"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>export { getUsers } from "${apiUrl}";</code><br><code>export * from "${formatUrl}";</code><br><code>export { default as store } from "${storeUrl}";</code></p></details>
+        </article>
+
+        <article class="task" id="t2-4">
+          <header><span class="task-num">ЗАДАЧА 2.4</span><h4>Куда ведёт путь</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>resolveImport(from, spec)</code>: она получает путь файла-импортёра и строку из <code>import</code> и возвращает путь к нужному файлу <b>от корня проекта</b>, без начального слэша. Пригодится встроенный <code>URL</code>: <code>new URL(spec, base).pathname</code>, где <code>base</code> — условный адрес сайта плюс путь файла.</p>
+<pre class="code" data-run>
+function resolveImport(from, spec) {
+  // подсказка: base = "http://app/" + from
+}
+
+console.log(resolveImport("src/ui/render.js", "./card.js"));
+console.log(resolveImport("src/ui/render.js", "../api.js"));
+console.log(resolveImport("src/ui/render.js", "../../package.json"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>src/ui/card.js
+src/api.js
+package.json</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>new URL("../api.js", "http://app/src/ui/render.js").pathname</code> вернёт <code>/src/api.js</code>. Относительный путь считается от <b>папки</b> файла.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>У результата <code>pathname</code> есть начальный слэш — уберите его: <code>.slice(1)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="npm">
+      <h2 data-toc="npm и package.json"><span class="num">03</span> Node.js, npm и package.json</h2>
+
+      <p><b>Node.js</b> — это JavaScript вне браузера: он запускает ваш код прямо на компьютере. Нам он нужен не для сайтов, а для <b>инструментов</b>: Vite, форматтеры и проверки кода сами написаны на JavaScript и работают на Node. Вместе с Node устанавливается <b>npm</b> — менеджер пакетов: программа, которая скачивает чужой код (пакеты) из огромного каталога <a href="https://www.npmjs.com" target="_blank" rel="noopener">npmjs.com</a> и подключает его к вашему проекту.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Строительный рынок. Вы строите дом и не льёте кирпичи сами — берёте готовые. npm — это рынок и одновременно доставка: говорите «нужен такой-то пакет», и вам привозят его в папку <code>node_modules</code>. А <code>package.json</code> — <b>список закупок</b> проекта: что именно и какой версии вам нужно. Дайте этот список другому разработчику — и он одной командой соберёт у себя точно такие же материалы.</p>
+      </div>
+
+      <h3>Установка и проверка (Windows и macOS)</h3>
+      <ol class="steps">
+        <li><b>Скачайте Node.js LTS</b> с <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a> (кнопка «LTS» — версия с долгой поддержкой). Windows — установщик <code>.msi</code>, macOS — установщик <code>.pkg</code>. Везде соглашайтесь с настройками по умолчанию.</li>
+        <li><b>Закройте и снова откройте терминал.</b> Это важно: старые окна не видят новые программы. Проще всего — терминал прямо в VS Code: меню <b>Terminal → New Terminal</b> (на клавиатуре <code>Ctrl+`</code>).</li>
+        <li><b>Проверьте версии.</b> Для современного Vite нужна Node.js 20.19+ или 22.12+.</li>
+      </ol>
+
+<pre class="code" data-title="Терминал">
+node -v
+# v22.14.0   ← у вас может быть другая, главное не ниже 20.19
+
+npm -v
+# 10.9.2
+</pre>
+
+      <div class="callout warn">
+        <b>Windows: «выполнение скриптов отключено»</b>
+        <p>Если в PowerShell команда <code>npm</code> отвечает ошибкой про <code>npm.ps1</code> и «execution policy» — разрешите запуск скриптов для своего пользователя одной командой: <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code> (и подтвердите <code>Y</code>). Другой вариант — открыть обычную командную строку <code>cmd</code> или Git Bash. На macOS такой проблемы нет.</p>
+      </div>
+
+      <h3>Первый package.json</h3>
+      <p>В пустой папке проекта выполните <code>npm init -y</code> — создастся <code>package.json</code>. Потом установите пакет:</p>
+
+<pre class="code" data-title="Терминал">
+mkdir demo-npm
+cd demo-npm
+npm init -y            # создать package.json с ответами по умолчанию
+npm install dayjs      # библиотека для дат → попадёт в "dependencies"
+npm install -D vite    # инструмент разработки → попадёт в "devDependencies"
+</pre>
+
+      <p>Что появилось в папке:</p>
+      <div class="ftree"><b>demo-npm/</b>
+├─ package.json          <i>список закупок: коммитим в Git</i>
+├─ package-lock.json     <i>точные версии всего, что установлено: тоже коммитим</i>
+└─ <b>node_modules/</b>         <i>скачанный код: тысячи файлов, в Git НЕ кладём</i></div>
+
+      <h3>Из чего состоит package.json</h3>
+<pre class="code" data-title="package.json">
+{
+  "name": "ilmhona-shop",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.13"
+  },
+  "devDependencies": {
+    "vite": "^8.3.0"
+  }
+}
+</pre>
+
+      <dl class="terms">
+        <dt><code>name</code>, <code>version</code></dt><dd>Имя и версия проекта. Имя — маленькими латинскими буквами, без пробелов.</dd>
+        <dt><code>private: true</code></dt><dd>«Это приложение, а не библиотека для публикации». Защищает от случайной отправки в npm.</dd>
+        <dt><code>type: "module"</code></dt><dd>Файлы <code>.js</code> проекта считаются ES-модулями — то есть <code>import</code>/<code>export</code> работают и в инструментах на Node.</dd>
+        <dt><code>scripts</code></dt><dd>Свои команды: имя → что выполнить. Подробнее чуть ниже.</dd>
+        <dt><code>dependencies</code></dt><dd>Пакеты, которые использует <b>код вашего приложения</b>: например, <code>dayjs</code>, который вы импортируете в <code>main.js</code>.</dd>
+        <dt><code>devDependencies</code></dt><dd>Пакеты <b>для разработчика</b>: сборщик, проверка кода, форматтер. В коде приложения их не импортируют.</dd>
+      </dl>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>В проекте на Vite всё, что вы импортируете, при сборке упаковывается в итоговые файлы, так что на сайте граница между двумя списками не видна. Но привычка нужна: когда вы откроете чужой проект, по этим спискам сразу поймёте, «что нужно приложению» и «чем его делают». Правило простое: нужно в <code>import</code> внутри <code>src/</code> — это <code>dependencies</code> (<code>npm install имя</code>), нужно только для работы над проектом — <code>devDependencies</code> (<code>npm install -D имя</code>).</p>
+      </div>
+
+      <h3>Версии: что значит ^ и ~</h3>
+      <p>Версия пакета состоит из трёх чисел: <code>MAJOR.MINOR.PATCH</code>, например <code>1.11.13</code>. Это соглашение называется <b>semver</b>:</p>
+      <ul>
+        <li><b>PATCH</b> (<code>1.11.<u>13</u></code>) — исправили ошибку, ничего не сломалось;</li>
+        <li><b>MINOR</b> (<code>1.<u>11</u>.13</code>) — добавили возможности, старый код работает;</li>
+        <li><b>MAJOR</b> (<code><u>1</u>.11.13</code>) — изменения, которые <b>могут сломать</b> ваш код.</li>
+      </ul>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Запись</th><th>Что разрешено</th><th>Пример для <code>1.4.2</code></th></tr></thead>
+          <tbody>
+            <tr><td><code>"1.4.2"</code></td><td>Только эта версия</td><td>только 1.4.2</td></tr>
+            <tr><td><code>"~1.4.2"</code></td><td>Обновления PATCH</td><td>от 1.4.2 до 1.4.x (1.5.0 уже нельзя)</td></tr>
+            <tr><td><code>"^1.4.2"</code></td><td>Обновления MINOR и PATCH (<code>npm install</code> ставит так по умолчанию)</td><td>от 1.4.2 до 1.x.x (2.0.0 уже нельзя)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Важно: числа сравниваются <b>как числа</b>, а не как текст. Версия <code>1.10.0</code> новее, чем <code>1.9.0</code> — хотя как строка <code>"1.10.0"</code> меньше <code>"1.9.0"</code>. Проверим:</p>
+
+<pre class="code" data-run data-title="Версии — это числа, а не строки">
+console.log("1.10.0" > "1.9.0");   // false — сравнение как текста ошибочно!
+
+const parse = (v) => v.split(".").map(Number);
+console.log(parse("1.10.0"));      // [1, 10, 0]
+console.log(parse("1.10.0")[1] > parse("1.9.0")[1]); // true — 10 больше 9
+</pre>
+
+      <p>А <b>package-lock.json</b> фиксирует, какие версии реально установились. Поэтому у вас и у коллеги после <code>npm install</code> окажется один и тот же код, даже если в каталоге уже вышла новая версия. Править этот файл руками не нужно.</p>
+
+      <h3>Основные команды npm</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Команда</th><th>Что делает</th></tr></thead>
+          <tbody>
+            <tr><td><code>npm install</code> (или <code>npm i</code>)</td><td>Установить всё, что записано в <code>package.json</code>. Выполняем после <code>git clone</code>.</td></tr>
+            <tr><td><code>npm install имя</code></td><td>Добавить пакет в <code>dependencies</code>.</td></tr>
+            <tr><td><code>npm install -D имя</code></td><td>Добавить пакет в <code>devDependencies</code>.</td></tr>
+            <tr><td><code>npm uninstall имя</code></td><td>Удалить пакет.</td></tr>
+            <tr><td><code>npm run имя</code></td><td>Запустить скрипт из <code>scripts</code>.</td></tr>
+            <tr><td><code>npm outdated</code></td><td>Показать пакеты, для которых вышли новые версии.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>npm-скрипты: свои команды проекта</h3>
+      <p>В блоке <code>scripts</code> вы даёте короткие имена длинным командам. Вместо того чтобы помнить, как запускается сборщик, все пишут одно и то же: <code>npm run dev</code>. Кто бы ни открыл проект — через год или другой разработчик — он видит в <code>package.json</code>, какие команды доступны.</p>
+
+<pre class="code" data-title="package.json (фрагмент)">
+"scripts": {
+  "dev": "vite",                // npm run dev      → запустить сервер разработки
+  "build": "vite build",        // npm run build    → собрать сайт в папку dist
+  "preview": "vite preview"     // npm run preview  → посмотреть собранный сайт
+}
+</pre>
+      <p class="muted">Комментарии <code>//</code> в настоящем JSON писать нельзя — здесь они только для объяснения.</p>
+      <ul>
+        <li>Для слов <code>start</code> и <code>test</code> слово <code>run</code> можно не писать: <code>npm start</code>, <code>npm test</code>. Для остальных (<code>dev</code>, <code>build</code>) — обязательно: <code>npm run dev</code>.</li>
+        <li>Команды можно объединять через <code>&amp;&amp;</code>: <code>"check": "npm run build &amp;&amp; npm run preview"</code> — вторая запустится, только если первая успешна.</li>
+        <li>Скрипты работают на всех системах, пока вы используете кроссплатформенные программы. Команды вроде <code>rm -rf dist</code> не работают в обычном Windows — для таких случаев берут пакеты (например, <code>rimraf</code>).</li>
+        <li><code>npx имя</code> — разово скачать и запустить программу, не устанавливая её в проект. Именно так работает <code>npm create vite@latest</code> (по сути, это <code>npx create-vite@latest</code>).</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Ставим пакеты осторожно</b>
+        <p>Установка пакета — это запуск чужого кода на вашем компьютере. Прежде чем выполнять <code>npm install</code> по совету из интернета или ИИ, проверьте на <a href="https://www.npmjs.com" target="_blank" rel="noopener">npmjs.com</a>: правильно ли написано имя, сколько у пакета загрузок за неделю, кто автор, когда было последнее обновление. ИИ иногда выдумывает пакеты, которых нет, а мошенники регистрируют пакеты с похожими именами (<code>reacct</code> вместо <code>react</code>). Если имя вам незнакомо — спросите у преподавателя.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://docs.npmjs.com/cli/v10/configuring-npm/package-json" target="_blank" rel="noopener">npm Docs — package.json</a> · <a href="https://docs.npmjs.com/about-semantic-versioning" target="_blank" rel="noopener">npm Docs — Semantic versioning</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Здесь мы работаем с <code>package.json</code> как с обычными данными: это JSON-объект, и вы уже умеете их разбирать.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Сломанный package.json</h4><span class="level easy">лёгкая</span></header>
+          <p>Текст <code>package.json</code> содержит ошибки формата JSON, и <code>JSON.parse</code> падает. Исправьте <b>текст</b> (не меняя код ниже него): в JSON только двойные кавычки, а после последнего элемента запятой быть не должно.</p>
+<pre class="code" data-run>
+const text = `{
+  "name": 'ilmhona-shop',
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+  }
+}`;
+
+const pkg = JSON.parse(text);
+console.log(pkg.name, pkg.version);
+console.log(Object.keys(pkg.scripts).join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ilmhona-shop 1.0.0
+dev, build</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Ошибок две. Первая — одинарные кавычки вокруг <code>ilmhona-shop</code>: в JSON разрешены только двойные.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Вторая — лишняя запятая после <code>"build": "vite build"</code>. Удалите её.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Паспорт проекта</h4><span class="level easy">лёгкая</span></header>
+          <p>Дан объект <code>pkg</code> — разобранный <code>package.json</code>. Выведите три строки по образцу из ожидаемого результата, используя данные из объекта.</p>
+<pre class="code" data-run>
+const pkg = {
+  name: "ilmhona-shop",
+  version: "1.2.0",
+  scripts: { dev: "vite", build: "vite build", preview: "vite preview" },
+  dependencies: { dayjs: "^1.11.13", nanoid: "^5.0.7" },
+  devDependencies: { vite: "^8.3.0", eslint: "^9.0.0", prettier: "^3.3.0" },
+};
+
+// 1) Проект: имя@версия
+// 2) Скриптов: сколько
+// 3) Библиотек в приложении: имена через запятую
+// 4) Инструментов разработки: сколько
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Проект: ilmhona-shop@1.2.0
+Скриптов: 3
+Библиотек в приложении: dayjs, nanoid
+Инструментов разработки: 3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>Object.keys(obj)</code> возвращает массив имён свойств. У него есть <code>length</code> и метод <code>join(", ")</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Первая строка: <code>console.log(`Проект: ${pkg.name}@${pkg.version}`);</code>. Библиотеки приложения — это ключи <code>pkg.dependencies</code>, инструменты — <code>pkg.devDependencies</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Какая версия новее</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>compareVersions(a, b)</code>: возвращает <code>-1</code>, если версия <code>a</code> старше <code>b</code>, <code>1</code>, если новее, и <code>0</code>, если они равны. Версии — строки вида <code>"1.10.0"</code>; сравнивать нужно числа, а не строки.</p>
+<pre class="code" data-run>
+function compareVersions(a, b) {
+  // разберите обе версии на числа и сравните по очереди: major, minor, patch
+}
+
+console.log(compareVersions("1.4.2", "1.4.10"));
+console.log(compareVersions("2.0.0", "1.99.99"));
+console.log(compareVersions("1.2.3", "1.2.3"));
+console.log(compareVersions("1.10.0", "1.9.0"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>-1
+1
+0
+1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>a.split(".").map(Number)</code> превращает <code>"1.10.0"</code> в массив <code>[1, 10, 0]</code>. Затем пройдитесь циклом по трём позициям.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В цикле: если <code>pa[i] &lt; pb[i]</code> — сразу <code>return -1</code>; если больше — <code>return 1</code>; если равны — идём к следующему числу. После цикла — <code>return 0</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ЗАДАЧА 3.4</span><h4>Подходит ли версия</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>satisfies(version, range)</code>. Диапазон может быть: точная версия <code>"1.2.3"</code>; <code>"^1.2.3"</code> — та же <b>major</b>-версия и не ниже указанной; <code>"~1.2.3"</code> — те же <b>major</b> и <b>minor</b> и не ниже указанной. Функция <code>compareVersions</code> из прошлой задачи уже готова. Считаем, что major не меньше 1.</p>
+<pre class="code" data-run>
+function compareVersions(a, b) {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i &lt; 3; i++) {
+    if (pa[i] !== pb[i]) return pa[i] &lt; pb[i] ? -1 : 1;
+  }
+  return 0;
+}
+
+function satisfies(version, range) {
+  // 1) определите тип диапазона по первому символу
+  // 2) отрежьте символ ^ или ~ и сравните
+}
+
+const checks = [
+  ["1.5.0", "^1.2.3"],
+  ["2.0.0", "^1.2.3"],
+  ["1.2.2", "^1.2.3"],
+  ["1.2.9", "~1.2.3"],
+  ["1.3.0", "~1.2.3"],
+  ["1.2.3", "1.2.3"],
+  ["1.2.4", "1.2.3"],
+];
+for (const [v, r] of checks) console.log(v, r, satisfies(v, r));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1.5.0 ^1.2.3 true
+2.0.0 ^1.2.3 false
+1.2.2 ^1.2.3 false
+1.2.9 ~1.2.3 true
+1.3.0 ~1.2.3 false
+1.2.3 1.2.3 true
+1.2.4 1.2.3 false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три случая: диапазон начинается с <code>^</code>, с <code>~</code> или без символа (точная версия — достаточно <code>compareVersions(...) === 0</code>). Для первых двух нужны части версии как числа.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для <code>^</code>: major версии равен major диапазона <b>и</b> <code>compareVersions(version, base) &gt;= 0</code>, где <code>base = range.slice(1)</code>. Для <code>~</code> — то же, плюс равны minor.</p></details>
+        </article>
+
+        <article class="task" id="t3-5">
+          <header><span class="task-num">ЗАДАЧА 3.5</span><h4>Мини-npm run</h4><span class="level mid">средняя</span></header>
+          <p>Реализуйте <code>runScript(name)</code>, который делает вид, что это <code>npm run</code>. Если скрипт есть — выводит две строки: <code>&gt; имя@версия скрипт</code> и <code>&gt; команда</code>. Если нет — одну строку <code>npm error Missing script: "имя"</code>.</p>
+<pre class="code" data-run>
+const pkg = {
+  name: "ilmhona-shop",
+  version: "1.2.0",
+  scripts: { dev: "vite", build: "vite build" },
+};
+
+function runScript(name) {
+  // ...
+}
+
+runScript("dev");
+runScript("build");
+runScript("deploy");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&gt; ilmhona-shop@1.2.0 dev
+&gt; vite
+&gt; ilmhona-shop@1.2.0 build
+&gt; vite build
+npm error Missing script: "deploy"</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Достаньте команду: <code>const command = pkg.scripts[name];</code>. Если скрипта нет, там будет <code>undefined</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Проверка: <code>if (!command) { console.log(`npm error Missing script: "${name}"`); return; }</code> — а дальше два <code>console.log</code> с шаблонными строками.</p></details>
+        </article>
+
+        <article class="task" id="t3-6">
+          <header><span class="task-num">ЗАДАЧА 3.6</span><h4>Что куда записать</h4><span class="level easy">лёгкая</span></header>
+          <p>Для каждого пакета известно, где он нужен: <code>"app"</code> (импортируется в коде приложения) или <code>"tools"</code> (инструмент разработки). Распределите их по двум спискам, отсортируйте по алфавиту и выведите как в примере.</p>
+<pre class="code" data-run>
+const packages = [
+  { name: "dayjs", usedIn: "app" },
+  { name: "vite", usedIn: "tools" },
+  { name: "nanoid", usedIn: "app" },
+  { name: "prettier", usedIn: "tools" },
+  { name: "eslint", usedIn: "tools" },
+];
+
+// dependencies — usedIn "app", devDependencies — usedIn "tools"
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>dependencies: dayjs, nanoid
+devDependencies: eslint, prettier, vite</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Используйте <code>filter</code>, затем <code>map(p =&gt; p.name)</code> и <code>sort()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>packages.filter(p =&gt; p.usedIn === "app").map(p =&gt; p.name).sort().join(", ")</code> — и то же для <code>"tools"</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="vite">
+      <h2 data-toc="Vite: dev-сервер и сборка"><span class="num">04</span> Vite: сервер разработки и сборка</h2>
+
+      <p><b>Vite</b> (читается «вит», по-французски «быстрый») — инструмент, который решает две задачи. Во-первых, <b>запускает локальный сервер</b>, чтобы модули работали при разработке и страница обновлялась сразу после сохранения файла. Во-вторых, <b>собирает проект</b> в готовый сайт: склеивает множество модулей в несколько файлов, сжимает их и кладёт в папку <code>dist</code>.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Кухня и доставка. Пока вы готовите (разрабатываете), все продукты лежат на столе в удобных коробочках: взял, попробовал, поправил — это <b>dev-сервер</b>. Но клиенту вы отправляете не стол с коробочками, а аккуратно упакованный заказ: всё в одном пакете, без лишнего — это <b>сборка</b> (<code>build</code>). Пакет можно положить на любой хостинг.</p>
+      </div>
+
+      <h3>Dev-сервер и сборка: в чём разница</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Dev-сервер (<code>npm run dev</code>)</th><th>Сборка (<code>npm run build</code>)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Зачем</b></td><td>Писать код и сразу видеть результат</td><td>Подготовить сайт к публикации</td></tr>
+            <tr><td><b>Файлы</b></td><td>Ваши модули отдаются почти «как есть», по запросу браузера</td><td>Склеены и сжаты в несколько файлов с «хэшем» в имени</td></tr>
+            <tr><td><b>Результат</b></td><td>Адрес <code>http://localhost:5173</code>, на диск ничего не пишется</td><td>Папка <code>dist/</code> с готовым сайтом</td></tr>
+            <tr><td><b>Работает</b></td><td>Пока открыт терминал; остановка — <code>Ctrl+C</code></td><td>Один раз, за секунду-две, и завершается</td></tr>
+            <tr><td><b>Обновление</b></td><td>Страница меняется сама после сохранения (HMR)</td><td>Нужно собрать заново</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Пошаговая инструкция: создаём проект</h3>
+      <p>Выполняйте у себя на компьютере вместе с преподавателем. Папку для проектов выбирайте <b>без кириллицы и пробелов в пути</b>, например <code>C:\dev</code> на Windows или <code>~/dev</code> на macOS. Не создавайте проект внутри «синхронизируемых» папок (OneDrive, iCloud Drive): тысячи файлов <code>node_modules</code> будут тормозить синхронизацию.</p>
+
+      <ol class="steps">
+        <li><b>Откройте терминал в нужной папке.</b> macOS: приложение «Терминал» или терминал VS Code. Windows: PowerShell или терминал VS Code (в проводнике можно ввести <code>powershell</code> в адресной строке папки).</li>
+        <li><b>Создайте проект.</b> Команда задаст несколько вопросов — выбирайте стрелками, подтверждайте <code>Enter</code>.</li>
+        <li><b>Перейдите в папку проекта и установите зависимости.</b></li>
+        <li><b>Запустите сервер разработки</b> и откройте адрес из терминала в браузере.</li>
+        <li><b>Остановите сервер</b> — <code>Ctrl+C</code> в терминале (и на Windows, и на macOS).</li>
+      </ol>
+
+<pre class="code" data-title="Терминал">
+npm create vite@latest
+# Project name: → my-shop
+# Select a framework: → Vanilla
+# Select a variant: → JavaScript
+# если спросят про дополнительные опции — оставьте значения по умолчанию
+
+cd my-shop
+npm install
+npm run dev
+</pre>
+
+      <p>То же одной строкой, без вопросов (двойное <code>--</code> нужно, чтобы <code>npm</code> передал опции дальше в <code>create-vite</code>):</p>
+<pre class="code" data-title="Терминал">
+npm create vite@latest my-shop -- --template vanilla
+</pre>
+
+      <p>После <code>npm run dev</code> вы увидите примерно такое:</p>
+<pre class="code" data-title="Терминал — вывод">
+&gt; my-shop@0.0.0 dev
+&gt; vite
+
+  VITE v8.3.4  ready in 95 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+</pre>
+      <p>Откройте <code>http://localhost:5173/</code> в браузере. Номер версии у вас может быть другим. Если порт 5173 занят (вы уже запустили Vite в другом окне), Vite сам возьмёт следующий — 5174, и напишет об этом. Измените в проекте любой текст в <code>src/main.js</code> и сохраните: страница обновится <b>без перезагрузки</b>. Это называется HMR (Hot Module Replacement).</p>
+
+      <div class="callout warn">
+        <b>Если что-то пошло не так</b>
+        <p><b>«npm: command not found» / «не является внутренней или внешней командой»</b> — Node.js не установлен или терминал открыт до установки: закройте его и откройте снова. <b>Ошибка про версию Node</b> — обновите Node.js до LTS. <b>Windows, окно «Брандмауэр»</b> — разрешите доступ для Node.js в частной сети: иначе страница не откроется. <b>Белая страница</b> — откройте DevTools (F12) → вкладка Console: там написано, какой файл не найден.</p>
+      </div>
+
+      <h3>Что создал Vite</h3>
+      <div class="ftree"><b>my-shop/</b>
+├─ index.html           <i>главная страница — точка входа всего сайта</i>
+├─ package.json         <i>скрипты dev / build / preview, vite в devDependencies</i>
+├─ .gitignore           <i>уже содержит node_modules и dist</i>
+├─ <b>public/</b>             <i>файлы, которые отдаются «как есть» (favicon)</i>
+└─ <b>src/</b>
+   ├─ main.js           <i>первый JS-файл: сюда пишем свой код</i>
+   ├─ counter.js        <i>пример модуля — его можно удалить</i>
+   ├─ style.css         <i>стили, подключаются через import</i>
+   └─ <b>assets/</b>          <i>картинки, которые импортируются из JS</i></div>
+
+      <p>Главное в этой структуре — <code>index.html</code>. В отличие от старых сборщиков, здесь он лежит в корне и сам подключает ваш код:</p>
+<pre class="code" data-lang="html" data-title="index.html (фрагмент)">
+&lt;body&gt;
+  &lt;div id="app"&gt;&lt;/div&gt;
+  &lt;script type="module" src="/src/main.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+</pre>
+      <p>А в <code>src/main.js</code> видны знакомые <code>import</code>. Стили и картинки тоже подключаются через <code>import</code> — Vite сам разберётся, что с ними делать:</p>
+<pre class="code" data-title="src/main.js (фрагмент)">
+import './style.css'                          // стили — просто import без имён
+import viteLogo from './assets/vite.svg'      // картинка → её итоговый адрес
+import { setupCounter } from './counter.js'   // наш модуль
+</pre>
+
+      <h3>Сборка и просмотр результата</h3>
+<pre class="code" data-title="Терминал">
+npm run build
+npm run preview     # локальный просмотр собранного сайта
+</pre>
+<pre class="code" data-title="Терминал — вывод build (фрагмент)">
+vite v8.3.4 building client environment for production...
+✓ 9 modules transformed.
+dist/index.html                  0.45 kB │ gzip: 0.29 kB
+dist/assets/vite-BF8QNONU.svg    8.70 kB │ gzip: 1.60 kB
+dist/assets/hero-CLDdwZDr.png   13.05 kB
+dist/assets/index-CsUDhMuy.css   4.10 kB │ gzip: 1.46 kB
+dist/assets/index-CAoPt-vL.js    4.05 kB │ gzip: 1.77 kB
+✓ built in 273ms
+</pre>
+      <ul>
+        <li>Девять модулей превратились в <b>один JS-файл</b> (<code>index-….js</code>) и один CSS. Меньше файлов — быстрее загрузка.</li>
+        <li>В именах файлов появился <b>хэш</b> (<code>CAoPt-vL</code>). Изменили код — хэш поменялся, браузер скачает свежий файл, а не возьмёт старый из кэша.</li>
+        <li>Папку <code>dist</code> можно выкладывать на любой статический хостинг. Её <b>не коммитят</b> в Git — она получается командой <code>build</code> из исходников.</li>
+        <li>Если сайт будет жить не в корне домена, а по адресу вида <code>username.github.io/my-shop/</code> (GitHub Pages), нужно создать <code>vite.config.js</code> и указать <code>base: "/my-shop/"</code>. Это мы разберём, когда дойдём до публикации.</li>
+      </ul>
+
+      <h3>Переменные окружения: что видно в браузере</h3>
+      <p>Адрес API и другие настройки удобно вынести в файл <code>.env</code> в корне проекта:</p>
+<pre class="code" data-title=".env">
+VITE_API_URL=https://dummyjson.com
+VITE_APP_TITLE=Ilmhona Shop
+DB_PASSWORD=12345
+</pre>
+<pre class="code" data-title="src/api/products.js (фрагмент)">
+const API_URL = import.meta.env.VITE_API_URL;   // Vite подставит значение при сборке
+console.log(import.meta.env.DB_PASSWORD);       // undefined — переменная без префикса VITE_ скрыта
+</pre>
+      <div class="callout warn">
+        <b>Секретов в браузерном коде не бывает</b>
+        <p>В код сайта попадают только переменные с префиксом <code>VITE_</code> — и после сборки любой посетитель увидит их в DevTools. Поэтому <b>нельзя</b> хранить в них пароли и приватные ключи: «спрятать» ключ во фронтенде невозможно. В проект с общедоступным API без ключа (как в наших уроках) это не страшно, но привычку нужно выработать сразу. Файл <code>.env.local</code> Vite уже исключил из Git через <code>.gitignore</code>; файл <code>.env</code> с общими настройками можно коммитить.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/" target="_blank" rel="noopener">Vite — Getting Started</a> · <a href="https://vite.dev/guide/env-and-mode" target="_blank" rel="noopener">Vite — Env Variables and Modes</a> · <a href="https://learn.javascript.ru/modules-intro" target="_blank" rel="noopener">learn.javascript.ru — Модули</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Первый запуск Vite</h4><span class="level easy">лёгкая</span></header>
+          <p>Это задание выполняется на вашем компьютере, автоматически его проверить нельзя — отметьте вручную, когда сделаете. Создайте проект <code>vite-test</code> (шаблон <code>vanilla</code>), установите зависимости и запустите <code>npm run dev</code>. Измените заголовок <code>h1</code> в <code>src/main.js</code> на своё имя и убедитесь, что страница обновилась сама. Затем выполните <code>npm run build</code> и найдите в терминале размер самого большого файла в <code>dist</code>. Запишите себе: версию Vite, адрес dev-сервера и этот размер.</p>
+          <details class="hint"><summary>Подсказка 1</summary><p>Последовательность: <code>npm create vite@latest vite-test -- --template vanilla</code>, затем <code>cd vite-test</code>, <code>npm install</code>, <code>npm run dev</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Версия Vite и адрес написаны в выводе <code>npm run dev</code>. Размеры файлов — в выводе <code>npm run build</code>, колонка слева от «gzip».</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Разбор вывода build</h4><span class="level mid">средняя</span></header>
+          <p>Дан текст, который вывел <code>npm run build</code>. Разберите его в коде: найдите все строки с файлами из <code>dist</code>, определите самый тяжёлый (по размеру до gzip) и посчитайте общий размер. Выведите три строки как в примере. Сумму округлите до двух знаков через <code>toFixed(2)</code>.</p>
+<pre class="code" data-run>
+const output = `
+vite v8.3.4 building client environment for production...
+✓ 9 modules transformed.
+dist/index.html                  0.45 kB │ gzip: 0.29 kB
+dist/assets/vite-BF8QNONU.svg    8.70 kB │ gzip: 1.60 kB
+dist/assets/hero-CLDdwZDr.png   13.05 kB
+dist/assets/index-CsUDhMuy.css   4.10 kB │ gzip: 1.46 kB
+dist/assets/index-CAoPt-vL.js    4.05 kB │ gzip: 1.77 kB
+✓ built in 273ms
+`;
+
+// 1) Файлов: сколько
+// 2) Самый тяжёлый: имя (размер kB)
+// 3) Всего: сумма kB
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Файлов: 5
+Самый тяжёлый: dist/assets/hero-CLDdwZDr.png (13.05 kB)
+Всего: 30.35 kB</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Файлы — строки, которые начинаются с <code>dist/</code>. Разбейте текст по <code>\n</code>, отфильтруйте <code>startsWith("dist/")</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Из каждой строки возьмите имя и первое число перед «kB»: <code>line.match(/^(\S+)\s+([\d.]+) kB/)</code> даёт имя в <code>m[1]</code>, размер в <code>m[2]</code> (не забудьте <code>Number</code>).</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Что попадёт в браузер</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>publicEnv(env)</code>: она возвращает новый объект, в котором остались только переменные, начинающиеся с <code>VITE_</code> — именно такие Vite отдаёт в код сайта. Затем выведите их по одной в формате <code>ИМЯ=значение</code>.</p>
+<pre class="code" data-run>
+const env = {
+  VITE_API_URL: "https://dummyjson.com",
+  DB_PASSWORD: "12345",
+  VITE_APP_TITLE: "Ilmhona Shop",
+  SECRET_KEY: "abc",
+};
+
+function publicEnv(env) {
+  // ...
+}
+
+const result = publicEnv(env);
+// выведите каждую пару в формате ИМЯ=значение
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>VITE_API_URL=https://dummyjson.com
+VITE_APP_TITLE=Ilmhona Shop</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>Object.entries(env)</code> даёт массив пар <code>[ключ, значение]</code>, его можно отфильтровать методом <code>startsWith</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>Object.fromEntries(Object.entries(env).filter(([key]) =&gt; key.startsWith("VITE_")))</code>. Печать: цикл <code>for (const [k, v] of Object.entries(result))</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика: переносим проект"><span class="num">05</span> Практика на уроке: переносим приложение в Vite</h2>
+
+      <p>Берём приложение из урока 16 — поиск по API с состояниями загрузки, пустого результата и ошибки и с <code>debounce</code> — и переезжаем на Vite. Ниже — эталонный пример на каталоге товаров <code>dummyjson.com</code>. У вас названия функций и файлов могут отличаться — это нормально: важна <b>идея</b> разделения, а не буква в букву.</p>
+
+      <div class="callout tip">
+        <b>План переезда</b>
+        <p>1) Сохраняем старую версию в Git. 2) Создаём проект на Vite. 3) Переносим разметку в <code>index.html</code>, стили — в <code>src/styles/</code>. 4) Делим JS на модули: <code>api</code>, <code>ui</code>, <code>utils</code>, <code>main</code>. 5) Запускаем <code>npm run dev</code> и проверяем, что всё работает как раньше. 6) Собираем <code>npm run build</code>. 7) Коммит и пуш на GitHub. <b>Правило переезда:</b> поведение приложения не меняется — только структура кода.</p>
+      </div>
+
+      <h3>Шаг 1. Новый проект</h3>
+<pre class="code" data-title="Терминал">
+# в папке рядом со старым проектом, не внутри него
+npm create vite@latest products-vite -- --template vanilla
+cd products-vite
+npm install
+npm run dev
+</pre>
+
+      <h3>Шаг 2. Чистим шаблон</h3>
+      <ul>
+        <li>Удалите <code>src/counter.js</code>, папку <code>src/assets/</code> и всё содержимое <code>public/</code>, кроме иконки, если она вам нужна. В <code>index.html</code> уберите ссылку на <code>favicon.svg</code>, если удалили файл.</li>
+        <li>Замените в <code>index.html</code> содержимое <code>&lt;body&gt;</code> на разметку вашего приложения. Строку <code>&lt;script type="module" src="/src/main.js"&gt;</code> <b>оставьте</b>.</li>
+        <li>Создайте папки <code>src/api</code>, <code>src/ui</code>, <code>src/utils</code>, <code>src/styles</code>. CSS из старого проекта положите в <code>src/styles/style.css</code> (файл <code>src/style.css</code> от шаблона удалите).</li>
+      </ul>
+
+<pre class="code" data-lang="html" data-title="index.html">
+&lt;!doctype html&gt;
+&lt;html lang="ru"&gt;
+  &lt;head&gt;
+    &lt;meta charset="UTF-8" /&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;
+    &lt;title&gt;Каталог товаров&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;main class="app"&gt;
+      &lt;h1&gt;Каталог товаров&lt;/h1&gt;
+      &lt;input id="search" type="search" placeholder="Например, phone" /&gt;
+      &lt;p id="status"&gt;Введите запрос&lt;/p&gt;
+      &lt;ul id="list"&gt;&lt;/ul&gt;
+    &lt;/main&gt;
+    &lt;script type="module" src="/src/main.js"&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+      <h3>Шаг 3. Делим код на модули</h3>
+      <p>Каждый файл — одна ответственность. Сначала <b>api</b>: только запрос и проверка ответа, никакого DOM.</p>
+
+<pre class="code" data-title="src/api/products.js">
+const API_URL = "https://dummyjson.com";
+
+export async function searchProducts(query, signal) {
+  const url = `${API_URL}/products/search?q=${encodeURIComponent(query)}&amp;limit=10`;
+  const response = await fetch(url, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Ошибка сервера: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.products;
+}
+</pre>
+
+      <p>Дальше <b>utils</b>: <code>debounce</code> ничего не знает про наше приложение, поэтому может жить в любом проекте.</p>
+<pre class="code" data-title="src/utils/debounce.js">
+export function debounce(fn, delay = 300) {
+  let timerId;
+  return (...args) => {
+    clearTimeout(timerId);
+    timerId = setTimeout(() =&gt; fn(...args), delay);
+  };
+}
+</pre>
+
+      <p><b>ui</b> отвечает только за то, что видит пользователь: показывает статус и рисует список.</p>
+<pre class="code" data-title="src/ui/render.js">
+const statusEl = document.querySelector("#status");
+const listEl = document.querySelector("#list");
+
+export function showStatus(text) {
+  statusEl.textContent = text;
+}
+
+export function renderProducts(products) {
+  const items = products.map((product) =&gt; {
+    const li = document.createElement("li");
+    li.textContent = `${product.title} — ${product.price} $`;
+    return li;
+  });
+  listEl.replaceChildren(...items);
+}
+</pre>
+
+      <p>И, наконец, <b>main.js</b> — дирижёр: он ничего не умеет сам, но знает, кого и в каком порядке позвать.</p>
+<pre class="code" data-title="src/main.js">
+import "./styles/style.css";
+import { searchProducts } from "./api/products.js";
+import { renderProducts, showStatus } from "./ui/render.js";
+import { debounce } from "./utils/debounce.js";
+
+let controller;
+
+async function search(query) {
+  controller?.abort();                 // отменяем предыдущий запрос
+  controller = new AbortController();
+
+  if (!query.trim()) {
+    showStatus("Введите запрос");
+    renderProducts([]);
+    return;
+  }
+
+  showStatus("Загрузка...");
+  try {
+    const products = await searchProducts(query, controller.signal);
+    renderProducts(products);
+    showStatus(products.length ? `Найдено: ${products.length}` : "Ничего не найдено");
+  } catch (error) {
+    if (error.name === "AbortError") return;   // это мы сами отменили — не ошибка
+    showStatus(`Ошибка: ${error.message}`);
+  }
+}
+
+document
+  .querySelector("#search")
+  .addEventListener("input", debounce((event) =&gt; search(event.target.value), 300));
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Управляющий чойхоной (<code>main.js</code>) сам не готовит и не моет посуду. Он принимает заказ, говорит повару (<code>api</code>) «приготовь», официанту (<code>ui</code>) — «подай», а помощнику (<code>utils</code>) — «подожди, пока гость договорит». Заменить официанта можно, не трогая кухню — и наоборот. Это и есть цель модулей.</p>
+      </div>
+
+      <h3>Шаг 4. Проверяем</h3>
+      <ol class="steps">
+        <li>Запустите <code>npm run dev</code> и повторите все сценарии из урока 16: пустой запрос, нормальный поиск, запрос без результатов, отключение сети (DevTools → Network → Offline). Всё должно работать как раньше.</li>
+        <li>Если белая страница — откройте DevTools (<code>F12</code>) → Console. Чаще всего это ошибка пути: «Failed to resolve import», опечатка в имени файла или забытое <code>.js</code>.</li>
+        <li>Выполните <code>npm run build</code>, затем <code>npm run preview</code> — приложение должно работать и из собранной версии.</li>
+      </ol>
+
+      <h3>Шаг 5. Git и GitHub</h3>
+      <p>Шаблон Vite уже создал <code>.gitignore</code> с <code>node_modules</code> и <code>dist</code>. Проверьте это: после <code>git status</code> в списке не должно быть этих папок.</p>
+<pre class="code" data-title="Терминал">
+git init
+git status                       # node_modules и dist в списке быть не должно
+git add .
+git commit -m "init vite project"
+# на github.com создайте пустой репозиторий (без README и .gitignore) и скопируйте его адрес
+git remote add origin https://github.com/ВАШ_ЛОГИН/products-vite.git
+git branch -M main
+git push -u origin main
+</pre>
+      <p>Если Git ещё не установлен: на Windows скачайте <b>Git for Windows</b> с <a href="https://git-scm.com" target="_blank" rel="noopener">git-scm.com</a>, на macOS команда <code>git</code> при первом запуске сама предложит установить инструменты разработчика. Дальше делайте <b>небольшие коммиты</b> по ходу переноса: <code>move html to vite</code>, <code>split code into modules</code> — историю будет видно в репозитории.</p>
+
+      <div class="callout warn">
+        <b>Типичные ловушки переезда</b>
+        <p>1) В <code>import</code> нет <code>./</code> или нет <code>.js</code>. 2) Скрипт в <code>index.html</code> подключён без <code>type="module"</code> — тогда <code>import</code> в <code>main.js</code> не сработает. 3) В <code>render.js</code> элементы ищутся по <code>id</code>, которого нет в новом <code>index.html</code> — при переносе разметки не потеряйте <code>id</code>. 4) В Git попала папка <code>node_modules</code>: удалите её из индекса командой <code>git rm -r --cached node_modules</code> и добавьте строку в <code>.gitignore</code>.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/features.html" target="_blank" rel="noopener">Vite — Features</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Operators/import" target="_blank" rel="noopener">MDN — динамический import()</a></p>
+
+      <div class="practice">
+        <h3>Практика: собираем модули в песочнице</h3>
+        <p>В браузере нет файлов, но мы можем потренировать ту же самую сборку из модулей. В задачах — те же роли: <code>api</code>, <code>ui</code>, <code>utils</code>, <code>main</code>. Внутри «файлов» этих задач используйте обычные строки с <code>+</code> (без шаблонных строк с <code>${…}</code>), иначе они перепутаются с шаблоном, в котором лежит «файл».</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Дирижёр main.js</h4><span class="level mid">средняя</span></header>
+          <p>Модули <code>api.js</code> (поиск товара, ответ приходит через 30 мс) и <code>render.js</code> готовы. Напишите функцию <code>search(query)</code> в <code>main.js</code>: покажите статус «Загрузка...», получите товары, затем либо «Ничего не найдено», либо «Найдено: N» и список. Для выбранных запросов вызовите <code>search</code> по очереди.</p>
+<pre class="code" data-run>
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const apiUrl = url(`
+  const DB = [
+    { title: "Телефон", price: 2500 },
+    { title: "Чехол для телефона", price: 80 },
+    { title: "Наушники", price: 300 },
+  ];
+  export async function searchProducts(query) {
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    return DB.filter((p) => p.title.toLowerCase().includes(query.toLowerCase()));
+  }
+`);
+
+const renderUrl = url(`
+  export function showStatus(text) { console.log("[статус] " + text); }
+  export function renderProducts(list) {
+    for (const p of list) console.log("- " + p.title + " — " + p.price + " сомони");
+  }
+`);
+
+await import(url(`
+  import { searchProducts } from "${apiUrl}";
+  import { showStatus, renderProducts } from "${renderUrl}";
+
+  async function search(query) {
+    // 1) showStatus("Загрузка...")
+    // 2) получить товары: await searchProducts(query)
+    // 3) пусто → "Ничего не найдено", иначе "Найдено: N" и renderProducts
+  }
+
+  await search("телефон");
+  await search("xyz");
+`));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>[статус] Загрузка...
+[статус] Найдено: 2
+- Телефон — 2500 сомони
+- Чехол для телефона — 80 сомони
+[статус] Загрузка...
+[статус] Ничего не найдено</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Функция <code>search</code> асинхронная — внутри можно писать <code>await</code>. Сначала статус, потом запрос, потом ветвление <code>if</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const products = await searchProducts(query);</code> — дальше: <code>if (products.length === 0) { showStatus("Ничего не найдено"); return; }</code>, а после него <code>showStatus("Найдено: " + products.length); renderProducts(products);</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Модуль debounce</h4><span class="level hard">сложная</span></header>
+          <p>Напишите модуль <code>debounce.js</code>: экспортируйте функцию <code>debounce(fn, delay)</code>, которая откладывает вызов <code>fn</code> на <code>delay</code> мс и сбрасывает таймер, если её вызвали снова. В <code>main.js</code> «пользователь» печатает быстро (буквы приходят через 10 мс) и после паузы допечатывает ещё. Должно получиться ровно два вызова — по одному на каждую «серию» ввода.</p>
+<pre class="code" data-run>
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const debounceUrl = url(`
+  // export function debounce(fn, delay) { ... }
+`);
+
+await import(url(`
+  import { debounce } from "${debounceUrl}";
+
+  const search = debounce((q) => console.log("поиск: " + q), 50);
+
+  search("к");
+  setTimeout(() => search("ку"), 10);
+  setTimeout(() => search("кур"), 20);
+  setTimeout(() => search("курут"), 150);   // после паузы — новая серия
+`));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>поиск: кур
+поиск: курут</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Таймер нужно где-то хранить между вызовами: объявите переменную <code>timerId</code> в функции <code>debounce</code>, а возвращайте новую функцию, которая её использует (замыкание).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>export function debounce(fn, delay) { let id; return (...args) =&gt; { clearTimeout(id); id = setTimeout(() =&gt; fn(...args), delay); }; }</code></p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Из простыни в функции</h4><span class="level mid">средняя</span></header>
+          <p>Код считает и печатает счёт одного стола. Теперь нужно напечатать счёт и второго стола — копировать код было бы ошибкой. Перепишите его в маленькие функции (например, <code>lineTotal</code>, <code>orderTotal</code>, <code>printReport(title, orders)</code>) и вызовите для обоих столов. Это тот же приём, что и при делении на модули: один блок — одна задача.</p>
+<pre class="code" data-run>
+const table1 = [
+  { name: "Самбуса", price: 5, qty: 10 },
+  { name: "Курутоб", price: 35, qty: 2 },
+  { name: "Чой", price: 3, qty: 4 },
+];
+const table2 = [
+  { name: "Шашлык", price: 25, qty: 3 },
+  { name: "Лепёшка", price: 4, qty: 5 },
+];
+
+// --- старый код (только для первого стола) ---
+console.log("== Стол 1 ==");
+let sum = 0;
+for (const o of table1) {
+  const line = o.price * o.qty;
+  console.log(o.name + " x" + o.qty + " = " + line + " сомони");
+  sum += line;
+}
+console.log("Итого: " + sum + " сомони");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>== Стол 1 ==
+Самбуса x10 = 50 сомони
+Курутоб x2 = 70 сомони
+Чой x4 = 12 сомони
+Итого: 132 сомони
+== Стол 2 ==
+Шашлык x3 = 75 сомони
+Лепёшка x5 = 20 сомони
+Итого: 95 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Заверните весь «старый код» в функцию <code>printReport(title, orders)</code>: заголовок и массив становятся параметрами, а внутри <code>table1</code> заменяется на <code>orders</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Дальше вынесите подсчёт в <code>lineTotal(order)</code> и <code>orderTotal(orders)</code>, а вызовы сделайте две строки: <code>printReport("== Стол 1 ==", table1);</code> и то же для <code>table2</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="ai-block">
+      <h2 data-toc="ИИ: модули и сборка"><span class="num">06</span> ИИ-блок: просим разбить код на модули</h2>
+
+      <p>Разбить файл на модули — типичная задача для ИИ: она механическая, а результат можно проверить запуском. Но именно здесь ИИ чаще всего «ломает» мелочи: путает <code>default</code> и именованный экспорт, забывает <code>.js</code> в пути, выдумывает пакеты, которых нет в проекте. Поэтому сегодня тренируем навык: <b>просить точно и проверять до последней строчки</b>.</p>
+
+      <div class="callout ai">
+        <b>Правила курса, которые здесь особенно важны</b>
+        <p><b>1.</b> Сначала 15 минут пробуете сами: набросайте на бумаге, какие файлы и папки вам нужны и что в каждом лежит. <b>2.</b> Только потом идёте к ИИ и сравниваете со своим вариантом. <b>3.</b> Не вставляйте в проект код, который не можете объяснить строчка за строчкой — особенно <code>import</code> и <code>export</code>: для каждого скажите, откуда и что берётся. <b>4.</b> Не ставьте пакеты, которые предложил ИИ, не проверив их на npmjs.com. <b>5.</b> Проверяйте запуском: <code>npm run dev</code> и <code>npm run build</code>.</p>
+      </div>
+
+      <h3>Как просить: плохо и хорошо</h3>
+      <p>Формула промпта курса: <b>контекст → задача → ограничения → формат ответа → проверка</b>.</p>
+
+      <div class="prompt bad-prompt">разбей код на модули</div>
+      <div class="prompt good-prompt">Я учу JavaScript, делаю учебный проект на Vite (шаблон vanilla, без фреймворков). Сейчас весь код в одном файле src/main.js — вставляю его ниже: [код]. Разбей его на ES-модули и предложи структуру папок: api (запросы к dummyjson.com), ui (отрисовка), utils (мелкие помощники), main.js только подключает остальное. Ограничения: поведение приложения не менять, новые npm-пакеты не добавлять, использовать именованные экспорты, во всех путях писать расширение .js. Формат ответа: сначала дерево папок, затем по одному блоку кода на каждый файл с заголовком-путём, затем список «что откуда импортируется» в виде таблицы. Проверка: в конце перечисли 3 места, где я могу ошибиться при переносе (пути, id в разметке, порядок импортов).</div>
+
+      <p>Скопируйте хороший промпт, подставьте свой код вместо <code>[код]</code>. Дальше — <b>проверяем</b> ответ. Чек-лист проверки ответа ИИ по модулям:</p>
+      <ul>
+        <li>☐ Каждому <code>import</code> соответствует настоящий <code>export</code> с таким же именем (и тем же способом: <code>default</code> или именованный).</li>
+        <li>☐ Все пути начинаются с <code>./</code> или <code>../</code>, на конце — <code>.js</code>, регистр букв совпадает с именем файла.</li>
+        <li>☐ Нет импортов пакетов, которых нет в <code>package.json</code> (<code>lodash</code>, <code>axios</code> и т. п.). Если нужен — вы решаете это сознательно.</li>
+        <li>☐ Нет циклов: <code>api</code> и <code>ui</code> не импортируют <code>main.js</code>.</li>
+        <li>☐ Поведение то же: сравните с версией до разбиения во всех сценариях.</li>
+        <li>☐ <code>npm run build</code> завершается без ошибок.</li>
+      </ul>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>Если ИИ вернул результат, который не работает, не просите «исправь». Скопируйте <b>текст ошибки из консоли</b>, добавьте файл, где она случилась, и спросите: «Что означает эта ошибка и в какой строке причина?» Сначала поймите — потом правьте.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь ответ ИИ</h4><span class="level mid">средняя</span></header>
+          <p>ИИ предложил два модуля и <code>main.js</code>, но запускать его код нельзя: в нём две ошибки, типичные для ответов ИИ. Найдите и исправьте их <b>только в <code>main.js</code></b>, не меняя <code>utils.js</code>: товары должны выводиться от дешёвых к дорогим, цена — со скидкой 10%. Пакет <code>lodash</code> в проекте не установлен.</p>
+<pre class="code" data-run>
+const url = (code) => {
+  setTimeout(() => {}, 300); // песочница ждёт, пока модуль загрузится
+  return URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+};
+
+const utilsUrl = url(`
+  export default function formatPrice(p) { return p + " сомони"; }
+  export function discount(price, percent) { return price - price * percent / 100; }
+`);
+
+await import(url(`
+  import { formatPrice, discount } from "${utilsUrl}";
+  import { sortBy } from "lodash";
+
+  const products = [
+    { name: "Курутоб", price: 35 },
+    { name: "Самбуса", price: 5 },
+    { name: "Чой", price: 3 },
+  ];
+
+  for (const p of sortBy(products, "price")) {
+    console.log(p.name + ": " + formatPrice(discount(p.price, 10)));
+  }
+`));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Чой: 2.7 сомони
+Самбуса: 4.5 сомони
+Курутоб: 31.5 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Ошибка первая: <code>formatPrice</code> экспортируется «по умолчанию», а импортируется в фигурных скобках. Вторая — пакет <code>lodash</code>, которого нет: замените <code>sortBy</code> на встроенную сортировку.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>import formatPrice, { discount } from "${utilsUrl}";</code> и вместо <code>sortBy(products, "price")</code> — <code>[...products].sort((a, b) =&gt; a.price - b.price)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="claude-code">
+      <h2 data-toc="Демо: Claude Code"><span class="num">07</span> Что покажет преподаватель: Claude Code</h2>
+
+      <p><b>Claude Code</b> — ИИ-помощник, который работает <b>в терминале</b>, прямо в папке вашего проекта. Он, в отличие от чата, видит файлы проекта, может предложить правки сразу в нескольких файлах и запускать команды (<code>npm run build</code>, <code>git diff</code>). Но каждое действие — правка файла или команда — он делает только после вашего разрешения. Преподаватель покажет работу на проекте из этого урока; устанавливать Claude Code вам сегодня не нужно. Ваша задача — <b>смотреть и записывать, как ставится задача и как проверяется результат</b>.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Это помощник на кухне чойханы: он умеет быстро нарезать и подготовить, но блюдо за него «пробуете» вы. Сказали «нарежь лук кольцами» — получили кольца. Сказали «приготовь что-нибудь» — получили сюрприз. Чем точнее поручение и чем внимательнее проверка перед подачей, тем лучше результат.</p>
+      </div>
+
+      <h3>Ход демонстрации</h3>
+      <ol class="steps">
+        <li><b>Точка отката.</b> Перед началом проект закоммичен: <code>git status</code> показывает «чисто». Если ИИ испортит код — вернёмся одной командой.</li>
+        <li><b>Запуск в папке проекта.</b> Преподаватель открывает терминал в корне проекта и запускает <code>claude</code>.</li>
+        <li><b>Постановка задачи.</b> Задача пишется по формуле курса: контекст, задача, ограничения, формат, проверка (пример ниже).</li>
+        <li><b>План до правок.</b> Просим сначала показать план: какие файлы будут созданы и изменены. Поменять план проще, чем исправлять готовые правки. В Claude Code для этого есть режим плана (переключается по <code>Shift+Tab</code>).</li>
+        <li><b>Разрешения.</b> На каждую правку и команду Claude Code спрашивает «можно?». Мы читаем, что именно он собирается сделать, и только потом соглашаемся.</li>
+        <li><b>Разбор результата.</b> Смотрим <code>git status</code>, <code>git diff</code>, запускаем <code>npm run dev</code> и <code>npm run build</code>. Проверяем по чек-листу ниже.</li>
+        <li><b>Решение.</b> Хорошее — коммитим с понятным сообщением. Плохое — откатываем и уточняем задачу.</li>
+      </ol>
+
+      <h3>Как формулируется задача</h3>
+      <div class="prompt good-prompt">Это учебный проект на Vite (vanilla JS): поиск товаров по dummyjson.com. Сейчас весь код лежит в src/main.js. Раздели его на модули: src/api/products.js (запросы), src/ui/render.js (отрисовка), src/utils/debounce.js; main.js только подключает и связывает. Ограничения: поведение не менять, index.html и package.json не трогать, новых пакетов не ставить, именованные экспорты, расширение .js в путях. Сначала покажи план по файлам, жди моего подтверждения, потом вноси правки. В конце запусти npm run build и сообщи результат.</div>
+      <p>Обратите внимание на три приёма: <b>что нельзя трогать</b> (<code>index.html</code>, <code>package.json</code>, пакеты), <b>«сначала план, потом правки»</b> и <b>проверка в конце</b> (<code>npm run build</code>).</p>
+
+      <h3>Как смотреть результат: команды</h3>
+<pre class="code" data-title="Терминал">
+git status          # какие файлы изменены и какие появились
+git diff --stat     # сколько строк изменено в каждом файле
+git diff            # сами изменения построчно (q — выйти из просмотра)
+npm run build       # собирается ли проект
+npm run dev         # работает ли приложение в браузере
+</pre>
+<pre class="code" data-title="Терминал — если результат не подошёл">
+git restore .       # вернуть изменённые файлы к последнему коммиту
+git clean -n        # показать, какие НОВЫЕ файлы Git удалил бы (только показать!)
+git clean -fd       # удалить новые файлы — только если список выше вас устроил
+</pre>
+
+      <h3>На что обращать внимание</h3>
+      <ul>
+        <li>☐ <b>Те ли файлы тронуты.</b> Попросили про <code>src/</code> — а в диффе появился <code>package.json</code> или <code>index.html</code>? Спросите, зачем.</li>
+        <li>☐ <b>Новые зависимости.</b> Строка в <code>dependencies</code> — повод остановиться и проверить пакет на npmjs.com.</li>
+        <li>☐ <b>Удалённый код.</b> Красные строки (<code>-</code>) читайте так же внимательно, как зелёные: не пропала ли проверка ошибки или отмена запроса.</li>
+        <li>☐ <b>Секреты.</b> В диффе не должно быть ключей, паролей, содержимого <code>.env</code>.</li>
+        <li>☐ <b>Мусор.</b> Оставленные <code>console.log</code>, закомментированный код, лишние файлы.</li>
+        <li>☐ <b>Слишком большой дифф.</b> Если изменений на сотни строк в десятках файлов — задача поставлена слишком широко. Откатите и разбейте на шаги.</li>
+        <li>☐ <b>Вы можете объяснить каждую строку.</b> Если нет — попросите объяснить, а потом перепишите своими словами. Это правило курса.</li>
+        <li>☐ <b>Работает так же, как раньше.</b> Агент говорит «готово» — это не доказательство. Доказательство — ваш запуск.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Агент не заменяет понимание</b>
+        <p>Claude Code ускоряет рутину — например, перенос 5 файлов по папкам. Но выбрать структуру проекта, заметить пропавшую обработку ошибки и отвечать за итог — ваша работа. На контрольных ИИ выключен: понимание, которое вы не приобрели сами, там не поможет.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://code.claude.com/docs/en/overview" target="_blank" rel="noopener">Документация Claude Code</a> · <a href="https://git-scm.com/docs/git-diff" target="_blank" rel="noopener">Git — git diff</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Ревью диффа</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>reviewDiff(lines)</code>, которая просматривает дифф и выводит предупреждения. Строки с <code>+</code> — добавленные, с <code>-</code> — удалённые, остальные пропускаем. Номер строки — её номер в массиве, начиная с 1. Правила (проверяются по порядку, на строку — не больше одного предупреждения):</p>
+          <ul>
+            <li>добавлена строка с <code>console.log</code> → <code>строка N: оставлен console.log</code>;</li>
+            <li>добавлена строка, где есть <code>API_KEY =</code> (или <code>password =</code>), → <code>строка N: похоже на секрет</code>;</li>
+            <li>добавлена строка вида <code>"имя": "^число…"</code> (запись зависимости) → <code>строка N: новая зависимость</code>;</li>
+            <li>удалена строка с <code>export</code> → <code>строка N: удалён export</code>.</li>
+          </ul>
+          <p>Если ничего не найдено — выведите <code>Замечаний нет</code>.</p>
+<pre class="code" data-run>
+const diff = [
+  "diff --git a/src/api/products.js b/src/api/products.js",
+  "@@ -1,5 +1,8 @@",
+  '+const API_KEY = "sk-12345";',
+  " export async function searchProducts(query) {",
+  "-  const response = await fetch(url);",
+  '+  const response = await fetch(url + "?key=" + API_KEY);',
+  "+  console.log(response);",
+  "diff --git a/package.json b/package.json",
+  '+    "lodash": "^4.17.21"',
+  "-export function debounce(fn, delay) {",
+];
+
+function reviewDiff(lines) {
+  // ...
+}
+
+reviewDiff(diff);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>строка 3: похоже на секрет
+строка 7: оставлен console.log
+строка 9: новая зависимость
+строка 10: удалён export</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Проходите циклом <code>for (let i = 0; i &lt; lines.length; i++)</code>. Первая буква строки: <code>line[0]</code> — это <code>"+"</code> или <code>"-"</code>. Строки <code>diff --git</code> и <code>@@</code> начинаются с других символов.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для добавленной строки используйте <code>line.includes("console.log")</code>, <code>/(API_KEY|password) =/.test(line)</code> и <code>/"[^"]+": "\^\d/.test(line)</code>. Для удалённой — <code>line.includes("export")</code>. Номер: <code>i + 1</code>. Нужен счётчик найденных замечаний, чтобы в конце вывести «Замечаний нет».</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ ДЗ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">08</span> Домашнее задание</h2>
+
+      <p>Переведите своё приложение из урока 16 на Vite, разделите код на модули и залейте результат в репозиторий на GitHub.</p>
+
+      <h3>Что нужно сделать</h3>
+      <ul>
+        <li>☐ Создать проект командой <code>npm create vite@latest</code> (шаблон vanilla), перенести разметку, стили и код приложения. Удалить из шаблона всё лишнее (<code>counter.js</code>, картинки).</li>
+        <li>☐ Разделить JS минимум на три модуля в папках <code>api</code>, <code>ui</code>, <code>utils</code> (или своей логичной структуре); <code>main.js</code> только подключает и связывает.</li>
+        <li>☐ Использовать <code>import</code>/<code>export</code> с путями вида <code>./…js</code>. Файл-витрину <code>index.js</code> или <code>import … as</code> используйте, если это оправдано (по желанию).</li>
+        <li>☐ Приложение работает так же, как в уроке 16: состояния загрузки, пустого результата и ошибки, <code>debounce</code>, поиск.</li>
+        <li>☐ В <code>package.json</code> есть скрипты <code>dev</code>, <code>build</code>, <code>preview</code>; <code>npm run build</code> проходит без ошибок.</li>
+        <li>☐ В репозитории <b>нет</b> <code>node_modules</code> и <code>dist</code> (проверьте <code>.gitignore</code>), но есть <code>package-lock.json</code>.</li>
+        <li>☐ Не менее 3 осмысленных коммитов (<code>init vite project</code>, <code>move app to vite</code>, <code>split code into modules</code> — по вашей истории).</li>
+        <li>☐ В <code>README.md</code>: что за приложение, как запустить (<code>npm install</code>, <code>npm run dev</code>), структура папок и 2–3 предложения своими словами: какой модуль что экспортирует и кто его импортирует.</li>
+        <li>☐ Если использовали ИИ — отметьте в README, на каком шаге и что пришлось исправить после проверки.</li>
+      </ul>
+
+      <h3>Что сдать</h3>
+      <p>Ссылку на репозиторий в чат группы (Telegram). В сообщении напишите: что за приложение, из скольких модулей оно состоит и какая ошибка при переносе была самой неожиданной.</p>
+
+      <h3>Как оценивается ДЗ (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что проверяем</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Проект на Vite, <code>npm install</code> и <code>npm run dev</code> запускают приложение, <code>npm run build</code> проходит</td><td>2</td></tr>
+            <tr><td>Не меньше 3 модулей с понятными ролями, <code>main.js</code> без «лишней» логики, пути и экспорты корректны</td><td>3</td></tr>
+            <tr><td>Приложение работает как в уроке 16 (состояния, debounce, поиск)</td><td>2</td></tr>
+            <tr><td><code>.gitignore</code> без <code>node_modules</code> и <code>dist</code>, не менее 3 осмысленных коммитов</td><td>1</td></tr>
+            <tr><td>README: запуск, структура, объяснение экспортов своими словами</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Модуль</b> — файл со своей областью видимости. Наружу попадает только то, что помечено <code>export</code>.</li>
+        <li><b>Именованный экспорт:</b> <code>export function f() {}</code> → <code>import { f } from "./a.js"</code>. Имена совпадают; переименование: <code>{ f as g }</code>; всё сразу: <code>import * as a</code>.</li>
+        <li><b>По умолчанию:</b> <code>export default …</code> → <code>import любоеИмя from "./a.js"</code> (без скобок). В модуле он один.</li>
+        <li><b>Витрина:</b> <code>export { f } from "./a.js"</code>, <code>export * from "./b.js"</code> в <code>index.js</code> — одно окно для папки.</li>
+        <li><b>Пути:</b> <code>./</code> — рядом, <code>../</code> — выше, имя без точки — пакет из npm. Расширение <code>.js</code> пишем, слэш всегда прямой, регистр букв важен.</li>
+        <li><b>Модуль выполняется один раз</b>, у всех импортёров общее состояние. Циклических импортов избегаем.</li>
+        <li><b>Структура:</b> <code>src/api</code>, <code>src/ui</code>, <code>src/utils</code>, <code>src/main.js</code>. Один модуль — одна задача, <code>main.js</code> — дирижёр.</li>
+        <li><b>package.json:</b> <code>scripts</code>, <code>dependencies</code> (нужны коду приложения), <code>devDependencies</code> (инструменты). <code>node_modules</code> в Git не кладём, <code>package-lock.json</code> — кладём.</li>
+        <li><b>semver:</b> <code>MAJOR.MINOR.PATCH</code>. <code>^1.4.2</code> — до <code>2.0.0</code>, <code>~1.4.2</code> — до <code>1.5.0</code>. Числа сравниваем как числа.</li>
+        <li><b>Команды:</b> <code>npm install</code>, <code>npm install -D имя</code>, <code>npm run dev | build | preview</code>.</li>
+        <li><b>Vite:</b> <code>npm create vite@latest</code> → <code>cd</code> → <code>npm install</code> → <code>npm run dev</code>. Dev-сервер — для работы (HMR), <code>build</code> — готовый сайт в <code>dist/</code>, <code>preview</code> — посмотреть сборку.</li>
+        <li><b>Переменные <code>.env</code>:</b> в браузер попадают только <code>VITE_…</code>, и их видит любой — секретов там нет.</li>
+        <li><b>ИИ и Claude Code:</b> точная задача по формуле, «сначала план», разрешения читаем, результат проверяем через <code>git diff</code> и запуск; пакеты проверяем на npmjs.com.</li>
+      </ul>
+    </section>

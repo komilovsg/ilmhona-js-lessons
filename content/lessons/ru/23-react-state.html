@@ -1,0 +1,3004 @@
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 23 · React Lite (бонус)</p>
+      <h1>Props, списки и keys, useState</h1>
+      <p class="lead">Вы уже умеете создавать компоненты и собирать из них страницу. Но страница, которая не меняется, — это просто красивая картинка. Сегодня мы научим компоненты <b>принимать данные</b> (props), <b>выводить списки</b> из массива, <b>помнить состояние</b> (useState) и <b>реагировать на пользователя</b>. Именно на этих четырёх вещах держится интерфейс любого сайта на React — от корзины интернет-магазина до чата.</p>
+      <ul class="goals">
+        <li>Передавать данные в компонент через props, использовать <code>children</code>, деструктуризацию и значения по умолчанию</li>
+        <li>Выводить список из массива через <code>.map()</code> и объяснить, зачем нужен <code>key</code> и почему индекс в роли ключа ломает список</li>
+        <li>Хранить изменяемые данные в <code>useState</code> и обновлять их через setter, в том числе функциональным способом</li>
+        <li>Никогда не менять состояние «на месте»: добавлять, удалять и обновлять элементы массивов и объектов через spread, <code>filter</code> и <code>map</code></li>
+        <li>Обрабатывать события (<code>onClick</code>, <code>onChange</code>, <code>onSubmit</code>) и делать управляемые поля ввода</li>
+        <li>Показывать и прятать части интерфейса: <code>&amp;&amp;</code>, тернарный оператор, ранний <code>return</code></li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Блоки кода с вкладками <b>App.jsx</b> и <b>style.css</b> — это мини-проекты React прямо в браузере: слева код, справа результат, внизу консоль. Меняйте код и нажимайте <b>▶ Запустить</b>. Им нужен интернет — React подгружается из сети. В задачах под кодом есть строка <code>// ---- проверка (не менять) ----</code>: это маленький «робот-тестировщик», который после запуска сам нажимает кнопки и вводит текст, а потом пишет результат в консоль — по нему задача проверяется автоматически. В настоящем проекте такой блок не нужен, и трогать его не надо. Подсказки спрятаны под замочком 🔒: сначала пробуйте сами.</p>
+      <p>И ещё одна важная вещь. В реальном проекте на Vite React в консоли браузера ругается на ошибки, например «Each child in a list should have a unique key». Здесь, в учебной песочнице, работает «боевая» (production) сборка React, и этих предупреждений нет. Поэтому ошибки с ключами и состоянием мы будем ловить <b>по результату</b>, а не по красным строкам. Это даже полезнее: так вы учитесь видеть баг глазами.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="props">
+      <h2 data-toc="Props и children"><span class="num">01</span> Props: данные в компонент</h2>
+
+      <p>Компонент — это функция, которая возвращает кусок интерфейса (на прошлом уроке вы создавали их в Vite). Одна и та же функция должна уметь рисовать разные карточки: про самбусу, про курутоб, про шакароб. Для этого ей нужны <b>входные данные</b>. В React они называются <b>props</b> — от слова «properties», свойства.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Меню в чайхоне. Рамка, шрифт и расположение строки — это <b>компонент</b>: они одинаковые для всех блюд. А «Самбуса — 5 сомони» и «Курутоб — 35 сомони» — это <b>props</b>: у каждого блюда свои. Типографии не нужно печатать новый бланк для каждого блюда — меняется только то, что вписано в строки.</p>
+      </div>
+
+      <p>Props передают как атрибуты в HTML. Внутри компонента они приходят <b>одним объектом</b> в первом аргументе функции:</p>
+
+<pre class="code" data-lang="jsx" data-title="Как props попадают в компонент">
+function DishCard(props) {
+  return &lt;div&gt;{props.name} — {props.price} сомони&lt;/div&gt;;
+}
+
+// props = { name: "Самбуса", price: 5 }
+&lt;DishCard name="Самбуса" price={5} /&gt;
+</pre>
+
+      <p>Обратите внимание на запись значений: строки можно писать в кавычках (<code>name="Самбуса"</code>), а всё остальное — числа, булевы значения, массивы, объекты, функции — в <b>фигурных скобках</b> (<code>price={5}</code>). Фигурные скобки здесь означают: «внутри — обычное JavaScript-выражение».</p>
+
+<div class="playground" data-mode="react" data-title="Карточки блюд через props">
+<pre class="code" data-lang="jsx">
+// Один компонент — много карточек: данные приходят через props
+function DishCard({ name, price }) {
+  return (
+    &lt;div className="card"&gt;
+      &lt;b&gt;{name}&lt;/b&gt;
+      &lt;div&gt;{price} сомони&lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;DishCard name="Самбуса" price={5} /&gt;
+      &lt;DishCard name="Курутоб" price={35} /&gt;
+      &lt;DishCard name="Шакароб" price={15} /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <dl class="terms">
+        <dt>Props</dt><dd>Объект с данными, который родитель передаёт ребёнку. Родитель пишет их как атрибуты, ребёнок получает как аргумент функции.</dd>
+        <dt>Односторонний поток</dt><dd>Данные идут только <b>сверху вниз</b>: от родителя к ребёнку. Ребёнок не может переписать props своего родителя.</dd>
+        <dt>children</dt><dd>Особый prop: всё, что написано <b>между</b> открывающим и закрывающим тегами компонента.</dd>
+      </dl>
+
+      <h3>Props нельзя менять</h3>
+      <p>Props доступны компоненту <b>только для чтения</b>. Компонент должен вести себя как чистая функция: получил данные — нарисовал по ним интерфейс, но сами данные не трогает. Если компоненту нужно что-то изменять — это уже не props, а <b>состояние</b> (<code>useState</code>, раздел 04).</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Попытка «подправить» props внутри компонента: <code>props.price = props.price * 2</code>. В режиме разработки React сразу выдаст ошибку, а в боевой сборке изменение может «тихо» сломать другие места. Нужно значение посчитать в новой переменной: <code>const total = price * 2;</code></p>
+      </div>
+
+      <h3>children — вложенное содержимое</h3>
+      <p>Компоненты можно вкладывать друг в друга, как обычные HTML-теги. Всё, что вы написали между <code>&lt;Panel&gt;</code> и <code>&lt;/Panel&gt;</code>, придёт в компонент в prop <code>children</code>. Вы сами решаете, где его вывести.</p>
+
+<div class="playground" data-mode="react" data-title="Panel с children">
+<pre class="code" data-lang="jsx">
+// children — всё, что написали МЕЖДУ открывающим и закрывающим тегом
+function Panel({ title, children }) {
+  return (
+    &lt;section className="card"&gt;
+      &lt;h3 style={{ margin: "0 0 6px" }}&gt;{title}&lt;/h3&gt;
+      {children}
+    &lt;/section&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Panel title="Сегодня в Ilmhona"&gt;
+        &lt;p&gt;JavaScript, 18:00&lt;/p&gt;
+        &lt;p&gt;Практика с ИИ, 19:30&lt;/p&gt;
+      &lt;/Panel&gt;
+      &lt;Panel title="Объявление"&gt;
+        &lt;button&gt;Записаться&lt;/button&gt;
+      &lt;/Panel&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Подарочная коробка. Сама коробка (рамка, бантик, надпись) — это компонент <code>Panel</code>. Что лежит внутри — <code>children</code>. Одну и ту же коробку можно использовать для конфет, для книги, для платка. Коробке неважно, что внутри, — её дело красиво это упаковать.</p>
+      </div>
+
+      <p>Компонент-«обёртка» с <code>children</code> — один из самых частых приёмов: карточки, модальные окна, секции страницы, кнопки с иконками.</p>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/passing-props-to-a-component" target="_blank" rel="noopener">react.dev — Passing Props to a Component</a>, <a href="https://learn.javascript.ru/destructuring-assignment" target="_blank" rel="noopener">learn.javascript.ru — Деструктурирующее присваивание</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Начнём с простого: научим компоненты принимать данные.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Меню чайханы</h4><span class="level easy">лёгкая</span></header>
+          <p>Компонент <code>DishCard</code> всегда рисует «Самбуса — 5 сомони», хотя в <code>App</code> ему передают разные блюда. Заставьте его показывать данные из props: <code>name</code> и <code>price</code>.</p>
+<div class="playground" data-mode="react" data-title="Меню чайханы">
+<pre class="code" data-lang="jsx">
+// Карточка блюда. Сейчас она всегда показывает одно и то же.
+function DishCard() {
+  return &lt;div className="card"&gt;Самбуса — 5 сомони&lt;/div&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;DishCard name="Самбуса" price={5} /&gt;
+      &lt;DishCard name="Курутоб" price={35} /&gt;
+      &lt;DishCard name="Шакароб" price={15} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  document.querySelectorAll(".card").forEach((card) =&gt; console.log(card.textContent));
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Самбуса — 5 сомони
+Курутоб — 35 сомони
+Шакароб — 15 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Props приходят первым аргументом функции. Записать их удобно сразу в деструктуризации: <code>function DishCard({ name, price })</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри JSX значения подставляются в фигурных скобках: <code>{name} — {price} сомони</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Панель с содержимым</h4><span class="level easy">лёгкая</span></header>
+          <p>Компонент <code>Panel</code> рисует рамку с заголовком, но два абзаца, которые положили внутрь тегов, куда-то пропадают. Верните их на место: выведите содержимое под заголовком.</p>
+<div class="playground" data-mode="react" data-title="Панель с содержимым">
+<pre class="code" data-lang="jsx">
+// Панель-рамка: должна показывать заголовок И всё, что положили внутрь тегов
+function Panel({ title }) {
+  return (
+    &lt;section className="card"&gt;
+      &lt;h3&gt;{title}&lt;/h3&gt;
+    &lt;/section&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;Panel title="Сегодня в Ilmhona"&gt;
+      &lt;p&gt;JavaScript, 18:00&lt;/p&gt;
+      &lt;p&gt;Практика с ИИ, 19:30&lt;/p&gt;
+    &lt;/Panel&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  const panel = document.querySelector(".card");
+  console.log(panel.querySelector("h3").textContent);
+  console.log(panel.querySelectorAll("p").length);
+  console.log(panel.lastElementChild.textContent);
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Сегодня в Ilmhona
+2
+Практика с ИИ, 19:30</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Всё, что лежит между тегами компонента, приходит в prop с особым именем <code>children</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавьте <code>children</code> в список props: <code>{ title, children }</code> — и выведите <code>{children}</code> после заголовка.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Куда пропала цена?</h4><span class="level mid">средняя</span></header>
+          <p>Цена плова не показывается: на странице только слово «сомони». Это <b>найди баг</b>: исправьте <b>одно слово</b> в коде. Подумайте, чем отличаются имена, которые компонент ожидает, и имена, которые ему передали. React на такое не ругается, а просто кладёт <code>undefined</code>.</p>
+<div class="playground" data-mode="react" data-title="Куда пропала цена?">
+<pre class="code" data-lang="jsx">
+// Цена не показывается. Найдите и исправьте ОДНУ ошибку.
+function Price({ value, currency }) {
+  return &lt;b&gt;{value} {currency}&lt;/b&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;p&gt;
+      Плов: &lt;Price amount={45} currency="сомони" /&gt;
+    &lt;/p&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  console.log(document.querySelector("b").textContent);
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>45 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сравните имя prop в объявлении <code>Price({ value, ... })</code> и в вызове <code>&lt;Price amount=... /&gt;</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Имена должны совпадать буква в букву. Либо замените <code>amount</code> на <code>value</code> в вызове, либо наоборот — в объявлении.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="destructuring">
+      <h2 data-toc="Деструктуризация и defaults"><span class="num">02</span> Деструктуризация, значения по умолчанию и rest</h2>
+
+      <p>Писать <code>props.name</code>, <code>props.price</code>, <code>props.city</code> в каждой строке утомительно. Вы уже знаете из урока про объекты, как это сокращается: <b>деструктуризация</b>. В React её используют почти везде — прямо в скобках параметров функции.</p>
+
+<pre class="code" data-lang="jsx" data-title="Было и стало">
+// было
+function StudentCard(props) {
+  return &lt;p&gt;{props.name}, {props.age} лет&lt;/p&gt;;
+}
+
+// стало
+function StudentCard({ name, age }) {
+  return &lt;p&gt;{name}, {age} лет&lt;/p&gt;;
+}
+</pre>
+
+      <h3>Значения по умолчанию</h3>
+      <p>Если родитель не передал prop, внутри будет <code>undefined</code>. Чтобы подставить запасное значение, используйте знак <code>=</code> в деструктуризации — как в параметрах обычной функции (урок 5).</p>
+
+<div class="playground" data-mode="react" data-title="Кнопка со значениями по умолчанию">
+<pre class="code" data-lang="jsx">
+// Значения по умолчанию — прямо в деструктуризации props
+function Button({ label = "Нажми", color = "gray" }) {
+  return (
+    &lt;button style={{ background: color, color: "white", border: 0, borderRadius: 8, marginRight: 8 }}&gt;
+      {label}
+    &lt;/button&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Button label="Купить" color="green" /&gt;
+      &lt;Button label="Отмена" /&gt;
+      &lt;Button /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="callout warn">
+        <b>Ловушка</b>
+        <p>Значение по умолчанию срабатывает <b>только для <code>undefined</code></b>. Если передали <code>null</code>, <code>0</code> или пустую строку <code>""</code>, будет использовано именно это значение. Для <code>null</code> в JavaScript есть оператор <code>??</code> — вы знакомы с ним по уроку про условия. Разберём это в задаче 2.3.</p>
+      </div>
+
+      <h3>Rest и spread: «раздать остальные props»</h3>
+      <p>Бывает, что компонент сам использует один-два prop, а все остальные должен передать вложенному тегу — например, <code>&lt;input&gt;</code>. Здесь работают знакомые три точки:</p>
+      <ul>
+        <li><code>{ label, ...rest }</code> в параметрах — <b>собирает</b> все остальные props в объект <code>rest</code>;</li>
+        <li><code>&lt;input {...rest} /&gt;</code> в JSX — <b>раздаёт</b> этот объект как набор атрибутов.</li>
+      </ul>
+
+<div class="playground" data-mode="react" data-title="Field: label + остальное на input">
+<pre class="code" data-lang="jsx">
+// ...rest собирает «все остальные» props, а {...rest} раздаёт их дальше
+function Field({ label, ...rest }) {
+  return (
+    &lt;label style={{ display: "block", margin: "6px 0" }}&gt;
+      {label}: &lt;input {...rest} /&gt;
+    &lt;/label&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Field label="Имя" placeholder="Мадина" /&gt;
+      &lt;Field label="Пароль" type="password" placeholder="не менее 8 знаков" /&gt;
+      &lt;Field label="Возраст" type="number" min="14" max="99" /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Маршрутка в Душанбе. Водитель берёт плату за проезд (это <code>label</code> — то, что нужно <b>ему</b>), а вашу просьбу «остановите у Зелёного базара» и сумку (это <code>rest</code>) он не оставляет себе, а просто передаёт дальше. Так и компонент: берёт, что ему нужно, а остальное пересылает дальше без разбирательств.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>Используйте <code>{...rest}</code> осознанно. Если раздавать «всё подряд», в тег может попасть prop, который он не понимает, и это сложно отлаживать. Для простых компонентов лучше явно перечислять нужные props.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/passing-props-to-a-component#specifying-a-default-value-for-a-prop" target="_blank" rel="noopener">react.dev — значения props по умолчанию</a>, <a href="https://learn.javascript.ru/rest-parameters-spread" target="_blank" rel="noopener">learn.javascript.ru — Rest и spread</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Кнопка с запасным текстом</h4><span class="level easy">лёгкая</span></header>
+          <p>Две из трёх кнопок пока пустые и без цвета, потому что родитель не передал им <code>label</code> и <code>color</code>. Задайте значения по умолчанию: <code>label = "Нажми"</code>, <code>color = "gray"</code>.</p>
+<div class="playground" data-mode="react" data-title="Кнопка с запасным текстом">
+<pre class="code" data-lang="jsx">
+// Задайте значения по умолчанию: label = "Нажми", color = "gray"
+function Button({ label, color }) {
+  return &lt;button style={{ background: color }}&gt;{label}&lt;/button&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Button label="Купить" color="green" /&gt;
+      &lt;Button /&gt;
+      &lt;Button label="Отмена" /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  document.querySelectorAll("button").forEach((b) =&gt; console.log(b.textContent, b.style.background));
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Купить green
+Нажми gray
+Отмена gray</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Знак <code>=</code> пишется прямо в деструктуризации, рядом с именем: <code>{ label = "...", color = "..." }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Запись выглядит так: <code>function Button({ label = "Нажми", color = "gray" })</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Поле, которое всё передаёт дальше</h4><span class="level mid">средняя</span></header>
+          <p>Компонент <code>Field</code> рисует подпись и поле ввода, но <code>placeholder</code>, <code>type</code> и <code>maxLength</code>, которые ему передают, теряются: у обоих полей обычный тип и без ограничений. Соберите остальные props через <code>...rest</code> и передайте их в <code>&lt;input&gt;</code>.</p>
+<div class="playground" data-mode="react" data-title="Поле, которое всё передаёт дальше">
+<pre class="code" data-lang="jsx">
+// Field должен передавать «лишние» props на &lt;input&gt;. Сейчас placeholder, type и maxLength теряются.
+function Field({ label }) {
+  return (
+    &lt;label&gt;
+      {label}: &lt;input /&gt;
+    &lt;/label&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Field label="Имя" placeholder="Мадина" maxLength={10} /&gt;
+      &lt;br /&gt;
+      &lt;Field label="Пароль" type="password" placeholder="••••" /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  document.querySelectorAll("input").forEach((i) =&gt; console.log(i.type, i.placeholder, i.maxLength));
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>text Мадина 10
+password •••• -1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В параметрах: <code>{ label, ...rest }</code>. Теперь в <code>rest</code> лежат все props, кроме <code>label</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В JSX раздайте их полю: <code>&lt;input {...rest} /&gt;</code>. Значение <code>-1</code> в ответе — это обычное «ограничения нет» для <code>maxLength</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Предскажите, что покажут метки</h4><span class="level mid">средняя</span></header>
+          <p>В коде шесть меток с разными значениями <code>text</code>. <b>Не запуская код</b>, запишите в тетрадь, что появится в квадратных скобках у каждой. Потом запустите и сверьтесь. Затем исправьте <code>Label</code>: пусть для <code>null</code> тоже показывается «—». Для <code>0</code> и пустой строки поведение менять не нужно.</p>
+<div class="playground" data-mode="react" data-title="Предскажите, что покажут метки">
+<pre class="code" data-lang="jsx">
+// 1) Предскажите, что покажет каждая из шести меток. 2) Запустите и сверьтесь.
+// 3) Исправьте Label так, чтобы и для null показывалось «—».
+function Label({ text = "—" }) {
+  return &lt;span&gt;[{text}]&lt;/span&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Label /&gt;
+      &lt;Label text="Плов" /&gt;
+      &lt;Label text={undefined} /&gt;
+      &lt;Label text={null} /&gt;
+      &lt;Label text={0} /&gt;
+      &lt;Label text="" /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  document.querySelectorAll("span").forEach((s) =&gt; console.log(s.textContent));
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат после исправления</b><pre>[—]
+[Плов]
+[—]
+[—]
+[0]
+[]</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Значение по умолчанию в скобках не срабатывает на <code>null</code>. Уберите его оттуда и разберитесь с запасным значением внутри функции.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Оператор <code>??</code> подставляет правую часть, если слева <code>null</code> или <code>undefined</code>, а <code>0</code> и <code>""</code> оставляет как есть: <code>const shown = text ?? "—";</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="lists">
+      <h2 data-toc="Списки и key"><span class="num">03</span> Списки: .map() и key</h2>
+
+      <p>Данные на сайте почти всегда приходят <b>списком</b>: товары в каталоге, сообщения в чате, студенты в группе. Писать <code>&lt;li&gt;</code> для каждого элемента вручную нельзя — длина списка заранее неизвестна. В React список рисуют так: берут массив и превращают каждый его элемент в кусок JSX методом <code>.map()</code>. С <code>map</code> вы познакомились на уроке про массивы — он возвращает новый массив, и React умеет выводить массив из JSX-элементов.</p>
+
+<div class="playground" data-mode="react" data-title="Список уроков через map">
+<pre class="code" data-lang="jsx">
+// Список из массива: .map() превращает каждый элемент в &lt;li&gt;
+const lessons = ["HTML и CSS", "JavaScript", "React Lite"];
+
+export default function App() {
+  return (
+    &lt;ul&gt;
+      {lessons.map((lesson) =&gt; (
+        &lt;li key={lesson}&gt;{lesson}&lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <ol class="steps">
+        <li><b>Массив данных.</b> <code>lessons</code> — обычный массив строк.</li>
+        <li><b>map превращает каждую строку в элемент.</b> Для <code>"JavaScript"</code> получается <code>&lt;li&gt;JavaScript&lt;/li&gt;</code>.</li>
+        <li><b>Получился массив из трёх JSX-элементов.</b> React выводит их на страницу один за другим.</li>
+        <li><b>Всё это записано в фигурных скобках</b> <code>{ ... }</code> — внутри JSX это «вставка JavaScript».</li>
+      </ol>
+
+      <h3>Зачем нужен key</h3>
+      <p>Каждому элементу списка нужно дать особый prop <code>key</code> — уникальный «паспорт» элемента. По ключу React узнаёт, <b>какой именно элемент</b> изменился, добавился или исчез, и перерисовывает только нужное. Без ключей он не может отличить «удалили второй элемент» от «изменили содержимое второго и третьего».</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Гардероб в чайхоне или театре. Вы сдаёте куртку и получаете <b>номерок</b>. Гардеробщик не запоминает ваше лицо и не смотрит на цвет куртки, а ищет по номеру. Если номерки выдавать «по порядку в очереди» (первый, второй, третий) и первый человек уйдёт, все остальные внезапно получат чужие номерки. Хороший номерок принадлежит человеку, а не месту в очереди. Именно так работают ключи.</p>
+      </div>
+
+      <p>Ключ должен быть:</p>
+      <ul>
+        <li><b>уникальным среди соседей</b> (в одном списке), но не обязательно на всей странице;</li>
+        <li><b>стабильным</b>: у одного и того же элемента при каждой перерисовке один и тот же ключ;</li>
+        <li><b>взятым из данных</b>: <code>id</code> из базы, уникальный артикул или логин — а не случайное число.</li>
+      </ul>
+
+<div class="playground" data-mode="react" data-title="Карточки студентов по id">
+<pre class="code" data-lang="jsx">
+// Массив объектов: у каждого есть уникальный id — он и станет key
+const students = [
+  { id: 1, name: "Мадина", city: "Душанбе" },
+  { id: 2, name: "Фарход", city: "Хуҷанд" },
+  { id: 3, name: "Зарина", city: "Бохтар" },
+];
+
+function StudentCard({ name, city }) {
+  return (
+    &lt;div className="card"&gt;
+      &lt;b&gt;{name}&lt;/b&gt; — {city}
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      {students.map((student) =&gt; (
+        &lt;StudentCard key={student.id} name={student.name} city={student.city} /&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <p>Ключ пишется <b>на самом внешнем элементе, который вы возвращаете из <code>map</code></b> — здесь это <code>&lt;StudentCard key=...&gt;</code>. Внутри компонента <code>StudentCard</code> ключ не нужен, и сам компонент его «не увидит»: <code>key</code> — служебный атрибут, он не попадает в props.</p>
+
+      <h3>Что брать в качестве key</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Вариант</th><th>Годится?</th><th>Почему</th></tr></thead>
+          <tbody>
+            <tr><td><code>key={item.id}</code></td><td>Да, лучший</td><td>Принадлежит самому элементу и не меняется при удалении и сортировке</td></tr>
+            <tr><td><code>key={item}</code> для строк</td><td>Да, если строки не повторяются</td><td>Само значение уникально — например, список названий уроков</td></tr>
+            <tr><td><code>key={index}</code></td><td>Только для списка, который <b>никогда не меняется</b></td><td>Индекс — это номер места, а не паспорт элемента. Подробности — в разделе 06</td></tr>
+            <tr><td><code>key={Math.random()}</code></td><td>Нет, никогда</td><td>Каждая перерисовка создаёт новые ключи, и React пересоздаёт все элементы с нуля</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Вместо стрелочной функции с круглыми скобками <code>(tag) =&gt; ( ... )</code> написать фигурные <code>(tag) =&gt; { ... }</code> и забыть слово <code>return</code>. Функция честно отработает и вернёт <code>undefined</code> — а вместо списка на странице будет пусто. Это то самое правило из урока про функции: у стрелочной функции с <code>{ }</code> результат нужно возвращать явно. Именно в такую ловушку вы попадёте в задаче 3.4.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>Фильтрация и вывод идут цепочкой, как на уроке про массивы: <code>orders.filter(...).map(...)</code>. Сначала оставьте нужные элементы, потом превратите их в JSX. Если нужен счётчик («найдено: 2»), удобно сначала сохранить результат <code>filter</code> в переменную и взять у неё <code>.length</code>.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/rendering-lists" target="_blank" rel="noopener">react.dev — Rendering Lists</a>, <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Array/map" target="_blank" rel="noopener">MDN — Array.prototype.map()</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Расписание уроков</h4><span class="level easy">лёгкая</span></header>
+          <p>Выведите все элементы массива <code>lessons</code> в виде <code>&lt;li&gt;</code> внутри <code>&lt;ul&gt;</code>. Не забудьте <code>key</code>.</p>
+<div class="playground" data-mode="react" data-title="Расписание уроков">
+<pre class="code" data-lang="jsx">
+const lessons = ["HTML и CSS", "JavaScript", "React Lite"];
+
+export default function App() {
+  return (
+    &lt;ul&gt;
+      {/* выведите по одному &lt;li&gt; на каждый урок из массива lessons */}
+    &lt;/ul&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  const items = document.querySelectorAll("li");
+  console.log(items.length);
+  items.forEach((li) =&gt; console.log(li.textContent));
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+HTML и CSS
+JavaScript
+React Lite</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри <code>&lt;ul&gt;</code> поставьте фигурные скобки и вызовите <code>lessons.map(...)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>{lessons.map((lesson) =&gt; &lt;li key={lesson}&gt;{lesson}&lt;/li&gt;)}</code> — строки в этом массиве не повторяются, поэтому сама строка подходит в роли ключа.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Меню из массива объектов</h4><span class="level easy">лёгкая</span></header>
+          <p>Выведите через компонент <code>MenuItem</code> все блюда из массива <code>menu</code>. Ключом должен быть <code>id</code> блюда.</p>
+<div class="playground" data-mode="react" data-title="Меню из массива объектов">
+<pre class="code" data-lang="jsx">
+const menu = [
+  { id: 1, name: "Самбуса", price: 5 },
+  { id: 2, name: "Курутоб", price: 35 },
+  { id: 3, name: "Шакароб", price: 15 },
+  { id: 4, name: "Чой", price: 3 },
+];
+
+function MenuItem({ name, price }) {
+  return &lt;div className="card"&gt;{name} · {price} сомони&lt;/div&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      {/* выведите все блюда из menu через MenuItem, не забыв про key */}
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  document.querySelectorAll(".card").forEach((c) =&gt; console.log(c.textContent));
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Самбуса · 5 сомони
+Курутоб · 35 сомони
+Шакароб · 15 сомони
+Чой · 3 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Для каждого блюда <code>map</code> должен вернуть <code>&lt;MenuItem ... /&gt;</code> с тремя props: <code>key</code>, <code>name</code>, <code>price</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>{menu.map((dish) =&gt; &lt;MenuItem key={dish.id} name={dish.name} price={dish.price} /&gt;)}</code></p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Кто ещё не заплатил</h4><span class="level mid">средняя</span></header>
+          <p>В массиве <code>orders</code> заказы чайханы. Покажите только <b>неоплаченные</b> — по одному <code>&lt;li&gt;</code> в формате «Клиент — сумма сомони». В абзаце над списком выведите, сколько их всего.</p>
+<div class="playground" data-mode="react" data-title="Кто ещё не заплатил">
+<pre class="code" data-lang="jsx">
+const orders = [
+  { id: 1, client: "Рустам", total: 120, paid: true },
+  { id: 2, client: "Зарина", total: 80, paid: false },
+  { id: 3, client: "Далер", total: 45, paid: false },
+  { id: 4, client: "Нилуфар", total: 200, paid: true },
+];
+
+export default function App() {
+  // покажите только неоплаченные заказы и их количество
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Ждут оплаты: ?&lt;/p&gt;
+      &lt;ul&gt;&lt;/ul&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  console.log(document.querySelector("p").textContent);
+  document.querySelectorAll("li").forEach((li) =&gt; console.log(li.textContent));
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Ждут оплаты: 2
+Зарина — 80 сомони
+Далер — 45 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Перед <code>return</code> создайте переменную: <code>const unpaid = orders.filter(...)</code>. Её длина — это число в абзаце, а сама она — то, что идёт в <code>map</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Условие для <code>filter</code>: <code>(order) =&gt; !order.paid</code>. Ключом сделайте <code>order.id</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ЗАДАЧА 3.4</span><h4>Пустой список тегов</h4><span class="level easy">лёгкая</span></header>
+          <p><b>Найди баг.</b> Теги не показываются: на странице пусто, хотя ошибок в консоли нет. Найдите причину и исправьте код так, чтобы три тега появились.</p>
+<div class="playground" data-mode="react" data-title="Пустой список тегов">
+<pre class="code" data-lang="jsx">
+// Теги не появляются на странице. Найдите причину.
+const tags = ["react", "props", "state"];
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      {tags.map((tag) =&gt; {
+        &lt;span key={tag} className="card"&gt;#{tag}&lt;/span&gt;;
+      })}
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  const cards = document.querySelectorAll(".card");
+  console.log(cards.length);
+  cards.forEach((c) =&gt; console.log(c.textContent));
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+#react
+#props
+#state</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Посмотрите на скобки после стрелки: <code>=&gt; {</code>. Что в таких скобках нужно написать, чтобы функция вернула значение?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавьте <code>return</code> перед <code>&lt;span ...&gt;</code> либо замените <code>{ }</code> на круглые скобки <code>( )</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="state">
+      <h2 data-toc="useState"><span class="num">04</span> useState: компонент, который помнит</h2>
+
+      <p>Props приходят снаружи и не меняются. Но на странице есть данные, которые меняются от действий пользователя: сколько раз нажали «лайк», что написано в поле, открыто ли меню. Эти данные называются <b>состоянием</b> (state). Для него в React есть <b>хук</b> <code>useState</code>.</p>
+
+      <p>Сначала посмотрим, почему обычной переменной недостаточно. Запустите пример и понажимайте кнопку:</p>
+
+<div class="playground" data-mode="react" data-title="Обычная переменная не работает">
+<pre class="code" data-lang="jsx">
+// Так НЕ работает: обычная переменная не заставляет React перерисовать экран.
+// Нажмите кнопку несколько раз и сравните экран с консолью.
+export default function App() {
+  let count = 0;
+
+  function handleClick() {
+    count = count + 1;
+    console.log("count в памяти:", count);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;На экране: {count}&lt;/p&gt;
+      &lt;button onClick={handleClick}&gt;+1&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <p>В консоли число растёт, а на экране всегда ноль. Две причины:</p>
+      <ol class="steps">
+        <li><b>React перерисовывает компонент, только когда его об этом «попросили».</b> Простое изменение переменной ему не видно.</li>
+        <li><b>При каждой перерисовке функция компонента выполняется заново с нуля,</b> и <code>let count = 0</code> снова становится нулём. Обычные переменные внутри компонента не переживают перерисовку.</li>
+      </ol>
+
+      <p>Нужно место, где значение <b>живёт между перерисовками</b>, и способ сообщить React «значение изменилось, перерисуй». Это и делает <code>useState</code>:</p>
+
+<div class="playground" data-mode="react" data-title="Счётчик на useState">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Вы нажали {count} раз&lt;/p&gt;
+      &lt;button onClick={() =&gt; setCount(count + 1)}&gt;Нажми меня&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="хук">useState</span><span class="part p5" data-label="начальное значение">(0)</span>
+        </div>
+        <br>
+        <div class="anatomy">
+          <span class="part p2" data-label="текущее значение">const [count,</span>
+          <span class="part p3" data-label="функция-«сеттер»">setCount]</span>
+          <span class="part p4" data-label="вызов">= useState(0);</span>
+        </div>
+        <figcaption>useState возвращает пару: текущее значение и функцию, которой его меняют</figcaption>
+      </figure>
+
+      <dl class="terms">
+        <dt>Начальное значение</dt><dd>Аргумент <code>useState(0)</code>. Используется <b>только при первом показе</b> компонента. При следующих перерисовках React отдаёт уже сохранённое значение.</dd>
+        <dt>Текущее значение</dt><dd>Первый элемент пары — <code>count</code>. Это обычная переменная, которую можно читать в JSX.</dd>
+        <dt>Сеттер</dt><dd>Второй элемент — <code>setCount</code>. Вызов <code>setCount(5)</code> сохраняет новое значение <b>и</b> просит React перерисовать компонент.</dd>
+      </dl>
+
+      <p>Имена в паре выбираете вы, но принято писать <code>[что, setЧто]</code>: <code>[liked, setLiked]</code>, <code>[name, setName]</code>, <code>[items, setItems]</code>. Это деструктуризация массива — вы знаете её с урока 7.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Табло на футбольном матче. Судьи (<code>setScore</code>) говорят: «гол!», и табло обновляется. Если зритель на трибуне просто сам себе подумает «уже 3:2» — табло не изменится, и никто больше об этом не узнает. Менять значение напрямую — это «подумать про себя». Позвать сеттер — это «официально сообщить судье».</p>
+      </div>
+
+      <h3>Своё состояние у каждого компонента</h3>
+      <p>Каждый экземпляр компонента хранит <b>собственное</b> состояние. Если вы вывели <code>Counter</code> дважды, у вас два независимых счётчика.</p>
+
+<div class="playground" data-mode="react" data-title="У каждого свой счётчик">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+// У каждого экземпляра компонента — своё собственное состояние
+function Counter({ title }) {
+  const [n, setN] = useState(0);
+  return (
+    &lt;div className="card"&gt;
+      {title}: &lt;b&gt;{n}&lt;/b&gt; &lt;button onClick={() =&gt; setN(n + 1)}&gt;+&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Counter title="Плов" /&gt;
+      &lt;Counter title="Шашлык" /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <h3>Функциональное обновление</h3>
+      <p>Когда новое значение зависит от старого («прибавить 1»), безопасно передавать в сеттер <b>функцию</b>: <code>setCount((c) =&gt; c + 1)</code>. React сам подставит в <code>c</code> самое свежее значение. Почему это важно? Внутри одного обработчика переменная <code>count</code> — это «снимок» значения на момент перерисовки. Три вызова <code>setCount(count + 1)</code> подряд превращаются в три раза «поставить <code>0 + 1</code>» — и счётчик вырастет только на 1.</p>
+
+<pre class="code" data-lang="jsx" data-title="Снимок и функциональное обновление">
+// count сейчас 0
+setCount(count + 1);  // поставить 0 + 1
+setCount(count + 1);  // поставить 0 + 1  (count всё ещё 0 в этом «снимке»)
+setCount(count + 1);  // поставить 0 + 1  → итог: 1
+
+// функциональная запись
+setCount((c) =&gt; c + 1);  // 0 → 1
+setCount((c) =&gt; c + 1);  // 1 → 2
+setCount((c) =&gt; c + 1);  // 2 → 3  → итог: 3
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Ожидать, что сразу после <code>setCount(5)</code> переменная <code>count</code> станет равна 5. Она изменится <b>только при следующей перерисовке</b>. Если нужно «прямо сейчас» работать с новым значением, положите его в отдельную переменную: <code>const next = count + 1; setCount(next); console.log(next);</code></p>
+      </div>
+
+      <div class="callout tip">
+        <b>Правила хуков</b>
+        <p>Хуки вызывают <b>только на верхнем уровне компонента</b> — не внутри <code>if</code>, циклов и вложенных функций — и только в компонентах (функциях с именем с заглавной буквы). Так React не теряет порядок хранимых значений.</p>
+      </div>
+
+      <h3>Хранить только необходимое</h3>
+      <p>Если значение можно <b>вычислить</b> из другого состояния — не заводите под него отдельное. В задаче 4.2 число лайков вычисляется из флага <code>liked</code>: два значения, которые легко рассинхронизировать, превращаются в одно.</p>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/state-a-components-memory" target="_blank" rel="noopener">react.dev — State: A Component's Memory</a>, <a href="https://react.dev/reference/react/useState" target="_blank" rel="noopener">react.dev — useState</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Счётчик посетителей</h4><span class="level easy">лёгкая</span></header>
+          <p>Оживите счётчик: «+» прибавляет 1, «−» вычитает 1, «Сброс» обнуляет. Для этого добавьте <code>useState</code> и обработчики <code>onClick</code>. Не забудьте импорт в самом верху файла.</p>
+<div class="playground" data-mode="react" data-title="Счётчик посетителей">
+<pre class="code" data-lang="jsx">
+// Оживите счётчик: добавьте useState и обработчики для трёх кнопок.
+// Не забудьте строку импорта в самом верху: import { useState } from "react";
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Счёт: 0&lt;/p&gt;
+      &lt;button&gt;−&lt;/button&gt; &lt;button&gt;+&lt;/button&gt; &lt;button&gt;Сброс&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+const $ = (s) =&gt; document.querySelector(s);
+const $$ = (s) =&gt; [...document.querySelectorAll(s)];
+const btn = (t) =&gt; $$("button").find((b) =&gt; b.textContent.trim() === t);
+async function click(el) {
+  el.click();
+  await wait();
+}
+(async () =&gt; {
+  await wait();
+  console.log($("p").textContent);
+  await click(btn("+"));
+  await click(btn("+"));
+  await click(btn("+"));
+  await click(btn("−"));
+  console.log($("p").textContent);
+  await click(btn("Сброс"));
+  console.log($("p").textContent);
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Счёт: 0
+Счёт: 2
+Счёт: 0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Начните с <code>const [count, setCount] = useState(0);</code> и замените в абзаце <code>0</code> на <code>{count}</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Обработчики: <code>onClick={() =&gt; setCount(count + 1)}</code>, <code>onClick={() =&gt; setCount(count - 1)}</code>, <code>onClick={() =&gt; setCount(0)}</code>. Стрелка нужна, чтобы функцию не вызвать сразу при отрисовке.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Кнопка «лайк»</h4><span class="level mid">средняя</span></header>
+          <p>Сделайте кнопку лайка: по первому клику сердечко закрашивается (<code>♥</code>) и число растёт на 1, по второму всё возвращается назад (<code>♡</code>, исходное число). В состоянии храните <b>только</b> флаг <code>liked</code>, а число лайков вычисляйте из него.</p>
+<div class="playground" data-mode="react" data-title="Кнопка «лайк»">
+<pre class="code" data-lang="jsx">
+// Кнопка «лайк»: по клику сердечко закрашивается и счётчик растёт на 1, по второму клику — всё возвращается.
+// Подсказка по дизайну: хранить в состоянии нужно только liked, а число лайков можно вычислить.
+export default function App() {
+  const likes = 12;
+  return &lt;button&gt;♡ {likes}&lt;/button&gt;;
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+async function click(el) {
+  el.click();
+  await wait();
+}
+(async () =&gt; {
+  const b = document.querySelector.bind(document);
+  await wait();
+  console.log(b("button").textContent);
+  await click(b("button"));
+  console.log(b("button").textContent);
+  await click(b("button"));
+  console.log(b("button").textContent);
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>♡ 12
+♥ 13
+♡ 12</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Состояние: <code>const [liked, setLiked] = useState(false);</code>. Клик переключает: <code>setLiked(!liked)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Число: <code>const likes = liked ? 13 : 12;</code>. Сердечко: <code>{liked ? "♥" : "♡"}</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Кнопка «+3»</h4><span class="level mid">средняя</span></header>
+          <p><b>Найди баг.</b> Кнопка «+3» вызывает <code>setCount</code> три раза, но счёт растёт только на 1. Исправьте обработчик, не уменьшая количество вызовов <code>setCount</code>.</p>
+<div class="playground" data-mode="react" data-title="Кнопка «+3»">
+<pre class="code" data-lang="jsx">
+// Кнопка «+3» прибавляет только 1. Почему? Исправьте, не меняя число вызовов setCount.
+import { useState } from "react";
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  function addThree() {
+    setCount(count + 1);
+    setCount(count + 1);
+    setCount(count + 1);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Счёт: {count}&lt;/p&gt;
+      &lt;button onClick={addThree}&gt;+3&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+async function click(el) {
+  el.click();
+  await wait();
+}
+(async () =&gt; {
+  const p = () =&gt; document.querySelector("p").textContent;
+  await wait();
+  console.log(p());
+  await click(document.querySelector("button"));
+  console.log(p());
+  await click(document.querySelector("button"));
+  console.log(p());
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Счёт: 0
+Счёт: 3
+Счёт: 6</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три вызова видят один и тот же «снимок» <code>count</code>. Нужно, чтобы каждый следующий вызов отталкивался от результата предыдущего.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Передайте в сеттер функцию: <code>setCount((c) =&gt; c + 1)</code>, три раза подряд.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ЗАДАЧА 4.4</span><h4>Три независимых счётчика</h4><span class="level mid">средняя</span></header>
+          <p>Сначала <b>предскажите</b>: что покажут три счётчика после двух нажатий на первом и одного на третьем? Затем добавьте в <code>Counter</code> prop <code>step</code> (по умолчанию <code>1</code>) — кнопка должна прибавлять <code>step</code> — и задайте третьему счётчику <code>step={10}</code>.</p>
+<div class="playground" data-mode="react" data-title="Три независимых счётчика">
+<pre class="code" data-lang="jsx">
+// 1) Предскажите: что покажут три счётчика, если нажать «+» два раза на первом и один раз на третьем?
+// 2) Добавьте Counter prop step (по умолчанию 1): кнопка прибавляет step.
+// 3) Третьему счётчику задайте step={10}.
+import { useState } from "react";
+
+function Counter({ step = 1 }) {
+  const [n, setN] = useState(0);
+  return (
+    &lt;div className="card"&gt;
+      &lt;span&gt;Счёт: {n}&lt;/span&gt; &lt;button onClick={() =&gt; setN(n + 1)}&gt;+&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Counter /&gt;
+      &lt;Counter /&gt;
+      &lt;Counter /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+async function click(el) {
+  el.click();
+  await wait();
+}
+(async () =&gt; {
+  const buttons = () =&gt; [...document.querySelectorAll("button")];
+  await wait();
+  await click(buttons()[0]);
+  await click(buttons()[0]);
+  await click(buttons()[2]);
+  document.querySelectorAll("span").forEach((s) =&gt; console.log(s.textContent));
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат после исправления</b><pre>Счёт: 2
+Счёт: 0
+Счёт: 10</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Состояние у каждого <code>Counter</code> своё, поэтому клики по первому не влияют на третий. Новая часть здесь — prop <code>step</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В обработчике замените <code>n + 1</code> на <code>n + step</code>, а в <code>App</code> у третьего вызова напишите <code>&lt;Counter step={10} /&gt;</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="immutable">
+      <h2 data-toc="Не мутируем состояние"><span class="num">05</span> Главное правило: не менять состояние «на месте»</h2>
+
+      <p>Состояние-массив и состояние-объект — самое частое место для ошибок новичков. Правило одно: <b>никогда не меняйте состояние напрямую — всегда передавайте в сеттер новую копию</b>. React сравнивает старое и новое значение «по ссылке». Если вы изменили тот же самый массив и передали его обратно, для React ничего не изменилось — он пропускает перерисовку.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Электронная очередь в банке. Если оператор молча зачеркнёт строчку в старом талоне, табло в зале этого не заметит. Чтобы все увидели изменение, нужно <b>выдать новый талон</b> и повесить его на табло. Новая копия массива — это новый талон: он и сообщает React «смотри, тут что-то поменялось».</p>
+      </div>
+
+      <p>Запустите пример и нажмите кнопку. В консоли «Лук» есть, а на экране его нет:</p>
+
+<div class="playground" data-mode="react" data-title="push — мутация (так нельзя)">
+<pre class="code" data-lang="jsx">
+// Так НЕ работает: push меняет массив «на месте», а setItems получает ту же самую ссылку.
+import { useState } from "react";
+
+export default function App() {
+  const [items, setItems] = useState(["Хлеб", "Молоко"]);
+
+  function addItem() {
+    items.push("Лук");
+    setItems(items);
+    console.log("в массиве:", items.length);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;ul&gt;
+        {items.map((item, i) =&gt; &lt;li key={i}&gt;{item}&lt;/li&gt;)}
+      &lt;/ul&gt;
+      &lt;button onClick={addItem}&gt;Добавить «Лук»&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <p>Правильно — создать <b>новый массив</b> и отдать его в сеттер:</p>
+
+<div class="playground" data-mode="react" data-title="Spread — новая копия">
+<pre class="code" data-lang="jsx">
+// Так работает: setItems получает НОВЫЙ массив
+import { useState } from "react";
+
+export default function App() {
+  const [items, setItems] = useState(["Хлеб", "Молоко"]);
+
+  function addItem() {
+    setItems([...items, "Лук"]);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;ul&gt;
+        {items.map((item, i) =&gt; &lt;li key={i}&gt;{item}&lt;/li&gt;)}
+      &lt;/ul&gt;
+      &lt;button onClick={addItem}&gt;Добавить «Лук»&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <h3>Таблица рецептов</h3>
+      <p>Вам не нужно запоминать десятки методов — достаточно четырёх приёмов. Все они возвращают <b>новый</b> массив или объект, а старый не трогают:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что сделать</th><th>Запись</th><th>Нельзя (мутация)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Добавить в конец</b></td><td><code>setItems([...items, newItem])</code></td><td><code>items.push(newItem)</code></td></tr>
+            <tr><td><b>Добавить в начало</b></td><td><code>setItems([newItem, ...items])</code></td><td><code>items.unshift(newItem)</code></td></tr>
+            <tr><td><b>Удалить по id</b></td><td><code>setItems(items.filter((x) =&gt; x.id !== id))</code></td><td><code>items.splice(i, 1)</code></td></tr>
+            <tr><td><b>Изменить один элемент</b></td><td><code>setItems(items.map((x) =&gt; x.id === id ? { ...x, done: true } : x))</code></td><td><code>items[i].done = true</code></td></tr>
+            <tr><td><b>Изменить поле объекта</b></td><td><code>setUser({ ...user, age: 20 })</code></td><td><code>user.age = 20</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Обратите внимание на запись <code>{ ...x, done: true }</code>: это копия объекта <code>x</code>, в которой поле <code>done</code> заменено. Остальные поля скопированы как есть. Эту «копию с заменой» вы видели на уроке 7 в разделе про spread. Тот же приём работает и для состояния-объекта:</p>
+
+<div class="playground" data-mode="react" data-title="Объект в состоянии">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [user, setUser] = useState({ name: "Мадина", age: 19, city: "Душанбе" });
+
+  // {...user, age: ...} — копия объекта, в которой поменяли одно поле
+  const birthday = () =&gt; setUser({ ...user, age: user.age + 1 });
+  const move = () =&gt; setUser({ ...user, city: "Хуҷанд" });
+
+  return (
+    &lt;div className="card"&gt;
+      &lt;p&gt;{user.name}, {user.age} лет, {user.city}&lt;/p&gt;
+      &lt;button onClick={birthday}&gt;С днём рождения&lt;/button&gt; &lt;button onClick={move}&gt;Переехать&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="callout warn">
+        <b>Ловушка</b>
+        <p>Spread делает <b>поверхностную</b> копию. Если внутри объекта лежит вложенный объект или массив (<code>user.address.city</code>), его нужно скопировать тоже: <code>{ ...user, address: { ...user.address, city: "Хуҷанд" } }</code>. Поэтому в состоянии стараются хранить данные «плоскими».</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>Если сомневаетесь, не мутирую ли я состояние, посмотрите на метод. <b>Мутируют</b>: <code>push</code>, <code>pop</code>, <code>shift</code>, <code>unshift</code>, <code>splice</code>, <code>sort</code>, <code>reverse</code>. <b>Не мутируют</b> (возвращают новое): <code>map</code>, <code>filter</code>, <code>slice</code>, <code>concat</code>, spread. Для сортировки сначала сделайте копию: <code>[...items].sort(...)</code>.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/updating-arrays-in-state" target="_blank" rel="noopener">react.dev — Updating Arrays in State</a>, <a href="https://react.dev/learn/updating-objects-in-state" target="_blank" rel="noopener">react.dev — Updating Objects in State</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Список покупок не растёт</h4><span class="level easy">лёгкая</span></header>
+          <p><b>Найди баг.</b> По нажатию на «Добавить» в список покупок должен добавляться «Лук», но на экране ничего не меняется. Исправьте <code>addItem</code>. Нажимать кнопку нужно один раз — ключом служит само название.</p>
+<div class="playground" data-mode="react" data-title="Список покупок не растёт">
+<pre class="code" data-lang="jsx">
+// Кнопка «Добавить» ничего не делает. Исправьте обработчик addItem.
+import { useState } from "react";
+
+export default function App() {
+  const [items, setItems] = useState(["Хлеб", "Молоко"]);
+
+  function addItem() {
+    items.push("Лук");
+    setItems(items);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;ul&gt;
+        {items.map((item) =&gt; &lt;li key={item}&gt;{item}&lt;/li&gt;)}
+      &lt;/ul&gt;
+      &lt;button onClick={addItem}&gt;Добавить&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  console.log(document.querySelectorAll("li").length);
+  document.querySelector("button").click();
+  await wait();
+  console.log(document.querySelectorAll("li").length);
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>2
+3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Какой метод массива меняет его «на месте»? Он как раз используется в обработчике.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замените две строки одной: <code>setItems([...items, "Лук"]);</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Профиль студента</h4><span class="level mid">средняя</span></header>
+          <p>Два задания. (1) «С днём рождения» должна увеличивать возраст на экране, сейчас она его «мутирует». (2) Допишите <code>rename</code>: имя меняется на «Зарина», возраст остаётся тем, что был.</p>
+<div class="playground" data-mode="react" data-title="Профиль студента">
+<pre class="code" data-lang="jsx">
+// 1) «С днём рождения» не меняет возраст на экране — исправьте.
+// 2) Допишите rename: имя становится «Зарина», возраст остаётся прежним.
+import { useState } from "react";
+
+export default function App() {
+  const [user, setUser] = useState({ name: "Мадина", age: 19 });
+
+  function birthday() {
+    user.age = user.age + 1;
+    setUser(user);
+  }
+
+  function rename() {
+    // ваш код
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;{user.name}, {user.age}&lt;/p&gt;
+      &lt;button onClick={birthday}&gt;С днём рождения&lt;/button&gt; &lt;button onClick={rename}&gt;Сменить имя&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+async function click(el) {
+  el.click();
+  await wait();
+}
+(async () =&gt; {
+  const p = () =&gt; document.querySelector("p").textContent;
+  const b = () =&gt; document.querySelectorAll("button");
+  await wait();
+  console.log(p());
+  await click(b()[0]);
+  console.log(p());
+  await click(b()[1]);
+  console.log(p());
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Мадина, 19
+Мадина, 20
+Зарина, 20</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>setUser</code> нужно передавать новый объект, а не тот же самый <code>user</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>setUser({ ...user, age: user.age + 1 })</code> и <code>setUser({ ...user, name: "Зарина" })</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Удалить и отметить</h4><span class="level hard">сложная</span></header>
+          <p>Список дел уже нарисован. Допишите две функции: <code>removeTask(id)</code> удаляет задачу, <code>toggleTask(id)</code> переключает у задачи флаг <code>done</code>. Ни <code>splice</code>, ни присваивания полям объекта в состоянии использовать нельзя. Эти две операции — основа домашнего задания.</p>
+<div class="playground" data-mode="react" data-title="Удалить и отметить">
+<pre class="code" data-lang="jsx">
+// Допишите removeTask и toggleTask. Массив tasks менять «на месте» нельзя.
+import { useState } from "react";
+
+const start = [
+  { id: 1, title: "Сделать зарядку", done: false },
+  { id: 2, title: "Купить лепёшки", done: false },
+  { id: 3, title: "Позвонить маме", done: false },
+];
+
+export default function App() {
+  const [tasks, setTasks] = useState(start);
+
+  function removeTask(id) {
+    // уберите задачу с этим id
+  }
+
+  function toggleTask(id) {
+    // переверните done у задачи с этим id, остальные не трогайте
+  }
+
+  return (
+    &lt;ul&gt;
+      {tasks.map((t) =&gt; (
+        &lt;li key={t.id}&gt;
+          &lt;button className="toggle" onClick={() =&gt; toggleTask(t.id)}&gt;{t.done ? "✓" : "○"}&lt;/button&gt;{" "}
+          &lt;span&gt;{t.title}&lt;/span&gt;{" "}
+          &lt;button className="del" onClick={() =&gt; removeTask(t.id)}&gt;✕&lt;/button&gt;
+        &lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+async function click(el) {
+  el.click();
+  await wait();
+}
+(async () =&gt; {
+  const $$ = (s) =&gt; [...document.querySelectorAll(s)];
+  const show = () =&gt;
+    console.log($$("li").map((li) =&gt; li.querySelector(".toggle").textContent + " " + li.querySelector("span").textContent).join(" | "));
+  await wait();
+  show();
+  await click($$(".del")[1]);
+  await click($$(".toggle")[0]);
+  show();
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>○ Сделать зарядку | ○ Купить лепёшки | ○ Позвонить маме
+✓ Сделать зарядку | ○ Позвонить маме</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Удаление — это «оставить всех, кроме одного»: метод <code>filter</code> с условием <code>t.id !== id</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Переключение — <code>map</code>: для нужной задачи вернуть копию <code>{ ...t, done: !t.done }</code>, для остальных — саму <code>t</code>. Не забудьте передать результат в <code>setTasks</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="keys-deep">
+      <h2 data-toc="Почему не index"><span class="num">06</span> Почему индекс в роли key ломает список</h2>
+
+      <p>Теперь, когда у нас есть состояние и удаление, можно увидеть, зачем нужны «паспорта» элементов. Многие пишут <code>key={index}</code> — так проще, и сначала всё выглядит нормально. Проверим на опыте.</p>
+
+      <p>В каждой строке есть поле «заметка». Запустите пример <b>с индексом</b>, впишите в поле у Мадины «привет», потом нажмите «Удалить» напротив Мадины:</p>
+
+<div class="playground" data-mode="react" data-title="key = index (ломается)">
+<pre class="code" data-lang="jsx">
+// key = index. Напишите что-нибудь в поле «заметка» у Мадины и удалите Мадину.
+import { useState } from "react";
+
+export default function App() {
+  const [people, setPeople] = useState([
+    { id: 1, name: "Мадина" },
+    { id: 2, name: "Фарход" },
+    { id: 3, name: "Зарина" },
+  ]);
+
+  return (
+    &lt;ul&gt;
+      {people.map((p, index) =&gt; (
+        &lt;li key={index}&gt;
+          &lt;b&gt;{p.name}&lt;/b&gt; &lt;input placeholder="заметка" /&gt;{" "}
+          &lt;button onClick={() =&gt; setPeople(people.filter((x) =&gt; x.id !== p.id))}&gt;Удалить&lt;/button&gt;
+        &lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <p>Мадина исчезла, но «привет» осталось — и теперь стоит у <b>ФарходÐ°</b>. Теперь то же самое с <code>key={p.id}</code>:</p>
+
+<div class="playground" data-mode="react" data-title="key = id (правильно)">
+<pre class="code" data-lang="jsx">
+// key = p.id. Повторите тот же опыт: заметка остаётся у своего человека.
+import { useState } from "react";
+
+export default function App() {
+  const [people, setPeople] = useState([
+    { id: 1, name: "Мадина" },
+    { id: 2, name: "Фарход" },
+    { id: 3, name: "Зарина" },
+  ]);
+
+  return (
+    &lt;ul&gt;
+      {people.map((p) =&gt; (
+        &lt;li key={p.id}&gt;
+          &lt;b&gt;{p.name}&lt;/b&gt; &lt;input placeholder="заметка" /&gt;{" "}
+          &lt;button onClick={() =&gt; setPeople(people.filter((x) =&gt; x.id !== p.id))}&gt;Удалить&lt;/button&gt;
+        &lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <p>Здесь заметка уходит вместе с Мадиной, а остальные не затронуты.</p>
+
+      <h3>Что произошло на самом деле</h3>
+      <figure class="diagram">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Было (key = index)</th><th>Стало после удаления Мадины</th><th>Что решил React</th></tr></thead>
+            <tbody>
+              <tr><td><code>key=0</code> → Мадина + «привет»</td><td><code>key=0</code> → Фарход</td><td>«Строка 0 осталась. Поменялось только имя» — поле с текстом <b>сохраняется</b></td></tr>
+              <tr><td><code>key=1</code> → Фарход</td><td><code>key=1</code> → Зарина</td><td>«Строка 1 осталась. Поменялось имя»</td></tr>
+              <tr><td><code>key=2</code> → Зарина</td><td>— (нет)</td><td>«Строка 2 исчезла» — удаляется <b>последняя</b> строка</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <figcaption>С индексом React «удалил» последнюю строку и сдвинул данные вверх. Введённый текст остался в строке 0 — теперь она принадлежит Фарходу</figcaption>
+      </figure>
+
+      <p>С ключом <code>id</code> React видит: «ключ <code>1</code> пропал» — и убирает ровно ту строку (вместе с её полем ввода), а остальные оставляет как были.</p>
+
+      <p>То, что мы видим здесь на поле ввода, происходит и с другим «внутренним» состоянием элементов: фокусом курсора, выбранным чекбоксом, состоянием вложенных компонентов (<code>useState</code> внутри карточки), анимацией. Индекс подходит <b>только</b> для списков, которые не удаляются, не переставляются и не сортируются — и в которых нет полей ввода.</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Генерировать ключ «на лету» — <code>key={Math.random()}</code> или <code>key={crypto.randomUUID()}</code> внутри <code>map</code>. Тогда при каждой перерисовке все ключи новые, React считает, что <b>все элементы заменены</b>, и пересоздаёт их с нуля: поля теряют фокус и введённый текст. Идентификатор нужно создавать <b>один раз — при создании данных</b> (например, когда пользователь добавляет задачу), и хранить его вместе с данными.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Заметки уехали к соседу</h4><span class="level mid">средняя</span></header>
+          <p><b>Найди баг.</b> У каждого человека в списке есть поле для заметки. Проверка пишет заметки всем троим и удаляет Мадину. После этого у ФарходÐ° должна остаться его заметка «про Фарход», а у Зарины — «про Зарину». Сейчас они перепутаны. Исправьте <b>одну строку</b>.</p>
+<div class="playground" data-mode="react" data-title="Заметки уехали к соседу">
+<pre class="code" data-lang="jsx">
+// Заметки «переезжают» к другому человеку после удаления. Исправьте одну строку.
+import { useState } from "react";
+
+export default function App() {
+  const [people, setPeople] = useState([
+    { id: 1, name: "Мадина" },
+    { id: 2, name: "Фарход" },
+    { id: 3, name: "Зарина" },
+  ]);
+
+  return (
+    &lt;ul&gt;
+      {people.map((p, index) =&gt; (
+        &lt;li key={index}&gt;
+          &lt;b&gt;{p.name}&lt;/b&gt; &lt;input placeholder="заметка" /&gt;{" "}
+          &lt;button onClick={() =&gt; setPeople(people.filter((x) =&gt; x.id !== p.id))}&gt;Удалить&lt;/button&gt;
+        &lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  const notes = ["про Мадину", "про Фарход", "про Зарину"];
+  document.querySelectorAll("input").forEach((input, i) =&gt; (input.value = notes[i]));
+  document.querySelector("button").click(); // удаляем первого — Мадину
+  await wait();
+  document.querySelectorAll("li").forEach((li) =&gt; {
+    console.log(li.querySelector("b").textContent + ": " + li.querySelector("input").value);
+  });
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Фарход: про Фарход
+Зарина: про Зарину</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Посмотрите на <code>key</code> у <code>&lt;li&gt;</code>. Что именно React использует, чтобы понять, какая строка пропала?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замените <code>key={index}</code> на <code>key={p.id}</code>. Переменная <code>index</code> в скобках <code>map</code> после этого не нужна.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="events">
+      <h2 data-toc="События и поля ввода"><span class="num">07</span> События и управляемые поля ввода</h2>
+
+      <p>Состояние нужно, чтобы на что-то реагировать. А реагировать мы будем на <b>события</b>: клики, ввод текста, отправку формы. В React они подключаются как props с именем <code>on…</code> в стиле camelCase: <code>onClick</code>, <code>onChange</code>, <code>onSubmit</code>. В отличие от HTML (<code>onclick="..."</code>), значением служит не строка, а <b>сама функция</b>.</p>
+
+<div class="playground" data-mode="react" data-title="onClick и объект события">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [log, setLog] = useState("пока ничего");
+
+  // React передаёт обработчику объект события
+  function handleClick(event) {
+    setLog("клик по кнопке «" + event.target.textContent + "»");
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={handleClick}&gt;Первая&lt;/button&gt;{" "}
+      &lt;button onClick={handleClick}&gt;Вторая&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; setLog("привет из стрелочной функции")}&gt;Стрелка&lt;/button&gt;
+      &lt;p&gt;{log}&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Событие</th><th>Когда срабатывает</th><th>Типичное использование</th></tr></thead>
+          <tbody>
+            <tr><td><code>onClick</code></td><td>Клик по элементу</td><td>Кнопки, карточки, пункты меню</td></tr>
+            <tr><td><code>onChange</code></td><td>Изменилось значение поля — на <b>каждый символ</b></td><td>Поля ввода, чекбоксы, <code>select</code></td></tr>
+            <tr><td><code>onSubmit</code></td><td>Отправка формы (Enter или кнопка)</td><td>Добавление в список, вход, поиск</td></tr>
+            <tr><td><code>onKeyDown</code></td><td>Нажата клавиша</td><td>Enter в поле, Escape для закрытия окна</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Передаём функцию, а не вызываем её</h3>
+      <p>Самая частая ошибка с событиями: написать <code>onClick={sayHi()}</code> со скобками. Скобки <b>вызывают</b> функцию прямо во время отрисовки, и в <code>onClick</code> попадает не функция, а то, что она вернула. Запустите пример: «Салом!» появляется в консоли <b>без единого клика</b>.</p>
+
+<div class="playground" data-mode="react" data-title="sayHi() и sayHi">
+<pre class="code" data-lang="jsx">
+// Запустите и посмотрите в консоль: «Салом!» уже там, хотя мы ни разу не нажали кнопку.
+function sayHi() {
+  console.log("Салом!");
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;button onClick={sayHi()}&gt;Неправильно: sayHi()&lt;/button&gt;{" "}
+      &lt;button onClick={sayHi}&gt;Правильно: sayHi&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <p>Три правильных способа:</p>
+<pre class="code" data-lang="jsx" data-title="Как подключать обработчик">
+&lt;button onClick={sayHi}&gt;Без параметров&lt;/button&gt;
+&lt;button onClick={() =&gt; remove(item.id)}&gt;С параметром: оборачиваем в стрелку&lt;/button&gt;
+&lt;button onClick={() =&gt; setCount(count + 1)}&gt;Прямо в стрелке&lt;/button&gt;
+</pre>
+      <p>Если обработчику нужно передать аргумент (<code>item.id</code>), оборачивайте вызов в стрелочную функцию. Тогда вызов произойдёт не сейчас, а когда пользователь нажмёт.</p>
+
+      <h3>Управляемое поле (controlled input)</h3>
+      <p>В обычном HTML значением поля владеет браузер. В React принято иначе: значение живёт <b>в состоянии</b>, а поле только показывает его и сообщает об изменениях. Такое поле называется <b>управляемым</b>. Для этого нужны два атрибута:</p>
+      <ul>
+        <li><code>value={name}</code> — что показывать;</li>
+        <li><code>onChange={(e) =&gt; setName(e.target.value)}</code> — как обновлять состояние, когда пользователь печатает. Новый текст лежит в <code>e.target.value</code> (у чекбокса — <code>e.target.checked</code>).</li>
+      </ul>
+
+<div class="playground" data-mode="react" data-title="Управляемые поля: input, checkbox, select">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [name, setName] = useState("");
+  const [student, setStudent] = useState(false);
+  const [city, setCity] = useState("Душанбе");
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;
+        &lt;input value={name} onChange={(e) =&gt; setName(e.target.value)} placeholder="Ваше имя" /&gt;
+      &lt;/p&gt;
+      &lt;p&gt;
+        &lt;label&gt;
+          &lt;input type="checkbox" checked={student} onChange={(e) =&gt; setStudent(e.target.checked)} /&gt; Я студент
+        &lt;/label&gt;
+      &lt;/p&gt;
+      &lt;p&gt;
+        &lt;select value={city} onChange={(e) =&gt; setCity(e.target.value)}&gt;
+          &lt;option&gt;Душанбе&lt;/option&gt;
+          &lt;option&gt;Хуҷанд&lt;/option&gt;
+          &lt;option&gt;Бохтар&lt;/option&gt;
+        &lt;/select&gt;
+      &lt;/p&gt;
+      &lt;p className="card"&gt;
+        {name || "Аноним"} из города {city}{student ? ", студент" : ""}
+      &lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Диктор и телесуфлёр. Вы печатаете слово, оно уходит в «центр» (состояние), и уже оттуда возвращается на экран в поле. Поле — это просто окошко, в котором показано значение из состояния. Пока состояние не обновилось, ничего нового в окошке не появится. Поэтому если написать <code>value</code> без <code>onChange</code>, поле «замёрзнет»: напечатать в нём ничего нельзя.</p>
+      </div>
+
+      <h3>Формы: onSubmit и preventDefault</h3>
+      <p>Форма по умолчанию при отправке перезагружает страницу. Состояние при этом сбрасывается — это ровно то, чего мы не хотим. Поэтому в начале обработчика <code>onSubmit</code> вызывают <code>event.preventDefault()</code> — знакомый вам приём из урока про формы.</p>
+
+<div class="playground" data-mode="react" data-title="Форма и onSubmit">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [text, setText] = useState("");
+  const [sent, setSent] = useState("");
+
+  function handleSubmit(event) {
+    event.preventDefault(); // не даём браузеру перезагрузить страницу
+    setSent(text);
+    setText("");
+  }
+
+  return (
+    &lt;form onSubmit={handleSubmit}&gt;
+      &lt;input value={text} onChange={(e) =&gt; setText(e.target.value)} placeholder="Ваше сообщение" /&gt;{" "}
+      &lt;button&gt;Отправить&lt;/button&gt;
+      &lt;p&gt;Отправлено: {sent || "—"}&lt;/p&gt;
+    &lt;/form&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Повесить <code>onClick</code> на кнопку формы вместо <code>onSubmit</code> на саму форму. Тогда Enter в поле не отправит форму. Правило: действие «отправить» — на <code>&lt;form onSubmit&gt;</code>, а кнопка внутри формы остаётся обычной.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>Если в состоянии лежит текст из поля, не забывайте про <code>.trim()</code>: пользователь легко может отправить строку из одних пробелов. Проверка <code>if (text.trim() === "") return;</code> — привычка, которая спасёт от пустых задач в списке.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/responding-to-events" target="_blank" rel="noopener">react.dev — Responding to Events</a>, <a href="https://react.dev/reference/react-dom/components/input" target="_blank" rel="noopener">react.dev — &lt;input&gt;</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Приветствие по мере ввода</h4><span class="level easy">лёгкая</span></header>
+          <p>Сделайте поле управляемым: пока имя не введено, показывается «Привет, гость!», по мере набора — «Привет, Имя!».</p>
+<div class="playground" data-mode="react" data-title="Приветствие по мере ввода">
+<pre class="code" data-lang="jsx">
+// Сделайте поле управляемым: приветствие должно меняться по мере ввода имени.
+export default function App() {
+  const name = "";
+
+  return (
+    &lt;div&gt;
+      &lt;input placeholder="Ваше имя" /&gt;
+      &lt;p&gt;Привет, {name || "гость"}!&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+function typeInto(el, value) {
+  Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, value);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+(async () =&gt; {
+  await wait();
+  console.log(document.querySelector("p").textContent);
+  typeInto(document.querySelector("input"), "Мадина");
+  await wait();
+  console.log(document.querySelector("p").textContent);
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Привет, гость!
+Привет, Мадина!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужны состояние <code>name</code> с начальным значением <code>""</code> и два атрибута у поля: <code>value</code> и <code>onChange</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;input value={name} onChange={(e) =&gt; setName(e.target.value)} /&gt;</code></p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Пост с лимитом символов</h4><span class="level mid">средняя</span></header>
+          <p>Сделайте поле поста с лимитом 20 символов: в <code>&lt;small&gt;</code> показывайте «длина/20», а кнопку «Опубликовать» отключайте атрибутом <code>disabled</code>, если текст пустой или длиннее лимита.</p>
+<div class="playground" data-mode="react" data-title="Пост с лимитом символов">
+<pre class="code" data-lang="jsx">
+// Поле для поста с лимитом 20 символов.
+// 1) Храните текст в состоянии (управляемое поле).
+// 2) В &lt;small&gt; показывайте «длина/20».
+// 3) Кнопка «Опубликовать» выключена (disabled), если текст пустой или длиннее 20 символов.
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;textarea placeholder="Что нового?" /&gt;
+      &lt;p&gt;&lt;small&gt;0/20&lt;/small&gt;&lt;/p&gt;
+      &lt;button&gt;Опубликовать&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+function typeInto(el, value) {
+  Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, value);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+const state = () =&gt; document.querySelector("small").textContent + " " + document.querySelector("button").disabled;
+(async () =&gt; {
+  await wait();
+  console.log(state());
+  typeInto(document.querySelector("textarea"), "Салом");
+  await wait();
+  console.log(state());
+  typeInto(document.querySelector("textarea"), "я".repeat(25));
+  await wait();
+  console.log(state());
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>0/20 true
+5/20 false
+25/20 true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Длину не нужно хранить отдельно: она всегда равна <code>text.length</code>. В состоянии — только <code>text</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;button disabled={text.length === 0 || text.length &gt; 20}&gt;</code> — атрибут принимает булево значение.</p></details>
+        </article>
+
+        <article class="task" id="t7-3">
+          <header><span class="task-num">ЗАДАЧА 7.3</span><h4>Форма добавления покупки</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>handleSubmit</code>: отмените перезагрузку страницы, не добавляйте пустые строки и строки из одних пробелов, добавьте в список объект <code>{ id: Date.now(), text }</code> и очистите поле. Идентификатор создаётся <b>один раз — при добавлении</b>, это и будет ключ.</p>
+<div class="playground" data-mode="react" data-title="Форма добавления покупки">
+<pre class="code" data-lang="jsx">
+// Допишите handleSubmit: отмените перезагрузку, не добавляйте пустые строки (и строки из одних пробелов),
+// добавьте {id, text} в список и очистите поле.
+import { useState } from "react";
+
+export default function App() {
+  const [items, setItems] = useState([]);
+  const [text, setText] = useState("");
+
+  function handleSubmit(event) {
+    // ваш код
+  }
+
+  return (
+    &lt;form onSubmit={handleSubmit}&gt;
+      &lt;input value={text} onChange={(e) =&gt; setText(e.target.value)} placeholder="Что купить?" /&gt;{" "}
+      &lt;button&gt;Добавить&lt;/button&gt;
+      &lt;ul&gt;
+        {items.map((item) =&gt; &lt;li key={item.id}&gt;{item.text}&lt;/li&gt;)}
+      &lt;/ul&gt;
+    &lt;/form&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+function typeInto(el, value) {
+  Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, value);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+async function submitWith(value) {
+  typeInto(document.querySelector("input"), value);
+  await wait();
+  document.querySelector("form").requestSubmit();
+  await wait();
+}
+(async () =&gt; {
+  await wait();
+  await submitWith("Лепёшки");
+  await submitWith("   ");
+  await submitWith("Чой");
+  console.log([...document.querySelectorAll("li")].map((li) =&gt; li.textContent).join(" | "));
+  console.log("поле: [" + document.querySelector("input").value + "]");
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Лепёшки | Чой
+поле: []</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Порядок действий: <code>event.preventDefault()</code> → <code>const clean = text.trim()</code> → если пусто, <code>return</code> → добавить → очистить поле через <code>setText("")</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавление в конец без мутации: <code>setItems([...items, { id: Date.now(), text: clean }]);</code></p></details>
+        </article>
+
+        <article class="task" id="t7-4">
+          <header><span class="task-num">ЗАДАЧА 7.4</span><h4>Живой поиск городов</h4><span class="level hard">сложная</span></header>
+          <p>Список городов нужно фильтровать на лету по тексту из поля, без учёта регистра. Если ничего не найдено — показать <code>&lt;p&gt;Ничего не найдено&lt;/p&gt;</code>. Состояние только одно — <code>query</code>; отфильтрованный список вычисляйте при каждой отрисовке.</p>
+<div class="playground" data-mode="react" data-title="Живой поиск городов">
+<pre class="code" data-lang="jsx">
+// Живой поиск: показывайте только города, в названии которых есть введённый текст (без учёта регистра).
+// Если ничего не найдено — выведите &lt;p&gt;Ничего не найдено&lt;/p&gt;.
+import { useState } from "react";
+
+const cities = ["Душанбе", "Худжанд", "Бохтар", "Куляб", "Истаравшан"];
+
+export default function App() {
+  const [query, setQuery] = useState("");
+
+  return (
+    &lt;div&gt;
+      &lt;input value={query} onChange={(e) =&gt; setQuery(e.target.value)} placeholder="Поиск города" /&gt;
+      &lt;ul&gt;
+        {cities.map((city) =&gt; &lt;li key={city}&gt;{city}&lt;/li&gt;)}
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+function typeInto(el, value) {
+  Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, value);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+(async () =&gt; {
+  await wait();
+  for (const q of ["ду", "УД", "xyz"]) {
+    typeInto(document.querySelector("input"), q);
+    await wait();
+    const names = [...document.querySelectorAll("li")].map((li) =&gt; li.textContent).join(", ");
+    console.log(q + ": " + (names || document.querySelector("p").textContent));
+  }
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ду: Душанбе
+УД: Худжанд
+xyz: Ничего не найдено</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Перед <code>return</code> вычислите <code>const found = cities.filter(...)</code> и выводите <code>found</code> вместо <code>cities</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Условие: <code>city.toLowerCase().includes(query.trim().toLowerCase())</code>. Сообщение: <code>{found.length === 0 &amp;&amp; &lt;p&gt;Ничего не найдено&lt;/p&gt;}</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="conditional">
+      <h2 data-toc="Условный рендер"><span class="num">08</span> Условный рендер: показать или спрятать</h2>
+
+      <p>Интерфейс постоянно «ветвится»: у гостя одна кнопка, у вошедшего другая; пока данные грузятся — крутилка, потом список; корзина пустая — подсказка, не пустая — товары. В React для этого нет специальных тегов вроде <code>v-if</code>. Вы используете обычный JavaScript — условия и операторы, которые уже знаете. Есть три приёма.</p>
+
+      <h3>1. Оператор &amp;&amp;: «показать или ничего»</h3>
+      <p>Если нужно показать кусок интерфейса <b>или не показывать совсем</b>, пишут <code>условие &amp;&amp; &lt;JSX /&gt;</code>. Если условие ложно, получается <code>false</code>, а React ничего не рисует на месте <code>false</code>, <code>null</code> и <code>undefined</code>.</p>
+
+<div class="playground" data-mode="react" data-title="&& — бейдж с числом">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [unread, setUnread] = useState(3);
+
+  return (
+    &lt;div className="card"&gt;
+      &lt;b&gt;Сообщения&lt;/b&gt;
+      {/* &amp;&amp; : «если левая часть истинна — покажи правую» */}
+      {unread &gt; 0 &amp;&amp; &lt;span style={{ color: "crimson" }}&gt; ({unread} новых)&lt;/span&gt;}
+      &lt;p&gt;
+        &lt;button onClick={() =&gt; setUnread(unread + 1)}&gt;Пришло сообщение&lt;/button&gt;{" "}
+        &lt;button onClick={() =&gt; setUnread(0)}&gt;Прочитать всё&lt;/button&gt;
+      &lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <h3>2. Тернарный оператор: «одно или другое»</h3>
+      <p>Когда нужно выбрать из двух вариантов, используют <code>условие ? А : Б</code>. Тернарный оператор вы изучали на уроке про условия.</p>
+
+<div class="playground" data-mode="react" data-title="Тернарный оператор — вошёл / не вошёл">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  return (
+    &lt;div className="card"&gt;
+      {/* тернарный оператор: «или одно, или другое» */}
+      {loggedIn ? &lt;p&gt;Привет, Мадина! Ваши курсы ждут.&lt;/p&gt; : &lt;p&gt;Войдите, чтобы увидеть курсы.&lt;/p&gt;}
+      &lt;button onClick={() =&gt; setLoggedIn(!loggedIn)}&gt;{loggedIn ? "Выйти" : "Войти"}&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <h3>3. Ранний return: «особый случай — и сразу выход»</h3>
+      <p>Если компонент в особом случае выглядит совсем иначе (загрузка, пусто, ошибка), удобно обработать его <b>в начале функции</b> и сразу сделать <code>return</code>. Основной вариант остаётся ниже, без вложенных условий.</p>
+
+<div class="playground" data-mode="react" data-title="Ранний return: загрузка и «пусто»">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Courses({ loading, courses }) {
+  // ранний return: сначала обрабатываем «особые» случаи
+  if (loading) return &lt;p&gt;Загрузка…&lt;/p&gt;;
+  if (courses.length === 0) return &lt;p&gt;Курсов пока нет&lt;/p&gt;;
+
+  return (
+    &lt;ul&gt;
+      {courses.map((c) =&gt; &lt;li key={c}&gt;{c}&lt;/li&gt;)}
+    &lt;/ul&gt;
+  );
+}
+
+export default function App() {
+  const [loading, setLoading] = useState(true);
+  const [courses, setCourses] = useState([]);
+
+  return (
+    &lt;div className="card"&gt;
+      &lt;Courses loading={loading} courses={courses} /&gt;
+      &lt;button onClick={() =&gt; setLoading(!loading)}&gt;Загрузка вкл/выкл&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; setCourses(["HTML и CSS", "JavaScript"])}&gt;Добавить курсы&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Приём</th><th>Когда использовать</th><th>Пример</th></tr></thead>
+          <tbody>
+            <tr><td><code>&amp;&amp;</code></td><td>Есть что показать — или ничего</td><td><code>{isNew &amp;&amp; &lt;Badge /&gt;}</code></td></tr>
+            <tr><td><code>? :</code></td><td>Два варианта на одном месте</td><td><code>{loggedIn ? &lt;Menu /&gt; : &lt;LoginButton /&gt;}</code></td></tr>
+            <tr><td>Ранний <code>return</code></td><td>Особый случай меняет весь компонент</td><td><code>if (loading) return &lt;Spinner /&gt;;</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вывеска на магазине: «Открыто» или «Закрыто». Это тернарный оператор: всегда висит одна из двух табличек. А вот табличка «Скидка!» висит <b>только если</b> скидка есть — это <code>&amp;&amp;</code>. Если скидки нет, нет и таблички, а не табличка «Скидки нет».</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Ловушка: «0 &amp;&amp; …» рисует ноль</b>
+        <p>Оператор <code>&amp;&amp;</code> возвращает <b>левую часть</b>, если она ложная. <code>false</code>, <code>null</code>, <code>undefined</code> React не показывает, но число <code>0</code> показывает как <code>0</code>. Поэтому <code>{items.length &amp;&amp; &lt;List /&gt;}</code> при пустом списке выведет на странице цифру 0. Сравнивайте явно: <code>{items.length &gt; 0 &amp;&amp; ...}</code>.</p>
+      </div>
+
+<div class="playground" data-mode="react" data-title="0 && ... — ловушка">
+<pre class="code" data-lang="jsx">
+// Ловушка: 0 &amp;&amp; ... возвращает 0, а React выводит число 0 на экран
+import { useState } from "react";
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  return (
+    &lt;div className="card"&gt;
+      &lt;p&gt;Неправильно: [{count &amp;&amp; &lt;b&gt;есть товары&lt;/b&gt;}]&lt;/p&gt;
+      &lt;p&gt;Правильно: [{count &gt; 0 &amp;&amp; &lt;b&gt;есть товары&lt;/b&gt;}]&lt;/p&gt;
+      &lt;button onClick={() =&gt; setCount(count + 1)}&gt;Добавить товар ({count})&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>Если условий становится много, не нагромождайте вложенные тернарные операторы — читать их невозможно. Вынесите логику в переменную перед <code>return</code> или в отдельный компонент с ранним <code>return</code>.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/conditional-rendering" target="_blank" rel="noopener">react.dev — Conditional Rendering</a>, <a href="https://learn.javascript.ru/logical-operators" target="_blank" rel="noopener">learn.javascript.ru — Логические операторы</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Бейдж «Новинка»</h4><span class="level easy">лёгкая</span></header>
+          <p>В компонент <code>Dish</code> нужно добавить бейдж <code>&lt;span&gt;Новинка&lt;/span&gt;</code> рядом с названием, но <b>только</b> у тех блюд, у которых <code>isNew</code> истинно. Запись <code>&lt;Dish name="Манту" isNew /&gt;</code> без значения означает <code>isNew={true}</code>.</p>
+<div class="playground" data-mode="react" data-title="Бейдж «Новинка»">
+<pre class="code" data-lang="jsx">
+// Покажите бейдж «Новинка» (&lt;span&gt;) только у блюд с isNew.
+function Dish({ name, isNew }) {
+  return &lt;div className="card"&gt;{name}&lt;/div&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Dish name="Манту" isNew /&gt;
+      &lt;Dish name="Плов" /&gt;
+      &lt;Dish name="Лагман" isNew={false} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; {
+  document.querySelectorAll(".card").forEach((c) =&gt; console.log(c.textContent.trim()));
+}, 100);
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Манту Новинка
+Плов
+Лагман</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Оператор <code>&amp;&amp;</code> пишется в фигурных скобках внутри JSX, после названия блюда.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>{name} {isNew &amp;&amp; &lt;span&gt;Новинка&lt;/span&gt;}</code></p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Пустая корзина</h4><span class="level mid">средняя</span></header>
+          <p><b>Найди баг.</b> В пустой корзине вместо подсказки почему-то цифра <code>0</code>. Исправьте: пока корзина пуста, показывайте <code>&lt;p&gt;Корзина пуста&lt;/p&gt;</code>, иначе — список.</p>
+<div class="playground" data-mode="react" data-title="Пустая корзина">
+<pre class="code" data-lang="jsx">
+// Пока корзина пуста, на экране появляется странный «0». Нужно:
+// пустая корзина -&gt; текст «Корзина пуста»; иначе -&gt; список товаров.
+import { useState } from "react";
+
+export default function App() {
+  const [cart, setCart] = useState([]);
+
+  function addItem() {
+    setCart([...cart, { id: cart.length + 1, title: "Лепёшка" }]);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={addItem}&gt;Добавить лепёшку&lt;/button&gt;
+      &lt;div id="cart"&gt;
+        {cart.length &amp;&amp; (
+          &lt;ul&gt;
+            {cart.map((item) =&gt; &lt;li key={item.id}&gt;{item.title}&lt;/li&gt;)}
+          &lt;/ul&gt;
+        )}
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  console.log(document.querySelector("#cart").textContent);
+  document.querySelector("button").click();
+  await wait();
+  console.log(document.querySelector("#cart").textContent);
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Корзина пуста
+Лепёшка</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Откуда берётся <code>0</code>? Вспомните ловушку из теории: что возвращает <code>0 &amp;&amp; ...</code>?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замените <code>&amp;&amp;</code> на тернарный оператор: <code>{cart.length === 0 ? &lt;p&gt;Корзина пуста&lt;/p&gt; : &lt;ul&gt;...&lt;/ul&gt;}</code></p></details>
+        </article>
+
+        <article class="task" id="t8-3">
+          <header><span class="task-num">ЗАДАЧА 8.3</span><h4>Профиль без пользователя</h4><span class="level mid">средняя</span></header>
+          <p>Пока пользователь не вошёл, <code>user</code> равен <code>null</code>, и <code>Profile</code> падает с ошибкой на <code>user.name</code>. Добавьте в начало <code>Profile</code> ранний <code>return</code> с текстом «Войдите в аккаунт».</p>
+<div class="playground" data-mode="react" data-title="Профиль без пользователя">
+<pre class="code" data-lang="jsx">
+// Profile падает, пока user === null. Добавьте ранний return:
+// если пользователя нет — вернуть &lt;p&gt;Войдите в аккаунт&lt;/p&gt;.
+import { useState } from "react";
+
+function Profile({ user }) {
+  return &lt;p&gt;Привет, {user.name}!&lt;/p&gt;;
+}
+
+export default function App() {
+  const [user, setUser] = useState(null);
+
+  return (
+    &lt;div&gt;
+      &lt;Profile user={user} /&gt;
+      &lt;button onClick={() =&gt; setUser(user ? null : { name: "Мадина" })}&gt;{user ? "Выйти" : "Войти"}&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  const show = () =&gt; console.log(document.querySelector("p").textContent);
+  await wait();
+  show();
+  document.querySelector("button").click();
+  await wait();
+  show();
+  document.querySelector("button").click();
+  await wait();
+  show();
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Войдите в аккаунт
+Привет, Мадина!
+Войдите в аккаунт</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Условие для раннего выхода — «пользователя нет»: <code>if (!user)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>if (!user) return &lt;p&gt;Войдите в аккаунт&lt;/p&gt;;</code> — строкой выше основного <code>return</code>.</p></details>
+        </article>
+
+        <article class="task" id="t8-4">
+          <header><span class="task-num">ЗАДАЧА 8.4</span><h4>FAQ-аккордеон</h4><span class="level hard">сложная</span></header>
+          <p>Сделайте раскрывающиеся вопросы: клик по вопросу показывает ответ (<code>&lt;p className="answer"&gt;</code>) и закрывает остальные, повторный клик по тому же вопросу закрывает ответ. Подумайте: что достаточно хранить в состоянии, чтобы одновременно мог быть открыт не больше чем один вопрос?</p>
+<div class="playground" data-mode="react" data-title="FAQ-аккордеон">
+<pre class="code" data-lang="jsx">
+// FAQ-аккордеон. Клик по вопросу открывает его ответ и закрывает остальные; повторный клик закрывает.
+// Ответ — &lt;p className="answer"&gt;. Подумайте: что хранить в состоянии, чтобы был открыт не больше одного?
+import { useState } from "react";
+
+const faq = [
+  { id: 1, q: "Сколько стоит курс?", a: "Ответ про цену" },
+  { id: 2, q: "Нужен ли свой ноутбук?", a: "Ответ про ноутбук" },
+  { id: 3, q: "Будет ли сертификат?", a: "Ответ про сертификат" },
+];
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      {faq.map((item) =&gt; (
+        &lt;div key={item.id} className="card"&gt;
+          &lt;button&gt;{item.q}&lt;/button&gt;
+          {/* здесь должен быть ответ */}
+        &lt;/div&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+async function click(el) {
+  el.click();
+  await wait();
+}
+(async () =&gt; {
+  const shown = () =&gt; [...document.querySelectorAll(".answer")].map((a) =&gt; a.textContent).join(", ") || "закрыто";
+  const q = (i) =&gt; document.querySelectorAll(".card button")[i];
+  await wait();
+  console.log(shown());
+  await click(q(0));
+  console.log(shown());
+  await click(q(1));
+  console.log(shown());
+  await click(q(1));
+  console.log(shown());
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>закрыто
+Ответ про цену
+Ответ про ноутбук
+закрыто</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Достаточно одного значения — <code>id</code> открытого вопроса (или <code>null</code>, если все закрыты): <code>const [openId, setOpenId] = useState(null);</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>По клику: <code>setOpenId(openId === item.id ? null : item.id)</code>. Ответ показывайте так: <code>{openId === item.id &amp;&amp; &lt;p className="answer"&gt;{item.a}&lt;/p&gt;}</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ-блок"><span class="num">09</span> ИИ-блок: ИИ объясняет ошибки React — а мы проверяем</h2>
+
+      <p>Две ошибки React новички видят чаще всего: «я нажимаю, а экран не меняется» и «список ведёт себя странно после удаления». ИИ объясняет их быстро и убедительно. Но убедительно — не значит верно. Ваша задача сегодня — взять объяснение ИИ и <b>проверить его на собственном коде</b>: запустить, поломать, починить и убедиться, что причина названа правильно.</p>
+
+      <div class="callout ai">
+        <b>Правила курса, которые здесь особенно важны</b>
+        <p><b>1.</b> Сначала 15 минут пробуете сами: вспомните разделы 04–06 этого урока. <b>2.</b> Только потом идёте к ИИ. <b>3.</b> Не вставляйте в проект код, который не можете объяснить строчка за строчкой — для React это значит: вы знаете, <b>почему</b> здесь новый массив, а не <code>push</code>, и <b>откуда</b> берётся каждый <code>key</code>. <b>4.</b> Проверяйте ответ ИИ запуском: объяснение, которое нельзя проверить на коде, ничего не стоит.</p>
+      </div>
+
+      <h3>Как просить: плохо и хорошо</h3>
+      <p>Формула промпта курса: <b>контекст → задача → ограничения → формат ответа → проверка</b>. Два готовых промпта из библиотеки курса — для «состояние не обновляется» и «зачем нужен key» — уже построены по ней.</p>
+
+      <div class="prompt bad-prompt">у меня в реакте не работает кнопка, почини</div>
+      <div class="prompt good-prompt">Я учу React на уровне новичка: знаю props, useState и .map(). Вот мой компонент: [вставьте код]. При нажатии на «Добавить» новый элемент не появляется на экране, хотя в консоли он есть в массиве. Объясни, почему useState не сработал и как исправить. Ограничения: без сторонних библиотек, без useEffect, поменяй как можно меньше строк. Формат ответа: 1) причина в двух предложениях простыми словами; 2) исправленный код целиком; 3) что именно изменилось. Проверка: в конце скажи, не мутирую ли я состояние напрямую.</div>
+
+      <div class="prompt bad-prompt">зачем в реакте key</div>
+      <div class="prompt good-prompt">Объясни на моём примере, зачем React нужен key в .map() и что сломается без него: [вставьте код списка]. Я новичок. Формат: короткое объяснение с аналогией, затем покажи, как ломается список, если использовать index в качестве key, и как это исправить. Проверка: предложи, как мне самому убедиться в баге на удалении элемента из середины списка (какие поля ввода и какие действия нужны).</div>
+
+      <div class="callout tip">
+        <b>Чек-лист: как проверить объяснение ИИ</b>
+        <p>1) <b>Состояние не обновляется:</b> нашёл ли ИИ мутацию (<code>push</code>, <code>obj.x = …</code>, <code>sort</code> без копии)? Если он предложил «просто добавить <code>useEffect</code>» или «принудительно перерисовать» — это почти всегда лишнее. 2) <b>Ключи:</b> какой <code>key</code> он выбрал? Если <code>index</code> «чтобы убрать предупреждение» — это <b>тот самый баг</b> из раздела 06. Ключ должен приходить из данных. 3) <b>Проверка запуском:</b> воспроизведите баг на удалении из середины — с полем ввода в каждой строке — до и после исправления. 4) Можете ли вы своими словами объяснить, почему исправление работает?</p>
+      </div>
+
+      <p>Хороший ИИ-помощник объясняет, а не только чинит. Если в ответе вы не поняли хоть одно слово, спросите: «объясни проще, на примере чайханы». И не стесняйтесь спорить: если ИИ предложил <code>key={index}</code>, возразите ему примером из раздела 06 и посмотрите, как он выкрутится.</p>
+
+      <div class="practice">
+        <h3>Практика: проверяем ИИ</h3>
+
+        <article class="task" id="t9-1">
+          <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Список дел «от ИИ»</h4><span class="level hard">сложная</span></header>
+          <p>Этот код выдал ИИ по запросу «сделай список дел на React». Он запускается, но в нём <b>три ошибки</b>: кнопка «Добавить» не обновляет экран, после удаления из середины заметки уезжают к соседям, а после «удалить → добавить» удаление последней строки сносит сразу две. Найдите и исправьте все три. Последняя ошибка коварная: задумайтесь, откуда берётся <code>id</code> новой задачи и может ли он повториться.</p>
+<div class="playground" data-mode="react" data-title="Список дел «от ИИ»">
+<pre class="code" data-lang="jsx">
+// Этот список дел «написал ИИ». Он запускается, но работает неправильно. Найдите ВСЕ ошибки и исправьте.
+// Признаки: после добавления список не обновляется; после удаления заметки уезжают к соседям;
+// после «удалить, потом добавить» удаление сносит сразу две строки.
+import { useState } from "react";
+
+export default function App() {
+  const [todos, setTodos] = useState([
+    { id: 1, text: "Позвонить маме" },
+    { id: 2, text: "Купить лепёшки" },
+  ]);
+
+  function addTodo() {
+    todos.push({ id: todos.length + 1, text: "Новая задача" });
+    setTodos(todos);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;ul&gt;
+        {todos.map((t, i) =&gt; (
+          &lt;li key={i}&gt;
+            &lt;b&gt;{t.text}&lt;/b&gt; &lt;input placeholder="заметка" /&gt;{" "}
+            &lt;button className="del" onClick={() =&gt; setTodos(todos.filter((x) =&gt; x.id !== t.id))}&gt;✕&lt;/button&gt;
+          &lt;/li&gt;
+        ))}
+      &lt;/ul&gt;
+      &lt;button className="add" onClick={addTodo}&gt;Добавить&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+async function click(el) {
+  el.click();
+  await wait();
+}
+(async () =&gt; {
+  const $ = (s) =&gt; document.querySelector(s);
+  const $$ = (s) =&gt; [...document.querySelectorAll(s)];
+  const count = () =&gt; console.log($$("li").length);
+  await wait();
+  await click($(".add"));
+  count();
+  $$("input").forEach((input, i) =&gt; (input.value = ["a", "b", "c"][i]));
+  await click($$(".del")[0]);
+  console.log($$("li").map((li) =&gt; li.querySelector("b").textContent + ": " + li.querySelector("input").value).join(" | "));
+  await click($(".add"));
+  count();
+  await click($$(".del")[2]);
+  count();
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+Купить лепёшки: b | Новая задача: c
+3
+2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три места: <code>push</code> + <code>setTodos(todos)</code> (мутация), <code>key={i}</code> (индекс вместо паспорта) и <code>id: todos.length + 1</code> (после удаления длина уменьшается, и новый <code>id</code> совпадает с существующим).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавление: <code>setTodos([...todos, { id: Date.now(), text: "Новая задача" }])</code>. Ключ: <code>key={t.id}</code>. Идентификатор создаётся один раз — в момент добавления.</p></details>
+        </article>
+
+        <article class="task" id="t9-2">
+          <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Свой промпт про key</h4><span class="level easy">лёгкая</span></header>
+          <p>Возьмите свой код из задачи 6.1 или 9.1 и составьте для ИИ промпт по формуле курса. Отправьте, получите ответ и прогоните его по чек-листу выше. Запишите в комментарии: какой <code>key</code> предложил ИИ, пришлось ли вам с ним спорить, и как вы убедились, что объяснение верное. Автоматической проверки нет — отметьте задачу вручную, когда будет готово.</p>
+<pre class="code" data-run>
+// Мой промпт:
+// ...
+
+// Какой key предложил ИИ и что я проверил:
+// ...
+</pre>
+          <details class="hint"><summary>Подсказка 1</summary><p>Если ответ ИИ вас не убедил, не просите «исправь ещё раз», а назовите конкретный провал: «после удаления первой строки заметка осталась у второй».</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сверьте ответ с разделом 06 этого урока. Если ИИ утверждает что-то, чего там нет, — перепроверьте на коде.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 10 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">10</span> Практика на уроке: каталог курсов с лайками</h2>
+
+      <p>Соберём всё вместе: каталог курсов Ilmhona. Карточки рисуются из массива через props, у каждой есть кнопка «лайк», которая запоминает своё состояние. Идём шагами — после каждого шага код работает. Каждый шаг можно запускать и менять прямо здесь.</p>
+
+      <h3>Шаг 1. Компонент и props</h3>
+      <p>Сначала один компонент <code>CourseCard</code> и три вызова с разными данными.</p>
+<div class="playground" data-mode="react" data-title="Шаг 1. CourseCard и props">
+<pre class="code" data-lang="jsx">
+// Шаг 1. Компонент CourseCard и три карточки с разными props
+function CourseCard({ title, price }) {
+  return (
+    &lt;div className="card"&gt;
+      &lt;b&gt;{title}&lt;/b&gt;
+      &lt;div&gt;{price} сомони в месяц&lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;CourseCard title="HTML и CSS" price={300} /&gt;
+      &lt;CourseCard title="JavaScript" price={400} /&gt;
+      &lt;CourseCard title="React Lite" price={450} /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <h3>Шаг 2. Данные в массив и map</h3>
+      <p>Три почти одинаковых строки — повод вынести данные в массив. Добавляем <code>id</code> для ключей и выводим карточки через <code>map</code>.</p>
+<div class="playground" data-mode="react" data-title="Шаг 2. Массив и map с key">
+<pre class="code" data-lang="jsx">
+// Шаг 2. Данные — в массив, карточки — через map с key
+const courses = [
+  { id: 1, title: "HTML и CSS", price: 300 },
+  { id: 2, title: "JavaScript", price: 400 },
+  { id: 3, title: "React Lite", price: 450 },
+];
+
+function CourseCard({ title, price }) {
+  return (
+    &lt;div className="card"&gt;
+      &lt;b&gt;{title}&lt;/b&gt;
+      &lt;div&gt;{price} сомони в месяц&lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      {courses.map((course) =&gt; (
+        &lt;CourseCard key={course.id} title={course.title} price={course.price} /&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <h3>Шаг 3. Лайк на useState</h3>
+      <p>В каждую карточку добавляем собственное состояние <code>liked</code>. Число лайков не храним — вычисляем: <code>likes + (liked ? 1 : 0)</code>. Нажмите на несколько сердечек: карточки не мешают друг другу.</p>
+<div class="playground" data-mode="react" data-title="Шаг 3. Лайк в каждой карточке">
+<pre class="code" data-lang="jsx">
+// Шаг 3. Лайк: у каждой карточки своё состояние liked
+import { useState } from "react";
+
+const courses = [
+  { id: 1, title: "HTML и CSS", likes: 10 },
+  { id: 2, title: "JavaScript", likes: 25 },
+  { id: 3, title: "React Lite", likes: 7 },
+];
+
+function CourseCard({ title, likes }) {
+  const [liked, setLiked] = useState(false);
+  const count = likes + (liked ? 1 : 0);
+
+  return (
+    &lt;div className="card"&gt;
+      &lt;b&gt;{title}&lt;/b&gt;{" "}
+      &lt;button onClick={() =&gt; setLiked(!liked)}&gt;{liked ? "♥" : "♡"} {count}&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      {courses.map((course) =&gt; (
+        &lt;CourseCard key={course.id} title={course.title} likes={course.likes} /&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <h3>Шаг 4 (бонус). Общий счётчик: поднимаем состояние</h3>
+      <p>А если нужен счётчик «понравилось N из M» над списком? Карточки не могут рассказать об этом соседям, а <code>App</code> не может заглянуть в состояние карточки. Решение — <b>поднять состояние вверх</b>: <code>App</code> хранит, какие курсы лайкнуты, а карточка получает <code>liked</code> и <b>функцию</b> <code>onToggle</code> через props. Да, props могут быть и функциями: так ребёнок «сообщает» родителю о событии.</p>
+<div class="playground" data-mode="react" data-title="Шаг 4 (бонус). Общий счётчик">
+<pre class="code" data-lang="jsx">
+// Шаг 4 (бонус). Поднимаем состояние: App знает, какие курсы лайкнуты, и считает общий счётчик
+import { useState } from "react";
+
+const courses = [
+  { id: 1, title: "HTML и CSS" },
+  { id: 2, title: "JavaScript" },
+  { id: 3, title: "React Lite" },
+];
+
+// onToggle — это prop-ФУНКЦИЯ: карточка вызывает её, когда нажали на сердечко
+function CourseCard({ title, liked, onToggle }) {
+  return (
+    &lt;div className="card"&gt;
+      &lt;b&gt;{title}&lt;/b&gt;{" "}
+      &lt;button onClick={onToggle}&gt;{liked ? "♥ Нравится" : "♡ Лайк"}&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  const [likedIds, setLikedIds] = useState([]);
+
+  function toggle(id) {
+    setLikedIds(likedIds.includes(id) ? likedIds.filter((x) =&gt; x !== id) : [...likedIds, id]);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;h3&gt;Понравилось: {likedIds.length} из {courses.length}&lt;/h3&gt;
+      {courses.map((course) =&gt; (
+        &lt;CourseCard
+          key={course.id}
+          title={course.title}
+          liked={likedIds.includes(course.id)}
+          onToggle={() =&gt; toggle(course.id)}
+        /&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Староста группы. Каждый студент может сказать «я пришёл», но общий список посещаемости ведёт <b>староста</b> — один человек, у которого он есть целиком. Студент (карточка) не хранит у себя общую ведомость, а сообщает старосте (<code>App</code>) через функцию <code>onToggle</code>. А староста объявляет итог: «пришло 3 из 5».</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: собираем каталог</h3>
+
+        <article class="task" id="t10-1">
+          <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Каталог с лайками</h4><span class="level mid">средняя</span></header>
+          <p>Сейчас на экране одна заглушка. Соберите каталог по шагам 1–3: <code>CourseCard</code> получает props <code>title</code> и <code>likes</code>, <code>App</code> выводит все курсы через <code>map</code>, а у каждой карточки своё состояние <code>liked</code>: клик — <code>♥</code> и число на 1 больше, повторный клик — всё обратно.</p>
+<div class="playground" data-mode="react" data-title="Каталог с лайками">
+<pre class="code" data-lang="jsx">
+// Каталог курсов. Сейчас на экране одна заглушка. Соберите всё, что мы разобрали:
+// 1) CourseCard получает props title и likes и показывает название и кнопку «♡ число»;
+// 2) App выводит все курсы из массива через map с key;
+// 3) у каждой карточки своё состояние liked: клик → «♥ число+1», повторный клик → обратно «♡ число».
+const courses = [
+  { id: 1, title: "HTML и CSS", likes: 10 },
+  { id: 2, title: "JavaScript", likes: 25 },
+  { id: 3, title: "React Lite", likes: 7 },
+];
+
+function CourseCard() {
+  return (
+    &lt;div className="card"&gt;
+      &lt;b&gt;Курс&lt;/b&gt; &lt;button className="like"&gt;♡ 0&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;CourseCard /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+async function click(el) {
+  el.click();
+  await wait();
+}
+(async () =&gt; {
+  const cards = () =&gt; [...document.querySelectorAll(".card")];
+  const show = () =&gt;
+    console.log(cards().map((c) =&gt; c.querySelector("b").textContent + " " + c.querySelector(".like").textContent).join(" | "));
+  await wait();
+  show();
+  await click(cards()[0].querySelector(".like"));
+  await click(cards()[2].querySelector(".like"));
+  show();
+  await click(cards()[0].querySelector(".like"));
+  show();
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>HTML и CSS ♡ 10 | JavaScript ♡ 25 | React Lite ♡ 7
+HTML и CSS ♥ 11 | JavaScript ♡ 25 | React Lite ♥ 8
+HTML и CSS ♡ 10 | JavaScript ♡ 25 | React Lite ♥ 8</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Порядок работы: сначала props и <code>map</code> (проверьте, что видны три карточки), и только потом добавляйте <code>useState</code> в <code>CourseCard</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>CourseCard</code>: <code>const [liked, setLiked] = useState(false);</code>, на кнопке <code>onClick={() =&gt; setLiked(!liked)}</code> и <code>{liked ? "♥" : "♡"} {likes + (liked ? 1 : 0)}</code>. Не забудьте <code>className="like"</code> у кнопки и импорт <code>useState</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 11 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">11</span> Домашнее задание: Todo-лист на React</h2>
+
+      <p>Todo-лист на React: добавить задачу, отметить выполненной, удалить. Артефакт — <b>интерактивный компонент на <code>useState</code> + список через <code>.map()</code></b>. Основные приёмы вы уже потренировали в задачах 5.3 и 7.3 — теперь соберите их в одно приложение. Ниже стартовый код с «самопроверкой»: запустите его — в консоли появятся строки со знаками ✗, ваша цель — все ✓.</p>
+
+<div class="playground" data-mode="react" data-title="Todo-лист: стартовый код и самопроверка">
+<pre class="code" data-lang="jsx">
+// Todo-лист. Допишите состояние и три действия: добавить, отметить, удалить.
+// Блок «самопроверка» внизу сам нажимает кнопки и пишет в консоль ✓ или ✗ — добейтесь, чтобы все строки были с ✓.
+import { useState } from "react";
+
+export default function App() {
+  // состояние: массив задач { id, text, done } и текст из поля
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    // добавить задачу
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;form onSubmit={handleSubmit}&gt;
+        &lt;input placeholder="Новая задача" /&gt;{" "}
+        &lt;button&gt;Добавить&lt;/button&gt;
+      &lt;/form&gt;
+      &lt;p id="left"&gt;Осталось: 0&lt;/p&gt;
+      &lt;ul&gt;
+        {/* для каждой задачи: &lt;li&gt; с чекбоксом, &lt;span&gt; с текстом (класс done у выполненной) и кнопкой ✕ (className="del") */}
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- самопроверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+function typeInto(el, value) {
+  Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value").set.call(el, value);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+async function add(text) {
+  typeInto(document.querySelector("input[placeholder]"), text);
+  await wait();
+  document.querySelector("form").requestSubmit();
+  await wait();
+}
+(async () =&gt; {
+  const $ = (s) =&gt; document.querySelector(s);
+  const $$ = (s) =&gt; [...document.querySelectorAll(s)];
+  const check = (ok, msg) =&gt; console.log((ok ? "✓ " : "✗ ") + msg);
+  await wait();
+  await add("Купить лепёшки");
+  await add("Позвонить маме");
+  check($("input[placeholder]").value === "", "поле очищается после добавления");
+  await add("   ");
+  check($$("li").length === 2, "добавление: две задачи, пустая строка не добавилась");
+  check($("#left").textContent.trim() === "Осталось: 2", "счётчик: Осталось: 2");
+  if ($$("li").length &lt; 2) return console.log("✗ дальше проверять нечего: выведите задачи в список");
+  $$("li input[type=checkbox]")[0].click();
+  await wait();
+  check($$("li span")[0].classList.contains("done"), "отметка: у первой задачи класс done");
+  check(!$$("li span")[1].classList.contains("done"), "отметка: вторая задача не затронута");
+  check($("#left").textContent.trim() === "Осталось: 1", "счётчик: Осталось: 1");
+  $$("li input[type=checkbox]")[0].click();
+  await wait();
+  check(!$$("li span")[0].classList.contains("done"), "повторный клик снимает отметку");
+  $$("li .del")[0].click();
+  await wait();
+  check($$("li").length === 1 &amp;&amp; $$("li span")[0].textContent === "Позвонить маме", "удаление: осталась «Позвонить маме»");
+  check($("#left").textContent.trim() === "Осталось: 1", "счётчик после удаления");
+})();
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+.card { border: 1px solid #d5dbe6; border-radius: 12px; padding: 10px 14px; margin: 8px 0; background: #fff; }
+button { padding: 6px 12px; font: inherit; cursor: pointer; }
+input { padding: 6px 8px; font: inherit; }
+ul { padding-left: 20px; }
+.done { text-decoration: line-through; color: #8a93a6; }
+</pre>
+</div>
+
+      <h3>Что нужно сделать</h3>
+      <ol>
+        <li><b>Состояние.</b> Массив задач <code>{ id, text, done }</code> и текст поля ввода (управляемое поле).</li>
+        <li><b>Добавление.</b> Через <code>&lt;form onSubmit&gt;</code> с <code>preventDefault</code>. Пустые строки и строки из одних пробелов не добавляются. После добавления поле очищается. <code>id</code> создаётся при добавлении (<code>Date.now()</code>).</li>
+        <li><b>Список.</b> Через <code>.map()</code> с <code>key={task.id}</code>. У каждой задачи: чекбокс, текст в <code>&lt;span&gt;</code> и кнопка <code>✕</code> с <code>className="del"</code>.</li>
+        <li><b>Отметка.</b> Чекбокс переключает <code>done</code>. У выполненной задачи у <code>&lt;span&gt;</code> класс <code>done</code> (зачёркнутый текст).</li>
+        <li><b>Удаление.</b> Кнопка <code>✕</code> убирает задачу из списка.</li>
+        <li><b>Счётчик</b> <code>&lt;p id="left"&gt;Осталось: N&lt;/p&gt;</code> — число невыполненных. Подсказка: это не отдельное состояние, а вычисляемое значение.</li>
+        <li><b>Условный рендер.</b> Если задач нет — вместо списка показывается «Пока задач нет» (самопроверка к этому пункту не придирается, но на оценке он учитывается).</li>
+        <li><b>Никаких мутаций.</b> Ни <code>push</code>, ни <code>splice</code>, ни присваиваний полям объектов в состоянии — только spread, <code>map</code> и <code>filter</code>.</li>
+        <li><b>Проверка ИИ.</b> Если использовали ИИ — приложите свой промпт и ответ на вопрос: какую ошибку (мутация, ключ) ИИ допустил или чуть не допустил, и как вы это проверили.</li>
+      </ol>
+
+      <h3>Бонус для сильных</h3>
+      <ul>
+        <li>Фильтры «Все / Активные / Выполненные» — одно дополнительное состояние <code>filter</code>.</li>
+        <li>Кнопка «Очистить выполненные» — одна строка с <code>filter</code>.</li>
+        <li>Редактирование текста задачи по двойному клику.</li>
+      </ul>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Ссылку на репозиторий в GitHub с проектом на Vite (<code>App.jsx</code> и стили).</li>
+        <li>Скриншот: список с тремя задачами, одна из них выполнена.</li>
+        <li>Короткий <code>README</code>: что умеет приложение и какие приёмы (props, <code>map</code>, <code>useState</code>) где использованы.</li>
+      </ul>
+
+      <h3>Как оцениваем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Добавление: форма, <code>preventDefault</code>, пустые строки отсекаются, поле очищается</td><td>2</td></tr>
+            <tr><td>Отметка выполненной и счётчик «Осталось»</td><td>2</td></tr>
+            <tr><td>Удаление через <code>filter</code></td><td>1</td></tr>
+            <tr><td>Список через <code>.map()</code> с <code>key={id}</code>, не индекс</td><td>2</td></tr>
+            <tr><td>Нет мутаций состояния (spread, <code>map</code>, <code>filter</code>)</td><td>2</td></tr>
+            <tr><td>Пустое состояние «Пока задач нет», чистый код, ИИ-код вы можете объяснить</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Перед сдачей</b>
+        <p>Проверьте сами: добавьте три задачи, удалите <b>среднюю</b> и отметьте последнюю. Если зачёркнутой оказалась не та задача, значит, где-то остался индекс вместо <code>id</code>.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Props:</b> данные идут от родителя к ребёнку как атрибуты, приходят объектом: <code>function Card({ name, price })</code>. Props только для чтения. Строки — в кавычках, остальное — в <code>{ }</code>.</li>
+        <li><b>children:</b> всё между тегами компонента. Выводим <code>{children}</code> там, где нужно: рамки, панели, обёртки.</li>
+        <li><b>По умолчанию и rest:</b> <code>{ label = "Нажми" }</code> срабатывает только для <code>undefined</code>; для <code>null</code> — <code>??</code>. <code>{ a, ...rest }</code> собирает остальное, <code>&lt;input {...rest} /&gt;</code> раздаёт.</li>
+        <li><b>Списки:</b> <code>items.map((x) =&gt; &lt;Item key={x.id} … /&gt;)</code>. С <code>{ }</code> после стрелки нужен <code>return</code>. Фильтр — <code>filter</code> перед <code>map</code>.</li>
+        <li><b>key:</b> уникальный и стабильный, из данных (<code>id</code>). Не <code>index</code> для изменяемых списков (ломаются поля ввода и состояние строк) и не <code>Math.random()</code>.</li>
+        <li><b>useState:</b> <code>const [x, setX] = useState(начальное)</code>. Начальное значение — только при первом показе. Обычная переменная экран не обновит. Хуки — только на верхнем уровне компонента.</li>
+        <li><b>Функциональное обновление:</b> <code>setX((x) =&gt; x + 1)</code>, когда новое значение зависит от старого. Вычисляемое не храним в состоянии.</li>
+        <li><b>Не мутируем:</b> добавить <code>[...arr, x]</code>, удалить <code>arr.filter(...)</code>, изменить <code>arr.map(...)</code>, объект <code>{ ...obj, k: v }</code>. Нельзя: <code>push</code>, <code>splice</code>, <code>obj.k = v</code>, <code>sort</code> без копии.</li>
+        <li><b>События:</b> <code>onClick={fn}</code> — передаём функцию, не вызываем: <code>onClick={() =&gt; remove(id)}</code>. Форма: <code>onSubmit</code> + <code>event.preventDefault()</code>.</li>
+        <li><b>Управляемое поле:</b> <code>value={text}</code> + <code>onChange={(e) =&gt; setText(e.target.value)}</code>; у чекбокса — <code>checked</code> и <code>e.target.checked</code>.</li>
+        <li><b>Условный рендер:</b> <code>cond &amp;&amp; &lt;A /&gt;</code> («или ничего»), <code>cond ? &lt;A /&gt; : &lt;B /&gt;</code> («одно или другое»), ранний <code>return</code> для особых случаев. <code>0 &amp;&amp; …</code> рисует 0 — сравнивайте: <code>n &gt; 0 &amp;&amp; …</code>.</li>
+        <li><b>Поднятие состояния:</b> общее состояние живёт в ближайшем общем родителе, а детям отдаём значение и функцию-обработчик через props.</li>
+        <li><b>С ИИ:</b> сначала сами, потом промпт по формуле. Объяснение ИИ проверяем запуском: нет ли мутации и откуда взят key.</li>
+      </ul>
+    </section>
