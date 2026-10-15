@@ -1,0 +1,2154 @@
+<style>
+  /* мини-схема: путь данных от поля до обработчика */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin: 14px 0; }
+  .flow > div { flex: 1 1 140px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--paper); font-size: 14px; }
+  .flow > div > b { display: block; font: 800 12px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+  .flow > i { align-self: center; font-style: normal; font-weight: 800; color: var(--blue); }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 10 · DOM и интерфейс</p>
+      <h1>Формы и валидация</h1>
+      <p class="lead">Регистрация, вход, заказ плова с доставкой, запись на курс в Илмхоне — почти всё, что пользователь «даёт» сайту, он вводит через форму. А пользователи ошибаются: пропускают поля, пишут телефон без кода страны, ставят пробел в конец email. Сегодня вы научитесь читать данные из формы и вежливо объяснять человеку, что нужно исправить, — ещё до отправки.</p>
+      <ul class="goals">
+        <li>Читать <code>value</code> и <code>checked</code> у разных полей: текст, число, радиокнопки, чекбоксы, список</li>
+        <li>Перехватывать отправку формы событием <code>submit</code> и собирать данные через <code>FormData</code></li>
+        <li>Пользоваться встроенной валидацией браузера и понимать, чего ей не хватает</li>
+        <li>Писать простые регулярные выражения и применять их в проверках</li>
+        <li>Писать свои функции-валидаторы и выводить понятные тексты ошибок прямо под полями</li>
+        <li>Делать «живую» валидацию: проверять поле, пока человек вводит данные</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Код на тёмном фоне с кнопкой <b>▶ Запустить</b> — живой: меняйте его и смотрите результат. В консольных блоках форма создаётся прямо из строки HTML — так мы можем проверить код без ручного ввода. Окна с вкладками <b>index.html / style.css / script.js</b> — мини-страницы: сверху код, снизу превью, в котором можно по-настоящему кликать и печатать. Запуск — <b>Ctrl + Enter</b>. Подсказки к задачам спрятаны: сначала попробуйте сами 15 минут.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="fields">
+      <h2 data-toc="Поля формы и value"><span class="num">01</span> Форма и её поля: <code>value</code> и <code>checked</code></h2>
+
+      <p>Форма в HTML — это тег <code>&lt;form&gt;</code>, внутри которого лежат поля ввода: <code>&lt;input&gt;</code>, <code>&lt;select&gt;</code>, <code>&lt;textarea&gt;</code> и кнопка отправки. Вёрстку вы уже знаете — сегодня нас интересует, как <b>достать из этих полей данные</b> с помощью JavaScript.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Анкета в банке или бланк заказа в чайхоне: у каждой строки есть <b>название</b> («Имя», «Телефон») и то, что вы <b>вписали</b>. В форме название — это атрибут <code>name</code>, а то, что вписано, — свойство <code>value</code>. Оператор берёт заполненный бланк и читает строку за строкой — ровно так же работает ваш скрипт.</p>
+      </div>
+
+      <h3>Как найти поле</h3>
+      <p>Каждое поле можно найти через <code>querySelector</code>, но у формы есть удобный путь — коллекция <code>form.elements</code>. В ней поля доступны по атрибуту <code>name</code>:</p>
+
+<div class="playground" data-mode="dom" data-title="Читаем поля формы">
+<pre class="code" data-lang="html">
+&lt;form id="reg"&gt;
+  &lt;label&gt;Имя &lt;input name="fullName" value="Мадина"&gt;&lt;/label&gt;
+  &lt;label&gt;Возраст &lt;input name="age" type="number" value="19"&gt;&lt;/label&gt;
+  &lt;label&gt;Город
+    &lt;select name="city"&gt;
+      &lt;option value="dushanbe"&gt;Душанбе&lt;/option&gt;
+      &lt;option value="khujand"&gt;Худжанд&lt;/option&gt;
+    &lt;/select&gt;
+  &lt;/label&gt;
+  &lt;label&gt;&lt;input type="checkbox" name="agree"&gt; Согласен с правилами&lt;/label&gt;
+  &lt;button type="button" id="show"&gt;Показать значения&lt;/button&gt;
+&lt;/form&gt;
+</pre>
+<pre class="code" data-lang="css">
+form { display: grid; gap: 10px; max-width: 320px; }
+label { display: grid; gap: 4px; font-size: 14px; }
+input, select, button { padding: 6px 8px; font: inherit; }
+label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#reg");
+
+document.querySelector("#show").addEventListener("click", () =&gt; {
+  console.log("fullName:", form.elements.fullName.value);
+  console.log("age:", form.elements.age.value, typeof form.elements.age.value);
+  console.log("city:", form.elements.city.value);
+  console.log("agree:", form.elements.agree.checked);
+});
+</pre>
+</div>
+      <p>Запустите, поменяйте что-нибудь в превью (введите другое имя, поставьте галочку) и нажмите «Показать значения». Вот что и откуда мы читаем:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Поле</th><th>Что читаем</th><th>Что получим</th></tr></thead>
+          <tbody>
+            <tr><td><code>&lt;input type="text"&gt;</code>, <code>email</code>, <code>password</code>, <code>tel</code></td><td><code>.value</code></td><td>Строка — ровно то, что в поле (с пробелами)</td></tr>
+            <tr><td><code>&lt;input type="number"&gt;</code></td><td><code>.value</code></td><td><b>Тоже строка!</b> <code>"19"</code>, не число. Пустое поле — <code>""</code></td></tr>
+            <tr><td><code>&lt;textarea&gt;</code></td><td><code>.value</code></td><td>Строка (с переводами строк <code>\n</code>)</td></tr>
+            <tr><td><code>&lt;select&gt;</code></td><td><code>.value</code></td><td>Атрибут <code>value</code> выбранного <code>&lt;option&gt;</code>, а не его видимый текст</td></tr>
+            <tr><td><code>&lt;input type="checkbox"&gt;</code></td><td><code>.checked</code></td><td><code>true</code> или <code>false</code></td></tr>
+            <tr><td>Группа <code>&lt;input type="radio"&gt;</code> с одним <code>name</code></td><td><code>form.elements.имя.value</code></td><td><code>value</code> выбранной кнопки (или <code>""</code>, если ничего не выбрано)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Главная ловушка: <code>value</code> — всегда строка</h3>
+      <p>Даже у <code>type="number"</code> значение приходит строкой. Это та самая история с приведением типов из урока 2:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;input name="plov" type="number" value="40"&gt;
+  &lt;input name="tea" type="number" value="10"&gt;`;
+
+const plov = document.querySelector("[name=plov]").value;
+const tea = document.querySelector("[name=tea]").value;
+
+console.log(plov + tea);                   // "4010" — склеились как строки!
+console.log(Number(plov) + Number(tea));   // 50 — сначала превращаем в числа
+console.log(document.querySelector("[name=plov]").valueAsNumber); // 40 — число сразу
+</pre>
+
+      <div class="callout warn">
+        <b>Частые ошибки</b>
+        <p>1) Читать у чекбокса <code>.value</code> вместо <code>.checked</code> — вы всегда получите строку <code>"on"</code>, даже если галочки нет. 2) Забыть <code>.value</code> и вывести сам элемент: <code>console.log(form.elements.fullName)</code> покажет тег, а не текст. 3) Сложить два числовых поля через <code>+</code> — получится склейка строк.</p>
+      </div>
+
+      <h3>Атрибуты <code>name</code>, <code>label</code> и <code>type</code></h3>
+      <ul>
+        <li><b><code>name</code></b> — «имя поля». Через него мы находим поле в <code>form.elements</code>, и именно по нему данные попадают в <code>FormData</code> (раздел 3). Без <code>name</code> поле «невидимо» для формы.</li>
+        <li><b><code>&lt;label&gt;</code></b> — подпись. Оберните в неё поле или свяжите через <code>for</code> и <code>id</code>: тогда клик по тексту ставит курсор в поле, а экранные читалки понимают, что за поле перед ними.</li>
+        <li><b><code>type</code></b> — подсказывает браузеру, какую клавиатуру показать на телефоне (<code>tel</code> — цифровую, <code>email</code> — с «@») и какие проверки включить.</li>
+      </ul>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/form-elements" target="_blank" rel="noopener">Свойства и методы формы</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTML/Reference/Elements/input" target="_blank" rel="noopener">MDN: элемент input</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>В консольных задачах формы создаются из строки HTML. Ваша работа — прочитать нужные значения.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Анкета студента</h4><span class="level easy">лёгкая</span></header>
+          <p>В форме уже есть значения. Выведите их тремя строками в формате, как в примере: имя, город и курс.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="fullName" value="Мадина Каримова"&gt;
+    &lt;input name="city" value="Душанбе"&gt;
+    &lt;input name="course" value="Frontend + AI"&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+
+// выведите три строки через console.log и form.elements
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Имя: Мадина Каримова
+Город: Душанбе
+Курс: Frontend + AI</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Поле находим так: <code>form.elements.fullName</code> — по значению атрибута <code>name</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Значение — это свойство <code>.value</code>. Склейте строку: <code>console.log("Имя: " + form.elements.fullName.value);</code></p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Счёт в чайхоне</h4><span class="level easy">лёгкая</span></header>
+          <p>Кассир вводит стоимость плова и чая в числовые поля. Код должен вывести итог и итог со скидкой 10%, но сейчас выводит ерунду вроде <code>4010</code>. Исправьте чтение значений, не трогая строки с <code>console.log</code>.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="plov" type="number" value="40"&gt;
+    &lt;input name="tea" type="number" value="10"&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+const plov = form.elements.plov.value;
+const tea = form.elements.tea.value;
+
+console.log("Итого:", plov + tea);
+console.log("Со скидкой 10%:", (plov + tea) * 0.9);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Итого: 50
+Со скидкой 10%: 45</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Оператор <code>+</code> со строками склеивает их. Нужно, чтобы <code>plov</code> и <code>tea</code> были числами.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Превратите значения в числа сразу при чтении: <code>const plov = Number(form.elements.plov.value);</code> — и то же для <code>tea</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Радиокнопки, чекбоксы и список</h4><span class="level mid">средняя</span></header>
+          <p>Форма записи на курс содержит список, группу радиокнопок и два чекбокса. Выведите четыре строки. Для чекбоксов выводите именно <code>true</code> / <code>false</code>.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;select name="course"&gt;
+      &lt;option value="html"&gt;HTML и CSS&lt;/option&gt;
+      &lt;option value="js" selected&gt;JavaScript&lt;/option&gt;
+    &lt;/select&gt;
+    &lt;input type="radio" name="format" value="offline"&gt;
+    &lt;input type="radio" name="format" value="online" checked&gt;
+    &lt;input type="checkbox" name="agree" checked&gt;
+    &lt;input type="checkbox" name="news"&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+
+// Курс: ...  Формат: ...  Согласие: ...  Рассылка: ...
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Курс: js
+Формат: online
+Согласие: true
+Рассылка: false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Для списка и для группы радиокнопок подойдёт <code>form.elements.имя.value</code>. Для чекбоксов — <code>.checked</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Радиокнопки с одинаковым <code>name</code> образуют группу: <code>form.elements.format.value</code> вернёт значение выбранной (<code>"online"</code>).</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="submit">
+      <h2 data-toc="Событие submit"><span class="num">02</span> Отправка формы: событие <code>submit</code></h2>
+
+      <p>Когда человек нажимает кнопку «Отправить» или жмёт <b>Enter</b> в текстовом поле, форма генерирует событие <code>submit</code>. Если ничего не делать, браузер отправит данные на сервер и <b>перезагрузит страницу</b> — все введённые данные и вся ваша JS-логика пропадут. Поэтому первая строка любого обработчика отправки — <code>event.preventDefault()</code> (вы знаете это из урока 9).</p>
+
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form id="order"&gt;
+    &lt;input name="dish" value="Оши палав"&gt;
+    &lt;input name="qty" type="number" value="2"&gt;
+    &lt;button&gt;Заказать&lt;/button&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("#order");
+
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();                       // не даём странице перезагрузиться
+  const dish = form.elements.dish.value;        // читаем значения ВНУТРИ обработчика
+  const qty = Number(form.elements.qty.value);
+  console.log(`Заказ принят: ${dish} × ${qty}`);
+});
+
+form.dispatchEvent(new Event("submit", { cancelable: true }));   // имитируем нажатие кнопки «Заказать»
+</pre>
+
+      <div class="flow">
+        <div><b>1 · Ввод</b>человек заполняет поля</div><i>→</i>
+        <div><b>2 · Отправка</b>клик по кнопке или Enter</div><i>→</i>
+        <div><b>3 · submit</b>событие на <code>&lt;form&gt;</code></div><i>→</i>
+        <div><b>4 · Ваш код</b><code>preventDefault()</code>, чтение полей, проверка</div>
+      </div>
+
+      <h3>Слушаем <code>submit</code>, а не <code>click</code></h3>
+      <div class="cols">
+        <div class="col bad"><b>Плохо: click на кнопке</b>
+          <p>Если человек отправит форму клавишей Enter, кнопку никто не нажимал — ваш код не сработает.</p>
+<pre class="code">
+button.addEventListener("click", () =&gt; {
+  // Enter в поле сюда не попадёт
+});
+</pre>
+        </div>
+        <div class="col good"><b>Хорошо: submit на форме</b>
+          <p>Срабатывает при любом способе отправки: мышь, Enter, кнопка на телефоне.</p>
+<pre class="code">
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  // ...
+});
+</pre>
+        </div>
+      </div>
+
+      <h3>Полезные детали</h3>
+      <dl class="terms">
+        <dt><code>event.target</code></dt><dd>В событии <code>submit</code> это сама форма. Значит, поля можно взять как <code>event.target.elements.email</code> — обработчик не зависит от переменной снаружи.</dd>
+        <dt><code>form.reset()</code></dt><dd>Возвращает все поля к начальным значениям (тем, что записаны в атрибутах <code>value</code> / <code>checked</code>, или пустым). Вызываем после успешной отправки.</dd>
+        <dt><code>form.dispatchEvent(new Event("submit", { cancelable: true }))</code></dt><dd>Вручную «стреляет» событием <code>submit</code>. Так мы имитируем нажатие «Отправить» в примерах и задачах: учебная песочница блокирует настоящую отправку форм, поэтому обычный <code>form.requestSubmit()</code> (он нажимает кнопку сам) здесь не сработает. На обычном сайте вы кликаете по кнопке или вызываете именно <code>requestSubmit()</code>.</dd>
+        <dt><code>&lt;button type="button"&gt;</code></dt><dd>Кнопка внутри формы <b>по умолчанию отправляет её</b>. Если кнопка нужна для другого (например, «показать пароль»), пишите <code>type="button"</code>.</dd>
+        <dt><code>novalidate</code></dt><dd>Атрибут формы: отключает встроенную проверку браузера, чтобы работала ваша собственная (раздел 4).</dd>
+      </dl>
+
+      <div class="callout warn">
+        <b>Типичный баг: читаем значение слишком рано</b>
+        <p>Значение поля меняется, пока человек печатает. Поэтому читать его надо <b>в момент события</b>, внутри обработчика. Если прочитать один раз в начале скрипта, вы получите то, что было в поле при загрузке страницы (чаще всего — пустую строку).</p>
+      </div>
+<pre class="code" data-run data-title="Баг: пустой email">
+document.body.innerHTML = `&lt;form&gt;&lt;input name="email"&gt;&lt;/form&gt;`;
+const form = document.querySelector("form");
+
+const email = form.elements.email.value;   // ✖ прочитали сразу — там ещё пусто
+
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  console.log("email:", "[" + email + "]");
+});
+
+form.elements.email.value = "madina@mail.tj";  // «пользователь» вписал адрес
+form.dispatchEvent(new Event("submit", { cancelable: true }));                          // → email: []
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Официант в чайхоне записывает заказ не тогда, когда вы только сели за стол, а когда вы сказали «можно заказывать». Значения в форме читаем так же — в момент отправки, а не заранее.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/forms-submit" target="_blank" rel="noopener">Отправка формы: событие и метод submit</a> · <a href="https://learn.javascript.ru/events-change-input" target="_blank" rel="noopener">События change, input, cut, copy, paste</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Во всех задачах скрипт сам «заполняет» поля и вызывает событие <code>submit</code> — вам нужно написать обработчик.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Заявка принята</h4><span class="level easy">лёгкая</span></header>
+          <p>Добавьте форме обработчик <code>submit</code>: он отменяет отправку по умолчанию и выводит строку с именем и телефоном, которые сейчас лежат в полях.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="fullName" value="Рустам"&gt;
+    &lt;input name="phone" value="+992927771234"&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+
+// добавьте обработчик submit здесь
+
+
+form.dispatchEvent(new Event("submit", { cancelable: true }));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Заявка принята: Рустам, +992927771234</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>form.addEventListener("submit", (event) =&gt; { ... })</code> — а первой строкой внутри <code>event.preventDefault()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Значения читайте внутри обработчика: <code>form.elements.fullName.value</code> и <code>form.elements.phone.value</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Найди баг: город пропал</h4><span class="level easy">лёгкая</span></header>
+          <p>Пользователь вписал «Худжанд», но обработчик печатает пустой город. Найдите причину и исправьте. Две последние строки скрипта (заполнение и отправка) менять нельзя.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;form&gt;&lt;input name="city"&gt;&lt;/form&gt;`;
+const form = document.querySelector("form");
+
+const city = form.elements.city.value;
+
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  console.log("Город:", city);
+});
+
+form.elements.city.value = "Худжанд";   // не менять
+form.dispatchEvent(new Event("submit", { cancelable: true }));                    // не менять
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Город: Худжанд</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Когда выполняется строка <code>const city = ...</code>? До того, как значение поля поменяли.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Перенесите чтение значения внутрь обработчика <code>submit</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Форма входа</h4><span class="level mid">средняя</span></header>
+          <p>Напишите обработчик формы входа. Логин нужно очистить от пробелов по краям (<code>trim()</code>). Если логин или пароль пустые — выведите <code>Ошибка: заполните все поля</code>. Иначе выведите <code>Вход выполнен: логин</code>, сбросьте форму и сообщите, пустое ли после этого поле логина.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="login"&gt;
+    &lt;input name="password" type="password"&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+
+// обработчик submit
+
+
+function submitWith(login, password) {
+  form.elements.login.value = login;
+  form.elements.password.value = password;
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+}
+
+submitWith("", "12345");
+submitWith("  madina  ", "");
+submitWith("  madina  ", "qwerty1");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Ошибка: заполните все поля
+Ошибка: заполните все поля
+Вход выполнен: madina
+Логин после сброса: пусто</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Порядок: <code>preventDefault</code> → прочитать и <code>trim()</code> логин → прочитать пароль → проверка <code>if (!login || !password)</code> → <code>return</code> после сообщения об ошибке.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>После успешного входа: <code>form.reset()</code>, затем <code>console.log("Логин после сброса:", form.elements.login.value === "" ? "пусто" : "заполнено")</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="formdata">
+      <h2 data-toc="FormData"><span class="num">03</span> <code>FormData</code>: собираем все поля разом</h2>
+
+      <p>Если в форме 10 полей, читать их по одному через <code>.value</code> — скучно и легко что-то забыть. Для этого в браузере есть встроенный объект <code>FormData</code>: вы отдаёте ему форму, а он сам обходит все поля с атрибутом <code>name</code> и собирает их «имя → значение».</p>
+
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="fullName" value="Мадина"&gt;
+    &lt;select name="city"&gt;
+      &lt;option value="dushanbe" selected&gt;Душанбе&lt;/option&gt;
+      &lt;option value="khujand"&gt;Худжанд&lt;/option&gt;
+    &lt;/select&gt;
+    &lt;input type="checkbox" name="skills" value="css" checked&gt;
+    &lt;input type="checkbox" name="skills" value="js" checked&gt;
+    &lt;input type="checkbox" name="skills" value="git"&gt;
+    &lt;input type="checkbox" name="agree" checked&gt;
+    &lt;input type="checkbox" name="news"&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+const data = new FormData(form);
+
+console.log(data.get("fullName"));    // Мадина — одно значение по имени
+console.log(data.getAll("skills"));   // ["css", "js"] — все значения одного имени
+console.log(data.has("news"));        // false — чекбокс без галочки в FormData не попадает
+console.log(data.get("agree"));       // "on" — у чекбокса без атрибута value значение "on"
+
+for (const [key, value] of data) {    // FormData можно перебрать как пары «ключ, значение»
+  console.log(key, "=", value);
+}
+</pre>
+
+      <p>Из <code>FormData</code> легко получить привычный объект — он пригодится, чтобы сохранить данные или показать их пользователю (упакованный в JSON, как на уроке 7):</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="fullName" value="Мадина"&gt;
+    &lt;input name="age" type="number" value="19"&gt;
+  &lt;/form&gt;`;
+
+const data = new FormData(document.querySelector("form"));
+const obj = Object.fromEntries(data);   // { fullName: "Мадина", age: "19" }
+
+console.log(JSON.stringify(obj));
+console.log(typeof obj.age);   // string — все значения по-прежнему строки!
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Это как почтовый курьер, который забирает из офиса все заполненные бланки одним пакетом. Но в пакет он берёт только бланки с <b>подписью</b> (<code>name</code>) и только те, которые <b>заполнены</b>. Поле без <code>name</code> — безымянный бланк, его курьер не возьмёт.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Что не попадает в <code>FormData</code></b>
+        <ul>
+          <li>поля <b>без атрибута <code>name</code></b>;</li>
+          <li>поля с атрибутом <code>disabled</code> (для «только чтения» используйте <code>readonly</code>);</li>
+          <li><b>чекбоксы и радиокнопки без галочки</b> — их ключа в данных просто нет. Если нужно <code>false</code>, берите <code>checked</code> напрямую: <code>form.elements.news.checked</code>.</li>
+        </ul>
+        <p>А ещё <code>Object.fromEntries</code> оставляет только <b>последнее</b> значение для повторяющихся имён (<code>skills</code>), поэтому для групп чекбоксов используйте <code>data.getAll("skills")</code>.</p>
+      </div>
+
+      <p>Позже, когда мы дойдём до работы с сервером, этот же объект <code>FormData</code> можно будет отправить на сервер как есть. А пока наша цель — собрать данные и убедиться, что они правильные.</p>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/formdata" target="_blank" rel="noopener">FormData</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/FormData" target="_blank" rel="noopener">MDN: FormData</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Три задачи — от простого чтения до функции, которая превращает форму в готовый объект.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Три значения из FormData</h4><span class="level easy">лёгкая</span></header>
+          <p>Создайте <code>FormData</code> из формы и выведите имя, email и город — каждое в своей строке.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="fullName" value="Зарина Ахмедова"&gt;
+    &lt;input name="email" value="zarina@mail.tj"&gt;
+    &lt;select name="city"&gt;
+      &lt;option value="dushanbe" selected&gt;Душанбе&lt;/option&gt;
+      &lt;option value="khujand"&gt;Худжанд&lt;/option&gt;
+    &lt;/select&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+
+// создайте FormData и выведите три значения через data.get(...)
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Имя: Зарина Ахмедова
+Email: zarina@mail.tj
+Город: dushanbe</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>const data = new FormData(form);</code> — форма передаётся в скобках.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>data.get("email")</code> вернёт значение поля с <code>name="email"</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Почини форму: пропавшие поля</h4><span class="level mid">средняя</span></header>
+          <p>Из трёх полей в <code>FormData</code> попало только одно. Исправьте <b>HTML формы</b> (не JS), чтобы в итоговом объекте было три поля: <code>fullName</code>, <code>phone</code> и <code>agree</code>. Телефон должен остаться нередактируемым для пользователя, но попадать в данные.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input value="Далер"&gt;
+    &lt;input name="phone" value="+992900000000" disabled&gt;
+    &lt;input type="checkbox" name="agree" checked&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+console.log(JSON.stringify(Object.fromEntries(new FormData(form))));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"fullName":"Далер","phone":"+992900000000","agree":"on"}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первому полю не хватает одного атрибута, который даёт ему «имя» в данных формы.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>У второго поля замените <code>disabled</code> на <code>readonly</code>: оно по-прежнему нередактируемое, но уже участвует в отправке.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Функция readForm</h4><span class="level hard">сложная</span></header>
+          <p>Напишите функцию <code>readForm(form)</code>, которая возвращает объект с такими полями в таком порядке: <code>fullName</code> (строка), <code>age</code> (<b>число</b>), <code>skills</code> (<b>массив</b> отмеченных навыков), <code>agree</code> и <code>news</code> (<b>true/false</b>).</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="fullName" value="Рустам"&gt;
+    &lt;input name="age" type="number" value="21"&gt;
+    &lt;input type="checkbox" name="skills" value="html" checked&gt;
+    &lt;input type="checkbox" name="skills" value="css"&gt;
+    &lt;input type="checkbox" name="skills" value="js" checked&gt;
+    &lt;input type="checkbox" name="agree" checked&gt;
+    &lt;input type="checkbox" name="news"&gt;
+  &lt;/form&gt;`;
+
+function readForm(form) {
+  // верните объект { fullName, age, skills, agree, news }
+}
+
+console.log(JSON.stringify(readForm(document.querySelector("form"))));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"fullName":"Рустам","age":21,"skills":["html","js"],"agree":true,"news":false}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Начните с <code>const data = new FormData(form);</code>. Строку и массив берите оттуда: <code>data.get(...)</code> и <code>data.getAll(...)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Возраст — <code>Number(data.get("age"))</code>. Чекбоксы в <code>FormData</code> могут отсутствовать, поэтому для них надёжнее <code>form.elements.agree.checked</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="html-validation">
+      <h2 data-toc="Встроенная валидация"><span class="num">04</span> Встроенная валидация браузера</h2>
+
+      <p><b>Валидация</b> — это проверка, что данные подходят: поле не пустое, email похож на email, возраст в разумных пределах. У браузера уже есть готовая проверка — её включают атрибуты HTML, а JavaScript может её опросить.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Атрибут</th><th>Что проверяет</th><th>Пример</th></tr></thead>
+          <tbody>
+            <tr><td><code>required</code></td><td>Поле обязательно</td><td><code>&lt;input required&gt;</code></td></tr>
+            <tr><td><code>type="email"</code>, <code>url</code></td><td>Формат адреса (есть <code>@</code>, есть домен)</td><td><code>&lt;input type="email"&gt;</code></td></tr>
+            <tr><td><code>min</code>, <code>max</code></td><td>Границы числа (и даты)</td><td><code>&lt;input type="number" min="16" max="70"&gt;</code></td></tr>
+            <tr><td><code>minlength</code>, <code>maxlength</code></td><td>Длина текста</td><td><code>&lt;input minlength="2" maxlength="30"&gt;</code></td></tr>
+            <tr><td><code>pattern</code></td><td>Текст подходит под шаблон (регулярное выражение — раздел 5)</td><td><code>&lt;input pattern="[0-9]{4}"&gt;</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Попробуйте прямо в превью: оставьте поле пустым или впишите «ali@» и нажмите «Отправить». Браузер сам покажет всплывающую подсказку и не пропустит форму дальше.</p>
+
+<div class="playground" data-mode="dom" data-title="Встроенная валидация">
+<pre class="code" data-lang="html">
+&lt;form id="f"&gt;
+  &lt;label&gt;Имя &lt;input name="fullName" required&gt;&lt;/label&gt;
+  &lt;label&gt;Email &lt;input name="email" type="email" required&gt;&lt;/label&gt;
+  &lt;label&gt;Возраст &lt;input name="age" type="number" min="16" max="70"&gt;&lt;/label&gt;
+  &lt;button&gt;Отправить&lt;/button&gt;
+&lt;/form&gt;
+</pre>
+<pre class="code" data-lang="css">
+form { display: grid; gap: 10px; max-width: 320px; }
+label { display: grid; gap: 4px; font-size: 14px; }
+input, button { padding: 6px 8px; font: inherit; }
+/* :user-invalid подсвечивает поле только ПОСЛЕ того, как пользователь с ним поработал */
+input:user-invalid { border: 2px solid #d33; background: #fff0f0; }
+input:user-valid { border: 2px solid #2a9d5c; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#f");
+
+// Песочница блокирует настоящую отправку, поэтому «Отправить» обрабатываем по клику.
+// На обычной странице вместо этого пишут form.addEventListener("submit", ...)
+form.querySelector("button").addEventListener("click", (event) =&gt; {
+  event.preventDefault();
+  if (form.reportValidity()) {          // показывает подсказки браузера, если что-то не так
+    console.log("Форма прошла проверку браузера");
+  }
+});
+</pre>
+</div>
+
+      <h3>Спросим у браузера из JavaScript</h3>
+      <p>У каждого поля есть методы и свойства, которые сообщают результат встроенной проверки:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="email" type="email" required value="madina@"&gt;
+  &lt;/form&gt;`;
+
+const email = document.querySelector("[name=email]");
+
+console.log(email.checkValidity());          // false — поле не проходит проверку
+console.log(email.validity.valid);           // false — то же самое, но как свойство
+console.log(email.validity.typeMismatch);    // true — «тип не тот»: это не email
+console.log(email.validity.valueMissing);    // false — поле не пустое
+
+email.value = "madina@mail.tj";
+console.log(email.checkValidity());          // true — теперь всё хорошо
+</pre>
+
+      <dl class="terms">
+        <dt><code>checkValidity()</code></dt><dd>Возвращает <code>true</code> / <code>false</code>. У формы проверяет все её поля сразу.</dd>
+        <dt><code>reportValidity()</code></dt><dd>То же, но ещё и показывает пользователю всплывающую подсказку браузера.</dd>
+        <dt><code>validity</code></dt><dd>Объект с флагами причин: <code>valueMissing</code> (пусто при <code>required</code>), <code>typeMismatch</code> (не email/url), <code>patternMismatch</code> (не подошёл <code>pattern</code>), <code>rangeUnderflow</code> / <code>rangeOverflow</code> (меньше <code>min</code> / больше <code>max</code>), <code>tooShort</code> / <code>tooLong</code>, <code>customError</code>.</dd>
+        <dt><code>validationMessage</code></dt><dd>Текст ошибки на языке браузера пользователя. У одного человека он русский, у другого английский — управлять им нельзя.</dd>
+        <dt><code>setCustomValidity("текст")</code></dt><dd>Вручную объявляет поле невалидным с вашим сообщением. Пустая строка <code>""</code> снимает ошибку.</dd>
+      </dl>
+
+<pre class="code" data-run data-title="setCustomValidity: свои правила">
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="password" type="password" value="qwerty123"&gt;
+    &lt;input name="confirm" type="password" value="qwerty321"&gt;
+  &lt;/form&gt;`;
+
+const { password, confirm } = document.querySelector("form").elements;
+
+confirm.setCustomValidity(password.value === confirm.value ? "" : "Пароли не совпадают");
+
+console.log(confirm.checkValidity());        // false — пароли разные
+console.log(confirm.validationMessage);      // Пароли не совпадают
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Встроенная валидация — как охранник на входе в торговый центр: он смотрит на очевидное (есть ли билет, не пустой ли пропуск), но не знает правил вашего магазина. Он не скажет «Вам нужен именно таджикский номер с кодом +992» и не объяснит причину отказа на понятном вам языке и в нужном месте страницы. Для этого нужна собственная проверка.</p>
+      </div>
+
+      <h3>Чего не хватает встроенной валидации</h3>
+      <ul>
+        <li><b>Тексты ошибок</b> — на языке и в стиле браузера, их не оформить по дизайну сайта.</li>
+        <li><b>Один пузырёк за раз</b> — человек видит только первую ошибку, а не все сразу.</li>
+        <li><b>Сложные правила</b> — «пароли совпадают», «телефон только таджикский» требуют своего кода.</li>
+        <li><b>Живая проверка</b> по ходу ввода — «красиво» без своего JavaScript не получится.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Нюансы</b>
+        <p>1) <code>minlength</code> и <code>maxlength</code> проверяются только когда значение вводит <b>человек</b>. Если записать <code>input.value = "a"</code> из JavaScript, флаг <code>tooShort</code> не сработает. 2) Все проверки браузера и ваш JS на странице легко обойти (достаточно открыть DevTools), поэтому <b>на настоящем сайте данные проверяют ещё и на сервере</b>. Проверка в браузере — это удобство для человека, а не защита.</p>
+      </div>
+
+      <p>Поэтому на практике делают так: ставят базовые атрибуты (<code>required</code>, <code>type</code>) ради подсказок мобильной клавиатуры, а саму проверку и тексты ошибок пишут в JavaScript и отключают браузерные пузырьки атрибутом <code>novalidate</code> на форме:</p>
+<pre class="code" data-lang="html">
+&lt;form id="reg" novalidate&gt;
+  &lt;input name="email" type="email" required&gt;
+&lt;/form&gt;
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/ru/docs/Learn_web_development/Extensions/Forms/Form_validation" target="_blank" rel="noopener">MDN: валидация форм на стороне клиента</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/ValidityState" target="_blank" rel="noopener">MDN: ValidityState</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Опрашиваем браузер и учимся переключаться на собственную проверку.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Кто невалиден</h4><span class="level easy">лёгкая</span></header>
+          <p>В форме четыре поля. Пройдите по <code>form.elements</code> и выведите одной строкой имена полей, которые <b>не</b> проходят проверку браузера, через запятую.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="fullName" required value=""&gt;
+    &lt;input name="email" type="email" value="madina@"&gt;
+    &lt;input name="age" type="number" min="16" max="70" value="15"&gt;
+    &lt;input name="phone" pattern="\\+992[0-9]{9}" value="+992927771234"&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+const bad = [];
+
+// пройдите по form.elements и наполните массив bad именами невалидных полей
+
+console.log("Невалидные поля: " + bad.join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Невалидные поля: fullName, email, age</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>for (const field of form.elements) { ... }</code> — перебирает все поля формы по очереди.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри цикла: <code>if (!field.checkValidity()) bad.push(field.name);</code></p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Почему невалидно</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>reasonOf(input)</code>. Она смотрит на флаги <code>validity</code> и возвращает причину: <code>"пусто"</code> (<code>valueMissing</code>), <code>"не email"</code> (<code>typeMismatch</code>), <code>"слишком мало"</code> (<code>rangeUnderflow</code>), <code>"не по шаблону"</code> (<code>patternMismatch</code>) или <code>"ок"</code>, если поле валидно.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;input id="a" required value=""&gt;
+  &lt;input id="b" type="email" value="ali.mail.tj"&gt;
+  &lt;input id="c" type="number" min="16" value="12"&gt;
+  &lt;input id="d" pattern="[0-9]{4}" value="12ab"&gt;
+  &lt;input id="e" required value="всё хорошо"&gt;`;
+
+function reasonOf(input) {
+  // верните одну из пяти строк
+}
+
+for (const id of ["a", "b", "c", "d", "e"]) {
+  console.log(id + ": " + reasonOf(document.getElementById(id)));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>a: пусто
+b: не email
+c: слишком мало
+d: не по шаблону
+e: ок</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Флаги лежат в <code>input.validity</code>. Проверяйте по очереди: <code>if (input.validity.valueMissing) return "пусто";</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>После четырёх проверок с ранним <code>return</code> последняя строка функции — <code>return "ок";</code></p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Валидна ли форма целиком</h4><span class="level easy">лёгкая</span></header>
+          <p>В форме есть обязательное поле «Имя» и корректный email. Выведите результат <code>checkValidity()</code> <b>формы</b> до заполнения имени, затем впишите имя «Мадина» и выведите результат ещё раз.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form&gt;
+    &lt;input name="fullName" required&gt;
+    &lt;input name="email" type="email" value="madina@mail.tj"&gt;
+  &lt;/form&gt;`;
+
+const form = document.querySelector("form");
+
+// 1) выведите form.checkValidity()
+// 2) впишите имя в поле fullName
+// 3) выведите form.checkValidity() ещё раз
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>false
+true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>У самой формы есть тот же метод, что и у поля: <code>form.checkValidity()</code> — он проверяет все поля сразу.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Значение задаётся так: <code>form.elements.fullName.value = "Мадина";</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="regex">
+      <h2 data-toc="Регулярные выражения"><span class="num">05</span> Регулярные выражения для новичков</h2>
+
+      <p><b>Регулярное выражение</b> (regex, «регэксп») — это короткий <b>шаблон</b>, который описывает, как должна выглядеть строка. «Только цифры», «начинается с +992 и дальше девять цифр», «латинские буквы и подчёркивание» — всё это записывается одной строчкой. Для проверки форм это незаменимый инструмент.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Портной снимает мерки и вырезает ткань по <b>лекалу</b>: деталь либо точно ложится на лекало, либо нет. Регулярное выражение — лекало для текста. Вы описываете форму один раз, а компьютер прикладывает к ней любую строку и отвечает «подходит» или «не подходит».</p>
+      </div>
+
+<pre class="code" data-run>
+const onlyDigits = /^\d+$/;          // между слэшами — шаблон
+
+console.log(onlyDigits.test("12345"));  // true  — подходит
+console.log(onlyDigits.test("12a45"));  // false — есть буква
+console.log(onlyDigits.test(""));       // false — пусто (нужна хотя бы одна цифра)
+</pre>
+      <p>Регулярное выражение записывается между двумя слэшами <code>/.../</code>. Метод <code>.test(строка)</code> возвращает <code>true</code>, если строка подходит под шаблон, иначе — <code>false</code>. Теперь разберём «буквы» этого языка.</p>
+
+      <h3>Алфавит регулярок: всего несколько символов</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Запись</th><th>Значение</th><th>Пример</th></tr></thead>
+          <tbody>
+            <tr><td><code>abc</code></td><td>Обычные символы значат сами себя</td><td><code>/tj/</code> найдёт «tj»</td></tr>
+            <tr><td><code>\d</code></td><td>Одна цифра (0–9)</td><td><code>/\d/</code> подходит к «a1»</td></tr>
+            <tr><td><code>\D</code></td><td>Один символ, который НЕ цифра</td><td><code>/\D/</code> подходит к «a1»</td></tr>
+            <tr><td><code>\s</code></td><td>Пробельный символ: пробел, таб, перевод строки</td><td><code>/\s/</code> подходит к «a b»</td></tr>
+            <tr><td><code>.</code></td><td>Любой один символ</td><td><code>/a.c/</code> подходит к «abc», «a-c»</td></tr>
+            <tr><td><code>[abc]</code></td><td>Один символ из списка</td><td><code>/[аеи]/</code> — одна из трёх гласных</td></tr>
+            <tr><td><code>[a-z]</code>, <code>[0-9]</code></td><td>Один символ из диапазона</td><td><code>/[a-zA-Z]/</code> — любая латинская буква</td></tr>
+            <tr><td><code>[^abc]</code></td><td>Один символ, которого НЕТ в списке</td><td><code>/[^\s@]/</code> — не пробел и не «@»</td></tr>
+            <tr><td><code>^</code> и <code>$</code></td><td>Начало и конец <b>всей строки</b></td><td><code>/^\d+$/</code> — вся строка из цифр</td></tr>
+            <tr><td><code>+</code></td><td>Предыдущее — один раз или больше</td><td><code>/\d+/</code> — число из любого количества цифр</td></tr>
+            <tr><td><code>*</code></td><td>Предыдущее — ноль раз или больше</td><td><code>/ab*/</code> — «a», «ab», «abbb»</td></tr>
+            <tr><td><code>?</code></td><td>Предыдущее — один раз или ни разу</td><td><code>/\+?\d+/</code> — плюс не обязателен</td></tr>
+            <tr><td><code>{4}</code>, <code>{3,16}</code></td><td>Ровно 4 раза / от 3 до 16 раз</td><td><code>/\d{9}/</code> — девять цифр</td></tr>
+            <tr><td><code>\+</code>, <code>\.</code></td><td>Слэш перед спецсимволом: ищем сам символ</td><td><code>\.</code> — именно точка, а не «любой символ»</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Читаем регулярку по частям</h3>
+      <p>Номер телефона в Таджикистане: <code>+992</code> и девять цифр. Разберём шаблон слева направо:</p>
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="начало строки">^</span>
+          <span class="part p2" data-label="сам символ «+»">\+</span><span class="part p3" data-label="код страны">992</span>
+          <span class="part p4" data-label="9 цифр подряд">\d{9}</span>
+          <span class="part p5" data-label="конец строки">$</span>
+        </div>
+        <figcaption><code>/^\+992\d{9}$/</code> — строка начинается с «+992», дальше ровно девять цифр, и больше ничего</figcaption>
+      </figure>
+
+<pre class="code" data-run>
+const phone = /^\+992\d{9}$/;
+
+console.log(phone.test("+992927771234"));    // true
+console.log(phone.test("+99292777123"));     // false — только 8 цифр
+console.log(phone.test("+9929277712345"));   // false — 10 цифр, лишняя
+console.log(phone.test("927771234"));        // false — нет кода страны
+</pre>
+
+      <h3>Якоря <code>^</code> и <code>$</code>: самая частая ошибка</h3>
+      <p>Без <code>^</code> и <code>$</code> регулярка ищет подходящий <b>кусочек внутри</b> строки — и пропускает мусор вокруг:</p>
+<pre class="code" data-run data-title="Баг: забыли якоря">
+const bad  = /\d{4}/;      // «где-то в строке есть 4 цифры подряд»
+const good = /^\d{4}$/;    // «вся строка — ровно 4 цифры»
+
+console.log(bad.test("abc1234xyz"));   // true  ← ✖ пропустили мусор
+console.log(good.test("abc1234xyz"));  // false ← так правильно
+console.log(good.test("1234"));        // true
+</pre>
+
+      <h3>Флаги и замена: чистим ввод</h3>
+      <p>После закрывающего слэша можно ставить <b>флаги</b>: <code>i</code> — не различать большие и маленькие буквы, <code>g</code> — искать все совпадения, а не только первое. С методом <code>replace</code> это удобный способ почистить телефон от пробелов и дефисов:</p>
+<pre class="code" data-run>
+const raw = "+992 92 777-12-34";
+const clean = raw.replace(/[\s-]/g, "");   // убираем все пробелы и дефисы
+console.log(clean);                        // +992927771234
+
+console.log(/^tj$/i.test("TJ"));           // true — регистр не важен из-за флага i
+console.log("a1b22c333".replace(/\D/g, ""));  // 122333 — оставили только цифры
+</pre>
+
+      <h3>Готовые шаблоны для форм</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что проверяем</th><th>Регулярка</th><th>Как читать</th></tr></thead>
+          <tbody>
+            <tr><td>Телефон <b>+992</b></td><td><code>/^\+992\d{9}$/</code></td><td>«+992» и ровно 9 цифр</td></tr>
+            <tr><td>Логин</td><td><code>/^[a-zA-Z][a-zA-Z0-9_]{2,15}$/</code></td><td>первая — латинская буква, дальше 2–15 букв, цифр или «_»: всего 3–16 символов</td></tr>
+            <tr><td>Email (простой)</td><td><code>/^[^\s@]+@[^\s@]+\.[^\s@]+$/</code></td><td>что-то без пробелов и «@», затем «@», затем снова такое же, затем точка и ещё что-то</td></tr>
+            <tr><td>Есть цифра</td><td><code>/\d/</code></td><td>где-то в строке встречается цифра (якоря не нужны!)</td></tr>
+            <tr><td>Есть заглавная буква</td><td><code>/[A-Z]/</code></td><td>где-то есть латинская заглавная</td></tr>
+            <tr><td>Имя на кириллице</td><td><code>/^[А-Яа-яЁё\s-]+$/</code></td><td>только русские буквы (<code>Ё</code> и <code>ё</code> нужно добавить отдельно), пробелы и дефис</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>Что нужно знать про регулярки</b>
+        <ul>
+          <li><b>Якоря.</b> Проверяете «вся строка такая» — ставьте <code>^</code> и <code>$</code>. Ищете «содержит» — не ставьте.</li>
+          <li><b>Не угадывайте, проверяйте.</b> Регулярка — это код. Прогоните её на 5–10 примерах: подходящих и нет (в разделе про ИИ мы сделаем это системно).</li>
+          <li><b>Не усложняйте.</b> Идеального выражения для email не существует, а «идеальные» занимают три строки, и никто их не понимает. Достаточно простой проверки формата. Что адрес реально существует, проверяют письмом с кодом, а не регуляркой.</li>
+          <li><b>Кириллица и <code>\w</code>.</b> Шаблон <code>\w</code> (буквы, цифры, «_») понимает только латиницу. Для русских и таджикских букв пишите диапазоны явно и проверяйте на реальных именах.</li>
+        </ul>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/regexp-introduction" target="_blank" rel="noopener">Шаблоны и флаги</a> · <a href="https://learn.javascript.ru/regexp-anchors" target="_blank" rel="noopener">Якоря: начало ^ и конец $</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Guide/Regular_expressions" target="_blank" rel="noopener">MDN: регулярные выражения</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Пишем свои шаблоны. Во всех задачах результат проверяется на фиксированном наборе строк.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Только цифры</h4><span class="level easy">лёгкая</span></header>
+          <p>Замените тройку подчёркиваний на шаблон «вся строка состоит минимум из одной цифры».</p>
+<pre class="code" data-run>
+const onlyDigits = /___/;
+
+for (const s of ["12345", "12a45", "", "007"]) {
+  console.log("[" + s + "] → " + onlyDigits.test(s));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>[12345] → true
+[12a45] → false
+[] → false
+[007] → true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужны якоря начала и конца строки и «цифра, один раз или больше».</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>/^\d+$/</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Телефон с пробелами</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>isPhone(value)</code>: сначала она убирает из строки все пробелы и дефисы, затем проверяет, что получился номер вида <code>+992</code> и девять цифр.</p>
+<pre class="code" data-run>
+function isPhone(value) {
+  // 1) очистите value   2) проверьте шаблон
+}
+
+const tests = ["+992927771234", "+992 92 777-12-34", "927771234", "+99292777123", "+992abc771234", ""];
+for (const t of tests) {
+  console.log("[" + t + "] → " + isPhone(t));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>[+992927771234] → true
+[+992 92 777-12-34] → true
+[927771234] → false
+[+99292777123] → false
+[+992abc771234] → false
+[] → false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Очистка: <code>value.replace(/[\s-]/g, "")</code> — флаг <code>g</code> нужен, чтобы убрать <b>все</b> пробелы, а не только первый.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Шаблон — из раздела выше: <code>/^\+992\d{9}$/</code>. Функция возвращает результат <code>.test(...)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Правила для логина</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>isLogin(value)</code>. Логин подходит, если он состоит только из латинских букв, цифр и «_», <b>начинается с буквы</b> и имеет длину от 3 до 16 символов.</p>
+<pre class="code" data-run>
+function isLogin(value) {
+  // верните true или false
+}
+
+const tests = ["madina_01", "Rustam", "1madina", "ma", "madina-01", "Shahrom_Komilov_2024_x"];
+for (const t of tests) {
+  console.log(t + " → " + isLogin(t));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>madina_01 → true
+Rustam → true
+1madina → false
+ma → false
+madina-01 → false
+Shahrom_Komilov_2024_x → false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Шаблон из двух частей: первая буква <code>[a-zA-Z]</code>, остальные — <code>[a-zA-Z0-9_]</code> с количеством. Сколько «остальных» должно быть, если вся длина 3–16?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return /^[a-zA-Z][a-zA-Z0-9_]{2,15}$/.test(value);</code></p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>Найди баг: индекс из шести цифр</h4><span class="level easy">лёгкая</span></header>
+          <p>Почтовый индекс — ровно шесть цифр. Регулярка пропускает лишнее. Исправьте её, чтобы все четыре строки дали правильный ответ.</p>
+<pre class="code" data-run>
+const zip = /\d{6}/;
+
+for (const s of ["734025", "73402", "7340256", "ab734025"]) {
+  console.log(s + " → " + zip.test(s));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>734025 → true
+73402 → false
+7340256 → false
+ab734025 → false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сейчас шаблон ищет шесть цифр где-то <b>внутри</b> строки. Нужно сказать, что строка состоит только из них.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавьте якоря: <code>/^\d{6}$/</code></p></details>
+        </article>
+
+        <article class="task" id="t5-5">
+          <header><span class="task-num">ЗАДАЧА 5.5</span><h4>Сила пароля</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>passwordStrength(p)</code>. Пароль получает по баллу за каждое выполненное условие: длина от 8 символов; есть строчная латинская буква; есть заглавная латинская буква; есть цифра; есть спецсимвол из набора <code>!@#$%^&amp;*</code>. Результат: 0–2 балла — <code>слабый</code>, 3–4 — <code>средний</code>, 5 — <code>сильный</code>.</p>
+<pre class="code" data-run>
+function passwordStrength(p) {
+  let points = 0;
+  // добавляйте к points по 1 за каждое условие
+
+  // верните "слабый", "средний" или "сильный"
+}
+
+for (const p of ["", "abc", "12345678", "madina123", "Madina2024", "Madina2024!"]) {
+  console.log("[" + p + "] → " + passwordStrength(p));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>[] → слабый
+[abc] → слабый
+[12345678] → слабый
+[madina123] → средний
+[Madina2024] → средний
+[Madina2024!] → сильный</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Пять отдельных <code>if</code>: <code>if (p.length &gt;= 8) points++;</code>, <code>if (/[a-z]/.test(p)) points++;</code> и так далее. Здесь якоря не нужны — мы ищем «содержит».</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Спецсимволы: <code>/[!@#$%^&amp;*]/</code>. В конце: <code>if (points &lt;= 2) return "слабый"; if (points &lt;= 4) return "средний"; return "сильный";</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="own-validation">
+      <h2 data-toc="Своя валидация"><span class="num">06</span> Своя валидация: функции-валидаторы и тексты ошибок</h2>
+
+      <p>Теперь у нас есть всё, чтобы написать собственную проверку. Рецепт простой и работает для любой формы:</p>
+      <ol class="steps">
+        <li><b>Один валидатор на поле.</b> Это функция, которая принимает значение и возвращает <b>текст ошибки</b> — или пустую строку <code>""</code>, если всё хорошо.</li>
+        <li><b>Собираем в объект.</b> <code>{ fullName: validateName, email: validateEmail, ... }</code> — по ключу видно, какой валидатор к какому полю.</li>
+        <li><b>Показываем ошибки.</b> Текст — в <code>&lt;span&gt;</code> под полем, а само поле помечаем красной рамкой и атрибутом <code>aria-invalid</code>.</li>
+        <li><b>Не отправляем</b>, пока есть хоть одна ошибка.</li>
+      </ol>
+
+      <h3>Шаг 1: валидатор — это функция «значение → текст ошибки»</h3>
+<pre class="code" data-run>
+function validateEmail(value) {
+  const email = value.trim();                       // убираем пробелы по краям
+  if (email === "") return "Введите email";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return "Похоже, в адресе ошибка. Пример: madina@mail.tj";
+  }
+  return "";                                        // пустая строка = ошибок нет
+}
+
+console.log("[" + validateEmail("") + "]");
+console.log("[" + validateEmail("madina@") + "]");
+console.log("[" + validateEmail("  madina@mail.tj ") + "]");
+</pre>
+      <p>Функция <b>только проверяет</b> и ничего не знает про страницу. Поэтому её легко тестировать (мы только что вызвали её с тремя примерами) и легко использовать повторно — на любой странице и с любым дизайном. Правило «функция считает, другая функция показывает» вы уже встречали на уроке 5.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Контролёр на входе в метро. Он не бежит за вами — он стоит у турникета и смотрит на билет. Если что-то не так, он <b>называет причину</b> («приложите карту», «не хватает денег»). Валидатор — тот же контролёр: на выходе либо «проходите» (<code>""</code>), либо понятная причина отказа.</p>
+      </div>
+
+      <h3>Какие тексты ошибок писать</h3>
+      <div class="cols">
+        <div class="col bad"><b>Плохо</b>
+          <p>«Ошибка!», «Неверное значение», «Invalid input», «Поле заполнено неверно». Человек не понимает, <b>что</b> не так и <b>как</b> исправить.</p>
+        </div>
+        <div class="col good"><b>Хорошо</b>
+          <p>«Введите номер в формате +992 и 9 цифр», «Пароль — минимум 8 символов», «Пароли не совпадают». Сказано, чего ждём, и сразу виден пример.</p>
+        </div>
+      </div>
+      <ul>
+        <li>Говорите на «вы» и спокойно: не «Ты ввёл неправильно», а «Проверьте, пожалуйста, email».</li>
+        <li>Называйте <b>правило</b>, а не только факт ошибки: «минимум 2 буквы» полезнее, чем «слишком коротко».</li>
+        <li>Показывайте ошибку <b>рядом с полем</b>, а не одним окном <code>alert</code> вверху страницы.</li>
+        <li>Пустое обязательное поле и неверный формат — это <b>разные</b> сообщения: «Введите email» и «Неверный формат email».</li>
+      </ul>
+
+      <h3>Шаг 2: проверяем все поля сразу</h3>
+      <p>Когда валидаторов несколько, удобно держать их в объекте и пройти циклом. На выходе — объект ошибок: в нём есть ключи <b>только</b> у невалидных полей. Пустой объект — всё хорошо.</p>
+<pre class="code" data-run>
+const validators = {
+  fullName: (v) =&gt; (v.trim().length &lt; 2 ? "Введите имя (минимум 2 буквы)" : ""),
+  age: (v) =&gt; (Number(v) &gt;= 16 ? "" : "Курс с 16 лет"),
+};
+
+function validateAll(data) {
+  const errors = {};
+  for (const field in validators) {
+    const message = validators[field](data[field]);
+    if (message) errors[field] = message;
+  }
+  return errors;
+}
+
+console.log(JSON.stringify(validateAll({ fullName: "Мадина", age: "19" })));   // {}
+console.log(JSON.stringify(validateAll({ fullName: "М", age: "15" })));
+</pre>
+
+      <h3>Шаг 3: показываем ошибку на странице</h3>
+      <p>Каждое поле получает «место для ошибки» — пустой <code>&lt;span&gt;</code> рядом. При ошибке мы пишем в него текст, при её отсутствии — стираем. Всегда используйте <code>textContent</code>, а не <code>innerHTML</code>: ввод пользователя нельзя вставлять в страницу как HTML.</p>
+
+<div class="playground" data-mode="dom" data-title="Ошибки под полями">
+<pre class="code" data-lang="html">
+&lt;form id="f" novalidate&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="fullName"&gt;Имя&lt;/label&gt;
+    &lt;input id="fullName" name="fullName"&gt;
+    &lt;span class="error" data-error="fullName"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="age"&gt;Возраст&lt;/label&gt;
+    &lt;input id="age" name="age" inputmode="numeric"&gt;
+    &lt;span class="error" data-error="age"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;button&gt;Отправить&lt;/button&gt;
+&lt;/form&gt;
+</pre>
+<pre class="code" data-lang="css">
+form { display: grid; gap: 12px; max-width: 320px; }
+.field { display: grid; gap: 4px; }
+label { font-size: 14px; }
+input, button { padding: 6px 8px; font: inherit; }
+input.invalid { border: 2px solid #d33; background: #fff0f0; }
+.error { color: #c0392b; font-size: 13px; min-height: 1em; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#f");
+
+const validators = {
+  fullName: (v) =&gt; (v.trim().length &lt; 2 ? "Введите имя (минимум 2 буквы)" : ""),
+  age: (v) =&gt; (Number(v) &gt;= 16 ? "" : "Возраст — число от 16"),
+};
+
+function showError(name, message) {
+  const input = form.elements[name];
+  const box = form.querySelector(`[data-error="${name}"]`);
+  box.textContent = message;                               // пустая строка стирает ошибку
+  input.classList.toggle("invalid", message !== "");       // красная рамка
+  input.setAttribute("aria-invalid", message ? "true" : "false");  // для читалок экрана
+}
+
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  let firstBad = null;
+  for (const name in validators) {
+    const message = validators[name](form.elements[name].value);
+    showError(name, message);
+    if (message &amp;&amp; !firstBad) firstBad = form.elements[name];
+  }
+  if (firstBad) {
+    firstBad.focus();                 // ставим курсор в первое ошибочное поле
+    return;                           // дальше не идём — форма не отправляется
+  }
+  console.log("Отправлено:", JSON.stringify(Object.fromEntries(new FormData(form))));
+});
+
+// Песочница блокирует настоящую отправку формы, поэтому клик по кнопке превращаем в submit вручную
+// (на обычной странице эта вставка не нужна)
+form.querySelector("button").addEventListener("click", (event) =&gt; {
+  event.preventDefault();
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+});
+</pre>
+</div>
+      <p>Запустите, нажмите «Отправить» с пустыми полями, затем исправьте и отправьте снова. Обратите внимание на три детали: ошибки показываются <b>сразу у всех</b> полей, курсор встаёт в первое «плохое» поле, а у исправленного поля ошибка пропадает.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <ul>
+          <li><b>Забыли <code>trim()</code></b> — «  » (пробелы) считается непустым именем.</li>
+          <li><b>Сравниваем строку как число</b> — <code>"5" &lt; "16"</code> сравнит строки по символам. Сначала <code>Number(...)</code>.</li>
+          <li><b>Не стираем старую ошибку</b> — человек исправил поле, а красный текст остался. Поэтому <code>showError</code> всегда вызывается и для валидных полей — с пустой строкой.</li>
+          <li><b>Показываем ввод через <code>innerHTML</code></b> — открывает дыру для XSS. Только <code>textContent</code>.</li>
+          <li><b>Проверка только в браузере</b> — для настоящего сайта нужна ещё и серверная.</li>
+        </ul>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/focus-blur" target="_blank" rel="noopener">Фокусировка: focus/blur</a> · <a href="https://developer.mozilla.org/ru/docs/Learn_web_development/Extensions/Forms/Form_validation" target="_blank" rel="noopener">MDN: валидация форм с помощью JavaScript</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Пишем валидаторы — от одного поля до целой формы. Выводимые тексты ошибок сверяются буква в букву, поэтому копируйте их из условия.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Валидатор имени</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите <code>validateName(value)</code>. Пробелы по краям игнорируются. Пустое имя → <code>Введите имя</code>. Короче двух символов → <code>Имя слишком короткое</code>. Иначе — пустая строка.</p>
+<pre class="code" data-run>
+function validateName(value) {
+  // верните "" или текст ошибки
+}
+
+for (const v of ["", "   ", "А", "Мадина", "  Фарход  "]) {
+  console.log("[" + validateName(v) + "]");
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>[Введите имя]
+[Введите имя]
+[Имя слишком короткое]
+[]
+[]</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала <code>const name = value.trim();</code> — дальше работаем с очищенной строкой.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Две проверки с ранним <code>return</code>: <code>if (name === "") return "Введите имя";</code> и <code>if (name.length &lt; 2) return ...</code>. В конце — <code>return "";</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Валидатор возраста</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>validateAge(value)</code> — значение приходит строкой из поля. Правила в таком порядке: пустое (после <code>trim</code>) → <code>Введите возраст</code>; не число → <code>Возраст — это число</code>; меньше 16 → <code>Курс с 16 лет</code>; больше 70 → <code>Проверьте возраст</code>; иначе <code>""</code>.</p>
+<pre class="code" data-run>
+function validateAge(value) {
+  // не забудьте: Number("") равно 0, поэтому пустоту проверяем отдельно и первой
+}
+
+for (const v of ["", "abc", "15", "24", "99", " 30 "]) {
+  console.log("[" + validateAge(v) + "]");
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>[Введите возраст]
+[Возраст — это число]
+[Курс с 16 лет]
+[]
+[Проверьте возраст]
+[]</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Порядок: <code>const text = value.trim();</code> → пусто → <code>const age = Number(text);</code> → <code>Number.isNaN(age)</code> → границы.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>Number("abc")</code> даёт <code>NaN</code>, а проверить его можно только через <code>Number.isNaN(age)</code> (сравнение <code>age === NaN</code> всегда <code>false</code>).</p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Все проблемы пароля сразу</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>validatePassword(password, login)</code>, которая возвращает <b>массив</b> всех найденных проблем (в этом порядке): <code>Минимум 8 символов</code>; <code>Добавьте цифру</code> (нет ни одной цифры); <code>Без пробелов</code> (есть пробельный символ); <code>Не совпадает с логином</code> (пароль равен логину без учёта регистра). Если проблем нет — пустой массив.</p>
+<pre class="code" data-run>
+function validatePassword(password, login) {
+  const problems = [];
+  // добавляйте тексты в problems через push
+  return problems;
+}
+
+const tests = [["abc", "madina"], ["Madina", "madina"], ["pass word 1", "x"], ["qwerty123", "madina"]];
+for (const [p, l] of tests) {
+  console.log(validatePassword(p, l).join(" | ") || "ок");
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Минимум 8 символов | Добавьте цифру
+Минимум 8 символов | Добавьте цифру | Не совпадает с логином
+Без пробелов
+ок</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Четыре независимых <code>if</code> без <code>return</code>: каждый при необходимости добавляет свой текст в массив.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Цифра: <code>!/\d/.test(password)</code>. Пробел: <code>/\s/.test(password)</code>. Логин: <code>password.toLowerCase() === login.toLowerCase()</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ЗАДАЧА 6.4</span><h4>Проверяем форму целиком</h4><span class="level mid">средняя</span></header>
+          <p>Три валидатора уже написаны. Напишите <code>validateForm(data)</code>: она вызывает нужный валидатор для каждого поля из объекта <code>validators</code> и возвращает объект ошибок — с ключами только для невалидных полей.</p>
+<pre class="code" data-run>
+function validateName(v) {
+  return v.trim().length &lt; 2 ? "Введите имя" : "";
+}
+function validateEmail(v) {
+  if (v.trim() === "") return "Введите email";
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? "" : "Неверный email";
+}
+function validatePhone(v) {
+  return /^\+992\d{9}$/.test(v.replace(/[\s-]/g, "")) ? "" : "Телефон: +992 и 9 цифр";
+}
+
+const validators = { fullName: validateName, email: validateEmail, phone: validatePhone };
+
+function validateForm(data) {
+  // верните объект ошибок
+}
+
+const forms = [
+  { fullName: "Мадина", email: "madina@mail.tj", phone: "+992 92 777 12 34" },
+  { fullName: " ", email: "madina@", phone: "+992927771234" },
+  { fullName: "Фарход", email: "", phone: "927771234" },
+];
+for (const data of forms) console.log(JSON.stringify(validateForm(data)));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{}
+{"fullName":"Введите имя","email":"Неверный email"}
+{"email":"Введите email","phone":"Телефон: +992 и 9 цифр"}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Создайте <code>const errors = {};</code>, пройдите циклом <code>for (const field in validators)</code> и в конце верните <code>errors</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри цикла: <code>const message = validators[field](data[field]);</code> и <code>if (message) errors[field] = message;</code></p></details>
+        </article>
+
+        <article class="task" id="t6-5">
+          <header><span class="task-num">ЗАДАЧА 6.5</span><h4>Ошибки на странице</h4><span class="level hard">сложная</span></header>
+          <p>В скрипте не хватает двух частей. Напишите <code>showError(name, message)</code>: она пишет текст в <code>span[data-error="имя"]</code>, ставит или снимает класс <code>invalid</code> у поля и выставляет <code>aria-invalid</code> в <code>"true"</code> или <code>"false"</code>. Затем напишите обработчик <code>submit</code>: отмена отправки, проверка <b>всех</b> полей через <code>validators</code>, показ ошибок и при успехе <code>console.log("Отправлено")</code>. Блок «проверка» внизу не меняйте.</p>
+<div class="playground" data-mode="dom" data-title="Допишите showError и submit">
+<pre class="code" data-lang="html">
+&lt;form id="f" novalidate&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="fullName"&gt;Имя&lt;/label&gt;
+    &lt;input id="fullName" name="fullName"&gt;
+    &lt;span class="error" data-error="fullName"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="email"&gt;Email&lt;/label&gt;
+    &lt;input id="email" name="email"&gt;
+    &lt;span class="error" data-error="email"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;button&gt;Отправить&lt;/button&gt;
+&lt;/form&gt;
+</pre>
+<pre class="code" data-lang="css">
+form { display: grid; gap: 12px; max-width: 320px; }
+.field { display: grid; gap: 4px; }
+input, button { padding: 6px 8px; font: inherit; }
+input.invalid { border: 2px solid #d33; background: #fff0f0; }
+.error { color: #c0392b; font-size: 13px; min-height: 1em; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#f");
+
+const validators = {
+  fullName: (v) =&gt; (v.trim().length &lt; 2 ? "Введите имя (минимум 2 буквы)" : ""),
+  email: (v) =&gt; (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) ? "" : "Введите email, например madina@mail.tj"),
+};
+
+function showError(name, message) {
+  // текст в span, класс invalid, aria-invalid
+}
+
+form.addEventListener("submit", (event) =&gt; {
+  // preventDefault, проверка всех полей, showError, "Отправлено" при успехе
+});
+
+// ---- проверка (не менять) ----
+// Песочница блокирует настоящую отправку формы, поэтому клик по кнопке превращаем в submit вручную
+// (на обычной странице эта вставка не нужна)
+form.querySelector("button").addEventListener("click", (event) =&gt; {
+  event.preventDefault();
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+});
+function report(name) {
+  const input = form.elements[name];
+  const text = form.querySelector(`[data-error="${name}"]`).textContent;
+  console.log(`${name}: ${text || "ok"} | aria-invalid=${input.getAttribute("aria-invalid")} | invalid=${input.classList.contains("invalid")}`);
+}
+function tryWith(fullName, email) {
+  form.elements.fullName.value = fullName;
+  form.elements.email.value = email;
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+  report("fullName");
+  report("email");
+}
+tryWith(" ", "ali@mail.tj");
+tryWith("Али", "ali@");
+tryWith("Али", "ali@mail.tj");
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>fullName: Введите имя (минимум 2 буквы) | aria-invalid=true | invalid=true
+email: ok | aria-invalid=false | invalid=false
+fullName: ok | aria-invalid=false | invalid=false
+email: Введите email, например madina@mail.tj | aria-invalid=true | invalid=true
+Отправлено
+fullName: ok | aria-invalid=false | invalid=false
+email: ok | aria-invalid=false | invalid=false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>showError</code>: найдите поле <code>form.elements[name]</code> и подпись <code>form.querySelector(`[data-error="${name}"]`)</code>; запишите <code>textContent</code>; <code>classList.toggle("invalid", message !== "")</code>; <code>setAttribute("aria-invalid", message ? "true" : "false")</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В обработчике: <code>event.preventDefault()</code>, <code>let ok = true;</code>, цикл <code>for (const name in validators)</code> — внутри считаем сообщение, вызываем <code>showError</code> (даже если сообщение пустое!) и при ошибке ставим <code>ok = false</code>. После цикла: <code>if (ok) console.log("Отправлено");</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="live">
+      <h2 data-toc="Живая валидация"><span class="num">07</span> Живая валидация: проверяем, пока человек печатает</h2>
+
+      <p>Проверка только при нажатии «Отправить» работает, но неудобно: человек заполнил десять полей и узнаёт об ошибке в самом первом. <b>Живая валидация</b> подсказывает сразу. Для неё нужны три события:</p>
+
+      <dl class="terms">
+        <dt><code>input</code></dt><dd>Срабатывает на <b>каждое изменение</b> значения: нажали клавишу, вставили текст, стёрли символ.</dd>
+        <dt><code>change</code></dt><dd>Срабатывает, когда значение поменялось и поле <b>потеряло фокус</b> (для чекбокса и списка — сразу при выборе).</dd>
+        <dt><code>blur</code></dt><dd>Поле потеряло фокус — человек ушёл в другое поле. Не всплывает (в отличие от <code>focusout</code>).</dd>
+      </dl>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Хороший официант в чайхоне не перебивает вас на полуслове: «Нет, плова уже нет!» Он ждёт, пока вы закончите говорить, и только потом поправляет. Так и форма: не ругайтесь на поле, пока человек не <b>закончил</b> его вводить, иначе первая же буква email вызовет красное «Неверный email».</p>
+      </div>
+
+      <h3>Правило «тронуто / не тронуто» (touched)</h3>
+      <ol class="steps">
+        <li>Пока человек не покидал поле — ошибку <b>не показываем</b>, даже если значение пока неверное.</li>
+        <li>Когда сработал <code>blur</code> — поле считается «тронутым»: проверяем и показываем ошибку.</li>
+        <li>С этого момента на каждый <code>input</code> перепроверяем: как только человек исправил, ошибка исчезает сразу.</li>
+        <li>При нажатии «Отправить» «трогаем» все поля сразу и показываем все ошибки.</li>
+      </ol>
+
+<div class="playground" data-mode="dom" data-title="Живая проверка email и пароля">
+<pre class="code" data-lang="html">
+&lt;form id="f" novalidate&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="email"&gt;Email&lt;/label&gt;
+    &lt;input id="email" name="email" type="email" autocomplete="off"&gt;
+    &lt;span class="error" id="email-error"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="pass"&gt;Пароль&lt;/label&gt;
+    &lt;div class="row"&gt;
+      &lt;input id="pass" name="pass" type="password" maxlength="20"&gt;
+      &lt;button type="button" id="eye"&gt;Показать&lt;/button&gt;
+    &lt;/div&gt;
+    &lt;span class="hint" id="pass-hint"&gt;Введено: 0 из 20&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/form&gt;
+</pre>
+<pre class="code" data-lang="css">
+form { display: grid; gap: 12px; max-width: 320px; }
+.field { display: grid; gap: 4px; }
+.row { display: flex; gap: 6px; }
+.row input { flex: 1; }
+input, button { padding: 6px 8px; font: inherit; }
+input.invalid { border: 2px solid #d33; background: #fff0f0; }
+.error { color: #c0392b; font-size: 13px; min-height: 1em; }
+.hint { color: #667; font-size: 13px; }
+</pre>
+<pre class="code" data-lang="js">
+const email = document.querySelector("#email");
+const emailError = document.querySelector("#email-error");
+let touched = false;
+
+function validateEmail() {
+  const value = email.value.trim();
+  let message = "";
+  if (value === "") message = "Введите email";
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) message = "Похоже, в адресе ошибка";
+  emailError.textContent = message;
+  email.classList.toggle("invalid", message !== "");
+}
+
+email.addEventListener("blur", () =&gt; {
+  touched = true;          // человек ушёл из поля — теперь можно ругаться
+  validateEmail();
+});
+email.addEventListener("input", () =&gt; {
+  if (touched) validateEmail();   // после первого «ухода» проверяем на каждую букву
+});
+
+// пароль: счётчик символов и кнопка «показать»
+const pass = document.querySelector("#pass");
+const hint = document.querySelector("#pass-hint");
+pass.addEventListener("input", () =&gt; {
+  hint.textContent = `Введено: ${pass.value.length} из ${pass.maxLength}`;
+});
+
+document.querySelector("#eye").addEventListener("click", (event) =&gt; {
+  const hidden = pass.type === "password";
+  pass.type = hidden ? "text" : "password";
+  event.target.textContent = hidden ? "Скрыть" : "Показать";
+});
+</pre>
+</div>
+      <p>Попробуйте: наберите в email «ali» — ничего не происходит. Нажмите Tab — появилась ошибка. Допишите «@mail.tj» — ошибка исчезла прямо во время набора.</p>
+
+      <h3>Сравнение двух полей: пароль и повтор</h3>
+      <p>Правило «пароли совпадают» зависит от <b>двух</b> полей, поэтому проверять нужно при изменении любого из них. Частая ошибка — подписаться только на второе поле: человек поправил первый пароль, а красная ошибка у второго осталась.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="pass"&gt;&lt;input id="again"&gt;&lt;span id="msg"&gt;&lt;/span&gt;`;
+const pass = document.querySelector("#pass");
+const again = document.querySelector("#again");
+const msg = document.querySelector("#msg");
+
+function checkMatch() {
+  msg.textContent = pass.value === again.value ? "" : "Пароли не совпадают";
+}
+pass.addEventListener("input", checkMatch);    // оба поля влияют на результат
+again.addEventListener("input", checkMatch);
+
+pass.value = "qwerty1";   pass.dispatchEvent(new Event("input"));
+again.value = "qwerty1";  again.dispatchEvent(new Event("input"));
+console.log("[" + msg.textContent + "]");       // [] — совпали
+pass.value = "qwerty2";   pass.dispatchEvent(new Event("input"));
+console.log("[" + msg.textContent + "]");       // [Пароли не совпадают] — поправили первое
+</pre>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <ul>
+          <li><b>Ругаемся слишком рано.</b> Красная ошибка после первой буквы раздражает. Используйте «touched».</li>
+          <li><b>Проверяем только на <code>change</code>.</b> Тогда человек видит ошибку только после ухода из поля — это уже не «живая» проверка. Основное событие — <code>input</code>.</li>
+          <li><b>Забыли проверку при отправке.</b> Человек может нажать «Отправить», вообще не заходя в поле: живая валидация <b>дополняет</b> проверку на <code>submit</code>, а не заменяет её.</li>
+          <li><b>Блокируем кнопку без объяснения.</b> Заблокированная кнопка «Отправить» без подсказки, чего не хватает, — плохой интерфейс. Лучше показывать ошибки и оставить кнопку активной.</li>
+        </ul>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/events-change-input" target="_blank" rel="noopener">События change, input</a> · <a href="https://learn.javascript.ru/focus-blur" target="_blank" rel="noopener">Фокусировка: focus/blur</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>В задачах скрипт сам «печатает» в поля и вызывает события (<code>dispatchEvent</code>) — вам нужно написать реакцию.</p>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Показать пароль</h4><span class="level easy">лёгкая</span></header>
+          <p>По клику на кнопку тип поля переключается между <code>password</code> и <code>text</code>, а текст кнопки — между «Показать» и «Скрыть».</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;input id="pass" type="password" value="secret"&gt;
+  &lt;button id="eye" type="button"&gt;Показать&lt;/button&gt;`;
+
+const pass = document.querySelector("#pass");
+const eye = document.querySelector("#eye");
+
+// добавьте обработчик click для кнопки eye
+
+
+eye.click();
+console.log(pass.type, eye.textContent);
+eye.click();
+console.log(pass.type, eye.textContent);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>text Скрыть
+password Показать</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри обработчика сначала узнайте, скрыт ли пароль: <code>const hidden = pass.type === "password";</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Тернарный оператор: <code>pass.type = hidden ? "text" : "password";</code> и по аналогии для <code>eye.textContent</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Счётчик символов</h4><span class="level mid">средняя</span></header>
+          <p>Под полем «О себе» живёт надпись «Осталось: N», где N — сколько символов ещё можно ввести (лимит 40). Она должна быть правильной сразу при загрузке и обновляться на каждое событие <code>input</code>.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;textarea id="bio"&gt;&lt;/textarea&gt;&lt;p id="left"&gt;&lt;/p&gt;`;
+const bio = document.querySelector("#bio");
+const left = document.querySelector("#left");
+const LIMIT = 40;
+
+// 1) функция update() записывает в left текст «Осталось: N»
+// 2) вызовите её сразу и на событие input
+
+
+console.log(left.textContent);
+bio.value = "Привет!";
+bio.dispatchEvent(new Event("input"));
+console.log(left.textContent);
+bio.value = "а".repeat(40);
+bio.dispatchEvent(new Event("input"));
+console.log(left.textContent);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Осталось: 40
+Осталось: 33
+Осталось: 0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Длина текста — <code>bio.value.length</code>. Осталось: <code>LIMIT - bio.value.length</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Объявите <code>function update() { left.textContent = `Осталось: ${LIMIT - bio.value.length}`; }</code>, вызовите <code>update();</code> и добавьте <code>bio.addEventListener("input", update);</code></p></details>
+        </article>
+
+        <article class="task" id="t7-3">
+          <header><span class="task-num">ЗАДАЧА 7.3</span><h4>Ругаемся только после ухода из поля</h4><span class="level mid">средняя</span></header>
+          <p>Реализуйте правило «touched» для поля email. На <code>blur</code> поле считается тронутым и проверяется. На <code>input</code> проверка идёт только если поле уже тронуто. Ошибка — <code>Неверный email</code>, а при корректном адресе текст ошибки пустой.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="email"&gt;&lt;span id="error"&gt;&lt;/span&gt;`;
+const email = document.querySelector("#email");
+const error = document.querySelector("#error");
+
+// ваш код: переменная touched, функция validate, обработчики blur и input
+
+
+function show() {
+  console.log(error.textContent || "нет ошибки");
+}
+
+email.value = "ali";
+email.dispatchEvent(new Event("input"));
+show();
+email.dispatchEvent(new Event("blur"));
+show();
+email.value = "ali@mail.tj";
+email.dispatchEvent(new Event("input"));
+show();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>нет ошибки
+Неверный email
+нет ошибки</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужна переменная <code>let touched = false;</code>. В обработчике <code>blur</code> ставим <code>touched = true</code> и вызываем <code>validate()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>validate()</code> пишет в <code>error.textContent</code> либо <code>"Неверный email"</code> (если значение не подходит под <code>/^[^\s@]+@[^\s@]+\.[^\s@]+$/</code>), либо пустую строку. Обработчик <code>input</code>: <code>if (touched) validate();</code></p></details>
+        </article>
+
+        <article class="task" id="t7-4">
+          <header><span class="task-num">ЗАДАЧА 7.4</span><h4>Кнопка зависит от двух полей</h4><span class="level hard">сложная</span></header>
+          <p>Кнопка «Создать аккаунт» должна быть активной только когда пароль не короче 8 символов <b>и</b> повтор пароля ему равен. Напишите <code>updateButton()</code>, вызовите её при загрузке и при вводе в <b>любое</b> из двух полей.</p>
+<div class="playground" data-mode="dom" data-title="Пароль и повтор">
+<pre class="code" data-lang="html">
+&lt;form id="f"&gt;
+  &lt;input id="password" type="password" placeholder="Пароль"&gt;
+  &lt;input id="confirm" type="password" placeholder="Повторите пароль"&gt;
+  &lt;button id="submit"&gt;Создать аккаунт&lt;/button&gt;
+&lt;/form&gt;
+</pre>
+<pre class="code" data-lang="css">
+form { display: grid; gap: 10px; max-width: 320px; }
+input, button { padding: 6px 8px; font: inherit; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+</pre>
+<pre class="code" data-lang="js">
+const password = document.querySelector("#password");
+const confirm = document.querySelector("#confirm");
+const submit = document.querySelector("#submit");
+
+function updateButton() {
+  // submit.disabled = ... (true, пока условия не выполнены)
+}
+
+// вызовите updateButton() при загрузке и при input в обоих полях
+
+
+// ---- проверка (не менять) ----
+const state = () =&gt; (submit.disabled ? "заблокирована" : "активна");
+function type(field, value) {
+  field.value = value;
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+  console.log(`пароль="${password.value}", повтор="${confirm.value}" → кнопка ${state()}`);
+}
+console.log("старт: кнопка " + state());
+type(password, "1234");
+type(password, "12345678");
+type(confirm, "1234567");
+type(confirm, "12345678");
+type(password, "87654321");
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>старт: кнопка заблокирована
+пароль="1234", повтор="" → кнопка заблокирована
+пароль="12345678", повтор="" → кнопка заблокирована
+пароль="12345678", повтор="1234567" → кнопка заблокирована
+пароль="12345678", повтор="12345678" → кнопка активна
+пароль="87654321", повтор="12345678" → кнопка заблокирована</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Условие готовности: <code>password.value.length &gt;= 8 &amp;&amp; password.value === confirm.value</code>. Кнопка заблокирована, когда оно <b>ложно</b>: <code>submit.disabled = !ready;</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Подпишитесь обеими строками: <code>password.addEventListener("input", updateButton);</code> и то же для <code>confirm</code>. Не забудьте вызвать <code>updateButton();</code> один раз сразу.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: правила валидации"><span class="num">08</span> ИИ-блок: правила валидации и регулярки</h2>
+
+      <div class="callout ai">
+        <b>ИИ-подсказка</b>
+        <p>Регулярные выражения — одна из лучших задач для ИИ: писать их вручную долго, а объяснить «что хочу» словами легко. Но именно здесь ИИ чаще всего <b>уверенно ошибается</b>. Поэтому схема всегда одна: ИИ предлагает — <b>вы проверяете на своих примерах</b>.</p>
+      </div>
+
+      <p>Напомним правила курса: сначала пробуйте сами 15 минут, и никогда не вставляйте код, который не можете объяснить строка за строкой. Сегодня вы уже умеете читать регулярки, так что ответ ИИ можно разобрать по частям.</p>
+
+      <h3>1. Просим правила валидации</h3>
+      <p>Используем формулу промпта: контекст → задача → ограничения → формат ответа → проверка.</p>
+<div class="prompt bad-prompt">сделай валидацию формы регистрации</div>
+<div class="prompt good-prompt">Контекст: я пишу на чистом JavaScript без библиотек, уровень — новичок. Делаю форму регистрации для курсов в Душанбе.
+Задача: составь правила валидации для полей: имя, телефон (Таджикистан, +992), email, пароль, повтор пароля. Для каждого — условие, сообщение об ошибке на русском и регулярное выражение, если оно нужно.
+Ограничения: простые регулярки, которые новичок сможет прочитать; без внешних библиотек; сообщения — вежливые, с примером правильного ввода.
+Формат ответа: таблица «поле | правило | сообщение об ошибке | регулярка».
+Проверка: для каждой регулярки приведи по 3 строки, которые подходят, и 3, которые не подходят, и объясни регулярку по частям.</div>
+
+      <h3>2. Проверяем регулярку от ИИ на своих кейсах</h3>
+      <p>Не верьте на слово даже самому уверенному ответу. Заведите привычку — <b>таблица тестов</b>:</p>
+      <ol class="steps">
+        <li><b>3–5 подходящих строк</b>, включая «грязные» (с пробелами по краям, в разном регистре).</li>
+        <li><b>Пустая строка</b> — должна быть отвергнута (если поле обязательное).</li>
+        <li><b>Границы длины</b>: на единицу меньше минимума, ровно минимум, ровно максимум, на единицу больше.</li>
+        <li><b>«Мусор» вокруг</b>: <code>abc1234xyz</code> там, где нужны только цифры. Так вы ловите отсутствие <code>^</code> и <code>$</code>.</li>
+        <li><b>Ваши настоящие данные</b>: телефоны из вашей записной книжки, имена друзей на кириллице, ваш реальный email.</li>
+      </ol>
+<pre class="code" data-run data-title="Мини-стенд для проверки регулярки">
+const re = /^\+992\d{9}$/;   // регулярка от ИИ
+
+const cases = [
+  ["+992927771234", true],      // подходит
+  [" +992927771234", false],    // пробел в начале — вы решаете, допустимо ли
+  ["+99292777123", false],      // на цифру меньше
+  ["+9929277712345", false],    // на цифру больше
+  ["abc+992927771234xyz", false],  // мусор вокруг
+  ["", false],                  // пусто
+];
+
+for (const [value, expected] of cases) {
+  console.log((re.test(value) === expected ? "ok  " : "FAIL") + " [" + value + "]");
+}
+</pre>
+
+      <h3>3. Что ИИ делает неправильно чаще всего</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что видите в ответе ИИ</th><th>В чём проблема</th><th>Как исправить</th></tr></thead>
+          <tbody>
+            <tr><td>Регулярка без <code>^</code> и <code>$</code></td><td>Пропускает мусор вокруг: <code>abc1234xyz</code> проходит как «цифры»</td><td>Добавить якоря, если проверяется вся строка</td></tr>
+            <tr><td>Email на 200 символов с кучей скобок</td><td>Никто не сможет прочитать и поддерживать, при этом всё равно не проверяет реального существования адреса</td><td>Простая <code>/^[^\s@]+@[^\s@]+\.[^\s@]+$/</code></td></tr>
+            <tr><td><code>\w</code> или <code>[a-z]</code> для имён</td><td>Кириллические и таджикские буквы отвергаются</td><td>Явные диапазоны <code>[А-Яа-яЁё]</code> и тест на реальных именах</td></tr>
+            <tr><td>Телефон <code>^\d{10}$</code></td><td>Шаблон под другую страну</td><td>Сказать ИИ в промпте: Таджикистан, <code>+992</code>, 9 цифр</td></tr>
+            <tr><td><code>&lt;input type="number"&gt;</code> для телефона</td><td>Теряет ведущие нули и «+», у поля есть стрелочки</td><td><code>type="tel"</code> + проверка строкой</td></tr>
+            <tr><td>Регулярка с флагом <code>g</code> и метод <code>.test()</code></td><td>Объект «помнит» позицию: ответы чередуются <code>true / false</code></td><td>Убрать флаг <code>g</code> для проверок</td></tr>
+            <tr><td><code>errorBox.innerHTML = userInput</code></td><td>Опасно: пользователь сможет вставить HTML</td><td><code>errorBox.textContent = ...</code></td></tr>
+            <tr><td>«Проверка на клиенте — это защита»</td><td>Браузерную проверку легко обойти</td><td>Помнить: проверяет ещё и сервер</td></tr>
+          </tbody>
+        </table>
+      </div>
+<pre class="code" data-run data-title="Ловушка флага g">
+const re = /\d/g;                  // флаг g — «помни, где остановился»
+console.log(re.test("1"));         // true
+console.log(re.test("1"));         // false ← ✖ та же строка, другой ответ
+console.log(re.test("1"));         // true
+</pre>
+
+      <h3>4. Ещё три полезных промпта</h3>
+<div class="prompt good-prompt">Объясни регулярное выражение /^[a-zA-Z][a-zA-Z0-9_]{2,15}$/ по частям, как для новичка. Для каждой части — что она значит. Затем дай 3 строки, которые подходят, и 3, которые не подходят, с объяснением почему.</div>
+<div class="prompt good-prompt">Вот моя функция validatePhone: [код]. Придумай 10 тестовых строк, на которых она может сломаться: пробелы, дефисы, буквы, пустая строка, слишком длинный номер. Ответ — массив пар [строка, ожидаемый результат] в виде JS-кода.</div>
+<div class="prompt good-prompt">Перепиши мои сообщения об ошибках формы так, чтобы они были вежливыми, короткими и называли правило и пример. Не меняй смысл. Было: «Неверно», «Ошибка в пароле», «Плохой телефон».</div>
+
+      <div class="callout warn">
+        <b>Главное правило</b>
+        <p>Прочитайте регулярку от ИИ по частям, как мы делали в разделе 5. Если вы не можете объяснить какую-то часть — попросите ИИ объяснить и проверьте это тестами, либо упростите выражение. Код, который вы не понимаете, вы не сможете исправить, когда он сломается на реальных данных.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика с ИИ</h3>
+        <p>Главное в этих задачах — не получить код, а <b>проверить</b> его. Первую задачу выполняйте в чате с ИИ, остальные — здесь.</p>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Промпт для правил валидации</h4><span class="level easy">лёгкая</span></header>
+          <p>Составьте по формуле промпт для формы «Запись в футбольную секцию»: поля имя, возраст (от 7 до 17), телефон +992, email родителя, согласие. Попросите таблицу правил, сообщения об ошибках и регулярки с 3+3 тестовыми строками. Отправьте в ИИ, а полученные регулярки прогоните через мини-стенд из этого раздела. Запишите: какая регулярка не прошла ваши тесты и что вы исправили. Эта задача без автопроверки — отметьте её вручную, когда закончите.</p>
+          <details class="hint"><summary>Подсказка 1</summary><p>Пять блоков промпта: контекст (JS, новичок, Душанбе), задача, ограничения (простые регулярки, вежливые сообщения), формат (таблица), проверка (тестовые строки).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для возраста регулярка не нужна — это обычное сравнение чисел. Хороший ИИ так и ответит; если он предлагает регулярку для диапазона 7–17, это повод усомниться.</p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Проверка регулярки от ИИ: телефон</h4><span class="level mid">средняя</span></header>
+          <p>ИИ предложил регулярку для телефона Таджикистана. Запустите стенд и найдите, на каких примерах она ошибается, затем исправьте её, чтобы все строки получили <code>ok</code> и итог был <code>Не прошли: 0</code>. Список проверок не меняйте.</p>
+<pre class="code" data-run>
+const phoneRe = /^\+992\d{9}/;   // регулярка от ИИ
+
+const cases = [
+  ["+992927771234", true],
+  ["+992927771234567", false],
+  ["+99292777123", false],
+  ["992927771234", false],
+  ["+992 927771234", false],
+  ["+992abcdefghi", false],
+  ["", false],
+];
+
+let failed = 0;
+for (const [value, expected] of cases) {
+  const ok = phoneRe.test(value) === expected;
+  if (!ok) failed++;
+  console.log((ok ? "ok" : "FAIL") + ": [" + value + "]");
+}
+console.log("Не прошли: " + failed);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ok: [+992927771234]
+ok: [+992927771234567]
+ok: [+99292777123]
+ok: [992927771234]
+ok: [+992 927771234]
+ok: [+992abcdefghi]
+ok: []
+Не прошли: 0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Какой строке «лишние цифры в конце» удаётся проскочить? Шаблон проверяет начало строки, но ничего не говорит про конец.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавьте якорь конца строки: <code>/^\+992\d{9}$/</code></p></details>
+        </article>
+
+        <article class="task" id="t8-3">
+          <header><span class="task-num">ЗАДАЧА 8.3</span><h4>Email от ИИ: чиним и доверяем тестам</h4><span class="level hard">сложная</span></header>
+          <p>Функцию <code>isEmail</code> написал ИИ. Она пропускает лишнее и не обрабатывает пробелы по краям. Исправьте её так, чтобы все восемь проверок прошли: адрес с пробелами по краям считается правильным (пробелы нужно обрезать), а адреса без домена с точкой, без имени, с пробелом внутри или с двумя «@» — неправильными. Список <code>cases</code> не меняйте.</p>
+<pre class="code" data-run>
+const isEmail = (s) =&gt; /^.+@.+$/.test(s);   // версия от ИИ
+
+const cases = [
+  ["madina@mail.tj", true],
+  ["  madina@mail.tj  ", true],
+  ["m.karimova+tj@gmail.com", true],
+  ["madina@", false],
+  ["madina@mail", false],
+  ["@mail.tj", false],
+  ["ma dina@mail.tj", false],
+  ["madina@@mail.tj", false],
+];
+
+let failed = 0;
+for (const [value, expected] of cases) {
+  const ok = isEmail(value) === expected;
+  if (!ok) failed++;
+  console.log((ok ? "ok" : "FAIL") + ": [" + value + "]");
+}
+console.log("Не прошли: " + failed);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ok: [madina@mail.tj]
+ok: [  madina@mail.tj  ]
+ok: [m.karimova+tj@gmail.com]
+ok: [madina@]
+ok: [madina@mail]
+ok: [@mail.tj]
+ok: [ma dina@mail.tj]
+ok: [madina@@mail.tj]
+Не прошли: 0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Точка <code>.</code> в регулярке — «любой символ», в том числе пробел и «@». Для частей адреса нужно «любой символ, кроме пробела и @»: <code>[^\s@]+</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>(s) =&gt; /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())</code> — обрезаем пробелы перед проверкой и требуем точку в домене.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">09</span> Практика на уроке: форма регистрации с живой валидацией</h2>
+
+      <p>Соберём всё вместе в одну форму — такую, какую вы увидите на любом сайте. Мы строим регистрацию на курс: имя, email, пароль и повтор пароля.</p>
+
+      <div class="callout tip">
+        <b>Правила нашей формы</b>
+        <ul>
+          <li><b>Имя</b> — минимум 2 символа без пробелов по краям. Ошибка: «Имя — минимум 2 буквы».</li>
+          <li><b>Email</b> — простой формат <code>что-то@что-то.что-то</code>. Ошибка: «Введите email в формате name@mail.tj».</li>
+          <li><b>Пароль</b> — минимум 8 символов, затем минимум одна цифра. Ошибки: «Пароль — минимум 8 символов» и «Добавьте хотя бы одну цифру».</li>
+          <li><b>Повтор пароля</b> — совпадает с паролем. Ошибка: «Пароли не совпадают».</li>
+          <li>Ошибки появляются после ухода из поля (<code>blur</code>), дальше обновляются на каждый ввод (<code>input</code>).</li>
+          <li>При отправке проверяются все поля сразу, курсор встаёт в первое ошибочное, а при успехе выводится «Регистрация: имя, email» (пароль в логи не пишем — никогда!).</li>
+        </ul>
+      </div>
+
+      <h3>План работы</h3>
+      <ol class="steps">
+        <li><b>Разметка.</b> Форма с <code>novalidate</code>, у каждого поля — <code>label</code>, <code>name</code> и пустой <code>span.error</code> под ним (<code>data-error="имя поля"</code>).</li>
+        <li><b>Валидаторы.</b> Функции «значение → текст ошибки», собранные в объект <code>validators</code> (раздел 6).</li>
+        <li><b>Показ ошибок.</b> <code>showError</code> — текст, красная рамка, <code>aria-invalid</code>.</li>
+        <li><b>Живая проверка.</b> Словарь <code>touched</code>, обработчики <code>blur</code> и <code>input</code> (раздел 7).</li>
+        <li><b>Отправка.</b> Обработчик <code>submit</code>: «трогаем» все поля, проверяем, фокус на первое ошибочное или успех (раздел 2).</li>
+      </ol>
+
+      <p>Разметку, стили и общий «каркас» (шаги 1, 3) мы даём готовыми. Ваша работа — два этапа.</p>
+
+      <div class="practice">
+        <h3>Практика: собираем форму</h3>
+
+        <article class="task" id="t9-1">
+          <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Этап 1: валидаторы и живая проверка</h4><span class="level mid">средняя</span></header>
+          <p>Каркас живой проверки уже работает: <code>showError</code>, <code>validateField</code> и обработчики <code>blur</code> / <code>input</code> написаны. Допишите три валидатора по правилам выше. Сообщения копируйте дословно.</p>
+<div class="playground" data-mode="dom" data-title="Регистрация: этап 1">
+<pre class="code" data-lang="html">
+&lt;form id="reg" novalidate&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="fullName"&gt;Имя&lt;/label&gt;
+    &lt;input id="fullName" name="fullName" autocomplete="off"&gt;
+    &lt;span class="error" data-error="fullName"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="email"&gt;Email&lt;/label&gt;
+    &lt;input id="email" name="email" type="email" autocomplete="off"&gt;
+    &lt;span class="error" data-error="email"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="password"&gt;Пароль&lt;/label&gt;
+    &lt;input id="password" name="password" type="password"&gt;
+    &lt;span class="error" data-error="password"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="confirm"&gt;Повторите пароль&lt;/label&gt;
+    &lt;input id="confirm" name="confirm" type="password"&gt;
+    &lt;span class="error" data-error="confirm"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;button&gt;Создать аккаунт&lt;/button&gt;
+&lt;/form&gt;
+</pre>
+<pre class="code" data-lang="css">
+form { display: grid; gap: 12px; max-width: 340px; }
+.field { display: grid; gap: 4px; }
+label { font-size: 14px; font-weight: 600; }
+input, button { padding: 8px 10px; font: inherit; border: 1px solid #b8c0cc; border-radius: 8px; }
+button { background: #1d9a6c; color: #fff; border-color: transparent; cursor: pointer; }
+input.invalid { border: 2px solid #d33; background: #fff0f0; }
+.error { color: #c0392b; font-size: 13px; min-height: 1em; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#reg");
+const touched = {};
+
+const validators = {
+  fullName(value) {
+    // имя: после trim минимум 2 символа → "Имя — минимум 2 буквы"
+    return "";
+  },
+  email(value) {
+    // формат /^[^\s@]+@[^\s@]+\.[^\s@]+$/ → "Введите email в формате name@mail.tj"
+    return "";
+  },
+  password(value) {
+    // сначала длина: "Пароль — минимум 8 символов", затем цифра: "Добавьте хотя бы одну цифру"
+    return "";
+  },
+};
+
+// ---- готовая часть: показ ошибок и живая проверка ----
+function showError(name, message) {
+  const input = form.elements[name];
+  form.querySelector(`[data-error="${name}"]`).textContent = message;
+  input.classList.toggle("invalid", message !== "");
+  input.setAttribute("aria-invalid", message ? "true" : "false");
+}
+
+function validateField(name) {
+  const message = validators[name](form.elements[name].value);
+  showError(name, message);
+  return message === "";
+}
+
+for (const name of Object.keys(validators)) {
+  const input = form.elements[name];
+  input.addEventListener("blur", () =&gt; {
+    touched[name] = true;
+    validateField(name);
+  });
+  input.addEventListener("input", () =&gt; {
+    if (touched[name]) validateField(name);
+  });
+}
+
+// ---- проверка (не менять) ----
+function typeInto(name, value) {
+  const field = form.elements[name];
+  field.value = value;
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function leave(name) {
+  form.elements[name].dispatchEvent(new Event("blur"));
+}
+function msg(name) {
+  return form.querySelector(`[data-error="${name}"]`).textContent || "ok";
+}
+
+typeInto("fullName", "А");
+console.log("имя до blur: " + msg("fullName"));
+leave("fullName");
+console.log("имя после blur: " + msg("fullName"));
+typeInto("fullName", "Али");
+console.log("имя после правки: " + msg("fullName"));
+
+typeInto("email", "ali@");
+leave("email");
+console.log("email: " + msg("email"));
+typeInto("email", "ali@mail.tj");
+console.log("email после правки: " + msg("email"));
+
+typeInto("password", "abcdefgh");
+leave("password");
+console.log("пароль 1: " + msg("password"));
+typeInto("password", "abc");
+console.log("пароль 2: " + msg("password"));
+typeInto("password", "abcdefg1");
+console.log("пароль 3: " + msg("password"));
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>имя до blur: ok
+имя после blur: Имя — минимум 2 буквы
+имя после правки: ok
+email: Введите email в формате name@mail.tj
+email после правки: ok
+пароль 1: Добавьте хотя бы одну цифру
+пароль 2: Пароль — минимум 8 символов
+пароль 3: ok</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Имя: <code>return value.trim().length &lt; 2 ? "Имя — минимум 2 буквы" : "";</code> Email: <code>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? "" : "Введите email в формате name@mail.tj"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Пароль — две проверки с ранним <code>return</code>: <code>if (value.length &lt; 8) return "Пароль — минимум 8 символов";</code>, затем <code>if (!/\d/.test(value)) return "Добавьте хотя бы одну цифру";</code>, в конце <code>return "";</code></p></details>
+        </article>
+
+        <article class="task" id="t9-2">
+          <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Этап 2: повтор пароля и отправка</h4><span class="level hard">сложная</span></header>
+          <p>Три валидатора из этапа 1 уже готовы. Добавьте: <b>(1)</b> валидатор <code>confirm</code> — «Пароли не совпадают»; <b>(2)</b> перепроверку <code>confirm</code> при изменении пароля, если <code>confirm</code> уже «тронут»; <b>(3)</b> обработчик <code>submit</code>: отмена отправки, «трогаем» и проверяем все поля, при ошибке ставим фокус на первое ошибочное поле, иначе выводим <code>Регистрация: имя, email</code> (без пароля).</p>
+<div class="playground" data-mode="dom" data-title="Регистрация: этап 2">
+<pre class="code" data-lang="html">
+&lt;form id="reg" novalidate&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="fullName"&gt;Имя&lt;/label&gt;
+    &lt;input id="fullName" name="fullName" autocomplete="off"&gt;
+    &lt;span class="error" data-error="fullName"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="email"&gt;Email&lt;/label&gt;
+    &lt;input id="email" name="email" type="email" autocomplete="off"&gt;
+    &lt;span class="error" data-error="email"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="password"&gt;Пароль&lt;/label&gt;
+    &lt;input id="password" name="password" type="password"&gt;
+    &lt;span class="error" data-error="password"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class="field"&gt;
+    &lt;label for="confirm"&gt;Повторите пароль&lt;/label&gt;
+    &lt;input id="confirm" name="confirm" type="password"&gt;
+    &lt;span class="error" data-error="confirm"&gt;&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;button&gt;Создать аккаунт&lt;/button&gt;
+&lt;/form&gt;
+</pre>
+<pre class="code" data-lang="css">
+form { display: grid; gap: 12px; max-width: 340px; }
+.field { display: grid; gap: 4px; }
+label { font-size: 14px; font-weight: 600; }
+input, button { padding: 8px 10px; font: inherit; border: 1px solid #b8c0cc; border-radius: 8px; }
+button { background: #1d9a6c; color: #fff; border-color: transparent; cursor: pointer; }
+input.invalid { border: 2px solid #d33; background: #fff0f0; }
+.error { color: #c0392b; font-size: 13px; min-height: 1em; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#reg");
+const touched = {};
+
+const validators = {
+  fullName(value) {
+    return value.trim().length &lt; 2 ? "Имя — минимум 2 буквы" : "";
+  },
+  email(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? "" : "Введите email в формате name@mail.tj";
+  },
+  password(value) {
+    if (value.length &lt; 8) return "Пароль — минимум 8 символов";
+    if (!/\d/.test(value)) return "Добавьте хотя бы одну цифру";
+    return "";
+  },
+  // (1) добавьте сюда confirm(value)
+};
+
+function showError(name, message) {
+  const input = form.elements[name];
+  form.querySelector(`[data-error="${name}"]`).textContent = message;
+  input.classList.toggle("invalid", message !== "");
+  input.setAttribute("aria-invalid", message ? "true" : "false");
+}
+
+function validateField(name) {
+  const message = validators[name](form.elements[name].value);
+  showError(name, message);
+  return message === "";
+}
+
+for (const name of Object.keys(validators)) {
+  const input = form.elements[name];
+  input.addEventListener("blur", () =&gt; {
+    touched[name] = true;
+    validateField(name);
+  });
+  input.addEventListener("input", () =&gt; {
+    if (touched[name]) validateField(name);
+  });
+}
+
+// (2) при изменении пароля перепроверьте confirm, если touched.confirm
+
+
+// (3) обработчик submit
+form.addEventListener("submit", (event) =&gt; {
+});
+
+// Песочница блокирует настоящую отправку формы, поэтому клик по кнопке превращаем в submit вручную
+// (на обычной странице эта вставка не нужна)
+form.querySelector("button").addEventListener("click", (event) =&gt; {
+  event.preventDefault();
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+});
+
+// ---- проверка (не менять) ----
+function typeInto(name, value) {
+  const field = form.elements[name];
+  field.value = value;
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+}
+function msg(name) {
+  return form.querySelector(`[data-error="${name}"]`).textContent || "ok";
+}
+
+typeInto("fullName", "Мадина");
+typeInto("email", "madina@mail.tj");
+typeInto("password", "qwerty12");
+typeInto("confirm", "qwerty1");
+form.dispatchEvent(new Event("submit", { cancelable: true }));
+console.log("повтор: " + msg("confirm"));
+typeInto("confirm", "qwerty12");
+console.log("повтор после правки: " + msg("confirm"));
+typeInto("password", "qwerty99");
+console.log("после смены пароля: " + msg("confirm"));
+typeInto("confirm", "qwerty99");
+form.dispatchEvent(new Event("submit", { cancelable: true }));
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>повтор: Пароли не совпадают
+повтор после правки: ok
+после смены пароля: Пароли не совпадают
+Регистрация: Мадина, madina@mail.tj</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>(1) <code>confirm(value) { return value === form.elements.password.value ? "" : "Пароли не совпадают"; },</code> (2) <code>form.elements.password.addEventListener("input", () =&gt; { if (touched.confirm) validateField("confirm"); });</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Submit: <code>event.preventDefault();</code> затем <code>let firstBad = null;</code> и цикл по <code>Object.keys(validators)</code>: <code>touched[name] = true;</code> <code>if (!validateField(name) &amp;&amp; !firstBad) firstBad = form.elements[name];</code>. Если <code>firstBad</code> есть — <code>firstBad.focus(); return;</code>. Иначе — <code>const data = Object.fromEntries(new FormData(form));</code> и вывод имени и email.</p></details>
+        </article>
+      </div>
+
+      <details class="hint"><summary>Эталонное решение (откройте только после своей попытки)</summary>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#reg");
+const touched = {};
+
+const validators = {
+  fullName(value) {
+    return value.trim().length &lt; 2 ? "Имя — минимум 2 буквы" : "";
+  },
+  email(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? "" : "Введите email в формате name@mail.tj";
+  },
+  password(value) {
+    if (value.length &lt; 8) return "Пароль — минимум 8 символов";
+    if (!/\d/.test(value)) return "Добавьте хотя бы одну цифру";
+    return "";
+  },
+  confirm(value) {
+    return value === form.elements.password.value ? "" : "Пароли не совпадают";
+  },
+};
+
+function showError(name, message) {
+  const input = form.elements[name];
+  form.querySelector(`[data-error="${name}"]`).textContent = message;
+  input.classList.toggle("invalid", message !== "");
+  input.setAttribute("aria-invalid", message ? "true" : "false");
+}
+
+function validateField(name) {
+  const message = validators[name](form.elements[name].value);
+  showError(name, message);
+  return message === "";
+}
+
+for (const name of Object.keys(validators)) {
+  const input = form.elements[name];
+  input.addEventListener("blur", () =&gt; {
+    touched[name] = true;
+    validateField(name);
+  });
+  input.addEventListener("input", () =&gt; {
+    if (touched[name]) validateField(name);
+  });
+}
+
+form.elements.password.addEventListener("input", () =&gt; {
+  if (touched.confirm) validateField("confirm");
+});
+
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  let firstBad = null;
+  for (const name of Object.keys(validators)) {
+    touched[name] = true;
+    if (!validateField(name) &amp;&amp; !firstBad) firstBad = form.elements[name];
+  }
+  if (firstBad) {
+    firstBad.focus();
+    return;
+  }
+  const data = Object.fromEntries(new FormData(form));
+  console.log(`Регистрация: ${data.fullName}, ${data.email}`);
+});
+
+// Песочница блокирует настоящую отправку формы, поэтому клик по кнопке превращаем в submit вручную
+// (на обычной странице эта вставка не нужна)
+form.querySelector("button").addEventListener("click", (event) =&gt; {
+  event.preventDefault();
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+});
+</pre>
+      </details>
+
+      <div class="callout ai">
+        <b>ИИ-проверка вашей формы</b>
+        <p>Когда ваш код работает, попросите ИИ придумать для него тесты: <i>«Вот моя форма регистрации и валидаторы: [код]. Придумай 10 входных значений для каждого поля, на которых проверка может ошибиться (пробелы, пустое, слишком длинное, спецсимволы). Для каждого — ожидаемый результат»</i>. Прогоните эти значения через свои валидаторы и найдите расхождения.</p>
+      </div>
+    </section>
+
+    <!-- ============ ДОМАШНЕЕ ЗАДАНИЕ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">★</span> Домашнее задание: форма из 6 полей</h2>
+
+      <p>Сделайте форму регистрации на курс «Frontend + AI» с <b>шестью полями</b>, полной валидацией и понятными текстами ошибок. Начинайте с классной работы: она уже содержит каркас, вам нужно расширить его и довести до аккуратного результата.</p>
+
+      <h3>Поля формы</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Поле</th><th>Правило</th><th>Пример текста ошибки</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Имя и фамилия</td><td>Минимум 2 слова, каждое от 2 букв, только буквы, пробелы и дефис</td><td>«Введите имя и фамилию, например: Мадина Каримова»</td></tr>
+            <tr><td>2</td><td>Телефон</td><td>Формат <code>+992</code> и 9 цифр; пробелы и дефисы при вводе допускаются</td><td>«Номер в формате +992 92 777 12 34»</td></tr>
+            <tr><td>3</td><td>Email</td><td>Простой формат с «@» и точкой в домене</td><td>«Введите email, например madina@mail.tj»</td></tr>
+            <tr><td>4</td><td>Пароль</td><td>От 8 символов, есть цифра, есть заглавная буква, нет пробелов</td><td>Покажите <b>все</b> нарушенные правила списком или через « · »</td></tr>
+            <tr><td>5</td><td>Повтор пароля</td><td>Совпадает с паролем (перепроверяется при смене пароля)</td><td>«Пароли не совпадают»</td></tr>
+            <tr><td>6</td><td>Согласие с правилами курса</td><td>Чекбокс должен быть отмечен</td><td>«Без согласия записаться нельзя»</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Что должно работать</h3>
+      <ul class="goals">
+        <li>☐ Разметка: <code>form novalidate</code>, у каждого поля есть <code>label</code>, <code>name</code> и правильный <code>type</code> (<code>tel</code>, <code>email</code>, <code>password</code>, <code>checkbox</code>).</li>
+        <li>☐ Каждый валидатор — отдельная функция «значение → текст ошибки или пустая строка».</li>
+        <li>☐ Живая валидация по схеме «touched»: ошибка появляется после ухода из поля и пропадает сразу при исправлении.</li>
+        <li>☐ При отправке проверяются все поля, фокус ставится на первое ошибочное.</li>
+        <li>☐ Ошибки показываются под полями (<code>textContent</code>), у поля есть красная рамка и <code>aria-invalid</code>.</li>
+        <li>☐ При успехе: на странице появляется сообщение «Спасибо, Имя! Мы свяжемся с вами по номеру ...», данные собраны через <code>FormData</code>, форма сбрасывается. Пароль нигде не показывается и не выводится в консоль.</li>
+        <li>☐ <b>Бонус:</b> кнопка «Показать пароль» и счётчик оставшихся символов — любой один из них.</li>
+      </ul>
+
+      <h3>Что сдать</h3>
+      <ol class="steps">
+        <li>Ссылка на репозиторий GitHub (папка <code>lesson-10</code> с файлами <code>index.html</code>, <code>style.css</code>, <code>script.js</code>) или архив в Telegram-группу.</li>
+        <li>Три скриншота: пустая отправка (все ошибки), частично заполненная форма, успешная отправка.</li>
+        <li>Файл <code>tests.md</code>: таблица минимум из 10 тестовых значений для телефона и email — «значение → ожидаемый результат» — и отметка, какие ваш код прошёл.</li>
+        <li>Если вы использовали ИИ: в <code>README</code> три строки — что именно просили, что взяли, что исправили руками. На проверке преподаватель может попросить объяснить любую строку.</li>
+      </ol>
+
+      <h3>Как оцениваем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Критерий</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Разметка: все 6 полей, label, name, type, <code>novalidate</code></td><td>1</td></tr>
+            <tr><td>Валидаторы имени, телефона и email работают на плохих и хороших данных</td><td>3</td></tr>
+            <tr><td>Пароль (все правила) и повтор пароля (в том числе при смене пароля)</td><td>2</td></tr>
+            <tr><td>Чекбокс согласия</td><td>1</td></tr>
+            <tr><td>Живая валидация (touched), без «ругани» с первой буквы</td><td>1</td></tr>
+            <tr><td>Отправка: все ошибки сразу, фокус на первом, успех, сброс формы</td><td>1</td></tr>
+            <tr><td>Понятные тексты ошибок (называют правило и пример), чистый код</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Подсказка по времени</b>
+        <p>Закладывайте 2–3 часа. Сначала сделайте только валидаторы и проверьте их в консоли на 5–10 значениях, потом подключайте страницу. Если застряли — сначала 15 минут сами, потом вопрос в чат группы (с кодом и текстом ошибки), потом ИИ по формуле промпта.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Читаем поля:</b> <code>form.elements.name.value</code> для текста, числа, списка и группы радио; <code>.checked</code> для чекбокса. <code>value</code> — <b>всегда строка</b>, число — через <code>Number(...)</code> или <code>valueAsNumber</code>.</li>
+        <li><b>submit:</b> слушаем на форме, первой строкой <code>event.preventDefault()</code>, значения читаем внутри обработчика. <code>form.reset()</code> — очистить, <code>form.dispatchEvent(new Event("submit", { cancelable: true }))</code> — отправить программно.</li>
+        <li><b>FormData:</b> <code>new FormData(form)</code>, <code>.get</code> / <code>.getAll</code> / <code>.has</code>, <code>Object.fromEntries(data)</code>. Без <code>name</code>, с <code>disabled</code> и неотмеченные чекбоксы в данные не попадают.</li>
+        <li><b>Встроенная валидация:</b> <code>required</code>, <code>type</code>, <code>min/max</code>, <code>pattern</code>; <code>checkValidity()</code>, <code>validity.*</code>, <code>setCustomValidity()</code>. Свои тексты и сложные правила — своим JS и <code>novalidate</code>.</li>
+        <li><b>Регулярки:</b> <code>/шаблон/.test(строка)</code>. <code>\d</code> цифра, <code>\s</code> пробел, <code>[a-z]</code> диапазон, <code>+ * ? {n,m}</code> количество, <code>^ $</code> якоря начала и конца. Телефон: <code>/^\+992\d{9}$/</code>. Всегда тестируйте на плохих данных.</li>
+        <li><b>Свой валидатор</b> — функция «значение → текст ошибки или <code>""</code>». Все поля — в объекте <code>validators</code>, ошибки показываем через <code>textContent</code> под полем, плюс <code>aria-invalid</code>. Тексты ошибок называют правило и пример.</li>
+        <li><b>Живая проверка:</b> <code>blur</code> делает поле «тронутым», после этого <code>input</code> перепроверяет на каждый ввод. Сравнение двух полей — слушаем оба. Проверка при <code>submit</code> остаётся обязательной.</li>
+        <li><b>ИИ:</b> просим правила валидации по формуле промпта и всегда проверяем регулярки на своих кейсах: подходящие, пустая строка, границы, мусор вокруг, реальные данные. Не вставляем код, который не можем объяснить. Проверка в браузере — удобство, защита — на сервере.</li>
+      </ul>
+    </section>

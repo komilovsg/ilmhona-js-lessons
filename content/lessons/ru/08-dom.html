@@ -1,0 +1,1833 @@
+<style>
+  /* схема дерева DOM (только для этого урока) */
+  .dom-tree, .dom-tree ul { list-style: none; margin: 0; padding: 0; font: 14px/1.7 var(--mono); }
+  .dom-tree ul { margin-left: 14px; padding-left: 16px; border-left: 2px solid var(--line); }
+  .dom-tree li { margin: 4px 0; }
+  .dom-tree .tag { color: var(--accent); font-weight: 700; }
+  .dom-tree .txt { color: var(--ink-3); font-style: italic; }
+  .dom-tree .note { color: var(--ink-3); font: 12.5px var(--font); margin-left: 8px; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 8 · DOM</p>
+      <h1>DOM: поиск и изменение элементов</h1>
+      <p class="lead">До сих пор JavaScript жил в консоли: мы считали, фильтровали и выводили текст. Сегодня он выходит на страницу. Каталог товаров, корзина, список задач, оценки в личном кабинете — всё это на настоящих сайтах рисует JavaScript, который находит нужное место на странице и меняет его. Сегодня вы соберёте страницу, в которой весь контент создаётся из массива.</p>
+      <ul class="goals">
+        <li>Объяснить, что такое DOM и чем он отличается от HTML-файла</li>
+        <li>Находить элементы через <code>querySelector</code> и <code>querySelectorAll</code></li>
+        <li>Менять текст, разметку, классы, атрибуты и <code>data-*</code></li>
+        <li>Создавать элементы через <code>createElement</code>, вставлять их и удалять</li>
+        <li>Рисовать список карточек из массива объектов и очищать его</li>
+        <li>Делить работу с ИИ: он пишет разметку и стили, вы — логику</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>В этом уроке много <b>песочниц</b>. В каждой три вкладки: <code>index.html</code> (разметка), <code>style.css</code> (стили, если есть) и <code>script.js</code> (ваш код). Нажмите <b>▶ Запустить</b> или <b>Ctrl + Enter</b> — ниже появится живая страница, а под ней консоль. Задачи проверяются по тому, что вы вывели через <code>console.log</code>, поэтому оставляйте строки с выводом на месте. Подсказки спрятаны: сначала попробуйте сами.</p>
+      <p>Одно правило песочницы: ваша разметка стоит в <code>&lt;body&gt;</code> не одна — после неё браузер добавляет служебные <code>&lt;script&gt;</code>. Поэтому мы всегда кладём содержимое в одну обёртку или ищем элементы по селектору, а не считаем детей у <code>body</code>.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="dom">
+      <h2 data-toc="Что такое DOM"><span class="num">01</span> Что такое DOM</h2>
+
+      <p>Вы пишете HTML — это обычный <b>текст</b> в файле. Когда браузер открывает страницу, он читает этот текст и строит из него <b>дерево объектов</b>. Это дерево называется <b>DOM</b> — Document Object Model, «объектная модель документа». Каждый тег превращается в объект, у которого есть свойства (текст, классы, размеры) и методы. Именно с этими объектами работает JavaScript.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>HTML-файл — это <b>напечатанное меню</b> в папке. DOM — это <b>накрытый стол</b> в чойхоне, который строится по этому меню. Официант (JavaScript) может поставить на стол ещё одну самбусу, убрать пустую пиалу или поменять чай. Напечатанное меню в папке от этого не меняется. Обновили страницу — стол накрывается заново по меню.</p>
+      </div>
+
+      <p>Вот простая страница и дерево, которое из неё получается:</p>
+
+<pre class="code" data-lang="html" data-title="HTML-файл">
+&lt;body&gt;
+  &lt;h1&gt;Меню&lt;/h1&gt;
+  &lt;ul class="menu"&gt;
+    &lt;li&gt;Самбуса&lt;/li&gt;
+    &lt;li&gt;Курутоб&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/body&gt;
+</pre>
+
+      <figure class="diagram">
+        <ul class="dom-tree">
+          <li><span class="tag">document</span>
+            <ul>
+              <li><span class="tag">body</span>
+                <ul>
+                  <li><span class="tag">h1</span>
+                    <ul><li><span class="txt">«Меню»</span><span class="note">текстовый узел</span></li></ul>
+                  </li>
+                  <li><span class="tag">ul.menu</span>
+                    <ul>
+                      <li><span class="tag">li</span> → <span class="txt">«Самбуса»</span></li>
+                      <li><span class="tag">li</span> → <span class="txt">«Курутоб»</span></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+        <figcaption>Тег внутри тега — это «ребёнок» внутри «родителя». Текст тоже узел дерева.</figcaption>
+      </figure>
+
+      <dl class="terms">
+        <dt>document</dt><dd>Корень всего дерева и «входная дверь» в страницу. Через него вы ищете элементы: <code>document.querySelector(...)</code>.</dd>
+        <dt>Элемент</dt><dd>Объект, соответствующий тегу: <code>&lt;h1&gt;</code>, <code>&lt;li&gt;</code>, <code>&lt;div&gt;</code>. Именно их мы будем искать, менять, создавать и удалять.</dd>
+        <dt>Родитель и дети</dt><dd><code>&lt;ul&gt;</code> — родитель двух <code>&lt;li&gt;</code>. Два <code>&lt;li&gt;</code> — соседи (siblings).</dd>
+        <dt>Текстовый узел</dt><dd>Кусочек текста внутри элемента. Пробелы и переносы строк между тегами — тоже текстовые узлы.</dd>
+      </dl>
+
+      <h3>Как посмотреть DOM своими глазами</h3>
+      <p>Откройте любой сайт, нажмите <b>F12</b> и перейдите на вкладку <b>Elements</b>. Это и есть живой DOM: вы видите дерево, можете кликать по элементам, менять текст двойным щелчком, перетаскивать теги — и страница реагирует сразу. Сам файл при этом не меняется. Выделенный в Elements элемент доступен в консоли как <code>$0</code>.</p>
+
+      <h3>Ходим по дереву</h3>
+      <p>У каждого элемента есть «стрелки» к соседним узлам. Они пригодятся, когда один элемент найден и нужно добраться до соседей:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Свойство</th><th>Что даёт</th></tr></thead>
+          <tbody>
+            <tr><td><code>el.parentElement</code></td><td>родитель</td></tr>
+            <tr><td><code>el.children</code></td><td>все дети-элементы (список, у него есть <code>.length</code>)</td></tr>
+            <tr><td><code>el.firstElementChild</code> / <code>el.lastElementChild</code></td><td>первый и последний ребёнок</td></tr>
+            <tr><td><code>el.nextElementSibling</code> / <code>el.previousElementSibling</code></td><td>следующий и предыдущий сосед</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="Ходим по дереву">
+<pre class="code" data-lang="html">
+&lt;ul class="menu"&gt;
+  &lt;li&gt;Самбуса&lt;/li&gt;
+  &lt;li&gt;Курутоб&lt;/li&gt;
+  &lt;li&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+// body.firstElementChild — первый элемент нашей разметки, то есть &lt;ul&gt;
+const menu = document.body.firstElementChild;
+
+console.log(menu.tagName);                      // UL
+console.log(menu.children.length);              // 3
+console.log(menu.firstElementChild.textContent); // Самбуса
+console.log(menu.lastElementChild.textContent);  // Шакароб
+
+const second = menu.children[1];                 // дети лежат как в массиве: 0, 1, 2
+console.log(second.textContent);                 // Курутоб
+console.log(second.previousElementSibling.textContent); // Самбуса
+console.log(second.parentElement.tagName);       // UL
+</pre>
+</div>
+      <p><code>textContent</code> — это текст внутри элемента. Подробнее про него — в третьем разделе, пока просто пользуйтесь.</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка: childNodes вместо children</b>
+        <p>Есть похожее свойство <code>childNodes</code>. Оно возвращает <b>все</b> узлы, включая пробелы и переносы строк между тегами. Поэтому «детей» оказывается больше, чем вы видите глазами. Для работы с элементами используйте <code>children</code> и семейство <code>...ElementChild</code>, <code>...ElementSibling</code>.</p>
+      </div>
+<pre class="code" data-run data-title="childNodes считает и пробелы">
+const box = document.createElement("div");
+box.innerHTML = `
+  &lt;p&gt;Один&lt;/p&gt;
+  &lt;p&gt;Два&lt;/p&gt;
+`;
+
+console.log(box.children.length);    // → 2 — два абзаца
+console.log(box.childNodes.length);  // → 5 — два абзаца и три «пустых» текстовых узла
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/dom-nodes" target="_blank" rel="noopener">learn.javascript.ru — Дерево DOM</a> · <a href="https://learn.javascript.ru/dom-navigation" target="_blank" rel="noopener">Навигация по DOM-элементам</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Три задачи на ходьбу по дереву. Результат проверяется по выводу в консоль под песочницей.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Сколько детей у списка</h4><span class="level easy">лёгкая</span></header>
+          <p>В песочнице — список блюд. Выведите в консоль три строки: сколько у списка детей, текст первого блюда и текст последнего.</p>
+<div class="playground" data-mode="dom" data-title="Список блюд">
+<pre class="code" data-lang="html">
+&lt;ul&gt;
+  &lt;li&gt;Нон&lt;/li&gt;
+  &lt;li&gt;Сомса&lt;/li&gt;
+  &lt;li&gt;Чой&lt;/li&gt;
+  &lt;li&gt;Мева&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.body.firstElementChild; // это &lt;ul&gt;
+
+// 1) сколько детей у списка
+// 2) текст первого ребёнка
+// 3) текст последнего ребёнка
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>4
+Нон
+Мева</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Количество детей — <code>list.children.length</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Первый ребёнок — <code>list.firstElementChild</code>, последний — <code>list.lastElementChild</code>. Текст берём через <code>.textContent</code>. Каждое значение — отдельный <code>console.log</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Предскажите вывод</h4><span class="level easy">лёгкая</span></header>
+          <p><b>Сначала не запуская код</b>, запишите в тетрадь, что выведут пять строк. Потом запустите и сверьтесь. После этого добавьте шестую строку: выведите текст абзаца «Преподаватель…», но двигаясь <b>от конца</b> — через <code>group.lastElementChild.previousElementSibling</code>.</p>
+<div class="playground" data-mode="dom" data-title="Группа JS-12">
+<pre class="code" data-lang="html">
+&lt;div class="group"&gt;
+  &lt;h2&gt;Группа JS-12&lt;/h2&gt;
+  &lt;p&gt;Преподаватель: Шахром&lt;/p&gt;
+  &lt;p&gt;Студентов: 12&lt;/p&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const group = document.body.firstElementChild;
+const title = group.firstElementChild;
+
+console.log(title.tagName);
+console.log(title.nextElementSibling.textContent);
+console.log(title.nextElementSibling.nextElementSibling.textContent);
+console.log(title.parentElement.tagName);
+console.log(group.children.length);
+
+// шестая строка — ваша
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>H2
+Преподаватель: Шахром
+Студентов: 12
+DIV
+3
+Преподаватель: Шахром</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Последний ребёнок группы — абзац «Студентов: 12». Нам нужен абзац перед ним.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>console.log(group.lastElementChild.previousElementSibling.textContent);</code></p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Лишние узлы</h4><span class="level mid">средняя</span></header>
+          <p>Выведите в консоль: сколько у списка <code>childNodes</code>, сколько <code>children</code>, а затем текст каждого города — каждый на своей строке (используйте <code>for...of</code> по <code>list.children</code>). Подумайте, откуда взялась разница в первых двух числах.</p>
+<div class="playground" data-mode="dom" data-title="Города">
+<pre class="code" data-lang="html">
+&lt;ul&gt;
+  &lt;li&gt;Душанбе&lt;/li&gt;
+  &lt;li&gt;Худжанд&lt;/li&gt;
+  &lt;li&gt;Бохтар&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.body.firstElementChild;
+
+// childNodes.length
+// children.length
+// цикл for...of по list.children — вывести текст каждого города
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>7
+3
+Душанбе
+Худжанд
+Бохтар</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Между тегами в разметке есть переносы строк и отступы. Каждый такой кусочек — отдельный текстовый узел: три перед <code>&lt;li&gt;</code> и один после последнего. Итого 3 элемента + 4 текстовых узла = 7.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>for (const li of list.children) { console.log(li.textContent); }</code></p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="find">
+      <h2 data-toc="Поиск элементов"><span class="num">02</span> Поиск элементов: querySelector</h2>
+
+      <p>Чтобы что-то изменить на странице, сначала нужно это «что-то» <b>найти</b>. Для поиска в современном JavaScript почти всегда хватает двух методов. Главное: в них вы пишете <b>обычный CSS-селектор</b> — тот же, что в файле стилей. Новый язык учить не нужно.</p>
+
+      <dl class="terms">
+        <dt>document.querySelector(селектор)</dt><dd>Возвращает <b>первый</b> подходящий элемент. Если ничего не нашлось — <code>null</code>.</dd>
+        <dt>document.querySelectorAll(селектор)</dt><dd>Возвращает <b>список всех</b> подходящих элементов (NodeList). Если ничего нет — пустой список, не <code>null</code>.</dd>
+      </dl>
+
+<div class="playground" data-mode="dom" data-title="Ищем по селекторам">
+<pre class="code" data-lang="html">
+&lt;h1 id="title"&gt;Чайхона «Сомон»&lt;/h1&gt;
+&lt;ul class="menu"&gt;
+  &lt;li class="item"&gt;Курутоб&lt;/li&gt;
+  &lt;li class="item"&gt;Оши палав&lt;/li&gt;
+  &lt;li class="item hot"&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const title = document.querySelector("#title");        // по id
+const first = document.querySelector(".item");         // по классу — первый из трёх
+const hot = document.querySelector(".item.hot");       // два класса сразу
+const all = document.querySelectorAll(".item");        // все три
+
+console.log(title.textContent);   // Чайхона «Сомон»
+console.log(first.textContent);   // Курутоб
+console.log(hot.textContent);     // Шакароб
+console.log(all.length);          // 3
+</pre>
+</div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы стоите на Зелёном базаре и говорите: «Найдите мне <b>самую первую</b> палатку с курагой» — это <code>querySelector</code>. А «Покажите <b>все</b> палатки с курагой» — это <code>querySelectorAll</code>. Селектор — это то, как вы описываете палатку: по номеру (<code>#id</code>), по вывеске (<code>.class</code>) или по типу (<code>li</code>).</p>
+      </div>
+
+      <h3>Какие селекторы можно писать</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Селектор</th><th>Что находит</th></tr></thead>
+          <tbody>
+            <tr><td><code>"#title"</code></td><td>элемент с <code>id="title"</code></td></tr>
+            <tr><td><code>".item"</code></td><td>элементы с классом <code>item</code></td></tr>
+            <tr><td><code>"li"</code></td><td>все теги <code>&lt;li&gt;</code></td></tr>
+            <tr><td><code>".menu li"</code></td><td><code>&lt;li&gt;</code> внутри <code>.menu</code> (на любой глубине)</td></tr>
+            <tr><td><code>".menu &gt; li"</code></td><td><code>&lt;li&gt;</code> — прямые дети <code>.menu</code></td></tr>
+            <tr><td><code>"li:first-child"</code>, <code>"li:nth-child(2)"</code></td><td>первый и второй по счёту</td></tr>
+            <tr><td><code>"[data-id='17']"</code></td><td>по атрибуту</td></tr>
+            <tr><td><code>"input[type='text']"</code></td><td>тег и атрибут вместе</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>Если не уверены, правильный ли селектор, проверьте его в DevTools: на вкладке Elements нажмите <b>Ctrl + F</b> и вставьте селектор. Браузер подсветит найденное и покажет, сколько совпадений.</p>
+      </div>
+
+      <h3>NodeList: похож на массив, но не массив</h3>
+      <p><code>querySelectorAll</code> возвращает <b>NodeList</b>. У него есть <code>.length</code>, к элементам можно обратиться по индексу, его можно перебирать через <code>for...of</code> и <code>forEach</code>. Но методов <code>map</code>, <code>filter</code> и <code>reduce</code> у него нет. Если нужны — превращаем в настоящий массив:</p>
+<pre class="code" data-run>
+const box = document.createElement("div");
+box.innerHTML = `&lt;p class="n"&gt;10&lt;/p&gt;&lt;p class="n"&gt;20&lt;/p&gt;&lt;p class="n"&gt;30&lt;/p&gt;`;
+
+const nodes = box.querySelectorAll(".n");
+
+console.log(nodes.length);         // → 3
+console.log(nodes[1].textContent); // → 20
+
+nodes.forEach(p =&gt; console.log("p:", p.textContent));   // forEach есть
+
+const numbers = Array.from(nodes).map(p =&gt; Number(p.textContent)); // map — только у массива
+// то же самое: [...nodes].map(...)
+console.log(numbers);              // → [10, 20, 30]
+</pre>
+
+      <h3>Ищем не по всей странице, а внутри элемента</h3>
+      <p>Метод <code>querySelector</code> есть не только у <code>document</code>, но и у <b>любого элемента</b>. Тогда поиск идёт только внутри него. Это важно, когда на странице много одинаковых карточек и нужно достать цену <b>именно из этой</b> карточки:</p>
+<div class="playground" data-mode="dom" data-title="Поиск внутри карточки">
+<pre class="code" data-lang="html">
+&lt;div class="card"&gt;&lt;span class="name"&gt;Шапка&lt;/span&gt; — &lt;span class="price"&gt;60&lt;/span&gt;&lt;/div&gt;
+&lt;div class="card"&gt;&lt;span class="name"&gt;Шарф&lt;/span&gt; — &lt;span class="price"&gt;45&lt;/span&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const cards = document.querySelectorAll(".card");
+
+for (const card of cards) {
+  const name = card.querySelector(".name").textContent;   // ищем только внутри card
+  const price = card.querySelector(".price").textContent;
+  console.log(name + ": " + price);
+}
+</pre>
+</div>
+
+      <p>Есть и старые методы: <code>getElementById("title")</code>, <code>getElementsByClassName</code>, <code>getElementsByTagName</code>. Они работают, и вы встретите их в чужом коде, но <code>querySelector</code> универсальнее — достаточно помнить один способ.</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка: элемент не найден (null)</b>
+        <p>Если <code>querySelector</code> ничего не нашёл, он возвращает <code>null</code>. А у <code>null</code> нет ни <code>textContent</code>, ни других свойств — получаем самую знаменитую ошибку DOM. Причин обычно три: опечатка в селекторе, забытая точка или решётка (<code>"item"</code> вместо <code>".item"</code>), либо скрипт запустился раньше, чем элемент появился на странице.</p>
+      </div>
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+const price = document.querySelector(".price"); // на странице такого элемента нет → null
+console.log(price);                              // → null
+console.log(price.textContent);                  // ✖ TypeError: Cannot read properties of null
+</pre>
+
+      <p>Про третью причину: в настоящем проекте подключайте скрипт с атрибутом <code>defer</code> — тогда он выполняется <b>после</b> того, как браузер построил всё дерево. В песочницах урока это уже сделано за вас.</p>
+<pre class="code" data-lang="html" data-title="index.html — как подключать скрипт в реальном проекте">
+&lt;body&gt;
+  &lt;ul id="list"&gt;&lt;/ul&gt;
+  &lt;script src="script.js" defer&gt;&lt;/script&gt;
+&lt;/body&gt;
+</pre>
+
+      <div class="callout tip">
+        <b>Привычка на всю жизнь</b>
+        <p>Найденные элементы кладите в переменные <b>один раз</b> в начале скрипта: <code>const list = document.querySelector("#list");</code>. Не ищите один и тот же элемент по десять раз — код станет короче, а браузер быстрее.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/searching-elements-dom" target="_blank" rel="noopener">learn.javascript.ru — Поиск: getElement*, querySelector*</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Document/querySelector" target="_blank" rel="noopener">MDN — querySelector</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Находим элементы разными способами.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Найди по id и классу</h4><span class="level easy">лёгкая</span></header>
+          <p>Выведите в консоль три строки: текст заголовка (найдите по <code>id</code>), текст первого блюда с классом <code>item</code> и количество всех блюд с этим классом.</p>
+<div class="playground" data-mode="dom" data-title="Меню чайханы">
+<pre class="code" data-lang="html">
+&lt;h1 id="title"&gt;Чайхона «Сомон»&lt;/h1&gt;
+&lt;ul class="menu"&gt;
+  &lt;li class="item"&gt;Курутоб&lt;/li&gt;
+  &lt;li class="item"&gt;Оши палав&lt;/li&gt;
+  &lt;li class="item hot"&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+// 1) текст заголовка по id
+// 2) текст первого .item
+// 3) сколько всего .item
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Чайхона «Сомон»
+Курутоб
+3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Заголовок: <code>document.querySelector("#title")</code>. Решётка — для <code>id</code>, точка — для класса.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Первый <code>.item</code> — <code>querySelector(".item")</code>, все — <code>querySelectorAll(".item")</code> и затем <code>.length</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Найди три бага в селекторах</h4><span class="level mid">средняя</span></header>
+          <p>Код хочет вывести заголовок, количество товаров и текст товара со скидкой, но ничего не работает. Запустите его, прочитайте ошибку в консоли и исправьте <b>три</b> места, помеченные номерами. Исправляйте по одному и каждый раз запускайте — ошибки открываются по очереди.</p>
+<div class="playground" data-mode="dom" data-title="Корзина (с багами)">
+<pre class="code" data-lang="html">
+&lt;h1 id="title"&gt;Корзина&lt;/h1&gt;
+&lt;ul id="cart"&gt;
+  &lt;li class="item"&gt;Нон — 4&lt;/li&gt;
+  &lt;li class="item"&gt;Молоко — 12&lt;/li&gt;
+  &lt;li class="item sale"&gt;Зардолу — 25&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const title = document.querySelector(".title");   // 1
+const items = document.querySelector(".item");    // 2
+const sale = document.querySelector("#sale");     // 3
+
+console.log(title.textContent);
+console.log(items.length);
+console.log(sale.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Корзина
+3
+Зардолу — 25</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Бага 1: у заголовка не класс, а <code>id</code> — значит, нужна решётка. Бага 3 — наоборот: <code>sale</code> — это класс, а не <code>id</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Баг 2: <code>querySelector</code> вернёт один элемент, а у него нет <code>.length</code>. Чтобы посчитать все товары, нужен <code>querySelectorAll</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Цены из карточек</h4><span class="level hard">сложная</span></header>
+          <p>В каталоге четыре карточки. Переберите их, достаньте цену и название из каждой (поиск <b>внутри</b> карточки), посчитайте общую сумму и найдите самую дорогую. Цена в <code>textContent</code> — строка, превращайте её в число через <code>Number(...)</code>.</p>
+<div class="playground" data-mode="dom" data-title="Каталог">
+<pre class="code" data-lang="html">
+&lt;div class="card"&gt;&lt;span class="name"&gt;Шапка&lt;/span&gt; &lt;span class="price"&gt;60&lt;/span&gt;&lt;/div&gt;
+&lt;div class="card"&gt;&lt;span class="name"&gt;Шарф&lt;/span&gt; &lt;span class="price"&gt;45&lt;/span&gt;&lt;/div&gt;
+&lt;div class="card"&gt;&lt;span class="name"&gt;Перчатки&lt;/span&gt; &lt;span class="price"&gt;35&lt;/span&gt;&lt;/div&gt;
+&lt;div class="card"&gt;&lt;span class="name"&gt;Носки&lt;/span&gt; &lt;span class="price"&gt;15&lt;/span&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const cards = document.querySelectorAll(".card");
+
+let total = 0;
+let maxPrice = 0;
+let maxName = "";
+
+// переберите cards: достаньте name и price, обновите total, maxPrice, maxName
+
+console.log("Итого: " + total + " сомони");
+console.log("Самый дорогой: " + maxName);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Итого: 155 сомони
+Самый дорогой: Шапка</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Цикл <code>for (const card of cards) { ... }</code>. Внутри: <code>const price = Number(card.querySelector(".price").textContent);</code> и такая же строка для имени.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сумма: <code>total += price</code>. Если <code>price &gt; maxPrice</code>, запишите новую цену в <code>maxPrice</code> и имя — в <code>maxName</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="content">
+      <h2 data-toc="Текст и разметка"><span class="num">03</span> Меняем содержимое: textContent и innerHTML</h2>
+
+      <p>Элемент найден. Теперь можно прочитать то, что внутри него, и заменить. Для этого у каждого элемента есть два главных свойства. Они похожи, но делают разное — и разница важна не только для красоты, но и для безопасности.</p>
+
+      <div class="cols">
+        <div class="col good">
+          <b>textContent — только текст</b>
+          <p>Читает и записывает <b>обычный текст</b>. Любые <code>&lt;</code> и <code>&gt;</code> считаются просто символами, теги не создаются. Быстро и безопасно.</p>
+        </div>
+        <div class="col bad">
+          <b>innerHTML — текст и разметка</b>
+          <p>Читает и записывает <b>HTML-строку</b>. Теги внутри превращаются в настоящие элементы. Мощно, но опасно, если в строке чужой текст.</p>
+        </div>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="textContent и innerHTML">
+<pre class="code" data-lang="html">
+&lt;h2 id="dish"&gt;Загрузка…&lt;/h2&gt;
+&lt;div id="box"&gt;Старое содержимое&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const dish = document.querySelector("#dish");
+const box = document.querySelector("#box");
+
+dish.textContent = "Оши палав";            // заменили текст
+console.log(dish.textContent);              // Оши палав
+
+box.innerHTML = "&lt;b&gt;Цена:&lt;/b&gt; 35 сомони";   // тег &lt;b&gt; станет настоящим элементом
+console.log(box.children.length);           // 1 — внутри появился &lt;b&gt;
+console.log(box.innerHTML);                 // &lt;b&gt;Цена:&lt;/b&gt; 35 сомони
+console.log(box.textContent);               // Цена: 35 сомони — только текст, без тегов
+</pre>
+</div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Представьте, что вы заказываете торт с надписью. <code>textContent</code> — это когда кондитер пишет на торте <b>ровно то, что вы сказали</b>, даже если вы продиктовали странные значки. <code>innerHTML</code> — когда вы даёте кондитеру <b>инструкцию</b>: «поставь здесь украшение, а вот тут сделай жирную надпись». Он выполнит инструкцию буквально. Если инструкцию написал посторонний человек — он может заставить кондитера сделать что угодно.</p>
+      </div>
+
+      <h3>Читаем и пишем</h3>
+      <ul>
+        <li><code>el.textContent</code> — прочитать весь текст внутри элемента (включая вложенные теги, но без самих тегов).</li>
+        <li><code>el.textContent = "новый текст"</code> — заменить всё содержимое одним текстом.</li>
+        <li><code>el.innerHTML</code> — прочитать содержимое вместе с тегами, как строку.</li>
+        <li><code>el.innerHTML = "&lt;b&gt;жирный&lt;/b&gt;"</code> — заменить содержимое, разобрав строку как HTML.</li>
+      </ul>
+      <p>Есть ещё <code>innerText</code>: он учитывает CSS и не показывает скрытый текст. Для обычной работы берите <code>textContent</code> — он проще и предсказуемее.</p>
+
+      <h3>Почему innerHTML опасен</h3>
+      <p>Допустим, на вашем сайте пользователь пишет комментарий, а вы вставляете его на страницу через <code>innerHTML</code>. Если вместо «Отличный курс!» он напишет специально подготовленный тег <code>&lt;img&gt;</code> со скрытым кодом — браузер создаст этот элемент и выполнит чужой код <b>на страницах других посетителей</b>. Такая атака называется <b>XSS</b> и входит в число самых распространённых в вебе.</p>
+      <div class="callout warn">
+        <b>Правило безопасности</b>
+        <p>Всё, что пришло от пользователя, из формы, из адресной строки или от внешнего API, вставляйте через <b>textContent</b>. <code>innerHTML</code> — только для разметки, которую написали вы сами (или ИИ, и вы её проверили). Посмотрите, как выглядит разница:</p>
+      </div>
+<pre class="code" data-run>
+const comment = "Круто! &lt;b&gt;Пять звёзд&lt;/b&gt;";      // представим, что это ввёл пользователь
+
+const safe = document.createElement("div");
+safe.textContent = comment;          // текст остался текстом
+console.log(safe.children.length);   // → 0 — никаких тегов не появилось
+
+const risky = document.createElement("div");
+risky.innerHTML = comment;           // строка разобрана как HTML
+console.log(risky.children.length);  // → 1 — появился настоящий тег &lt;b&gt;
+</pre>
+
+      <h3>Ловушка: += для innerHTML</h3>
+      <p>Запись <code>list.innerHTML += "&lt;li&gt;…&lt;/li&gt;"</code> выглядит как «добавить в конец», но на самом деле браузер <b>сносит весь список и собирает заново</b>. Все ранее найденные элементы в ваших переменных теряют связь со страницей.</p>
+<pre class="code" data-run data-title="Что происходит при += для innerHTML">
+const list = document.createElement("ul");
+list.innerHTML = "&lt;li&gt;Нон&lt;/li&gt;";
+
+const first = list.firstElementChild;     // запомнили первый пункт
+list.innerHTML += "&lt;li&gt;Чой&lt;/li&gt;";         // «добавили» второй
+
+console.log(list.children.length);             // → 2
+console.log(first === list.firstElementChild); // → false — это уже другой, новый элемент!
+console.log(list.contains(first));             // → false — старый пункт выброшен
+</pre>
+      <p>В разделе 5 вы узнаете, как добавлять элементы без такого побочного эффекта — через <code>createElement</code> и <code>append</code>.</p>
+
+      <h3>Собираем список строкой</h3>
+      <p>Если разметку пишете вы сами, а данные безопасные (ваш массив, а не ввод пользователя), удобно собирать HTML шаблонными строками и методами массивов, которые вы уже знаете:</p>
+<pre class="code" data-run>
+const dishes = ["Самбуса", "Курутоб", "Шакароб"];
+
+const html = dishes.map(d =&gt; `&lt;li&gt;${d}&lt;/li&gt;`).join("");
+console.log(html);   // → &lt;li&gt;Самбуса&lt;/li&gt;&lt;li&gt;Курутоб&lt;/li&gt;&lt;li&gt;Шакароб&lt;/li&gt;
+
+const menu = document.createElement("ul");
+menu.innerHTML = html;
+console.log(menu.children.length); // → 3
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/basic-dom-node-properties" target="_blank" rel="noopener">learn.javascript.ru — Свойства узлов DOM</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Node/textContent" target="_blank" rel="noopener">MDN — textContent</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Читаем и пишем содержимое.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Заголовок и цена</h4><span class="level easy">лёгкая</span></header>
+          <p>Страница показывает заглушки «Загрузка…». Замените текст заголовка на <code>Курутоб</code>, а текст цены — на <code>35 сомони</code> через <code>textContent</code>. После замены выведите оба текста в консоль.</p>
+<div class="playground" data-mode="dom" data-title="Карточка блюда">
+<pre class="code" data-lang="html">
+&lt;h1 id="title"&gt;Загрузка…&lt;/h1&gt;
+&lt;p class="price"&gt;0 сомони&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="js">
+const title = document.querySelector("#title");
+const price = document.querySelector(".price");
+
+// замените тексты
+
+console.log(title.textContent);
+console.log(price.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Курутоб
+35 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запись в свойство — это присваивание: <code>title.textContent = "...";</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Две строки между поиском и <code>console.log</code>: <code>title.textContent = "Курутоб";</code> и <code>price.textContent = "35 сомони";</code></p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Безопасный вывод имени</h4><span class="level mid">средняя</span></header>
+          <p>Строка <code>userName</code> — это «ввод пользователя». Положите её в блок <code>#a</code> через <code>innerHTML</code>, а в блок <code>#b</code> — через <code>textContent</code>. Посмотрите на preview: в каком блоке видны теги? Консоль подтвердит разницу.</p>
+<div class="playground" data-mode="dom" data-title="Две вставки">
+<pre class="code" data-lang="html">
+&lt;div id="a"&gt;&lt;/div&gt;
+&lt;div id="b"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const userName = "Ali &lt;b&gt;Pro&lt;/b&gt;";
+const a = document.querySelector("#a");
+const b = document.querySelector("#b");
+
+// в a — через innerHTML, в b — через textContent
+
+console.log(a.children.length);
+console.log(b.children.length);
+console.log(b.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1
+0
+Ali &lt;b&gt;Pro&lt;/b&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Каждый блок — одна строка присваивания: <code>a.innerHTML = userName;</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Второй блок — точно так же, но свойство <code>textContent</code>. В <code>#a</code> появится настоящий тег <code>&lt;b&gt;</code> (1 ребёнок), в <code>#b</code> — просто текст с видимыми угловыми скобками (0 детей).</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Меню через map и join</h4><span class="level mid">средняя</span></header>
+          <p>Соберите HTML-строку из массива <code>dishes</code>: каждое блюдо — <code>&lt;li&gt;</code>. Используйте <code>map</code> и <code>join("")</code>. Запишите строку в <code>#menu</code> через <code>innerHTML</code> и выведите в консоль количество детей и саму разметку.</p>
+<div class="playground" data-mode="dom" data-title="Меню из массива">
+<pre class="code" data-lang="html">
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const dishes = ["Самбуса", "Курутоб", "Шакароб"];
+const menu = document.querySelector("#menu");
+
+// соберите строку и положите в menu
+
+console.log(menu.children.length);
+console.log(menu.innerHTML);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+&lt;li&gt;Самбуса&lt;/li&gt;&lt;li&gt;Курутоб&lt;/li&gt;&lt;li&gt;Шакароб&lt;/li&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>map</code> превращает каждое блюдо в строку с тегами, <code>join("")</code> склеивает их без пробелов. Шаблон: <code>`&lt;li&gt;${d}&lt;/li&gt;`</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>menu.innerHTML = dishes.map(d =&gt; `&lt;li&gt;${d}&lt;/li&gt;`).join("");</code></p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="classes">
+      <h2 data-toc="Классы, стили, атрибуты"><span class="num">04</span> Классы, стили и атрибуты</h2>
+
+      <p>Внешний вид элемента почти всегда задаётся в CSS. JavaScript не должен красить страницу сам, его работа — <b>включать и выключать готовые классы</b>. Вы пишете в CSS, как выглядит <code>.hot</code>, а в JS только решаете, когда элементу его выдать. Так код остаётся чистым, а дизайн меняется в одном месте.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Класс — это <b>форма</b> в Илмхоне: бейдж «преподаватель», «студент», «гость». Бейдж один раз придумали, дизайн утвердили. Охранник (JS) не рисует каждому новый бейдж, а просто <b>выдаёт</b> готовый или <b>забирает</b>. Выдать — <code>add</code>, забрать — <code>remove</code>, поменять на противоположный — <code>toggle</code>.</p>
+      </div>
+
+      <h3>classList: управляем классами</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Метод</th><th>Что делает</th></tr></thead>
+          <tbody>
+            <tr><td><code>el.classList.add("hot")</code></td><td>добавляет класс (если уже есть — ничего не происходит)</td></tr>
+            <tr><td><code>el.classList.remove("old")</code></td><td>убирает класс</td></tr>
+            <tr><td><code>el.classList.toggle("open")</code></td><td>есть — убирает, нет — добавляет</td></tr>
+            <tr><td><code>el.classList.contains("hot")</code></td><td>возвращает <code>true</code> или <code>false</code></td></tr>
+            <tr><td><code>el.classList.replace("old", "new")</code></td><td>заменяет один класс другим</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="Подсвечиваем «горячее»">
+<pre class="code" data-lang="html">
+&lt;ul class="menu"&gt;
+  &lt;li class="item"&gt;Самбуса&lt;/li&gt;
+  &lt;li class="item"&gt;Курутоб&lt;/li&gt;
+  &lt;li class="item"&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+.item { padding: 6px 10px; margin: 4px 0; border-radius: 8px; background: #eef1f6; list-style: none; }
+.hot  { background: #ffd9a8; font-weight: 700; }
+.hot::after { content: " 🔥"; }
+</pre>
+<pre class="code" data-lang="js">
+const items = document.querySelectorAll(".item");
+
+items[1].classList.add("hot");                 // выдали бейдж «hot» Курутобу
+console.log(items[1].className);               // item hot
+console.log(items[1].classList.contains("hot")); // true
+console.log(items[0].classList.contains("hot")); // false
+
+items[1].classList.toggle("hot");              // был — стал выключен
+console.log(items[1].className);               // item
+</pre>
+</div>
+
+      <div class="callout warn">
+        <b>Частая ошибка: className = "…" затирает все классы</b>
+        <p>Свойство <code>className</code> хранит <b>всю строку</b> классов. Если записать в него новое значение, все прежние классы пропадут. Для добавления и удаления используйте <code>classList</code>.</p>
+      </div>
+<pre class="code" data-run>
+const el = document.createElement("div");
+el.className = "card sale";
+
+el.className = "hot";                 // затёрли «card» и «sale»!
+console.log(el.className);            // → hot
+
+el.className = "card sale";
+el.classList.add("hot");              // правильно: добавили к существующим
+console.log(el.className);            // → card sale hot
+</pre>
+
+      <h3>style: быстрый, но грубый способ</h3>
+      <p>Через <code>el.style.свойство</code> можно задать стиль прямо у элемента. Названия свойств пишутся в <b>camelCase</b>: <code>background-color</code> становится <code>backgroundColor</code>, а значения — всегда строки:</p>
+<div class="playground" data-mode="dom" data-title="el.style">
+<pre class="code" data-lang="html">
+&lt;p id="note"&gt;Скидка до конца недели&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="js">
+const note = document.querySelector("#note");
+
+note.style.color = "white";
+note.style.backgroundColor = "tomato";   // camelCase!
+note.style.padding = "8px 12px";
+note.style.borderRadius = "8px";
+
+console.log(note.style.color);           // white
+</pre>
+</div>
+      <p><b>Правило:</b> если стиль нужен надолго или нескольким элементам — заведите класс. <code>style</code> оставляйте для значений, которые рассчитываются в коде (ширина полоски загрузки, позиция). Так JS не смешивается с дизайном, и ИИ-помощнику проще вам помогать.</p>
+
+      <h3>Атрибуты: getAttribute, setAttribute и свойства</h3>
+      <p>Атрибуты — это то, что пишется в открывающем теге: <code>href</code>, <code>src</code>, <code>alt</code>, <code>disabled</code>, <code>data-id</code>. Читать и менять их можно двумя способами:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Способ</th><th>Пример</th><th>Когда использовать</th></tr></thead>
+          <tbody>
+            <tr><td>Методы</td><td><code>el.getAttribute("href")</code>, <code>el.setAttribute("href", "…")</code>, <code>el.removeAttribute("disabled")</code>, <code>el.hasAttribute("disabled")</code></td><td>универсально, подходит для любых атрибутов, в том числе <code>data-*</code></td></tr>
+            <tr><td>Свойства</td><td><code>input.value</code>, <code>button.disabled = true</code>, <code>el.hidden = true</code>, <code>img.src</code>, <code>a.href</code></td><td>для стандартных атрибутов — короче и удобнее</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>data-атрибуты: свои данные в разметке</h3>
+      <p>Хотите «привязать» к элементу собственные данные — например, id товара или его цену? Для этого придуманы атрибуты, начинающиеся с <code>data-</code>. В JS они доступны через <code>el.dataset</code>, причём имя после <code>data-</code> превращается в свойство:</p>
+<div class="playground" data-mode="dom" data-title="dataset">
+<pre class="code" data-lang="html">
+&lt;button id="buy" data-id="17" data-price="35" data-product-name="Курутоб"&gt;Купить&lt;/button&gt;
+</pre>
+<pre class="code" data-lang="js">
+const buy = document.querySelector("#buy");
+
+console.log(buy.dataset.id);            // "17"  — всегда строка!
+console.log(buy.dataset.price);         // "35"
+console.log(buy.dataset.productName);   // data-product-name → productName
+console.log(Number(buy.dataset.price) * 2); // 70 — для расчётов превращаем в число
+
+buy.dataset.price = "40";               // запись тоже через dataset
+console.log(buy.getAttribute("data-price")); // 40 — атрибут в разметке изменился
+
+buy.disabled = true;                    // свойство disabled — кнопка серая и неактивна
+console.log(buy.hasAttribute("disabled")); // true
+</pre>
+</div>
+
+      <div class="callout warn">
+        <b>Ловушка: всё в dataset — строки</b>
+        <p><code>dataset.price</code> вернёт <code>"35"</code>, а не <code>35</code>. Складывать такие значения опасно: <code>"35" + "5"</code> даст <code>"355"</code>. Перед расчётами всегда превращайте в число через <code>Number(...)</code>.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/styles-and-classes" target="_blank" rel="noopener">learn.javascript.ru — Стили и классы</a> · <a href="https://learn.javascript.ru/dom-attributes-and-properties" target="_blank" rel="noopener">Атрибуты и свойства</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Element/classList" target="_blank" rel="noopener">MDN — classList</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Классы, стили и атрибуты на деле.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Бейджи в меню</h4><span class="level easy">лёгкая</span></header>
+          <p>Добавьте класс <code>hot</code> блюду «Курутоб», а у «Шакароб» уберите класс <code>old</code>. Потом выведите <code>className</code> каждого пункта — по одному на строке.</p>
+<div class="playground" data-mode="dom" data-title="Меню с бейджами">
+<pre class="code" data-lang="html">
+&lt;ul class="menu"&gt;
+  &lt;li class="item"&gt;Самбуса&lt;/li&gt;
+  &lt;li class="item"&gt;Курутоб&lt;/li&gt;
+  &lt;li class="item old"&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+.item { padding: 6px 10px; margin: 4px 0; border-radius: 8px; background: #eef1f6; list-style: none; }
+.hot { background: #ffd9a8; font-weight: 700; }
+.old { opacity: .5; text-decoration: line-through; }
+</pre>
+<pre class="code" data-lang="js">
+const items = document.querySelectorAll(".item");
+
+// items[1] — «Курутоб»: добавить класс hot
+// items[2] — «Шакароб»: убрать класс old
+
+for (const item of items) {
+  console.log(item.className);
+}
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>item
+item hot
+item</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Используйте <code>classList.add("...")</code> и <code>classList.remove("...")</code>, а не <code>className =</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>items[1].classList.add("hot");</code> и <code>items[2].classList.remove("old");</code></p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Панель: toggle и contains</h4><span class="level easy">лёгкая</span></header>
+          <p>У панели изначально классы <code>panel open</code>. Выполните по порядку: 1) выведите, есть ли класс <code>open</code>; 2) переключите <code>open</code> и снова выведите, есть ли он; 3) переключите <code>open</code> обратно, добавьте переключением класс <code>dark</code> и выведите <code>className</code>.</p>
+<div class="playground" data-mode="dom" data-title="Панель">
+<pre class="code" data-lang="html">
+&lt;div id="panel" class="panel open"&gt;Меню&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const panel = document.querySelector("#panel");
+
+// 1) вывести panel.classList.contains("open")
+// 2) toggle("open") и снова вывести contains
+// 3) ещё раз toggle("open"), toggle("dark") и вывести panel.className
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>true
+false
+panel open dark</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>После первого <code>toggle("open")</code> класса не будет (<code>false</code>), после второго — он вернётся в конец списка классов.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Третий шаг: <code>panel.classList.toggle("open"); panel.classList.toggle("dark"); console.log(panel.className);</code> Порядок классов — по порядку добавления.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Ссылка и кнопка покупки</h4><span class="level mid">средняя</span></header>
+          <p>Выполните четыре действия и выведите результат каждого: 1) смените <code>href</code> ссылки на <code>https://ilmhona.tj</code> и выведите его через <code>getAttribute</code>; 2) выведите цену из <code>data-price</code>, умноженную на 2 (как число); 3) смените <code>data-id</code> на <code>18</code> через <code>dataset</code> и выведите значение через <code>getAttribute("data-id")</code>; 4) отключите кнопку и выведите <code>hasAttribute("disabled")</code>.</p>
+<div class="playground" data-mode="dom" data-title="Ссылка и кнопка">
+<pre class="code" data-lang="html">
+&lt;a id="link" href="https://example.com"&gt;Сайт&lt;/a&gt;
+&lt;button id="buy" data-id="17" data-price="35"&gt;Купить&lt;/button&gt;
+</pre>
+<pre class="code" data-lang="js">
+const link = document.querySelector("#link");
+const buy = document.querySelector("#buy");
+
+// 1) setAttribute("href", ...) и вывести getAttribute("href")
+// 2) вывести Number(buy.dataset.price) * 2
+// 3) buy.dataset.id = "18" и вывести getAttribute("data-id")
+// 4) buy.disabled = true и вывести hasAttribute("disabled")
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>https://ilmhona.tj
+70
+18
+true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>link.setAttribute("href", "https://ilmhona.tj");</code> — первым аргументом имя атрибута, вторым значение.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Свойство <code>disabled</code> у кнопки — логическое: <code>buy.disabled = true;</code>. После этого атрибут <code>disabled</code> появляется в разметке, и <code>hasAttribute</code> вернёт <code>true</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ЗАДАЧА 4.4</span><h4>Светофор цен</h4><span class="level hard">сложная</span></header>
+          <p>У каждой карточки есть <code>data-price</code>. Переберите карточки: если цена <b>50 и больше</b> — добавьте класс <code>expensive</code>, если <b>меньше 20</b> — класс <code>sale</code>, иначе ничего. Выведите <code>className</code> каждой карточки, а затем количество карточек с классом <code>expensive</code> (через <code>querySelectorAll</code>).</p>
+<div class="playground" data-mode="dom" data-title="Светофор цен">
+<pre class="code" data-lang="html">
+&lt;div class="card" data-price="60"&gt;Шапка&lt;/div&gt;
+&lt;div class="card" data-price="45"&gt;Шарф&lt;/div&gt;
+&lt;div class="card" data-price="35"&gt;Перчатки&lt;/div&gt;
+&lt;div class="card" data-price="15"&gt;Носки&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.card { display: inline-block; padding: 10px 14px; margin: 4px; border: 2px solid #ccd3df; border-radius: 10px; }
+.expensive { border-color: #c98a00; background: #fff3d6; }
+.sale { border-color: #1a9a5a; background: #dff6e8; }
+</pre>
+<pre class="code" data-lang="js">
+const cards = document.querySelectorAll(".card");
+
+for (const card of cards) {
+  const price = Number(card.dataset.price);
+  // добавьте нужный класс
+
+  console.log(card.className);
+}
+
+// сколько карточек с классом expensive
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>card expensive
+card
+card
+card sale
+1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри цикла нужны два <code>if</code>: <code>if (price &gt;= 50) card.classList.add("expensive");</code> и такой же для <code>price &lt; 20</code>. Не забудьте <code>Number(...)</code> — у вас она уже есть.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В конце: <code>console.log(document.querySelectorAll(".expensive").length);</code></p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="create">
+      <h2 data-toc="Создание и удаление"><span class="num">05</span> Создаём и удаляем элементы</h2>
+
+      <p>Пока мы только находили и меняли то, что уже написано в HTML. Но у настоящего сайта, например интернет-магазина, список товаров приходит из данных, и разметки под него заранее никто не пишет. Элементы нужно <b>создавать из кода</b>. Это три шага:</p>
+
+      <ol class="steps">
+        <li><b>Создали</b> — <code>document.createElement("li")</code>. Элемент появился «на складе»: он существует, но на странице его пока не видно.</li>
+        <li><b>Настроили</b> — задали текст, классы, атрибуты: <code>li.textContent = "Самбуса"</code>, <code>li.classList.add("item")</code>.</li>
+        <li><b>Вставили</b> — <code>parent.append(li)</code>. Только после этого он появляется на странице.</li>
+      </ol>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Бозор. Продавец достаёт товар из мешка (<code>createElement</code>), вешает ценник (настройка) и только потом выкладывает на прилавок (<code>append</code>). Пока товар в мешке, покупатели его не видят. Самая частая ошибка новичка — сделать два первых шага и забыть про прилавок.</p>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="Создали, настроили, вставили">
+<pre class="code" data-lang="html">
+&lt;h2&gt;Сегодня в меню&lt;/h2&gt;
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+.item { padding: 6px 10px; margin: 4px 0; border-radius: 8px; background: #eef1f6; list-style: none; }
+</pre>
+<pre class="code" data-lang="js">
+const menu = document.querySelector("#menu");
+
+const li = document.createElement("li");   // 1. создали
+li.textContent = "Оши палав";              // 2. настроили
+li.classList.add("item");
+menu.append(li);                           // 3. вставили — теперь он на странице
+
+console.log(menu.children.length);         // 1
+</pre>
+</div>
+
+      <h3>Куда вставлять</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Метод</th><th>Куда попадёт элемент</th></tr></thead>
+          <tbody>
+            <tr><td><code>parent.append(el)</code></td><td>в <b>конец</b> родителя</td></tr>
+            <tr><td><code>parent.prepend(el)</code></td><td>в <b>начало</b> родителя</td></tr>
+            <tr><td><code>ref.before(el)</code></td><td>перед элементом <code>ref</code>, на одном уровне с ним</td></tr>
+            <tr><td><code>ref.after(el)</code></td><td>после элемента <code>ref</code></td></tr>
+            <tr><td><code>el.remove()</code></td><td>удаляет элемент со страницы</td></tr>
+            <tr><td><code>el.cloneNode(true)</code></td><td>создаёт копию (с содержимым, если <code>true</code>)</td></tr>
+            <tr><td><code>parent.replaceChildren()</code></td><td>удаляет <b>всех</b> детей. С аргументами — заменяет детей на переданные</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><code>append</code> умеет принимать несколько элементов сразу: <code>card.append(title, price)</code>. Если передать строку, она вставится как <b>текст</b> (не как HTML), так что это безопасно.</p>
+
+<div class="playground" data-mode="dom" data-title="Очередь: вставляем и удаляем">
+<pre class="code" data-lang="html">
+&lt;ol id="queue"&gt;
+  &lt;li&gt;Рустам&lt;/li&gt;
+  &lt;li class="gone"&gt;Мадина&lt;/li&gt;
+  &lt;li&gt;Фарход&lt;/li&gt;
+&lt;/ol&gt;
+</pre>
+<pre class="code" data-lang="js">
+const queue = document.querySelector("#queue");
+
+function person(name) {
+  const li = document.createElement("li");
+  li.textContent = name;
+  return li;
+}
+
+queue.querySelector(".gone").remove();       // ушла Мадина
+queue.prepend(person("Нилуфар"));            // VIP — в начало
+queue.append(person("Далер"));               // обычный — в конец
+queue.children[1].after(person("Сабрина"));  // после Рустама (он теперь второй)
+
+console.log(Array.from(queue.children, li =&gt; li.textContent).join(", "));
+// Нилуфар, Рустам, Сабрина, Фарход, Далер
+</pre>
+</div>
+
+      <h3>Элемент не копируется, а переезжает</h3>
+      <p>Один и тот же элемент не может быть в двух местах дерева. Если вставить уже существующий элемент в другое место, он <b>переедет</b>, а на старом месте исчезнет. Нужна копия — делайте <code>cloneNode(true)</code>.</p>
+<pre class="code" data-run>
+const a = document.createElement("ul");
+const b = document.createElement("ul");
+
+const li = document.createElement("li");
+li.textContent = "Самбуса";
+a.append(li);
+
+b.append(li);                        // переехал из a в b
+console.log(a.children.length, b.children.length);  // → 0 1
+
+a.append(li.cloneNode(true));        // копия остаётся и там, и там
+console.log(a.children.length, b.children.length);  // → 1 1
+</pre>
+
+      <h3>createElement или innerHTML?</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>createElement + append</th><th>innerHTML со строкой</th></tr></thead>
+          <tbody>
+            <tr><td><b>Записывается</b></td><td>длиннее</td><td>короче, похоже на настоящий HTML</td></tr>
+            <tr><td><b>Безопасность</b></td><td>текст всегда через <code>textContent</code> — безопасно</td><td>опасно, если в строке чужой текст</td></tr>
+            <tr><td><b>Старые ссылки на элементы</b></td><td>сохраняются</td><td>ломаются при <code>+=</code> и перезаписи</td></tr>
+            <tr><td><b>Когда выбирать</b></td><td>данные от пользователя и API, когда элемент нужен в переменной</td><td>статичный шаблон, который вы написали сами</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>В этом уроке мы идём по безопасному пути: <b>createElement</b>. Он чуть длиннее, но учит видеть структуру страницы как дерево — а это именно то, что потом пригодится в React.</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка: забыли вставить</b>
+        <p>Создать элемент — не значит показать его. Без <code>append</code> (или <code>prepend</code>, <code>before</code>, <code>after</code>) он остаётся «в мешке». Если на странице ничего не появилось, а ошибок нет, — первым делом проверьте, что вставка действительно вызывается.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/modifying-document" target="_blank" rel="noopener">learn.javascript.ru — Изменение документа</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Document/createElement" target="_blank" rel="noopener">MDN — createElement</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren" target="_blank" rel="noopener">MDN — replaceChildren</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Создаём, вставляем, переставляем, удаляем.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Первый элемент</h4><span class="level easy">лёгкая</span></header>
+          <p>Создайте <code>&lt;li&gt;</code> с текстом <code>Самбуса</code> и вставьте его в список <code>#menu</code>. Выведите количество детей списка и его текст.</p>
+<div class="playground" data-mode="dom" data-title="Пустое меню">
+<pre class="code" data-lang="html">
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const menu = document.querySelector("#menu");
+
+// создайте li, задайте текст, вставьте в menu
+
+console.log(menu.children.length);
+console.log(menu.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1
+Самбуса</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три шага: <code>createElement("li")</code>, затем <code>textContent</code>, затем <code>menu.append(...)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const li = document.createElement("li"); li.textContent = "Самбуса"; menu.append(li);</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Три пункта циклом</h4><span class="level easy">лёгкая</span></header>
+          <p>Для каждого блюда из массива создайте <code>&lt;li&gt;</code> с классом <code>item</code> и вставьте в <code>#menu</code>. Выведите количество пунктов, текст последнего и класс первого.</p>
+<div class="playground" data-mode="dom" data-title="Меню циклом">
+<pre class="code" data-lang="html">
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const dishes = ["Нон", "Сомса", "Чой"];
+const menu = document.querySelector("#menu");
+
+// цикл по dishes: создать li, текст, класс item, вставить
+
+console.log(menu.children.length);
+console.log(menu.lastElementChild.textContent);
+console.log(menu.firstElementChild.className);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+Чой
+item</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Тело цикла <code>for (const dish of dishes) { ... }</code> содержит те же три шага, что и в задаче 5.1, плюс <code>li.classList.add("item")</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Создание нового <code>li</code> должно быть <b>внутри</b> цикла — на каждый пункт свой элемент.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Очередь в банке</h4><span class="level mid">средняя</span></header>
+          <p>Выполните четыре операции с очередью: 1) удалите того, у кого класс <code>old</code>; 2) поставьте <code>Зарина</code> в самое начало; 3) поставьте <code>Далер</code> сразу после <code>Алии</code>; 4) добавьте <code>Нилуфар</code> в конец. Вспомогательная функция <code>make</code> уже есть.</p>
+<div class="playground" data-mode="dom" data-title="Очередь">
+<pre class="code" data-lang="html">
+&lt;ul id="line"&gt;
+  &lt;li&gt;Алия&lt;/li&gt;
+  &lt;li class="old"&gt;Бахром&lt;/li&gt;
+  &lt;li&gt;Умар&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const line = document.querySelector("#line");
+const alia = line.firstElementChild;
+
+function make(text) {
+  const li = document.createElement("li");
+  li.textContent = text;
+  return li;
+}
+
+// 1) удалить .old
+// 2) prepend: Зарина
+// 3) after: Далер после alia
+// 4) append: Нилуфар
+
+console.log(Array.from(line.children, li =&gt; li.textContent).join(", "));
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Зарина, Алия, Далер, Умар, Нилуфар</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первая операция: найдите <code>.old</code> через <code>querySelector</code> и вызовите у него <code>remove()</code>. «После Алии» — это метод у самой <code>alia</code>: <code>alia.after(...)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>line.querySelector(".old").remove(); line.prepend(make("Зарина")); alia.after(make("Далер")); line.append(make("Нилуфар"));</code></p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>Переехал или скопировался</h4><span class="level hard">сложная</span></header>
+          <p>Сначала <b>предскажите</b> два числа в первых двух строках вывода — сколько элементов будет в левом и правом списках после каждой операции. Потом запустите. Затем допишите код: клон перед вставкой должен получить текст <code>Курутоб (копия)</code> (к тексту клона допишите <code>" (копия)"</code>), а в конце выведите текст последнего элемента правого списка.</p>
+<div class="playground" data-mode="dom" data-title="Два списка">
+<pre class="code" data-lang="html">
+&lt;ul id="left"&gt;
+  &lt;li&gt;Самбуса&lt;/li&gt;
+  &lt;li&gt;Курутоб&lt;/li&gt;
+  &lt;li&gt;Шакароб&lt;/li&gt;
+&lt;/ul&gt;
+&lt;ul id="right"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const left = document.querySelector("#left");
+const right = document.querySelector("#right");
+
+right.append(left.firstElementChild);                      // переезд
+console.log(left.children.length, right.children.length);
+
+const clone = left.firstElementChild.cloneNode(true);
+// допишите к тексту клона " (копия)"
+right.append(clone);
+console.log(left.children.length, right.children.length);
+
+// выведите текст последнего элемента правого списка
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>2 1
+2 2
+Курутоб (копия)</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первый <code>append</code> <b>переносит</b> «Самбусу» — слева остаётся 2, справа 1. Второй вставляет <b>копию</b> — слева по-прежнему 2, справа 2.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>clone.textContent += " (копия)";</code> до вставки, а в конце — <code>console.log(right.lastElementChild.textContent);</code></p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="render">
+      <h2 data-toc="Рендер списка из массива"><span class="num">06</span> Рендер: из массива в карточки</h2>
+
+      <p>Теперь соединим всё, что вы знаете. В уроках 6 и 7 вы работали с массивами объектов — каталогами товаров, студентов, заказов. Теперь эти данные можно <b>нарисовать</b>. Слово <b>рендер</b> (render) как раз и означает «из данных построить то, что видно на экране». Схема всегда одна и та же:</p>
+
+      <ol class="steps">
+        <li><b>Данные</b> — массив объектов: <code>const products = [{ title: "Нон", price: 4 }, …]</code>. Это главный источник правды.</li>
+        <li><b>Функция-фабрика</b> <code>createCard(product)</code> — получает один объект и <b>возвращает</b> готовый элемент.</li>
+        <li><b>Функция рендера</b> <code>render(items)</code> — очищает контейнер и вставляет в него карточки для всего массива.</li>
+        <li><b>Вызов</b> <code>render(products)</code> — страница нарисована. Изменили массив — вызвали <code>render</code> снова.</li>
+      </ol>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Оши палав на свадьбе. Рецепт и список гостей — это <b>данные</b>. Повар — <b>функция-фабрика</b>: на входе рис и мясо, на выходе одна порция. А официант — <b>render</b>: проходит по всему списку гостей, ставит порцию перед каждым. Новый гость пришёл — не нужно менять рецепт, просто ещё одна порция по тому же рецепту.</p>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="Рендер каталога + кнопка очистки">
+<pre class="code" data-lang="html">
+&lt;button id="clear"&gt;Очистить&lt;/button&gt;
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 12px; }
+.card { border: 2px solid #ccd3df; border-radius: 12px; padding: 10px 12px; }
+.card h3 { margin: 0 0 4px; font-size: 16px; }
+.price { margin: 0; color: #1a7f4e; font-weight: 700; }
+.empty { color: #6b7488; }
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Самбуса", price: 5 },
+  { title: "Курутоб", price: 35 },
+  { title: "Шакароб", price: 15 },
+  { title: "Чапан", price: 450 }
+];
+
+const catalog = document.querySelector("#catalog");
+const clearBtn = document.querySelector("#clear");
+
+// фабрика: один объект → один элемент
+function createCard(product) {
+  const card = document.createElement("article");
+  card.className = "card";
+
+  const title = document.createElement("h3");
+  title.textContent = product.title;
+
+  const price = document.createElement("p");
+  price.className = "price";
+  price.textContent = `${product.price} сомони`;
+
+  card.append(title, price);
+  return card;
+}
+
+// рендер: весь массив → контейнер
+function render(items) {
+  const cards = items.map(createCard);   // массив элементов
+  catalog.replaceChildren(...cards);     // старое убрали, новое вставили
+}
+
+render(products);
+console.log("карточек:", catalog.children.length);
+
+// кнопка «Очистить»: onclick — «когда нажмут, выполни это» (подробно — на следующем уроке)
+clearBtn.onclick = () =&gt; catalog.replaceChildren();
+</pre>
+</div>
+      <p>Запустите, а затем нажмите кнопку «Очистить» в preview — карточки исчезнут. Измените цену или добавьте в массив ещё товар, запустите снова: страница перерисуется сама. <b>Меняем данные — страница следует за ними.</b></p>
+
+      <h3>Разбираем render по частям</h3>
+      <dl class="terms">
+        <dt>items.map(createCard)</dt><dd><code>map</code> передаёт каждый товар в <code>createCard</code> и собирает возвращённые элементы в новый массив.</dd>
+        <dt>...cards</dt><dd>Оператор spread из прошлого урока: «высыпает» массив элементов в аргументы <code>replaceChildren(card1, card2, …)</code>.</dd>
+        <dt>replaceChildren(…)</dt><dd>Сначала убирает <b>всех</b> старых детей, потом вставляет новых. Поэтому повторный <code>render</code> не дублирует карточки.</dd>
+        <dt>replaceChildren()</dt><dd>Без аргументов — просто очищает контейнер. Это и есть «кнопка очистки».</dd>
+      </dl>
+
+      <div class="callout tip">
+        <b>Кнопка пока на «честном слове»</b>
+        <p>Строка <code>clearBtn.onclick = …</code> — первый взгляд на <b>события</b>. Пока запомните её как «когда нажмут на кнопку — сделай это». Полностью события (<code>addEventListener</code>, объект события, делегирование) мы разберём в следующем уроке. Для домашнего задания этой строки достаточно.</p>
+      </div>
+
+      <h3>Пустое состояние</h3>
+      <p>Что видит пользователь, если по его фильтру ничего не нашлось? Пустую белую страницу — как будто сайт сломался. Хороший рендер всегда обрабатывает пустой массив:</p>
+<pre class="code" data-lang="js" data-title="render с пустым состоянием">
+function render(items) {
+  if (items.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "Ничего не найдено";
+    catalog.replaceChildren(empty);
+    return;                              // ранний выход — как в уроке про функции
+  }
+  catalog.replaceChildren(...items.map(createCard));
+}
+</pre>
+
+      <div class="callout warn">
+        <b>Две частые ошибки рендера</b>
+        <p><b>1.</b> Вставлять карточки, не очистив контейнер: каждый новый <code>render</code> будет дописывать товары к старым, и список будет расти. Используйте <code>replaceChildren</code>.</p>
+        <p><b>2.</b> Создавать элемент <b>вне</b> функции или вне цикла: <code>const card = document.createElement(…)</code> один раз и затем много раз <code>append(card)</code>. Элемент один — значит, он будет переезжать, и в итоге на странице окажется одна карточка (помните раздел 5).</p>
+      </div>
+
+      <h3>Тот же рендер строкой</h3>
+      <p>Короткий вариант с шаблонной строкой тоже допустим, если данные ваши и безопасные. Сравните — результат одинаковый:</p>
+<pre class="code" data-lang="js" data-title="Вариант со строкой (только для своих, безопасных данных)">
+function render(items) {
+  catalog.innerHTML = items
+    .map(p =&gt; `&lt;article class="card"&gt;&lt;h3&gt;${p.title}&lt;/h3&gt;&lt;p class="price"&gt;${p.price} сомони&lt;/p&gt;&lt;/article&gt;`)
+    .join("");
+}
+</pre>
+      <p>Если же <code>title</code> может прийти от пользователя или с чужого сервера — только <code>createElement</code> и <code>textContent</code>.</p>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/modifying-document" target="_blank" rel="noopener">learn.javascript.ru — Изменение документа</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren" target="_blank" rel="noopener">MDN — replaceChildren</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Четыре задачи по нарастающей: от одной функции-фабрики до группировки по категориям.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Фабрика пунктов</h4><span class="level easy">лёгкая</span></header>
+          <p>Допишите функцию <code>createItem(product)</code>: она создаёт <code>&lt;li&gt;</code> с текстом вида <code>Нон — 4 сомони</code> и <b>возвращает</b> его. Рендер в конце уже написан.</p>
+<div class="playground" data-mode="dom" data-title="Список покупок">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Нон", price: 4 },
+  { title: "Молоко", price: 12 },
+  { title: "Зардолу", price: 25 },
+  { title: "Мёд", price: 80 }
+];
+const list = document.querySelector("#list");
+
+function createItem(product) {
+  // создайте li, задайте текст, верните li
+}
+
+list.replaceChildren(...products.map(createItem));
+
+console.log(list.children.length);
+console.log(list.firstElementChild.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>4
+Нон — 4 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Функция должна заканчиваться <code>return li;</code> — иначе <code>map</code> соберёт массив из <code>undefined</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>li.textContent = `${product.title} — ${product.price} сомони`;</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Пустое состояние</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>render(items)</code>: она очищает <code>#catalog</code>; если массив пуст — вставляет абзац <code>&lt;p class="empty"&gt;Ничего не найдено&lt;/p&gt;</code>; иначе — по одному <code>&lt;div class="card"&gt;</code> с названием товара. Проверьте на трёх наборах данных.</p>
+<div class="playground" data-mode="dom" data-title="Каталог с пустым состоянием">
+<pre class="code" data-lang="html">
+&lt;div id="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Нон", price: 4 },
+  { title: "Чапан", price: 450 },
+  { title: "Пиала", price: 30 }
+];
+const catalog = document.querySelector("#catalog");
+
+function render(items) {
+  // ваш код
+}
+
+render(products);
+console.log(catalog.children.length);
+
+render(products.filter(p =&gt; p.price &lt; 50));
+console.log(catalog.children.length);
+
+render(products.filter(p =&gt; p.price &gt; 1000));
+console.log(catalog.children.length);
+console.log(catalog.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+2
+1
+Ничего не найдено</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Начните функцию с проверки <code>if (items.length === 0)</code> и ранним <code>return</code>. Остальной код будет только для непустого массива.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В обеих ветках используйте <code>catalog.replaceChildren(...)</code>: в пустой — с одним абзацем, в обычной — с массивом карточек через <code>items.map</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Карточка с отметкой «нет в наличии»</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>createCard({ title, price, inStock })</code>: внутри <code>&lt;article class="card"&gt;</code> лежат <code>&lt;h3&gt;</code> с названием и <code>&lt;p class="price"&gt;</code> с текстом <code>60 сомони</code>. Если товара нет в наличии, карточке нужен ещё класс <code>out</code>. Деструктуризация в параметрах — как на уроке про объекты.</p>
+<div class="playground" data-mode="dom" data-title="Каталог с наличием">
+<pre class="code" data-lang="html">
+&lt;div id="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.card { display: inline-block; border: 2px solid #ccd3df; border-radius: 12px; padding: 8px 12px; margin: 4px; }
+.card h3 { margin: 0; font-size: 16px; }
+.out { opacity: .45; border-style: dashed; }
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Шапка", price: 60, inStock: true },
+  { title: "Шарф", price: 45, inStock: true },
+  { title: "Перчатки", price: 35, inStock: false },
+  { title: "Носки", price: 15, inStock: true }
+];
+const catalog = document.querySelector("#catalog");
+
+function createCard({ title, price, inStock }) {
+  // ваш код — верните card
+}
+
+catalog.replaceChildren(...products.map(createCard));
+
+console.log(catalog.querySelectorAll(".card").length);
+console.log(catalog.querySelectorAll(".out").length);
+console.log(catalog.querySelector(".price").textContent);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>4
+1
+60 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Схема та же, что в примере выше: <code>card</code>, <code>h3</code>, <code>p.price</code>, затем <code>card.append(h3, p)</code> и <code>return card</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>if (!inStock) card.classList.add("out");</code> — до <code>return</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ЗАДАЧА 6.4</span><h4>Группировка по категориям</h4><span class="level hard">сложная</span></header>
+          <p>Покажите товары по разделам: для каждой категории создайте <code>&lt;section&gt;</code> с заголовком <code>&lt;h3&gt;</code> (название категории) и списком <code>&lt;ul&gt;</code>, где каждый товар — <code>&lt;li&gt;</code>. Сначала сгруппируйте массив через <code>reduce</code> в объект «категория → массив названий», потом постройте DOM из <code>Object.entries(groups)</code>. Порядок разделов — порядок первого появления категории.</p>
+<div class="playground" data-mode="dom" data-title="Каталог по разделам">
+<pre class="code" data-lang="html">
+&lt;div id="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Нон", category: "Продукты" },
+  { title: "Зардолу", category: "Продукты" },
+  { title: "Пиала", category: "Кухня" },
+  { title: "Чапан", category: "Сувениры" },
+  { title: "Тюбетейка", category: "Сувениры" }
+];
+const catalog = document.querySelector("#catalog");
+
+// 1) groups = { Продукты: ["Нон", "Зардолу"], Кухня: ["Пиала"], ... } через reduce
+// 2) для каждой пары [category, titles] создать section &gt; h3 + ul &gt; li
+// 3) вставить все section в catalog
+
+const sections = catalog.querySelectorAll("section");
+console.log(sections.length);
+for (const section of sections) {
+  console.log(section.querySelector("h3").textContent + ": " + section.querySelectorAll("li").length);
+}
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+Продукты: 2
+Кухня: 1
+Сувениры: 2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Группировка: <code>products.reduce((acc, p) =&gt; { if (!acc[p.category]) acc[p.category] = []; acc[p.category].push(p.title); return acc; }, {})</code>. Начальное значение — пустой объект.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Цикл <code>for (const [category, titles] of Object.entries(groups))</code>. Внутри создайте <code>section</code>, <code>h3</code> (текст — <code>category</code>), <code>ul</code>; для каждого названия из <code>titles</code> — <code>li</code>. Собранный <code>section</code> — <code>catalog.append(section)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: разделение труда"><span class="num">07</span> Разделение труда: ИИ пишет вёрстку, вы — логику</h2>
+
+      <p>DOM — идеальное место, чтобы научиться работать с ИИ правильно. Разметка и CSS — это объёмная, но однообразная работа: ИИ делает её быстро и обычно хорошо. А вот логика — какие данные, в каком порядке, что сделать при пустом списке — это то, что вы должны понимать до последней строки. Поэтому в нашем курсе правило такое:</p>
+
+      <div class="callout ai">
+        <b>Правило урока 8</b>
+        <p><b>ИИ пишет HTML и CSS. JavaScript-логику вы пишете сами.</b> Сначала 15 минут пробуете сами, и только потом идёте с промптом к ИИ. Не вставляйте код, который не можете объяснить строчка за строчкой.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Отдаём ИИ</th><th>Делаем сами</th></tr></thead>
+          <tbody>
+            <tr><td>Разметка карточки, формы, шапки</td><td>Структура данных (какие поля у товара)</td></tr>
+            <tr><td>CSS: сетка, цвета, отступы, адаптивность</td><td>Функции <code>createCard</code> и <code>render</code></td></tr>
+            <tr><td>Тестовые данные (массив из 10 товаров)</td><td>Проверка: данные правдоподобны, типы верные</td></tr>
+            <tr><td>Объяснение незнакомого метода</td><td>Решение, какой метод и когда применить</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Мини-справка: BEM — имена классов без хаоса</h3>
+      <p>Когда ИИ делает вёрстку, просите именовать классы по <b>BEM</b>. Это договорённость об именах, чтобы по классу сразу было видно, что это такое:</p>
+      <dl class="terms">
+        <dt>Блок</dt><dd>Самостоятельный компонент: <code>product-card</code>.</dd>
+        <dt>Элемент</dt><dd>Часть блока, через два подчёркивания: <code>product-card__title</code>, <code>product-card__price</code>.</dd>
+        <dt>Модификатор</dt><dd>Вариант блока, через два дефиса: <code>product-card--out</code> («нет в наличии»). В JS его включают и выключают через <code>classList</code> — тот самый разговор про бейджи из раздела 4.</dd>
+      </dl>
+
+      <h3>Промпт на HTML-шаблон</h3>
+      <p>Сравните два запроса к ИИ. Первый — как делают новички. Второй — по формуле курса: контекст → задача → ограничения → формат ответа → проверка.</p>
+<div class="prompt bad-prompt">сделай карточку товара</div>
+<div class="prompt good-prompt">Контекст: я учу JavaScript, делаю учебный интернет-магазин на чистом HTML/CSS/JS без библиотек. Мне нужна только вёрстка — JavaScript я напишу сам.
+
+Задача: сделай HTML-шаблон одной карточки товара (название, цена, кнопка «В корзину») и CSS к нему, плюс CSS для адаптивной сетки таких карточек (grid).
+
+Ограничения: классы по BEM (product-card, product-card__title, product-card__price, product-card__btn, модификатор product-card--out для товара, которого нет в наличии). Без JavaScript, без inline-стилей, без onclick, без внешних картинок и шрифтов. Светлая тема, скруглённые углы.
+
+Формат ответа: два блока кода — HTML и CSS. После них — список классов и что каждый значит, в три-пять строк.
+
+Проверка: напиши, какие элементы шаблона мне придётся заполнять из JavaScript.</div>
+      <p>Что получает ИИ из второго промпта? Стек, уровень, границы («JavaScript не пиши»), конкретные имена классов, формат ответа и просьбу самому проверить себя. А вам остаётся логика — и вы точно знаете, на какие классы она опирается.</p>
+
+      <h3>Что ИИ мог ответить — и как это превратить в код</h3>
+      <p>Допустим, ИИ вернул такую разметку одной карточки:</p>
+<pre class="code" data-lang="html" data-title="Ответ ИИ: HTML">
+&lt;article class="product-card"&gt;
+  &lt;h3 class="product-card__title"&gt;Название товара&lt;/h3&gt;
+  &lt;p class="product-card__price"&gt;0 сомони&lt;/p&gt;
+  &lt;button class="product-card__btn"&gt;В корзину&lt;/button&gt;
+&lt;/article&gt;
+</pre>
+      <p>Ваша задача — не копировать эту карточку десять раз, а <b>описать её один раз в функции</b>. Каждый тег шаблона превращается в три строки: создали, настроили, вставили.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>В шаблоне ИИ</th><th>В вашей функции createCard</th></tr></thead>
+          <tbody>
+            <tr><td><code>&lt;article class="product-card"&gt;</code></td><td><code>createElement("article")</code> + <code>className = "product-card"</code></td></tr>
+            <tr><td><code>&lt;h3 class="product-card__title"&gt;Название&lt;/h3&gt;</code></td><td><code>createElement("h3")</code>, класс, <code>textContent = product.title</code></td></tr>
+            <tr><td><code>&lt;p class="product-card__price"&gt;</code></td><td><code>createElement("p")</code>, класс, <code>textContent = product.price + " сомони"</code></td></tr>
+            <tr><td><code>&lt;button class="product-card__btn"&gt;</code></td><td><code>createElement("button")</code>, класс, <code>textContent = "В корзину"</code></td></tr>
+            <tr><td>вложенность: всё внутри <code>article</code></td><td><code>card.append(title, price, btn)</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<div class="playground" data-mode="dom" data-title="Шаблон от ИИ + ваша createCard">
+<pre class="code" data-lang="html">
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+/* этот CSS — «ответ ИИ»: мы его не пишем, а только подключаем */
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.product-card { border: 2px solid #ccd3df; border-radius: 14px; padding: 12px; background: #fff; }
+.product-card__title { margin: 0 0 6px; font-size: 17px; }
+.product-card__price { margin: 0 0 10px; color: #1a7f4e; font-weight: 700; }
+.product-card__btn { border: 0; border-radius: 8px; padding: 6px 12px; background: #1c2230; color: #fff; cursor: pointer; }
+.product-card--out { opacity: .5; border-style: dashed; }
+</pre>
+<pre class="code" data-lang="js">
+// а этот JS — ваша часть
+const products = [
+  { title: "Самбуса", price: 5, inStock: true },
+  { title: "Курутоб", price: 35, inStock: true },
+  { title: "Чайник", price: 85, inStock: false }
+];
+const catalog = document.querySelector("#catalog");
+
+function createCard(product) {
+  const card = document.createElement("article");
+  card.className = "product-card";
+  if (!product.inStock) card.classList.add("product-card--out");
+
+  const title = document.createElement("h3");
+  title.className = "product-card__title";
+  title.textContent = product.title;
+
+  const price = document.createElement("p");
+  price.className = "product-card__price";
+  price.textContent = `${product.price} сомони`;
+
+  const btn = document.createElement("button");
+  btn.className = "product-card__btn";
+  btn.textContent = "В корзину";
+
+  card.append(title, price, btn);
+  return card;
+}
+
+catalog.replaceChildren(...products.map(createCard));
+console.log(catalog.children.length);
+</pre>
+</div>
+
+      <h3>Проверяем ответ ИИ: чек-лист</h3>
+      <ul>
+        <li>Есть ли в ответе <code>&lt;script&gt;</code>, <code>onclick="…"</code>, inline-стили <code>style="…"</code>? Вы просили без них — значит, убираем.</li>
+        <li>Совпадают ли имена классов с теми, что вы будете использовать в JS? Одна лишняя буква — и <code>querySelector</code> вернёт <code>null</code>.</li>
+        <li>Подходящие ли теги: <code>article</code> для карточки, <code>h3</code> для названия, <code>button</code> для кнопки (а не <code>div</code> с кликом)?</li>
+        <li>Нет ли внешних картинок и шрифтов, которые не загрузятся?</li>
+        <li>Если ИИ предложил <code>innerHTML</code> со вставкой данных — спросите, безопасно ли это, и перепишите на <code>textContent</code>.</li>
+        <li>Не придумал ли ИИ несуществующих методов? Проверьте незнакомое в MDN.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Не просите «напиши весь рендер»</b>
+        <p>Если попросить ИИ написать <code>createCard</code> и <code>render</code>, он напишет рабочий код за пять секунд — и вы ничему не научитесь. На проверке ДЗ преподаватель может попросить объяснить любую строку. Хороший способ использовать ИИ для логики: сначала написать свой вариант, а потом попросить «<i>объясни построчно, что делает мой код, и назови 2 места, где он сломается</i>».</p>
+      </div>
+
+<div class="prompt">Вот моя функция createCard: [код]. Объясни построчно, что она делает. Ничего не переписывай. В конце назови два крайних случая, на которых она сломается (например, нет поля price).</div>
+
+      <div class="practice">
+        <h3>Практика с ИИ</h3>
+        <p>Одна задача на проверку чужого кода, одна — на написание своего промпта.</p>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Проверьте код от ИИ</h4><span class="level mid">средняя</span></header>
+          <p>Вы попросили ИИ нарисовать каталог. Он вернул код ниже. В нём <b>три ошибки</b>. Требования: на странице должно быть <b>две</b> карточки; в каждой — заголовок с названием и абзац <code>.price</code> с текстом вида <code>450 сомони</code>. Найдите и исправьте ошибки по одной, перезапуская код. Сначала прочитайте ошибку в консоли.</p>
+<div class="playground" data-mode="dom" data-title="Код от ИИ (с ошибками)">
+<pre class="code" data-lang="html">
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Чапан", price: 450 },
+  { title: "Тюбетейка", price: 120 }
+];
+
+const catalog = document.querySelector(".catalogue");
+const card = document.createElement("article");
+card.className = "card";
+
+products.forEach(p =&gt; {
+  card.innerHTML = `&lt;h3&gt;${p.title}&lt;/h3&gt;&lt;p class="price"&gt;${p.price}&lt;/p&gt;`;
+  catalog.append(card);
+});
+
+console.log(catalog.children.length);
+console.log(catalog.firstElementChild.querySelector("h3").textContent);
+console.log(catalog.firstElementChild.querySelector(".price").textContent);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>2
+Чапан
+450 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первая ошибка видна сразу: в консоли <code>null</code>. Сравните селектор с классом контейнера в HTML. Вторая: вспомните, что происходит, когда один и тот же элемент вставляют несколько раз. Третья — в тексте цены: чего не хватает по требованиям?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Селектор должен быть <code>".catalog"</code>. Создание <code>card</code> нужно перенести <b>внутрь</b> <code>forEach</code>, чтобы на каждый товар был свой элемент. В шаблонной строке цены допишите <code>сомони</code> после <code>${p.price}</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Составьте свой промпт</h4><span class="level easy">лёгкая</span></header>
+          <p>Составьте по формуле курса промпт для ИИ: HTML и CSS карточки <b>курса Илмхоны</b> (название, длительность, цена, кнопка «Записаться»). Обязательно: BEM, без JavaScript, без inline-стилей, ответ — два блока кода. Отправьте его ИИ, проверьте ответ по чек-листу выше и сохраните промпт в файл <code>prompt.txt</code> — он пригодится для домашнего задания.</p>
+          <p class="muted">Для этой задачи нет автопроверки: отметьте её выполненной, когда промпт составлен, а ответ проверен по всем пунктам чек-листа.</p>
+          <details class="hint"><summary>Подсказка 1</summary><p>Пройдите по формуле: контекст (проект, уровень), задача (одна), ограничения (BEM, без JS), формат (два блока кода), проверка (что заполнять из JS).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Возьмите промпт из этого раздела и замените товар на курс: поля <code>title</code>, <code>duration</code>, <code>price</code>, кнопка «Записаться».</p></details>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">08</span> Практика на уроке: собираем каталог карточек</h2>
+
+      <p>Время собрать всё вместе. Цель: страница магазина, на которой <b>10 карточек рисуются из массива</b>, а кнопка «Очистить» убирает их все. Вёрстку и стили мы получили от ИИ (они уже лежат в песочницах ниже), логику пишете вы — шаг за шагом.</p>
+
+      <ol class="steps">
+        <li><b>Данные.</b> Заведите массив из 10 объектов: <code>title</code>, <code>price</code>, <code>category</code>, <code>inStock</code>, <code>rating</code>. В реальной жизни такие данные можно попросить у ИИ (урок 7) — но проверить 2–3 объекта на глаз всё равно нужно.
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Самбуса", price: 5, category: "Еда", inStock: true, rating: 4.9 },
+  // ... ещё 9 товаров
+];
+</pre></li>
+        <li><b>Найти контейнер и кнопку</b> — один раз, в начале скрипта.
+<pre class="code" data-lang="js">
+const catalog = document.querySelector("#catalog");
+const clearBtn = document.querySelector("#clear");
+</pre></li>
+        <li><b>Фабрика карточки.</b> Функция <code>createCard(product)</code>: создаёт <code>article</code>, <code>h3</code>, <code>p</code>, настраивает классы по BEM и текст через <code>textContent</code>, собирает через <code>append</code> и возвращает карточку. Для товара не в наличии — модификатор <code>product-card--out</code>.</li>
+        <li><b>Рендер.</b> Функция <code>render(items)</code>: <code>catalog.replaceChildren(...items.map(createCard))</code>.</li>
+        <li><b>Вызов.</b> <code>render(products)</code> — и посмотрите на страницу.</li>
+        <li><b>Кнопка очистки.</b> <code>clearBtn.onclick = () =&gt; catalog.replaceChildren();</code></li>
+        <li><b>Проверка:</b> вывод в консоль количества карточек — до очистки, после и после повторного рендера.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Как идти по шагам</b>
+        <p>После каждого шага нажимайте <b>▶ Запустить</b> и смотрите на preview. Не пишите всё сразу: если на шаге 3 карточка не появилась, вы точно знаете, где искать. Это тот же приём, что и в «Разделении труда» раздела 7: маленькие шаги, проверка после каждого.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: магазин «Бозор»</h3>
+        <p>Две задачи: сначала страница целиком, потом улучшения. В песочнице уже есть вёрстка и CSS от ИИ; данные тоже готовы.</p>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Каталог из 10 карточек и кнопка очистки</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>createCard</code>, <code>render</code> и кнопку очистки по шагам выше. Проверочный код внизу сам «нажмёт» кнопку методом <code>click()</code>. Он выведет: сколько карточек стало, сколько из них «нет в наличии», сколько после очистки и сколько после повторного рендера.</p>
+<div class="playground" data-mode="dom" data-title="Магазин «Бозор»: каталог">
+<pre class="code" data-lang="html">
+&lt;header class="shop__head"&gt;
+  &lt;h2 class="shop__title"&gt;Магазин «Бозор»&lt;/h2&gt;
+  &lt;button id="clear" class="shop__btn"&gt;Очистить&lt;/button&gt;
+&lt;/header&gt;
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+/* CSS от ИИ — готовый */
+.shop__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.shop__title { margin: 0; font-size: 20px; }
+.shop__btn { border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.product-card { position: relative; border: 2px solid #ccd3df; border-radius: 14px; padding: 10px 12px; background: #fff; }
+.product-card__title { margin: 0 0 4px; font-size: 16px; }
+.product-card__price { margin: 0; color: #1a7f4e; font-weight: 700; }
+.product-card__badge { position: absolute; top: -8px; right: 8px; background: #c98a00; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+.product-card--out { opacity: .5; border-style: dashed; }
+.product-card--hit { border-color: #c98a00; }
+.shop__stats { color: #6b7488; margin: 0 0 12px; }
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Самбуса", price: 5, category: "Еда", inStock: true, rating: 4.9 },
+  { title: "Курутоб", price: 35, category: "Еда", inStock: true, rating: 4.8 },
+  { title: "Шакароб", price: 15, category: "Еда", inStock: true, rating: 4.2 },
+  { title: "Оши палав", price: 30, category: "Еда", inStock: false, rating: 4.7 },
+  { title: "Нон", price: 4, category: "Еда", inStock: true, rating: 4.5 },
+  { title: "Чапан", price: 450, category: "Одежда", inStock: true, rating: 4.8 },
+  { title: "Тюбетейка", price: 120, category: "Одежда", inStock: true, rating: 4.6 },
+  { title: "Пиала", price: 30, category: "Кухня", inStock: true, rating: 4.4 },
+  { title: "Чайник", price: 85, category: "Кухня", inStock: false, rating: 4.1 },
+  { title: "Шарф", price: 45, category: "Одежда", inStock: true, rating: 4.3 }
+];
+
+const catalog = document.querySelector("#catalog");
+const clearBtn = document.querySelector("#clear");
+
+function createCard(product) {
+  // article.product-card &gt; h3.product-card__title + p.product-card__price
+  // если нет в наличии — добавить класс product-card--out
+}
+
+function render(items) {
+  // очистить catalog и вставить карточки
+}
+
+// кнопка очистки через onclick
+
+// --- проверка (не удаляйте) ---
+render(products);
+console.log(catalog.children.length);
+console.log(catalog.querySelectorAll(".product-card--out").length);
+clearBtn.click();
+console.log(catalog.children.length);
+render(products);
+console.log(catalog.children.length);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>10
+2
+0
+10</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Если на странице пусто, а ошибок нет — проверьте, что <code>createCard</code> заканчивается <code>return card;</code>, а <code>render</code> действительно вставляет результат в <code>catalog</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>render</code> — одна строка: <code>catalog.replaceChildren(...items.map(createCard));</code> Кнопка: <code>clearBtn.onclick = () =&gt; catalog.replaceChildren();</code></p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Хиты и счётчик</h4><span class="level hard">сложная</span></header>
+          <p>Каталог уже работает. Улучшите его: 1) товарам с рейтингом <b>4.8 и выше</b> добавьте класс <code>product-card--hit</code> и значок <code>&lt;span class="product-card__badge"&gt;Хит&lt;/span&gt;</code> внутрь карточки; 2) после каждого <code>render</code> показывайте в <code>#stats</code> строку вида <code>Хитов: 3 из 10</code> (общее число — это <code>items.length</code>, хиты считайте по массиву <code>items</code>). Значок вставляйте только через <code>createElement</code>.</p>
+<div class="playground" data-mode="dom" data-title="Магазин «Бозор»: хиты">
+<pre class="code" data-lang="html">
+&lt;header class="shop__head"&gt;
+  &lt;h2 class="shop__title"&gt;Магазин «Бозор»&lt;/h2&gt;
+  &lt;button id="clear" class="shop__btn"&gt;Очистить&lt;/button&gt;
+&lt;/header&gt;
+&lt;p id="stats" class="shop__stats"&gt;&lt;/p&gt;
+&lt;div id="catalog" class="catalog"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.shop__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.shop__title { margin: 0; font-size: 20px; }
+.shop__btn { border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+.catalog { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px 10px; }
+.product-card { position: relative; border: 2px solid #ccd3df; border-radius: 14px; padding: 10px 12px; background: #fff; }
+.product-card__title { margin: 0 0 4px; font-size: 16px; }
+.product-card__price { margin: 0; color: #1a7f4e; font-weight: 700; }
+.product-card__badge { position: absolute; top: -8px; right: 8px; background: #c98a00; color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+.product-card--out { opacity: .5; border-style: dashed; }
+.product-card--hit { border-color: #c98a00; }
+.shop__stats { color: #6b7488; margin: 0 0 12px; }
+</pre>
+<pre class="code" data-lang="js">
+const products = [
+  { title: "Самбуса", price: 5, category: "Еда", inStock: true, rating: 4.9 },
+  { title: "Курутоб", price: 35, category: "Еда", inStock: true, rating: 4.8 },
+  { title: "Шакароб", price: 15, category: "Еда", inStock: true, rating: 4.2 },
+  { title: "Оши палав", price: 30, category: "Еда", inStock: false, rating: 4.7 },
+  { title: "Нон", price: 4, category: "Еда", inStock: true, rating: 4.5 },
+  { title: "Чапан", price: 450, category: "Одежда", inStock: true, rating: 4.8 },
+  { title: "Тюбетейка", price: 120, category: "Одежда", inStock: true, rating: 4.6 },
+  { title: "Пиала", price: 30, category: "Кухня", inStock: true, rating: 4.4 },
+  { title: "Чайник", price: 85, category: "Кухня", inStock: false, rating: 4.1 },
+  { title: "Шарф", price: 45, category: "Одежда", inStock: true, rating: 4.3 }
+];
+
+const catalog = document.querySelector("#catalog");
+const clearBtn = document.querySelector("#clear");
+const stats = document.querySelector("#stats");
+
+function createCard(product) {
+  const card = document.createElement("article");
+  card.className = "product-card";
+  if (!product.inStock) card.classList.add("product-card--out");
+
+  const title = document.createElement("h3");
+  title.className = "product-card__title";
+  title.textContent = product.title;
+
+  const price = document.createElement("p");
+  price.className = "product-card__price";
+  price.textContent = `${product.price} сомони`;
+
+  card.append(title, price);
+  // 1) для rating &gt;= 4.8: класс product-card--hit и span.product-card__badge «Хит»
+  return card;
+}
+
+function render(items) {
+  catalog.replaceChildren(...items.map(createCard));
+  // 2) stats.textContent = "Хитов: N из M"
+}
+
+clearBtn.onclick = () =&gt; catalog.replaceChildren();
+
+render(products);
+console.log(catalog.querySelectorAll(".product-card--hit").length);
+console.log(stats.textContent);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+Хитов: 3 из 10</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Условие <code>product.rating &gt;= 4.8</code> внутри <code>createCard</code>: добавьте класс через <code>classList</code>, создайте <code>span</code>, задайте класс и текст и вставьте его в карточку через <code>card.append(...)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Счётчик: <code>const hits = items.filter(p =&gt; p.rating &gt;= 4.8).length;</code> и <code>stats.textContent = `Хитов: ${hits} из ${items.length}`;</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание</h2>
+
+      <p><b>Тема:</b> «Страница, собранная из JS». Соберите свою страницу-каталог: весь контент появляется из массива, а в HTML-файле нет ни одной карточки.</p>
+
+      <h3>Что нужно сделать</h3>
+      <ul>
+        <li>☐ <b>Данные.</b> Массив минимум из <b>10 объектов</b> на тему на ваш выбор: магазин, меню чайханы, курсы Илмхоны, маршрутки Душанбе, фильмы. У каждого объекта минимум 4 поля, среди которых есть <code>title</code> и логическое поле (например, <code>inStock</code>).</li>
+        <li>☐ <b>Вёрстка от ИИ.</b> HTML-шаблон и CSS получены по промпту по формуле курса. Промпт сохранён в файле <code>prompt.txt</code>. Классы — по BEM.</li>
+        <li>☐ <b>createCard(item).</b> Отдельная функция, которая через <code>createElement</code> собирает карточку и возвращает её. Весь текст — через <code>textContent</code>.</li>
+        <li>☐ <b>render(items).</b> Отдельная функция: очищает контейнер через <code>replaceChildren</code> и вставляет карточки. Для пустого массива показывает «Ничего не найдено».</li>
+        <li>☐ <b>Кнопка очистки.</b> Кнопка «Очистить» убирает все карточки (через <code>onclick</code>, как в уроке). Бонус: кнопка «Показать всё» возвращает их.</li>
+        <li>☐ <b>Счётчик.</b> Текст «Показано: N» обновляется внутри <code>render</code>.</li>
+        <li>☐ <b>Модификатор.</b> Карточки, для которых логическое поле ложно, получают дополнительный класс (<code>--out</code>, <code>--sold</code> и т. п.) через <code>classList</code>, и CSS их выделяет.</li>
+        <li>☐ <b>Бонус.</b> Вызовите <code>render</code> с отфильтрованным массивом (например, только дешёвые) — просто строкой в коде, без кнопок. Кнопки-фильтры будут на следующем уроке.</li>
+      </ul>
+
+      <div class="callout ai">
+        <b>Правила работы с ИИ в этом ДЗ</b>
+        <p>ИИ можно использовать для вёрстки, CSS и тестовых данных. Логику (<code>createCard</code>, <code>render</code>, очистку, счётчик) пишете сами. На проверке преподаватель может попросить объяснить любую строку вашего JS. Если не можете — оценка снижается.</p>
+      </div>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Три файла: <code>index.html</code>, <code>style.css</code>, <code>script.js</code> и файл <code>prompt.txt</code> с промптом, по которому ИИ сделал вёрстку.</li>
+        <li>Скриншот страницы с 10 карточками и скриншот после нажатия «Очистить».</li>
+        <li>Два-три предложения в чате группы: что оказалось самым сложным и что вы исправили после проверки кода ИИ.</li>
+      </ul>
+
+      <h3>Как оценим (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Критерий</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Не менее 10 карточек рисуются из массива, в HTML их нет</td><td>3</td></tr>
+            <tr><td><code>createCard</code> и <code>render</code> — отдельные функции, <code>render</code> вызывается повторно без дублей</td><td>1</td></tr>
+            <tr><td>Кнопка очистки работает</td><td>1</td></tr>
+            <tr><td>Счётчик и пустое состояние</td><td>1</td></tr>
+            <tr><td>Модификатор класса через <code>classList</code> и стиль для него</td><td>1</td></tr>
+            <tr><td>Безопасная вставка: данные через <code>textContent</code>, а не <code>innerHTML</code></td><td>1</td></tr>
+            <tr><td>Чистый код: осмысленные имена, нет копипасты, найденные элементы в переменных</td><td>1</td></tr>
+            <tr><td>Промпт по формуле в <code>prompt.txt</code> и умение объяснить код</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <b>Совет, с чего начать</b>
+        <p>Сначала <b>вручную</b> напишите в HTML одну карточку и добейтесь, что она красивая. Потом удалите её из HTML и воспроизведите в <code>createCard</code> — так вы точно знаете, какая структура нужна. Используйте <code>console.log</code> после каждого шага и вкладку Elements в DevTools, чтобы увидеть, что реально построил ваш код.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>DOM</b> — живое дерево объектов, которое браузер строит из HTML. JavaScript работает с ним через <code>document</code>. Файл HTML при этом не меняется.</li>
+        <li><b>Навигация:</b> <code>parentElement</code>, <code>children</code>, <code>firstElementChild</code>, <code>lastElementChild</code>, <code>nextElementSibling</code>, <code>previousElementSibling</code>. <code>childNodes</code> считает ещё и пробелы.</li>
+        <li><b>Поиск:</b> <code>querySelector(sel)</code> — первый элемент или <code>null</code>; <code>querySelectorAll(sel)</code> — NodeList (для <code>map</code> — <code>Array.from</code>). Искать можно внутри элемента: <code>card.querySelector(".price")</code>.</li>
+        <li><b>Текст и разметка:</b> <code>textContent</code> — безопасный текст; <code>innerHTML</code> — разметка, только для своих данных. Чужой текст — всегда <code>textContent</code>. <code>+=</code> для <code>innerHTML</code> ломает старые ссылки.</li>
+        <li><b>Классы:</b> <code>classList.add / remove / toggle / contains</code>. <code>className =</code> затирает всё. Дизайн — в CSS-классах, а не в <code>el.style</code>.</li>
+        <li><b>Атрибуты:</b> <code>getAttribute / setAttribute / removeAttribute / hasAttribute</code>; свойства <code>value</code>, <code>disabled</code>, <code>hidden</code>; свои данные — <code>data-*</code> и <code>el.dataset.name</code> (всегда строка).</li>
+        <li><b>Создание:</b> <code>createElement</code> → настроить → <code>append / prepend / before / after</code>. Удаление — <code>el.remove()</code>, очистка — <code>parent.replaceChildren()</code>, копия — <code>cloneNode(true)</code>. Элемент не копируется, а переезжает.</li>
+        <li><b>Рендер:</b> данные (массив) → <code>createCard(item)</code> возвращает элемент → <code>render(items)</code> делает <code>replaceChildren(...items.map(createCard))</code>. Всегда обрабатывайте пустой массив.</li>
+        <li><b>С ИИ:</b> ИИ пишет HTML и CSS (BEM, без JS и inline-стилей), вы — логику. Проверяйте имена классов, безопасность вставки и выдуманные методы. Не вставляйте код, который не можете объяснить.</li>
+      </ul>
+    </section>

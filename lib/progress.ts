@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from 'react';
-import { lessons } from '@/content/lessons';
 
 export type TaskRecord = { solvedAt: string; auto: boolean; hints: number[]; xp: number };
 export type ProgressState = {
@@ -46,10 +45,17 @@ function parse(raw: string | null): ProgressState {
   return EMPTY;
 }
 
+/** Old static page names (fixed: these pages no longer exist). */
+const LEGACY_FILES: Record<string, string> = {
+  '01-functions.html': 'functions',
+  '02-arrays.html': 'arrays',
+  '03-objects.html': 'objects',
+};
+
 /** One-time import of old per-page keys `ilmhona:<file>.html:<taskId>` (old keys are left untouched). */
 function migrate(s: ProgressState): ProgressState {
   if (lsGet(MIGRATED_KEY)) return s;
-  const bySlug = new Map(lessons.map((l) => [l.file, l.slug]));
+  const bySlug = new Map(Object.entries(LEGACY_FILES));
   const solved = { ...s.solved };
   const now = new Date().toISOString();
   let changed = false;

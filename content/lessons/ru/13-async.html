@@ -1,0 +1,1510 @@
+<style>
+  /* схема event loop (только для этого урока) */
+  .eloop { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; text-align: left; }
+  .eloop .box { border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--paper); }
+  .eloop .box > .ttl { display: block; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+  .eloop .box > .sub { display: block; font-size: 14px; color: var(--ink-3); margin-bottom: 8px; }
+  .eloop .box > code { display: inline-block; margin: 2px 4px 2px 0; }
+  .eloop .stack { border-color: var(--blue); }  .eloop .stack > .ttl { color: var(--blue); }
+  .eloop .api   { border-color: var(--gold); }  .eloop .api > .ttl { color: var(--gold); }
+  .eloop .micro { border-color: var(--accent); } .eloop .micro > .ttl { color: var(--accent); }
+  .eloop .macro { border-color: var(--red); }   .eloop .macro > .ttl { color: var(--red); }
+  .eloop-rule { margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; border: 2px dashed var(--line); font-weight: 700; text-align: center; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 13 · Async и API</p>
+      <h1>Асинхронный JavaScript</h1>
+      <p class="lead">Когда вы открываете сайт, он не замирает, пока загружаются картинки, курс валют или список товаров. Страница живёт, а данные «приезжают» позже. Это асинхронность: JavaScript умеет не ждать у плиты, а заниматься другими делами, пока готовится ответ. Сегодня разберём, как это устроено, и научимся писать такой код без путаницы.</p>
+      <ul class="goals">
+        <li>Объяснять разницу между синхронным и асинхронным кодом</li>
+        <li>Откладывать действия через <code>setTimeout</code> и повторять через <code>setInterval</code></li>
+        <li>Читать код с колбэками и понимать, чем плох «ад колбэков»</li>
+        <li>Создавать промисы и строить цепочки <code>then / catch / finally</code></li>
+        <li>Писать <code>async / await</code> с <code>try / catch</code></li>
+        <li>Предсказывать порядок вывода: стек, микрозадачи, макрозадачи (event loop)</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Весь код на тёмном фоне с кнопкой <b>▶ Запустить</b> — живой. Его можно менять и сразу видеть результат в консоли. В этом уроке код часто что-то выводит <b>с задержкой</b> — подождите секунду, пока консоль доберёт строки. Много задач вида «предскажи порядок вывода»: сначала думайте и записывайте прогноз, потом запускайте. Подсказки спрятаны под замочком 🔒 — открывайте, только если застряли.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="sync-async">
+      <h2 data-toc="Синхронно и асинхронно · setTimeout"><span class="num">01</span> Синхронно и асинхронно. setTimeout</h2>
+
+      <p>До сегодняшнего дня весь наш код был <b>синхронным</b>: JavaScript выполнял строки строго по порядку, одну за другой, и следующая не начиналась, пока не закончилась предыдущая.</p>
+
+<pre class="code" data-run data-title="Синхронный код: строго сверху вниз">
+console.log("1. Открыли приложение");
+console.log("2. Посчитали сумму");
+console.log("3. Показали результат");
+</pre>
+
+      <p>Но в реальных программах есть дела, которые <b>занимают время</b>: запрос на сервер, загрузка картинки, таймер, ответ пользователя. Если ждать каждое из них, пока оно закончится, страница «зависнет». Поэтому такие дела запускают и <b>не ждут</b>: когда результат будет готов, JavaScript вернётся к нему. Это и есть <b>асинхронный</b> код.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы пришли в чайхону и заказали плов. Официант не стоит рядом с котлом, пока рис не дойдёт, — он принимает заказы у других столов. Когда плов готов, повар зовёт официанта, и тот несёт блюдо вам. <b>Синхронный</b> официант стоял бы у котла 40 минут и не обслужил никого. <b>Асинхронный</b> — запустил готовку и пошёл дальше.</p>
+      </div>
+
+      <h3>setTimeout — «сделай это позже»</h3>
+      <p>Самый простой способ получить асинхронность — функция <code>setTimeout(функция, миллисекунды)</code>. Она говорит браузеру: «через столько-то миллисекунд вызови эту функцию», а сама сразу возвращается. 1000 мс = 1 секунда.</p>
+
+<pre class="code" data-run data-title="Код после setTimeout не ждёт">
+console.log("Заказали плов");
+
+setTimeout(() => {
+  console.log("Плов готов!");
+}, 500);
+
+console.log("Официант идёт к другому столу");
+</pre>
+
+      <p>Обратите внимание на порядок: «Официант идёт…» появилось <b>раньше</b> «Плов готов!», хотя написано ниже. Функцию внутри <code>setTimeout</code> мы <b>передаём</b>, а не вызываем: она сработает потом. Такая функция называется <b>колбэком</b> (callback — «перезвони мне») — подробнее о них в следующем разделе.</p>
+
+      <h3>Нулевая задержка тоже асинхронна</h3>
+      <p>Самый частый сюрприз: даже <code>setTimeout(…, 0)</code> не выполняет функцию сразу. Он ставит её в очередь на «после того, как закончится весь текущий код».</p>
+
+<pre class="code" data-run>
+console.log("A");
+setTimeout(() => console.log("B (с нулевой задержкой)"), 0);
+console.log("C");
+</pre>
+
+      <ol class="steps">
+        <li><b>A</b> — обычная строка, выводится сразу.</li>
+        <li><b>setTimeout</b> — функция «отложена» в сторону. Дальше JavaScript идёт, не оглядываясь.</li>
+        <li><b>C</b> — выводится сразу.</li>
+        <li>Весь код закончился, и только <b>теперь</b> JavaScript достаёт отложенную функцию и выводит B.</li>
+      </ol>
+
+      <h3>Аргументы и отмена</h3>
+      <p><code>setTimeout</code> возвращает число — номер таймера. По нему таймер можно отменить через <code>clearTimeout</code>, пока он не сработал.</p>
+
+<pre class="code" data-run>
+const timerId = setTimeout(() => console.log("Это не выведется"), 300);
+console.log("Таймер запущен, номер есть:", typeof timerId);
+
+clearTimeout(timerId);
+console.log("Таймер отменили");
+</pre>
+
+      <h3>setInterval — «повторяй каждые N мс»</h3>
+      <p><code>setInterval</code> работает так же, но вызывает функцию снова и снова, пока вы его не остановите через <code>clearInterval</code>. Если забыть остановить — таймер будет тикать вечно (в этой странице выполнение прервётся через 8 секунд).</p>
+
+<pre class="code" data-run data-title="Обратный отсчёт">
+let left = 3;
+
+const id = setInterval(() => {
+  console.log("Осталось:", left);
+  left--;
+
+  if (left === 0) {
+    clearInterval(id);   // останавливаем, иначе будет тикать вечно
+    console.log("Поехали!");
+  }
+}, 200);
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Вызвать функцию вместо того, чтобы передать её. <code>setTimeout(sayHi(), 1000)</code> — скобки <b>запускают</b> функцию прямо сейчас, а в таймер уходит то, что она вернула (то есть ничего). Нужно <code>setTimeout(sayHi, 1000)</code> или <code>setTimeout(() =&gt; sayHi(), 1000)</code>.</p>
+      </div>
+<pre class="code" data-run data-title="Ошибка: таймер сработал сразу">
+function sayHi() {
+  console.log("Салом!");
+}
+
+setTimeout(sayHi(), 1000);   // ✖ «Салом!» выведется мгновенно, а не через секунду
+console.log("Конец кода");
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/settimeout-setinterval" target="_blank" rel="noopener">learn.javascript.ru — setTimeout и setInterval</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Window/setTimeout" target="_blank" rel="noopener">MDN — setTimeout</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Большинство задач этого урока — про <b>порядок</b>, в котором строки попадут в консоль. В задачах «предскажи порядок» код сам сверяет ваш прогноз с реальностью: впишите ответ в массив <code>prediction</code> и запустите. Увидите «Верно!» — вы мыслите как JavaScript.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Заказ в чайхоне</h4><span class="level easy">лёгкая</span></header>
+          <p>Закажите плов: между двумя строками добавьте таймер, который через 500 мс выведет «Плов готов!». Официант не должен ждать — строка про другой стол должна появиться раньше.</p>
+<pre class="code" data-run>
+console.log("Заказ принят");
+
+// здесь запустите таймер на 500 мс
+
+console.log("Официант идёт к другому столу");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Заказ принят
+Официант идёт к другому столу
+Плов готов!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужен <code>setTimeout</code> с двумя аргументами: функция и число миллисекунд.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>setTimeout(() =&gt; { console.log("Плов готов!"); }, 500);</code> — и пусть строка стоит между двумя <code>console.log</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Предскажи порядок: три таймера</h4><span class="level easy">лёгкая</span></header>
+          <p>Функция <code>log</code> запоминает метки в порядке вывода. <b>Не запуская код</b>, впишите в <code>prediction</code> порядок меток, в котором они появятся (например, <code>["1", "2", "3", "4"]</code>). Затем запустите — проверка в конце скажет, угадали ли вы.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+log("1");
+setTimeout(() =&gt; log("2"), 100);
+setTimeout(() =&gt; log("3"), 50);
+log("4");
+
+const prediction = [];   // ваш прогноз: порядок меток
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала выполняется весь синхронный код — это метки 1 и 4. Таймеры подождут.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Из таймеров раньше сработает тот, у которого меньше задержка: 50 мс раньше, чем 100 мс — независимо от порядка записи в коде.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Старт гонки</h4><span class="level mid">средняя</span></header>
+          <p>Сделайте обратный отсчёт: каждые 100 мс выводите число, начиная с 3. Когда число дойдёт до 0, выведите «Старт!» (вместо нуля) и остановите таймер.</p>
+<pre class="code" data-run>
+let n = 3;
+
+// запустите setInterval на 100 мс
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+2
+1
+Старт!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сохраните номер таймера: <code>const id = setInterval(…)</code> — он понадобится для <code>clearInterval(id)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри колбэка: если <code>n === 0</code> — выведите «Старт!», остановите таймер и сделайте <code>return</code>. Иначе выведите <code>n</code> и уменьшите его на 1.</p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ЗАДАЧА 1.4</span><h4>Найди баг: таймер не ждёт</h4><span class="level mid">средняя</span></header>
+          <p>Сообщение «Таймер сработал» должно появиться <b>после</b> «Конец», через 200 мс. Сейчас оно появляется сразу. Найдите ошибку и исправьте.</p>
+<pre class="code" data-run>
+console.log("Начало");
+
+setTimeout(console.log("Таймер сработал"), 200);
+
+console.log("Конец");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Начало
+Конец
+Таймер сработал</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Скобки у <code>console.log(...)</code> вызывают функцию немедленно. В <code>setTimeout</code> нужно передать <b>функцию</b>, а не результат её вызова.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Оберните вызов в стрелочную функцию: <code>() =&gt; console.log("Таймер сработал")</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="callbacks">
+      <h2 data-toc="Callback"><span class="num">02</span> Callback: «перезвони, когда будет готово»</h2>
+
+      <p>Мы уже передавали функции в <code>map</code> и <code>filter</code>. Функция, которую передают в другую функцию «на потом», называется <b>колбэком</b>. Раньше колбэки вызывались сразу, внутри цикла. А в асинхронном коде колбэк вызывается, <b>когда работа закончится</b>.</p>
+
+<pre class="code" data-run data-title="Функция сообщает о результате через колбэк">
+function loadPrice(dish, callback) {
+  console.log("Спрашиваем цену:", dish);
+  setTimeout(() => {
+    const price = dish === "плов" ? 35 : 10;
+    callback(price);            // «перезваниваем» с результатом
+  }, 300);
+}
+
+loadPrice("плов", (price) => {
+  console.log("Цена плова:", price, "сомони");
+});
+
+console.log("Пока ждём ответ, можно заняться другими делами");
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы заказываете торт в кондитерской и оставляете свой номер: «Позвоните, когда будет готов». Номер — это колбэк. Вы идёте по делам, а кондитер сам позвонит. Вам не нужно стоять у витрины и спрашивать каждые пять минут.</p>
+      </div>
+
+      <h3>Колбэк с ошибкой: договорённость «error-first»</h3>
+      <p>Асинхронная работа может не получиться: нет сети, нет такого товара, неверный пароль. Поэтому по традиции первым аргументом колбэк получает <b>ошибку</b> (или <code>null</code>, если всё хорошо), а вторым — результат.</p>
+
+<pre class="code" data-run data-title="Колбэк (error, result)">
+function findStudent(id, callback) {
+  setTimeout(() => {
+    if (id !== 1) {
+      callback(new Error("студент не найден"));   // ошибка — первый аргумент
+      return;
+    }
+    callback(null, "Мадина");                      // успех — ошибки нет
+  }, 200);
+}
+
+findStudent(1, (error, name) => {
+  if (error) {
+    console.log("Ошибка:", error.message);
+    return;
+  }
+  console.log("Нашли:", name);
+});
+
+findStudent(7, (error, name) => {
+  if (error) {
+    console.log("Ошибка:", error.message);
+    return;
+  }
+  console.log("Нашли:", name);
+});
+</pre>
+
+      <h3>Ад колбэков (callback hell)</h3>
+      <p>Что, если шаги зависят друг от друга: сначала найти пользователя, потом его заказы, потом адрес доставки? Каждый следующий шаг приходится вкладывать в колбэк предыдущего. Получается «лесенка», которая уезжает вправо.</p>
+
+<pre class="code" data-run data-title="Пирамида судьбы">
+function step(name, callback) {
+  setTimeout(() => {
+    console.log("Готово:", name);
+    callback();
+  }, 100);
+}
+
+step("нашли пользователя", () => {
+  step("загрузили заказы", () => {
+    step("узнали адрес", () => {
+      step("посчитали доставку", () => {
+        console.log("Всё готово!");
+      });
+    });
+  });
+});
+</pre>
+
+      <p>Всего четыре шага, а код уже трудно читать. А если добавить обработку ошибок на каждом уровне — получится настоящий лабиринт. Именно эту проблему решили <b>промисы</b>, о которых мы поговорим чуть позже: те же шаги выстраиваются в ровную цепочку.</p>
+
+      <div class="cols">
+        <div class="col bad"><b>Колбэки</b><p>Вложенность растёт вправо. Ошибки нужно проверять на каждом уровне вручную. Код сложно менять.</p></div>
+        <div class="col good"><b>Промисы и async/await</b><p>Шаги идут друг за другом ровной колонкой. Ошибки ловит одно место — <code>catch</code> или <code>try/catch</code>.</p></div>
+      </div>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Писать код после асинхронного вызова и ждать, что результат уже есть. Колбэк ещё не сработал, а строка ниже уже выполнилась.</p>
+      </div>
+<pre class="code" data-run data-title="Ошибка: результата ещё нет">
+let price;
+
+setTimeout(() => {
+  price = 35;
+}, 200);
+
+console.log("Цена плова:", price);   // ✖ undefined — таймер ещё не сработал
+</pre>
+      <p>Всё, что зависит от результата, нужно делать <b>внутри колбэка</b> (или, как мы увидим дальше, после <code>await</code>).</p>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/callbacks" target="_blank" rel="noopener">learn.javascript.ru — Введение: колбэки</a> · <a href="https://developer.mozilla.org/ru/docs/Glossary/Callback_function" target="_blank" rel="noopener">MDN — Callback function</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Пишем свои асинхронные функции с колбэками и обрабатываем ошибки.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Меню с задержкой</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите функцию <code>loadMenu(callback)</code>: через 200 мс она вызывает <code>callback</code> и передаёт ему массив <code>["самбуса", "курутоб", "чой"]</code>. Вызов функции уже написан.</p>
+<pre class="code" data-run>
+// function loadMenu(callback) { ... }
+
+loadMenu((menu) =&gt; {
+  console.log("Меню загружено, блюд:", menu.length);
+  console.log(menu.join(", "));
+});
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Меню загружено, блюд: 3
+самбуса, курутоб, чой</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри функции нужен <code>setTimeout</code> на 200 мс. Колбэк вызывается внутри таймера.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>setTimeout(() =&gt; callback(["самбуса", "курутоб", "чой"]), 200);</code></p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Проверка возраста</h4><span class="level mid">средняя</span></header>
+          <p>Функция <code>checkAge</code> готова и сообщает результат по правилу error-first. Вызовите её дважды — для возраста 20 и для 15 — и в колбэке выведите либо сообщение об успехе, либо <code>Ошибка: …</code> с текстом ошибки.</p>
+<pre class="code" data-run>
+function checkAge(age, callback) {
+  setTimeout(() =&gt; {
+    if (age &lt; 18) {
+      callback(new Error("слишком мал"));
+    } else {
+      callback(null, "Добро пожаловать!");
+    }
+  }, 100);
+}
+
+// вызовите checkAge(20, …) и checkAge(15, …)
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Добро пожаловать!
+Ошибка: слишком мал</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Колбэк принимает два параметра: <code>(error, result)</code>. Сначала проверяем <code>error</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>(error, result) =&gt; { if (error) { console.log("Ошибка: " + error.message); return; } console.log(result); }</code> — этот колбэк можно использовать в обоих вызовах.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Заказ плова по шагам</h4><span class="level easy">лёгкая</span></header>
+          <p>Три шага заказа уже написаны, каждый занимает 100 мс. Запустите их <b>друг за другом</b>: следующий шаг вызывается в колбэке предыдущего. Каждый шаг передаёт в колбэк строку — выведите её.</p>
+<pre class="code" data-run>
+function takeOrder(callback) { setTimeout(() =&gt; callback("заказ принят"), 100); }
+function cook(callback)      { setTimeout(() =&gt; callback("плов приготовлен"), 100); }
+function serve(callback)     { setTimeout(() =&gt; callback("плов на столе"), 100); }
+
+// выстройте цепочку: takeOrder → cook → serve
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>заказ принят
+плов приготовлен
+плов на столе</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Начните с <code>takeOrder((text) =&gt; { ... })</code>. Внутри колбэка выведите <code>text</code> и вызовите следующий шаг.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Получится три уровня вложенности: <code>takeOrder(…)</code> содержит <code>cook(…)</code>, а тот содержит <code>serve(…)</code>. Это и есть маленькая «пирамида».</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="event-loop">
+      <h2 data-toc="Event loop"><span class="num">03</span> Как это работает: event loop</h2>
+
+      <p>JavaScript однопоточный: у него <b>одни руки</b>, он делает одно дело за раз. Как же тогда таймеры и запросы «идут сами»? Ждёт их не JavaScript, а <b>браузер</b>. Когда таймер сработал, браузер кладёт ваш колбэк в очередь, а специальный механизм — <b>event loop</b> (цикл событий) — достаёт его оттуда, когда JavaScript освободится.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Представьте один кассовый аппарат в магазине на Шохмансуре. Кассир (стек вызовов) обслуживает одного покупателя за раз. Остальные стоят в очередях. Но очередей две: у <b>«быстрой кассы»</b> стоят те, кто с одной покупкой (микрозадачи — промисы), а в <b>обычной очереди</b> — все остальные (макрозадачи — таймеры). Кассир закончил с покупателем, и сначала обслуживает <b>всю</b> быструю кассу, и только потом берёт <b>одного</b> человека из обычной очереди.</p>
+      </div>
+
+      <h3>Схема</h3>
+      <figure class="diagram">
+        <div class="eloop">
+          <div class="box stack"><span class="ttl">Call Stack</span><span class="sub">Стек вызовов: что выполняется прямо сейчас</span><code>main()</code><code>console.log()</code></div>
+          <div class="box api"><span class="ttl">Web API (браузер)</span><span class="sub">Здесь «ждут» таймеры и запросы. JavaScript не занят</span><code>setTimeout</code><code>fetch</code><code>клики</code></div>
+          <div class="box micro"><span class="ttl">Очередь микрозадач</span><span class="sub">Быстрая касса: идут первыми</span><code>promise.then</code><code>await</code><code>queueMicrotask</code></div>
+          <div class="box macro"><span class="ttl">Очередь макрозадач</span><span class="sub">Обычная очередь: по одной за круг</span><code>колбэк setTimeout</code><code>setInterval</code><code>события</code></div>
+        </div>
+        <div class="eloop-rule">Event loop: стек пуст → выполнить ВСЕ микрозадачи → взять ОДНУ макрозадачу → снова</div>
+        <figcaption>Сначала весь синхронный код, затем микрозадачи, затем по одной макрозадаче</figcaption>
+      </figure>
+
+      <dl class="terms">
+        <dt>Call Stack</dt><dd>Стек вызовов. Здесь работает JavaScript. Пока в стеке есть код, всё остальное ждёт.</dd>
+        <dt>Макрозадача</dt><dd>Колбэк таймера <code>setTimeout</code> / <code>setInterval</code>, обработчик клика и подобное. За один «круг» выполняется только одна.</dd>
+        <dt>Микрозадача</dt><dd>Колбэки <code>.then / .catch / .finally</code>, продолжение после <code>await</code>, <code>queueMicrotask</code>. После каждой макрозадачи выполняются <b>все</b>, пока очередь не опустеет.</dd>
+      </dl>
+
+      <h3>Разбор по шагам</h3>
+<pre class="code" data-run data-title="Классика собеседований">
+console.log("1");
+
+setTimeout(() => console.log("2"), 0);
+
+Promise.resolve().then(() => console.log("3"));
+
+console.log("4");
+</pre>
+      <ol class="steps">
+        <li><b>Синхронный код.</b> В стек попадает <code>console.log("1")</code> — выводится <b>1</b>.</li>
+        <li><b><code>setTimeout</code>.</b> Таймер передан браузеру. Через 0 мс его колбэк ляжет в очередь <b>макрозадач</b>. Выполнен он будет не сейчас.</li>
+        <li><b><code>Promise.resolve().then(…)</code>.</b> Промис уже выполнен, поэтому колбэк <code>then</code> сразу ложится в очередь <b>микрозадач</b>.</li>
+        <li><b>Синхронный код.</b> <code>console.log("4")</code> — выводится <b>4</b>. Стек опустел.</li>
+        <li><b>Микрозадачи.</b> Event loop видит, что очередь микрозадач не пуста, и выполняет колбэк — выводится <b>3</b>.</li>
+        <li><b>Макрозадача.</b> Теперь очередь микрозадач пуста, и можно взять одну макрозадачу — колбэк таймера: выводится <b>2</b>.</li>
+      </ol>
+      <p>Итог: <b>1, 4, 3, 2</b>. Запомните правило: <b>синхронный код → микрозадачи (промисы) → макрозадачи (таймеры)</b>.</p>
+
+      <h3>Микрозадачи вклиниваются после каждой макрозадачи</h3>
+      <p>Если в макрозадаче создали промис, его колбэк выполнится <b>сразу после неё</b>, ещё до следующей макрозадачи из очереди.</p>
+<pre class="code" data-run>
+setTimeout(() => {
+  console.log("таймер 1");
+  Promise.resolve().then(() => console.log("промис внутри таймера 1"));
+}, 0);
+
+setTimeout(() => console.log("таймер 2"), 0);
+</pre>
+      <p>Порядок: <i>таймер 1</i>, <i>промис внутри таймера 1</i>, <i>таймер 2</i>. Микрозадача, рождённая таймером 1, успела раньше, чем «обычная очередь» дошла до таймера 2.</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Думать, что <code>setTimeout(fn, 0)</code> сработает «сразу». На самом деле он сработает только когда <b>закончится весь текущий код и все микрозадачи</b>. А если текущий код занят тяжёлым циклом, таймер будет ждать, пока цикл не завершится: <code>setTimeout</code> гарантирует «не раньше, чем через N мс», а не «ровно через N мс».</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Совет: как предсказывать порядок</b>
+        <p>Идите по коду сверху вниз и раскладывайте строки по трём «корзинам»: <b>1. выполняется сразу</b>, <b>2. в микрозадачи</b> (<code>then</code>, <code>await</code>), <b>3. в макрозадачи</b> (<code>setTimeout</code>; у кого задержка меньше — тот раньше). Потом читайте: корзина 1 → корзина 2 → корзина 3. Если внутри колбэка появилась новая корзина-2 или корзина-3, повторите то же самое.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/event-loop" target="_blank" rel="noopener">learn.javascript.ru — Событийный цикл</a> · <a href="https://learn.javascript.ru/microtask-queue" target="_blank" rel="noopener">learn.javascript.ru — Микрозадачи</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Event_loop" target="_blank" rel="noopener">MDN — Event loop</a></p>
+
+      <div class="practice">
+        <h3>Практика: предскажи порядок вывода</h3>
+        <p>Это главная тренировка урока. Для каждой задачи сначала разложите строки по корзинам на бумаге, впишите ответ в <code>prediction</code> и только потом запускайте.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Три буквы</h4><span class="level easy">лёгкая</span></header>
+          <p>Впишите порядок меток.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+log("A");
+setTimeout(() =&gt; log("B"), 0);
+log("C");
+
+const prediction = [];   // например: ["A", "B", "C"]
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Таймер, даже нулевой, уходит в очередь макрозадач — после всего синхронного кода.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Синхронно выполняются <code>log("A")</code> и <code>log("C")</code>. Потом — таймер с меткой B.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Промис против таймера</h4><span class="level mid">средняя</span></header>
+          <p>Кто быстрее: промис или таймер с нулевой задержкой?</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+log("1");
+setTimeout(() =&gt; log("2"), 0);
+Promise.resolve().then(() =&gt; log("3"));
+log("4");
+
+const prediction = [];
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Это тот же пример, что мы разбирали выше, только метки заменены цифрами. Но попробуйте решить сами, не подглядывая.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Порядок корзин: сразу (1, 4) → микрозадачи (3) → макрозадачи (2).</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Две микрозадачи</h4><span class="level easy">лёгкая</span></header>
+          <p>Здесь два способа создать микрозадачу: <code>queueMicrotask</code> и <code>then</code>. Они стоят в одной очереди — по порядку добавления.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+setTimeout(() =&gt; log("таймер"), 0);
+queueMicrotask(() =&gt; log("микро-1"));
+Promise.resolve().then(() =&gt; log("микро-2"));
+log("синхронно");
+
+const prediction = [];   // четыре метки: синхронная, две микро и таймер
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Таймер всегда в самом конце, а синхронная строка — в самом начале.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Между ними микрозадачи в том порядке, в каком они были <b>добавлены</b> в очередь: сначала <code>queueMicrotask</code>, потом <code>then</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ЗАДАЧА 3.4</span><h4>Вложенные очереди</h4><span class="level hard">сложная</span></header>
+          <p>Задача посложнее: колбэки сами создают новые таймеры и промисы. Помните правило: после <b>каждой</b> макрозадачи выполняются все накопившиеся микрозадачи.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+setTimeout(() =&gt; {
+  log("A");
+  Promise.resolve().then(() =&gt; log("B"));
+}, 0);
+
+setTimeout(() =&gt; log("C"), 0);
+
+Promise.resolve().then(() =&gt; {
+  log("D");
+  setTimeout(() =&gt; log("E"), 0);
+});
+
+log("F");
+
+const prediction = [];
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала F (синхронно), затем единственная микрозадача D. Она кладёт в очередь макрозадач ещё один таймер — E, <b>в конец</b> очереди, после A и C.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Очередь макрозадач после первого круга: A, C, E. Но после выполнения A сразу же срабатывает его микрозадача B — раньше, чем C.</p></details>
+        </article>
+
+        <article class="task" id="t3-5">
+          <header><span class="task-num">ЗАДАЧА 3.5</span><h4>Задержки и цепочка</h4><span class="level hard">сложная</span></header>
+          <p>Таймеры с разной задержкой и цепочка из двух <code>then</code>. Цепочка — это две микрозадачи подряд: вторая появляется, когда выполнилась первая, но всё равно раньше любого таймера.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+setTimeout(() =&gt; log("T200"), 200);
+setTimeout(() =&gt; log("T0"), 0);
+Promise.resolve().then(() =&gt; log("P1")).then(() =&gt; log("P2"));
+setTimeout(() =&gt; log("T100"), 100);
+log("S");
+
+const prediction = [];
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Синхронно — только S. Затем все микрозадачи: P1 и следом P2.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Таймеры срабатывают по возрастанию задержки: 0, 100, 200 — независимо от того, в каком порядке они записаны в коде.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="promises">
+      <h2 data-toc="Promise"><span class="num">04</span> Promise: обещание результата</h2>
+
+      <p><b>Промис</b> (Promise — «обещание») — это объект, который представляет результат асинхронной работы, которого пока нет, но который <b>будет</b>: либо значение, либо ошибка. Вместо вложенных колбэков мы получаем объект, на который можно «подписаться» методами <code>then</code> и <code>catch</code>.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы оплатили доставку и получили <b>чек с номером заказа</b>. Это ещё не товар, но обещание: «товар будет». У обещания три состояния: <b>ждём</b> (заказ в пути), <b>выполнено</b> (курьер привёз) или <b>отказ</b> (товара нет на складе). Чек вы держите в руках сразу, а привезут позже — или отменят.</p>
+      </div>
+
+      <h3>Три состояния промиса</h3>
+      <dl class="terms">
+        <dt>pending</dt><dd>«Ожидает». Начальное состояние: результата ещё нет.</dd>
+        <dt>fulfilled</dt><dd>«Выполнен». Работа закончилась успешно, у промиса есть значение. Вызывается колбэк из <code>then</code>.</dd>
+        <dt>rejected</dt><dd>«Отклонён». Что-то пошло не так, у промиса есть причина (ошибка). Вызывается колбэк из <code>catch</code>.</dd>
+      </dl>
+      <p>Важно: из <code>pending</code> промис переходит в другое состояние <b>один раз</b> и навсегда. Выполненный промис нельзя «отклонить» позже.</p>
+
+      <h3>Создание промиса</h3>
+      <p>Промис создают через <code>new Promise</code>. В конструктор передают функцию с двумя параметрами: <code>resolve</code> (вызвать при успехе) и <code>reject</code> (вызвать при ошибке).</p>
+
+<pre class="code" data-run data-title="Промис, который выполнится через 300 мс">
+const orderPlov = new Promise((resolve, reject) => {
+  setTimeout(() => {
+    resolve("Плов готов!");     // успех: передаём значение
+  }, 300);
+});
+
+orderPlov.then((result) => {
+  console.log("Получили:", result);
+});
+
+console.log("Промис создан, ждём…");
+</pre>
+
+<pre class="code" data-run data-title="Промис, который отклоняется">
+function buyTicket(balance) {
+  return new Promise((resolve, reject) => {
+    if (balance &gt;= 3) {
+      resolve("Билет куплен");
+    } else {
+      reject(new Error("Недостаточно сомони"));
+    }
+  });
+}
+
+buyTicket(10)
+  .then((text) => console.log(text))
+  .catch((error) => console.log("Ошибка:", error.message));
+
+buyTicket(1)
+  .then((text) => console.log(text))
+  .catch((error) => console.log("Ошибка:", error.message));
+</pre>
+
+      <h3>then, catch, finally</h3>
+      <ul>
+        <li><code>.then(onSuccess)</code> — выполнится, когда промис выполнен;</li>
+        <li><code>.catch(onError)</code> — выполнится, когда промис отклонён (или где-то выше по цепочке случилась ошибка);</li>
+        <li><code>.finally(fn)</code> — выполнится <b>в любом случае</b>: «прибраться» после работы (убрать индикатор загрузки).</li>
+      </ul>
+
+<pre class="code" data-run>
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+console.log("Показываем «Загрузка...»");
+
+wait(300)
+  .then(() => console.log("Данные пришли"))
+  .catch(() => console.log("Ошибка"))
+  .finally(() => console.log("Прячем «Загрузка...»"));
+</pre>
+      <p>Функция <code>wait</code> здесь — полезная заготовка. Она возвращает промис, который выполняется через заданное время. Мы будем использовать её в уроке постоянно.</p>
+
+      <h3>Цепочки промисов</h3>
+      <p>Главная сила промисов: <code>then</code> <b>возвращает новый промис</b>. Поэтому <code>then</code> можно соединять в цепочку, а значение, которое вернул один <code>then</code>, попадает в следующий.</p>
+
+<pre class="code" data-run data-title="Каждый then получает результат предыдущего">
+Promise.resolve(5)
+  .then((n) => {
+    console.log("Получили:", n);
+    return n * 2;               // это значение уйдёт дальше
+  })
+  .then((n) => {
+    console.log("Удвоили:", n);
+    return n + 1;
+  })
+  .then((n) => {
+    console.log("Прибавили 1:", n);
+  });
+</pre>
+
+      <p>Если колбэк <code>then</code> возвращает <b>промис</b>, цепочка подождёт его завершения и только потом пойдёт дальше. Так выстраиваются последовательные шаги, и пирамида колбэков из прошлого раздела превращается в ровную колонку:</p>
+
+<pre class="code" data-run data-title="Те же четыре шага, но без пирамиды">
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function step(name) {
+  return wait(100).then(() => console.log("Готово:", name));
+}
+
+step("нашли пользователя")
+  .then(() => step("загрузили заказы"))
+  .then(() => step("узнали адрес"))
+  .then(() => step("посчитали доставку"))
+  .then(() => console.log("Всё готово!"));
+</pre>
+
+      <h3>Ошибки в цепочке</h3>
+      <p>Если в любом звене случилась ошибка (<code>reject</code> или <code>throw</code>), цепочка <b>пропускает</b> все следующие <code>then</code> и «проваливается» в ближайший <code>catch</code>. Один <code>catch</code> в конце ловит ошибки всех шагов. А если <code>catch</code> вернул значение — цепочка снова считается успешной и идёт дальше.</p>
+
+<pre class="code" data-run>
+Promise.resolve("шаг 1")
+  .then((v) => {
+    console.log(v, "выполнен");
+    throw new Error("шаг 2 сломался");
+  })
+  .then(() => console.log("этот then пропущен"))
+  .catch((error) => {
+    console.log("Поймали:", error.message);
+    return "запасной вариант";
+  })
+  .then((v) => console.log("Цепочка продолжилась:", v));
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка: забыли return в then</b>
+        <p>Если в колбэке <code>then</code> нет <code>return</code>, следующий <code>then</code> получит <code>undefined</code>. А если внутри <code>then</code> запускается новый асинхронный шаг и его не вернули — цепочка не подождёт его.</p>
+      </div>
+<pre class="code" data-run data-title="Цена потерялась">
+Promise.resolve(100)
+  .then((price) => {
+    price * 2;                      // ✖ посчитали, но не вернули
+  })
+  .then((result) => {
+    console.log("Результат:", result);   // → undefined
+  });
+</pre>
+
+      <h3>Несколько промисов сразу</h3>
+      <p>Бывает, что нужно загрузить несколько независимых вещей. Если ждать их по очереди — потеряем время. Лучше запустить все сразу.</p>
+      <ul>
+        <li><code>Promise.all([…])</code> — ждёт <b>все</b>. Возвращает массив результатов <b>в том же порядке</b>, что и в запросе. Если хотя бы один промис отклонён — отклоняется целиком;</li>
+        <li><code>Promise.allSettled([…])</code> — ждёт все и никогда не отклоняется: для каждого сообщает <code>status</code> (<code>"fulfilled"</code> или <code>"rejected"</code>) и <code>value</code> / <code>reason</code>;</li>
+        <li><code>Promise.race([…])</code> — результат (или ошибка) <b>самого быстрого</b>.</li>
+      </ul>
+
+<pre class="code" data-run>
+const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+Promise.all([
+  wait(300, "курсы валют"),
+  wait(100, "погода"),
+  wait(200, "новости"),
+]).then((results) => {
+  console.log("Всё загружено:", results.join(", "));   // порядок как в запросе
+});
+
+Promise.race([wait(300, "медленный"), wait(100, "быстрый")])
+  .then((winner) => console.log("Первым пришёл:", winner));
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/promise-basics" target="_blank" rel="noopener">learn.javascript.ru — Промисы</a> · <a href="https://learn.javascript.ru/promise-chaining" target="_blank" rel="noopener">learn.javascript.ru — Цепочка промисов</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Promise" target="_blank" rel="noopener">MDN — Promise</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Создаём промисы, строим цепочки, ловим ошибки, запускаем несколько промисов одновременно.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Первый промис</h4><span class="level easy">лёгкая</span></header>
+          <p>Создайте промис, который через 200 мс выполняется со значением <code>"Данные загружены"</code>. Выведите значение через <code>then</code>.</p>
+<pre class="code" data-run>
+// const loading = new Promise(...)
+
+// loading.then(...)
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Данные загружены</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>new Promise((resolve) =&gt; { ... })</code> — внутри запустите <code>setTimeout</code> на 200 мс.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри таймера вызовите <code>resolve("Данные загружены")</code>. Значение, переданное в <code>resolve</code>, придёт в колбэк <code>then</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Проверка доступа</h4><span class="level easy">лёгкая</span></header>
+          <p>Функция <code>checkAdult</code> возвращает промис. Обработайте результат для возраста 15: выведите <code>Ошибка: …</code> с текстом причины, а в конце — «проверка завершена». Затем поменяйте возраст на 20 и посмотрите, что изменится.</p>
+<pre class="code" data-run>
+function checkAdult(age) {
+  return new Promise((resolve, reject) =&gt; {
+    if (age &gt;= 18) {
+      resolve("доступ разрешён");
+    } else {
+      reject(new Error("доступ закрыт"));
+    }
+  });
+}
+
+// checkAdult(15) ...
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Ошибка: доступ закрыт
+проверка завершена</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Цепочка из трёх методов: <code>.then(...)</code> для успеха, <code>.catch(...)</code> для ошибки и <code>.finally(...)</code> в конце.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Причина отказа лежит в <code>error.message</code>: <code>.catch((error) =&gt; console.log("Ошибка: " + error.message))</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Цепочка скидок</h4><span class="level mid">средняя</span></header>
+          <p>Куртка стоит 1000 сомони. Постройте цепочку из двух <code>then</code>: первый применяет скидку 10% и выводит <code>После скидки: …</code>, второй вычитает купон на 50 сомони и выводит <code>С купоном: …</code>. Каждый шаг должен вернуть новую цену.</p>
+<pre class="code" data-run>
+const price = 1000;
+
+// Promise.resolve(price)...
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>После скидки: 900
+С купоном: 850</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Начните с <code>Promise.resolve(price)</code>. Каждый <code>then</code> получает цену из предыдущего.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Шаблон шага: <code>.then((p) =&gt; { const next = p * 0.9; console.log("После скидки: " + next); return next; })</code>. Второй шаг устроен так же, но вычитает 50.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ЗАДАЧА 4.4</span><h4>Найди баг: потерянный return</h4><span class="level easy">лёгкая</span></header>
+          <p>Должно вывестись «Итого: 120» (цена 100 плюс доставка 20), но выводится <code>undefined</code>. Исправьте код.</p>
+<pre class="code" data-run>
+Promise.resolve(100)
+  .then((price) =&gt; {
+    const total = price + 20;
+  })
+  .then((total) =&gt; {
+    console.log("Итого: " + total);
+  });
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Итого: 120</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Что получает второй <code>then</code>? Только то, что <b>вернул</b> первый.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавьте в первый <code>then</code> строку <code>return total;</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-5">
+          <header><span class="task-num">ЗАДАЧА 4.5</span><h4>Загрузка главной страницы</h4><span class="level mid">средняя</span></header>
+          <p>Три независимые загрузки занимают 300, 100 и 200 мс. Запустите их <b>одновременно</b> через <code>Promise.all</code> и выведите одну строку, как в примере.</p>
+<pre class="code" data-run>
+const wait = (ms, value) =&gt; new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(value), ms));
+
+const loadProfile = () =&gt; wait(300, "профиль");
+const loadOrders  = () =&gt; wait(100, "заказы");
+const loadBanners = () =&gt; wait(200, "баннеры");
+
+// Promise.all([...]).then(...)
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Загружено: профиль, заказы, баннеры</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>Promise.all</code> передаётся массив из <b>вызовов</b> функций: <code>[loadProfile(), loadOrders(), loadBanners()]</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>then</code> приходит массив результатов в том же порядке, что и в запросе. Соедините его через <code>.join(", ")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-6">
+          <header><span class="task-num">ЗАДАЧА 4.6</span><h4>Что загрузилось, а что нет</h4><span class="level hard">сложная</span></header>
+          <p>Один из трёх запросов не удался, но остальные нужно показать. В <code>then</code> получите массив результатов и для каждого выведите <code>✓ значение</code> (если <code>status === "fulfilled"</code>) или <code>✗ причина</code> (если <code>"rejected"</code>, причина — <code>reason.message</code>).</p>
+<pre class="code" data-run>
+const wait = (ms, value) =&gt; new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(value), ms));
+const fail = (ms, message) =&gt; new Promise((_, reject) =&gt; setTimeout(() =&gt; reject(new Error(message)), ms));
+
+Promise.allSettled([
+  wait(100, "курс"),
+  fail(150, "нет сети"),
+  wait(50, "расписание"),
+]).then((results) =&gt; {
+  // выведите по строке для каждого результата
+});
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>✓ курс
+✗ нет сети
+✓ расписание</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Используйте <code>results.forEach((item) =&gt; { ... })</code>. У каждого элемента есть поле <code>status</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Если <code>item.status === "fulfilled"</code> — значение в <code>item.value</code>, иначе причина в <code>item.reason.message</code>. Порядок результатов — как в массиве запроса, а не как они завершились.</p></details>
+        </article>
+
+        <article class="task" id="t4-7">
+          <header><span class="task-num">ЗАДАЧА 4.7</span><h4>Предскажи порядок: цепочка с ошибкой</h4><span class="level mid">средняя</span></header>
+          <p>Ошибка в цепочке, <code>catch</code>, который возвращает значение, и <code>finally</code>. Не забудьте про синхронную строку <code>log("f")</code> в конце.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+Promise.resolve("a")
+  .then((v) =&gt; {
+    log(v);
+    throw new Error("сбой");
+  })
+  .then(() =&gt; log("b"))
+  .catch(() =&gt; {
+    log("c");
+    return "d";
+  })
+  .then((v) =&gt; log(v))
+  .finally(() =&gt; log("e"));
+
+log("f");
+
+const prediction = [];
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Синхронно выполнится только <code>log("f")</code>. Все остальные звенья цепочки — микрозадачи, выстроенные одна за другой.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>После <code>throw</code> звено с меткой b пропускается — оно не вызывается. <code>catch</code> возвращает «d», и цепочка продолжается как успешная.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="async-await">
+      <h2 data-toc="async / await"><span class="num">05</span> async / await: промисы без цепочек</h2>
+
+      <p>Цепочки <code>then</code> лучше пирамиды, но всё равно читаются не как обычный код. В JavaScript есть синтаксис, который делает асинхронный код похожим на синхронный: <code>async / await</code>. Под капотом это те же промисы, просто записанные удобнее.</p>
+
+      <dl class="terms">
+        <dt>async</dt><dd>Слово перед функцией. Такая функция <b>всегда возвращает промис</b>, а внутри неё можно использовать <code>await</code>.</dd>
+        <dt>await</dt><dd>«Подожди результат промиса». Работает только внутри <code>async</code>-функции. Приостанавливает <b>эту функцию</b>, но не всю программу.</dd>
+      </dl>
+
+<pre class="code" data-run data-title="Те же шаги: сначала через then, затем через await">
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// было: цепочка then
+function checkoutThen() {
+  return wait(100)
+    .then(() => console.log("then: корзина открыта"))
+    .then(() => wait(100))
+    .then(() => console.log("then: оплата прошла"));
+}
+
+// стало: async / await
+async function checkout() {
+  await wait(100);
+  console.log("await: корзина открыта");
+  await wait(100);
+  console.log("await: оплата прошла");
+}
+
+checkoutThen().then(() => checkout());
+</pre>
+
+      <p>Код с <code>await</code> читается сверху вниз, как обычный синхронный: «подождали, вывели, подождали, вывели». Результат промиса можно просто положить в переменную:</p>
+
+<pre class="code" data-run>
+const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+async function showPrice() {
+  console.log("Спрашиваем цену...");
+  const price = await wait(200, 35);      // await «достаёт» значение из промиса
+  console.log("Цена плова:", price, "сомони");
+  return price * 2;
+}
+
+showPrice().then((double) => console.log("Две порции:", double));
+console.log("showPrice() запущена и вернула промис");
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы стоите в очереди за лепёшкой. <code>await</code> — это «встал в очередь и ждёшь свою порцию». Но остальные дела на улице (весь остальной код программы) не остановились: ждёте только вы, одна функция. Как только лепёшка готова, вы продолжаете с того места, где остановились.</p>
+      </div>
+
+      <h3>Ошибки: try / catch / finally</h3>
+      <p>Если промис отклонён, <code>await</code> <b>бросает ошибку</b> на том месте, где вы его ждали. Ловим её обычным <code>try / catch</code>, который вы уже знаете. <code>finally</code> выполняется в любом случае.</p>
+
+<pre class="code" data-run>
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function loadStudent(id) {
+  await wait(100);
+  if (id &lt;= 0) {
+    throw new Error("неверный номер студента");
+  }
+  return "Студент №" + id;
+}
+
+async function main() {
+  try {
+    console.log(await loadStudent(5));
+    console.log(await loadStudent(0));      // здесь будет ошибка
+    console.log("эта строка не выполнится");
+  } catch (error) {
+    console.log("Ошибка:", error.message);
+  } finally {
+    console.log("Загрузка завершена");
+  }
+}
+
+main();
+</pre>
+
+      <h3>Последовательно или параллельно</h3>
+      <p>Каждый <code>await</code> ждёт, пока завершится предыдущий шаг. Если шаги независимы — это пустая трата времени: две загрузки по 200 мс подряд займут 400 мс. Запустите оба промиса сразу и ждите их вместе через <code>Promise.all</code> — получится 200 мс.</p>
+
+<pre class="code" data-run>
+const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+async function sequential() {
+  console.log("--- последовательно ---");
+  const a = await wait(200, "курсы");        // ждём 200 мс
+  const b = await wait(200, "новости");      // потом ещё 200 мс
+  console.log("получили:", a, b);
+}
+
+async function parallel() {
+  console.log("--- параллельно ---");
+  const [a, b] = await Promise.all([wait(200, "курсы"), wait(200, "новости")]);   // 200 мс вместе
+  console.log("получили:", a, b);
+}
+
+sequential().then(parallel);
+</pre>
+
+      <div class="callout warn">
+        <b>Частые ошибки</b>
+        <p><b>1.</b> <code>await</code> вне <code>async</code>-функции — синтаксическая ошибка. <b>2.</b> Забыть <code>await</code>: вместо значения вы получите сам промис. <b>3.</b> Забыть <code>try / catch</code>: ошибка «вылетит» наружу как необработанная.</p>
+      </div>
+<pre class="code" data-run data-title="Ошибка: забыли await">
+const wait = (ms, value) => new Promise((resolve) => setTimeout(() => resolve(value), ms));
+
+async function main() {
+  const price = wait(100, 35);         // ✖ без await
+  console.log("Цена:", price);          // → Цена: Promise {…}, а не 35
+}
+
+main();
+</pre>
+
+      <h3>await и event loop</h3>
+      <p>Всё, что идёт <b>после</b> <code>await</code>, — это продолжение функции в виде <b>микрозадачи</b>. Код до первого <code>await</code> выполняется синхронно, а остаток «встаёт в очередь» микрозадач:</p>
+<pre class="code" data-run>
+async function main() {
+  console.log("1. до await (синхронно)");
+  await null;
+  console.log("3. после await (микрозадача)");
+}
+
+main();
+console.log("2. после вызова main() (синхронно)");
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/async-await" target="_blank" rel="noopener">learn.javascript.ru — Async/await</a> · <a href="https://developer.mozilla.org/ru/docs/Learn_web_development/Extensions/Async_JS/Promises" target="_blank" rel="noopener">MDN — Использование промисов</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Пишем <code>async</code>-функции, ловим ошибки и ускоряем независимые шаги.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Перепиши на async/await</h4><span class="level easy">лёгкая</span></header>
+          <p>Функция <code>checkoutOld</code> написана через цепочку <code>then</code> и не вызывается. Напишите функцию <code>async function checkout()</code>, которая делает то же самое через <code>await</code>, и вызовите её.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+function checkoutOld() {
+  return wait(100)
+    .then(() =&gt; { console.log("Шаг 1: открыли корзину"); return wait(100); })
+    .then(() =&gt; { console.log("Шаг 2: выбрали доставку"); return wait(100); })
+    .then(() =&gt; console.log("Шаг 3: оплатили"));
+}
+
+// async function checkout() { ... }
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Шаг 1: открыли корзину
+Шаг 2: выбрали доставку
+Шаг 3: оплатили</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Каждый <code>.then(() =&gt; ...)</code> превращается в строку: сначала <code>await wait(100)</code>, затем <code>console.log(...)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Тело: <code>await wait(100); console.log("Шаг 1: ..."); await wait(100); console.log("Шаг 2: ..."); await wait(100); console.log("Шаг 3: ...");</code> — и не забудьте вызвать <code>checkout()</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Предскажи порядок: await</h4><span class="level easy">лёгкая</span></header>
+          <p>Код после <code>await</code> — микрозадача. Что произойдёт с метками 1, 2, 3, 0?</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+async function main() {
+  log("1");
+  await null;
+  log("2");
+}
+
+log("0");
+main();
+log("3");
+
+const prediction = [];
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Функция <code>main()</code> выполняется синхронно <b>до первого <code>await</code></b>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Метка 2 стоит после <code>await</code> — это микрозадача, она выполнится, когда закончится весь синхронный код, включая <code>log("3")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Список студентов с ошибкой</h4><span class="level mid">средняя</span></header>
+          <p>Функция <code>fetchStudent</code> бросает ошибку для номера 0. Напишите <code>async</code>-функцию <code>main</code>: она по очереди (в цикле <code>for…of</code>) загружает студентов 1, 0 и 2. Результат выводит как есть, а ошибку — как <code>Ошибка: …</code>. После <b>каждого</b> запроса, успешного или нет, выводится <code>— запрос завершён</code>.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+async function fetchStudent(id) {
+  await wait(50);
+  if (id === 0) {
+    throw new Error("студент не найден");
+  }
+  return "Студент №" + id;
+}
+
+// async function main() { ... }
+// main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Студент №1
+— запрос завершён
+Ошибка: студент не найден
+— запрос завершён
+Студент №2
+— запрос завершён</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри цикла нужен свой <code>try / catch / finally</code> — тогда ошибка одного запроса не остановит остальные.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>for (const id of [1, 0, 2]) { try { console.log(await fetchStudent(id)); } catch (error) { console.log("Ошибка: " + error.message); } finally { console.log("— запрос завершён"); } }</code></p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>Ускорь загрузку</h4><span class="level mid">средняя</span></header>
+          <p>Две независимые загрузки сейчас идут друг за другом. Переделайте <code>main</code> так, чтобы обе стартовали одновременно (<code>Promise.all</code>). Тогда «новости» (быстрее) закончатся раньше «курсов».</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+async function load(name, ms) {
+  console.log("старт " + name);
+  await wait(ms);
+  console.log("готов " + name);
+  return name;
+}
+
+async function main() {
+  const a = await load("курсы", 200);
+  const b = await load("новости", 100);
+  console.log("итого: " + a + " + " + b);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>старт курсы
+старт новости
+готов новости
+готов курсы
+итого: курсы + новости</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Не используйте <code>await</code> отдельно на каждой загрузке. Запустите обе функции сразу и передайте их в <code>Promise.all</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const [a, b] = await Promise.all([load("курсы", 200), load("новости", 100)]);</code> — массив результатов приходит в том же порядке, что и в запросе.</p></details>
+        </article>
+
+        <article class="task" id="t5-5">
+          <header><span class="task-num">ЗАДАЧА 5.5</span><h4>Повторить попытку</h4><span class="level hard">сложная</span></header>
+          <p>Сервер иногда «падает». Напишите <code>async function retry(fn, times)</code>: она вызывает <code>fn</code> до <code>times</code> раз. Если попытка неудачна — выводит <code>попытка N: сообщение</code> и пробует снова. Если все неудачны — выбрасывает последнюю ошибку. Функция <code>flaky</code> специально ломается дважды.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+let calls = 0;
+async function flaky() {
+  calls++;
+  await wait(50);
+  if (calls &lt; 3) {
+    throw new Error("сбой " + calls);
+  }
+  return "данные";
+}
+
+// async function retry(fn, times) { ... }
+
+retry(flaky, 5).then((result) =&gt; console.log("успех: " + result));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>попытка 1: сбой 1
+попытка 2: сбой 2
+успех: данные</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Цикл <code>for (let i = 1; i &lt;= times; i++)</code>, а внутри — <code>try { return await fn(); } catch (error) { … }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>catch</code>: выведите <code>`попытка ${i}: ${error.message}`</code>. Если <code>i === times</code>, сделайте <code>throw error</code> — иначе цикл просто перейдёт к следующей попытке.</p></details>
+        </article>
+
+        <article class="task" id="t5-6">
+          <header><span class="task-num">ЗАДАЧА 5.6</span><h4>Не ждать вечно</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>withTimeout(promise, ms)</code>: через <code>Promise.race</code> она возвращает результат промиса, если он успел, или отклоняется с ошибкой <code>таймаут</code>, если прошло больше <code>ms</code> мс. Функция <code>test</code> уже написана.</p>
+<pre class="code" data-run>
+const wait = (ms, value) =&gt; new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(value), ms));
+
+// function withTimeout(promise, ms) { ... }
+
+async function test(label, delay) {
+  try {
+    console.log(await withTimeout(wait(delay, "ответ " + label), 150));
+  } catch (error) {
+    console.log("Ошибка: " + error.message);
+  }
+}
+
+test("быстрый", 50).then(() =&gt; test("медленный", 400));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ответ быстрый
+Ошибка: таймаут</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужна «гонка» между вашим промисом и вторым промисом, который просто отклоняется через <code>ms</code> миллисекунд.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return Promise.race([promise, new Promise((_, reject) =&gt; setTimeout(() =&gt; reject(new Error("таймаут")), ms))]);</code></p></details>
+        </article>
+
+        <article class="task" id="t5-7">
+          <header><span class="task-num">ЗАДАЧА 5.7</span><h4>Предскажи порядок: финал</h4><span class="level hard">сложная</span></header>
+          <p>Всё вместе: <code>async</code>-функции, <code>await</code>, <code>then</code> и таймер. Вспомните: функция <code>b()</code> выполняется синхронно до конца и возвращает уже выполненный промис, а <code>await</code> отдаёт управление наружу.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+async function a() {
+  log("a1");
+  await b();
+  log("a2");
+}
+
+async function b() {
+  log("b1");
+}
+
+setTimeout(() =&gt; log("t"), 0);
+a();
+Promise.resolve().then(() =&gt; log("p"));
+log("s");
+
+const prediction = [];
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Синхронно: <code>a()</code> выполняется до <code>await</code> и вызывает <code>b()</code> целиком (метки a1, b1). Затем регистрируется <code>then</code> и выполняется <code>log("s")</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Микрозадачи идут в порядке добавления: сначала продолжение функции <code>a</code> (оно встало в очередь на <code>await</code>), потом <code>then</code> с меткой p. Таймер — последним.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ-блок"><span class="num">06</span> ИИ-блок: объясняем event loop и проверяем кодом</h2>
+
+      <p>Асинхронность — одна из тем, где ИИ объясняет красиво, но иногда ошибается в деталях: путает порядок микрозадач и таймеров или «забывает» про <code>await</code>. Сегодня тренируем главный навык работы с ИИ: <b>не верить на слово, а проверять запуском</b>.</p>
+
+      <div class="callout ai">
+        <b>Правила курса, которые здесь особенно важны</b>
+        <p><b>1.</b> Сначала 15 минут пробуете сами: разложите код по корзинам (синхронно / микрозадачи / макрозадачи) и запишите свой прогноз порядка вывода. <b>2.</b> Только потом идёте к ИИ. <b>3.</b> Не вставляйте в свой проект код, который не можете объяснить строчка за строчкой. <b>4.</b> Объяснение ИИ <b>всегда проверяйте запуском</b>: код — лучший судья.</p>
+      </div>
+
+      <h3>Как просить: плохо и хорошо</h3>
+      <p>Формула промпта курса: <b>контекст → задача → ограничения → формат ответа → проверка</b>.</p>
+
+      <div class="prompt bad-prompt">объясни event loop</div>
+      <div class="prompt good-prompt">Я учу JavaScript, уровень — новичок, знаю функции и массивы, а про промисы только начинаю. Объясни event loop на примере этого кода: console.log("A"); setTimeout(() => console.log("B"), 0); Promise.resolve().then(() => console.log("C")); console.log("D"); Покажи порядок вывода в консоль и почему он такой: по шагам, с указанием, что лежит в стеке, в очереди микрозадач и в очереди макрозадач. Без сложных терминов и без других примеров. В конце назови 2 типичные ошибки новичков, из-за которых порядок вывода предсказывают неверно.</div>
+
+      <p>Скопируйте хороший промпт в чат с ИИ. Затем <b>проверьте объяснение</b> кодом:</p>
+
+<pre class="code" data-run data-title="Проверяем ответ ИИ запуском">
+console.log("A");
+setTimeout(() => console.log("B"), 0);
+Promise.resolve().then(() => console.log("C"));
+console.log("D");
+// Совпал ли порядок с ответом ИИ? Если нет, значит, ИИ ошибся — или вы неточно описали задачу.
+</pre>
+
+      <div class="callout tip">
+        <b>Что проверять в ответе ИИ</b>
+        <p>1) Порядок вывода совпадает с реальным запуском? 2) Правильно ли названа очередь у <code>then</code> и у <code>setTimeout</code>? 3) Нет ли в примерах чужого кода, который вы не понимаете? 4) Если ИИ предложил <code>async/await</code>, есть ли там <code>try/catch</code>?</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: ловим ошибку ИИ</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>ИИ ошибся? Проверь запуском</h4><span class="level mid">средняя</span></header>
+          <p>ИИ уверенно ответил, что порядок вывода будет <code>начало, таймер, промис, конец</code>. Не верьте — проверьте. Разложите код по корзинам, найдите ошибку в ответе ИИ и исправьте массив <code>aiAnswer</code> так, чтобы он совпал с реальным порядком.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+log("начало");
+setTimeout(() =&gt; log("таймер"), 0);
+Promise.resolve().then(() =&gt; log("промис"));
+log("конец");
+
+// ответ ИИ — в нём ошибка, исправьте
+const aiAnswer = ["начало", "таймер", "промис", "конец"];
+
+// --- проверка, не меняйте ---
+setTimeout(() =&gt; console.log(actual.join(" ") === aiAnswer.join(" ") ? "Верно!" : "ИИ ошибся, исправьте ответ"), 400);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Синхронные строки — «начало» и «конец» — должны идти первыми.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Промис — микрозадача, она всегда раньше таймера (макрозадачи).</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">07</span> Практика на уроке: имитация загрузки данных</h2>
+
+      <p>Настоящих серверов у нас пока нет (до них доберёмся на следующем уроке), поэтому создадим «ненастоящий» — функции, которые отвечают с задержкой, как реальные запросы. Это стандартный приём: так проверяют интерфейс до того, как готов сервер.</p>
+
+      <h3>Шаг 1. База данных и вспомогательные функции</h3>
+      <p>Сначала наша «база» и функция <code>wait</code>. Запустите — пока ничего не выведется, мы просто готовим материал.</p>
+<pre class="code" data-run data-title="Шаг 1. «Сервер»">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+const users = {
+  1: { name: "Мадина" },
+  2: { name: "Фарход" },
+};
+
+const orders = {
+  1: [120, 80, 45],   // суммы заказов в сомони
+  2: [],
+};
+
+console.log("Готово. Пользователей:", Object.keys(users).length);
+</pre>
+
+      <h3>Шаг 2. Функции «запросов»</h3>
+      <p>Каждая функция ждёт и возвращает данные. Если пользователя нет — отклоняет промис с ошибкой. Так себя ведёт настоящий сервер: чаще всего он отвечает за 100–500 мс, а иногда отвечает «ошибка».</p>
+<pre class="code" data-run data-title="Шаг 2. Запросы с задержкой">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+const orders = { 1: [120, 80, 45], 2: [] };
+
+async function fakeFetchUser(id) {
+  await wait(200);
+  const user = users[id];
+  if (!user) {
+    throw new Error("пользователь не найден");
+  }
+  return user;
+}
+
+async function fakeFetchOrders(id) {
+  await wait(150);
+  return orders[id] ?? [];
+}
+
+fakeFetchUser(1).then((user) =&gt; console.log("Получили:", user.name));
+fakeFetchUser(99).catch((error) =&gt; console.log("Ошибка:", error.message));
+</pre>
+
+      <h3>Шаг 3. Цепочка: пользователь → его заказы</h3>
+      <p>Заказы зависят от пользователя, поэтому ждём по очереди. Через <code>async/await</code> это читается как рецепт:</p>
+<pre class="code" data-run data-title="Шаг 3. Зависимые запросы">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+const orders = { 1: [120, 80, 45], 2: [] };
+
+async function fakeFetchUser(id) {
+  await wait(200);
+  if (!users[id]) throw new Error("пользователь не найден");
+  return users[id];
+}
+async function fakeFetchOrders(id) {
+  await wait(150);
+  return orders[id] ?? [];
+}
+
+async function showProfile(id) {
+  const user = await fakeFetchUser(id);
+  const list = await fakeFetchOrders(id);
+  const sum = list.reduce((total, price) =&gt; total + price, 0);
+  console.log(`${user.name}: заказов ${list.length}, на ${sum} сомони`);
+}
+
+showProfile(1);
+</pre>
+
+      <h3>Шаг 4. Покажем это на странице</h3>
+      <p>В браузере мы обычно показываем пользователю три состояния: <b>«Загрузка…»</b>, <b>данные</b> или <b>ошибку</b>. Нажмите «Загрузить» в мини-приложении ниже, затем откройте вкладку <code>script.js</code> и поменяйте номер пользователя на 99 — увидите состояние ошибки. К этому приёму мы вернёмся в уроке 17.</p>
+
+      <div class="playground" data-mode="dom" data-title="Профиль с индикатором загрузки">
+<pre class="code" data-lang="html">
+&lt;div class="card"&gt;
+  &lt;button id="load"&gt;Загрузить профиль&lt;/button&gt;
+  &lt;p id="status"&gt;Нажмите кнопку&lt;/p&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.card { max-width: 320px; padding: 16px; border: 1px solid #ccd; border-radius: 12px; }
+button { padding: 8px 14px; border-radius: 8px; border: 0; background: #1a8a6a; color: #fff; font-size: 15px; cursor: pointer; }
+#status { margin: 12px 0 0; }
+.error { color: #c0392b; }
+</pre>
+<pre class="code" data-lang="js">
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+
+async function fakeFetchUser(id) {
+  await wait(600);
+  if (!users[id]) throw new Error("пользователь не найден");
+  return users[id];
+}
+
+const button = document.querySelector("#load");
+const status = document.querySelector("#status");
+
+button.addEventListener("click", async () =&gt; {
+  status.className = "";
+  status.textContent = "Загрузка...";
+  button.disabled = true;
+  try {
+    const user = await fakeFetchUser(1);        // поменяйте на 99
+    status.textContent = "Привет, " + user.name + "!";
+  } catch (error) {
+    status.className = "error";
+    status.textContent = "Ошибка: " + error.message;
+  } finally {
+    button.disabled = false;
+  }
+  console.log("статус:", status.textContent);
+});
+</pre>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: собираем дашборд</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Дашборд пользователя</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>async function loadDashboard(id)</code>: она выводит «Загрузка...», затем получает пользователя и его заказы <b>одновременно</b> (<code>Promise.all</code> — они не зависят друг от друга, нужен только <code>id</code>) и выводит строку <code>Привет, имя! Заказов: N, на сумму S сомони</code>.</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+const orders = { 1: [120, 80, 45], 2: [] };
+
+async function fakeFetchUser(id) {
+  await wait(200);
+  if (!users[id]) throw new Error("пользователь не найден");
+  return users[id];
+}
+async function fakeFetchOrders(id) {
+  await wait(150);
+  return orders[id] ?? [];
+}
+
+// async function loadDashboard(id) { ... }
+
+loadDashboard(1);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Загрузка...
+Привет, Мадина! Заказов: 3, на сумму 245 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>const [user, list] = await Promise.all([fakeFetchUser(id), fakeFetchOrders(id)]);</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сумма заказов: <code>list.reduce((total, price) =&gt; total + price, 0)</code>. Строку удобно собрать шаблонными кавычками.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Загрузка с ошибкой</h4><span class="level hard">сложная</span></header>
+          <p>Доработайте <code>loadDashboard</code>: если пользователь не найден, выводите <code>Ошибка: …</code> вместо приветствия. В любом случае, успех или ошибка, в конце выводится «Загрузка завершена». Запустите функцию для пользователей 1 и 99 <b>по очереди</b> (дождавшись первой).</p>
+<pre class="code" data-run>
+const wait = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+const users = { 1: { name: "Мадина" }, 2: { name: "Фарход" } };
+const orders = { 1: [120, 80, 45], 2: [] };
+
+async function fakeFetchUser(id) {
+  await wait(200);
+  if (!users[id]) throw new Error("пользователь не найден");
+  return users[id];
+}
+async function fakeFetchOrders(id) {
+  await wait(150);
+  return orders[id] ?? [];
+}
+
+// async function loadDashboard(id) { ... }
+
+// запустите для 1, а когда закончится — для 99
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Загрузка...
+Привет, Мадина! Заказов: 3, на сумму 245 сомони
+Загрузка завершена
+Загрузка...
+Ошибка: пользователь не найден
+Загрузка завершена</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Тело функции: «Загрузка...», затем <code>try { ... } catch (error) { ... } finally { ... }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Чтобы запустить по очереди, используйте цепочку: <code>loadDashboard(1).then(() =&gt; loadDashboard(99));</code> — функция возвращает промис, потому что она <code>async</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">08</span> Домашнее задание</h2>
+
+      <p>Шесть задач на промисы и <code>async/await</code>. Все решения — в одном файле <code>async-basics.js</code>. Перед каждым решением оставьте комментарий с номером задачи.</p>
+
+      <ol>
+        <li><b>Таймер на промисах.</b> Напишите функцию <code>delay(ms)</code>, которая возвращает промис, выполняющийся через <code>ms</code> миллисекунд. С её помощью выведите «3», «2», «1», «Старт!» с паузой 300 мс между строками (через цепочку <code>then</code>).</li>
+        <li><b>Из колбэка в промис.</b> Возьмите функцию <code>checkAge(age, callback)</code> из задачи 2.2 и напишите обёртку <code>checkAgeAsync(age)</code>, которая возвращает промис. Вызовите её для двух возрастов, обработайте результат через <code>then / catch</code>.</li>
+        <li><b>Цепочка из трёх шагов.</b> Три шага «заказа пиццы» с задержкой: принять заказ → приготовить → доставить. Каждый возвращает промис со строкой. Выстройте их в плоскую цепочку и выведите результат каждого шага. Добавьте один <code>catch</code> в конце и проверьте, что он срабатывает, если заставить один шаг отклониться.</li>
+        <li><b>Три загрузки одновременно.</b> Три «запроса» с разной задержкой (курс сомони, погода в Душанбе, расписание группы). Запустите через <code>Promise.all</code>, выведите результаты и общее время (<code>Date.now()</code> до и после — оно должно быть около самой долгой задержки, а не суммы).</li>
+        <li><b>async / await с ошибкой.</b> Напишите <code>async function loadProfile(id)</code>, которая «грузит» профиль 300 мс и для номера больше 100 бросает ошибку. Вызовите её для трёх номеров, ошибки ловите через <code>try / catch / finally</code>.</li>
+        <li><b>Лист прогнозов.</b> Придумайте <b>три</b> собственных фрагмента кода со смесью <code>console.log</code>, <code>setTimeout</code> и <code>Promise.then</code>. Над каждым запишите комментарием свой прогноз порядка вывода, затем запустите и сверьте. Если не угадали — одной строкой объясните, в чём была ошибка.</li>
+      </ol>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Файл <code>async-basics.js</code> со всеми шестью решениями и комментариями.</li>
+        <li>Ссылку на репозиторий в GitHub (или сам файл — как договоритесь с преподавателем).</li>
+      </ul>
+
+      <h3>Как оцениваем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Задачи 1–2 работают и выводят ожидаемый результат</td><td>2</td></tr>
+            <tr><td>Задача 3: плоская цепочка, <code>catch</code> реально срабатывает</td><td>2</td></tr>
+            <tr><td>Задача 4: запросы идут одновременно, время около самой долгой задержки</td><td>2</td></tr>
+            <tr><td>Задача 5: <code>try / catch / finally</code> на месте и ловит ошибки</td><td>2</td></tr>
+            <tr><td>Задача 6: честные прогнозы, ошибки разобраны</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Перед сдачей</b>
+        <p>Для каждой функции спросите себя: «Могу ли я объяснить, в какой очереди выполнится каждая строка?» Если вы использовали ИИ — каждую строку вы должны уметь объяснить на защите.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Синхронный</b> код идёт по строкам. <b>Асинхронный</b> запускает работу и не ждёт: результат приходит позже.</li>
+        <li><b>setTimeout(fn, мс)</b> — выполнить один раз позже; <b>setInterval</b> — повторять; остановка — <code>clearTimeout</code> / <code>clearInterval</code>. Передаём <b>функцию</b>, а не её вызов.</li>
+        <li><b>Callback</b> — функция, которую вызовут «потом». Колбэк «error-first»: <code>(error, result)</code>. Много вложенных колбэков — «ад колбэков».</li>
+        <li><b>Promise</b>: <code>pending → fulfilled / rejected</code>, меняется один раз. Создание: <code>new Promise((resolve, reject) =&gt; …)</code>.</li>
+        <li><b>then / catch / finally</b>: <code>then</code> возвращает новый промис, значение уходит по цепочке (нужен <code>return</code>); ошибка пропускает <code>then</code> до ближайшего <code>catch</code>; <code>finally</code> — всегда.</li>
+        <li><b>Promise.all</b> — все вместе (порядок как в запросе, одна ошибка — всё отклонено); <b>allSettled</b> — отчёт по каждому; <b>race</b> — самый быстрый.</li>
+        <li><b>async</b> функция всегда возвращает промис. <b>await</b> ждёт результат только внутри <code>async</code>; ошибки ловим <code>try / catch / finally</code>. Независимые шаги — через <code>Promise.all</code>.</li>
+        <li><b>Event loop:</b> сначала весь синхронный код → <b>все</b> микрозадачи (<code>then</code>, после <code>await</code>, <code>queueMicrotask</code>) → <b>одна</b> макрозадача (<code>setTimeout</code>) → снова микрозадачи.</li>
+        <li><b>С ИИ:</b> сначала сами, потом промпт по формуле. Объяснение ИИ про порядок вывода — всегда проверяем запуском.</li>
+      </ul>
+    </section>

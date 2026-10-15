@@ -225,7 +225,7 @@ export default function RoadmapView() {
           </li>
         </ul>
         <div className="rm-in rm-cta-row">
-          {ctaLesson && ctaLesson.slug ? (
+          {ctaLesson ? (
             <Link className="rm-cta" href={`/${locale}/lessons/${ctaLesson.slug}`}>
               {fmt(anyStarted ? r.ctaContinue : r.ctaStart, { num: ctaLesson.num, title: ctaLesson.title[locale] })}
               <span aria-hidden="true"> →</span>
@@ -258,8 +258,7 @@ export default function RoadmapView() {
                   const here = i.num === hereItem.num;
                   const side = i.num % 2 === 1 ? 'rm-l' : 'rm-r';
                   const pct = i.total ? Math.round((i.solved / i.total) * 100) : 0;
-                  const hasDetails = !!i.topics[locale];
-                  const detailsId = `rm-d${i.num}`;
+                                    const detailsId = `rm-d${i.num}`;
                   return (
                     <li
                       key={i.num}
@@ -326,18 +325,14 @@ export default function RoadmapView() {
                         )}
                         <details className="rm-details" id={detailsId}>
                           <summary>{i.status === 'soon' ? r.moreSoon : r.more}</summary>
-                          {hasDetails ? (
-                            <dl>
-                              {(['topics', 'ai', 'classwork', 'homework', 'result'] as const).map((k) => (
-                                <Fragment key={k}>
-                                  <dt>{r[k]}</dt>
-                                  <dd>{i[k][locale]}</dd>
-                                </Fragment>
-                              ))}
-                            </dl>
-                          ) : (
-                            <p className="rm-tbd">{r.tbd}</p>
-                          )}
+                          <dl>
+                            {(['topics', 'ai', 'classwork', 'homework', 'result'] as const).map((k) => (
+                              <Fragment key={k}>
+                                <dt>{r[k]}</dt>
+                                <dd>{i[k][locale]}</dd>
+                              </Fragment>
+                            ))}
+                          </dl>
                           {isAvailable(i) && (
                             <Link className="rm-open" href={`/${locale}/lessons/${i.slug}`}>
                               {r.open} →

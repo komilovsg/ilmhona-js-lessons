@@ -1,0 +1,1859 @@
+<style>
+/* схема всплытия: вложенные рамки (только для этого урока) */
+.bub { display: grid; gap: 10px; font: 700 13px var(--mono); max-width: 520px; margin: 0 auto; }
+.bub .lvl { border: 2px solid var(--line); border-radius: 12px; padding: 10px 14px 14px; background: var(--paper); }
+.bub .lvl > .lbl { display: block; margin-bottom: 8px; color: var(--ink-2); }
+.bub .l1 { border-color: var(--blue); } .bub .l1 > .lbl { color: var(--blue); }
+.bub .l2 { border-color: var(--gold); } .bub .l2 > .lbl { color: var(--gold); }
+.bub .l3 { border-color: var(--accent); } .bub .l3 > .lbl { color: var(--accent); }
+.bub-flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; font: 700 13px var(--mono); margin-top: 14px; }
+.bub-flow span { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); }
+.bub-flow .down { color: var(--blue); } .bub-flow .hit { color: var(--accent); border-color: var(--accent); } .bub-flow .up { color: var(--gold); }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 9 · DOM и интерфейс</p>
+      <h1>События</h1>
+      <p class="lead">Страница, которая только показывает данные, — это плакат. Живой сайт <b>реагирует</b>: кнопка «В корзину» добавляет товар, поле поиска сразу фильтрует список, форма заявки не перезагружает страницу. За каждой такой реакцией стоит событие. Сегодня вы научитесь «слушать» клики, ввод и отправку форм — и сделаете настоящий интерактивный список, как в приложениях, которыми пользуетесь каждый день.</p>
+      <ul class="goals">
+        <li>Подписываться на события через <code>addEventListener</code> и отписываться через <code>removeEventListener</code></li>
+        <li>Читать объект события: <code>type</code>, <code>target</code>, <code>currentTarget</code>, <code>key</code>, <code>value</code></li>
+        <li>Останавливать действие браузера по умолчанию через <code>preventDefault</code> (ссылки, формы, горячие клавиши)</li>
+        <li>Понимать всплытие и перехват и управлять ими</li>
+        <li>Писать один обработчик на много элементов — делегирование событий с <code>closest</code> и <code>data-*</code></li>
+        <li>Описывать баг для ИИ так, чтобы он помог с первого раза</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Код на тёмном фоне с кнопкой <b>▶ Запустить</b> — живой: меняйте его и смотрите результат в консоли. Блоки с вкладками <b>index.html / style.css / script.js</b> — мини-страницы: под кодом появляется <b>предпросмотр</b>, где можно по-настоящему кликать и печатать. Подсказки к задачам спрятаны — сначала пробуйте сами 15 минут.</p>
+      <p><b>Важно про задачи.</b> Пользователь кликает мышкой, а проверка задач — автоматическая и должна давать один и тот же результат каждый раз. Поэтому в задачах клики и ввод «делает» сам код: <code>button.click()</code>, <code>input.dispatchEvent(...)</code>. Для вашего обработчика это неотличимо от настоящего клика.</p>
+    </div>
+
+    <!-- ===================================================== 01 -->
+    <section class="topic" id="events-intro">
+      <h2 data-toc="Что такое событие"><span class="num">01</span> Что такое событие и addEventListener</h2>
+      <p>Пока вы пишете код сверху вниз, он выполняется один раз и заканчивается. Но пользователь делает что-то <b>позже и непредсказуемо</b>: кликает, нажимает клавишу, вводит текст, прокручивает страницу. Браузер замечает каждое такое действие и создаёт <b>событие</b> — сигнал «что-то произошло». Наша задача — заранее сказать: «если случится вот это событие на вот этом элементе — выполни вот эту функцию».</p>
+
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Над дверью чойхоны висит колокольчик. Пока никто не входит — тишина, официант занят своими делами. Но стоит открыть дверь — колокольчик звенит, и официант идёт встречать гостя. Вы <b>заранее договорились</b>: «зазвенел — иди к двери». Событие — это звон колокольчика, обработчик — действия официанта, а <code>addEventListener</code> — сама договорённость.</p>
+      </div>
+
+      <dl class="terms">
+        <dt>Событие</dt><dd>Сигнал от браузера: <code>click</code>, <code>input</code>, <code>submit</code>, <code>keydown</code>… У каждого события есть тип — строка с названием.</dd>
+        <dt>Обработчик</dt><dd>Функция, которая выполнится, когда событие случится. Ещё говорят <i>handler</i> или <i>listener</i> («слушатель»).</dd>
+        <dt>Подписка</dt><dd>Связка «элемент + тип события + функция». Делается один раз, а срабатывает сколько угодно раз.</dd>
+      </dl>
+
+      <h3>Как выглядит подписка</h3>
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p2" data-label="элемент">button</span><span class="part p1" data-label="метод">.addEventListener</span>(<span class="part p3" data-label="тип события">"click"</span>, <span class="part p4" data-label="обработчик">greet</span>);
+        </div>
+        <figcaption>Чей элемент слушаем → «подпиши» → на какое событие → что вызвать</figcaption>
+      </figure>
+
+      <p>Посмотрим на живом примере. Мы создаём кнопку, подписываемся на клик и «нажимаем» кнопку из кода двумя вызовами <code>click()</code>:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="buy"&gt;Купить&lt;/button&gt;`;
+const buy = document.querySelector("#buy");
+
+function onBuy() {
+  console.log("Спасибо за покупку!");
+}
+
+buy.addEventListener("click", onBuy);
+console.log("Обработчик навешен, клика ещё не было");
+
+buy.click();   // программный клик — как будто нажали мышкой
+buy.click();
+</pre>
+      <p>Обратите внимание: обработчик <b>не выполняется</b> в момент <code>addEventListener</code>. Он просто запоминается и ждёт. Каждый клик вызывает его заново.</p>
+
+      <h3>Попробуйте по-настоящему</h3>
+      <p>Нажмите <b>▶ Запустить</b>, а потом кликайте по кнопке в предпросмотре. Попробуйте поменять текст в обработчике или сделать так, чтобы счётчик рос сразу на 5.</p>
+
+      <div class="playground" data-mode="dom" data-title="Счётчик кликов">
+<pre class="code" data-lang="html">
+&lt;button id="like"&gt;❤ Нравится&lt;/button&gt;
+&lt;p&gt;Лайков: &lt;b id="count"&gt;0&lt;/b&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+button { font: inherit; padding: 8px 16px; border-radius: 10px; border: 1px solid #d0d5dd; background: #fff; cursor: pointer; }
+button:active { transform: scale(.97); }
+</pre>
+<pre class="code" data-lang="js">
+const like = document.querySelector("#like");
+const count = document.querySelector("#count");
+let likes = 0;
+
+like.addEventListener("click", () =&gt; {
+  likes++;
+  count.textContent = likes;
+  console.log("Лайков уже: " + likes);
+});
+</pre>
+      </div>
+
+      <h3>Три способа повесить обработчик</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Способ</th><th>Как выглядит</th><th>Когда использовать</th></tr></thead>
+        <tbody>
+          <tr><td>Атрибут в HTML</td><td><code>&lt;button onclick="buy()"&gt;</code></td><td>Не используем: смешивает разметку и код, неудобно проверять</td></tr>
+          <tr><td>Свойство</td><td><code>btn.onclick = function () {…}</code></td><td>Только в простых примерах: <b>можно повесить лишь один</b> обработчик</td></tr>
+          <tr><td><code>addEventListener</code></td><td><code>btn.addEventListener("click", fn)</code></td><td><b>Всегда.</b> Обработчиков может быть сколько угодно, их можно снимать</td></tr>
+        </tbody>
+      </table></div>
+
+      <p>Главная разница видна, когда обработчиков несколько. Свойство <code>onclick</code> хранит одну функцию — следующее присваивание затирает предыдущее. А <code>addEventListener</code> складывает их в список, и они срабатывают <b>в порядке добавления</b>:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="b"&gt;Кнопка&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+b.onclick = () =&gt; console.log("onclick №1");
+b.onclick = () =&gt; console.log("onclick №2");   // затёр первый!
+
+b.addEventListener("click", () =&gt; console.log("слушатель №1"));
+b.addEventListener("click", () =&gt; console.log("слушатель №2"));
+
+b.click();
+</pre>
+
+      <div class="callout warn"><b>Частая ошибка: скобки после имени функции</b>
+        <p>В <code>addEventListener</code> передают <b>саму функцию</b>, а не результат её вызова. Скобки <code>()</code> вызывают функцию прямо сейчас — и обработчиком становится то, что она вернула (обычно <code>undefined</code>).</p>
+      </div>
+<pre class="code" data-run data-title="Частая ошибка: функция вызвалась сразу, а не по клику">
+document.body.innerHTML = `&lt;button id="b"&gt;Кнопка&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+function hello() {
+  console.log("Салом!");
+}
+
+b.addEventListener("click", hello());   // ✖ скобки: «Салом!» выведется сразу, один раз
+console.log("Клика ещё не было, а салом уже прозвучал");
+b.click();   // а на клик никто не отвечает
+</pre>
+      <p>Если нужно передать в обработчик свои данные, оборачивайте вызов в стрелочную функцию: <code>b.addEventListener("click", () =&gt; hello("Мадина"))</code>.</p>
+
+      <h3>Снять обработчик и сработать один раз</h3>
+      <p>Подписку можно отменить: <code>removeEventListener</code> с <b>теми же</b> параметрами. Поэтому функцию нужно хранить в переменной — анонимную стрелку снять не получится, это будет «другая» функция.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="b"&gt;Талон&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+function takeTicket() {
+  console.log("Ваш талон выдан");
+  b.removeEventListener("click", takeTicket);   // тот же элемент, тип и функция
+}
+
+b.addEventListener("click", takeTicket);
+b.click();
+b.click();   // тишина — обработчик снят
+console.log("Второй клик ничего не сделал");
+</pre>
+      <p>Для случая «сработать один раз» есть короткий путь — третий аргумент с настройками. Браузер сам снимет обработчик после первого срабатывания:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="b"&gt;Приз&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+b.addEventListener("click", () =&gt; console.log("Вы получили приз!"), { once: true });
+
+b.click();
+b.click();
+b.click();
+</pre>
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/introduction-browser-events" target="_blank" rel="noopener">learn.javascript.ru — Введение в браузерные события</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/EventTarget/addEventListener" target="_blank" rel="noopener">MDN — addEventListener</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Во всех задачах кнопку «нажимает» код — вам нужно написать обработчик.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Колокольчик в чойхоне</h4><span class="level easy">лёгкая</span></header>
+          <p>Над дверью чойхоны висит колокольчик — кнопка <code>#bell</code>. Подпишитесь на её клик так, чтобы каждый раз выводилось «Динь-динь!». Три гостя зашли — три звона.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="bell"&gt;Дверь&lt;/button&gt;`;
+const bell = document.querySelector("#bell");
+
+// ваш код здесь
+
+bell.click();
+bell.click();
+bell.click();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Динь-динь!
+Динь-динь!
+Динь-динь!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужен метод <code>bell.addEventListener(тип, функция)</code>. Тип события — строка <code>"click"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>bell.addEventListener("click", () =&gt; { console.log("…"); });</code> — стрелочная функция прямо в аргументе.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Найди баг: приветствие раньше времени</h4><span class="level easy">лёгкая</span></header>
+          <p>Ожидалось, что «Салом, Мадина!» выведется <b>два раза — по одному на каждый клик</b>, и после строки «Кнопка готова». Сейчас всё иначе: найдите и исправьте одну ошибку.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="hi"&gt;Поздороваться&lt;/button&gt;`;
+const hi = document.querySelector("#hi");
+
+function sayHello() {
+  console.log("Салом, Мадина!");
+}
+
+hi.addEventListener("click", sayHello());
+
+console.log("Кнопка готова");
+hi.click();
+hi.click();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Кнопка готова
+Салом, Мадина!
+Салом, Мадина!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запустите как есть и посмотрите на порядок строк: приветствие появилось до клика. Значит, функция вызвалась в момент подписки.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Уберите круглые скобки после <code>sayHello</code> в <code>addEventListener</code>: браузер сам вызовет функцию при клике.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Предскажи порядок</h4><span class="level easy">лёгкая</span></header>
+          <p>Вот четыре обработчика на одной кнопке. Один из них затирает другой. Запишите в массив <code>prediction</code>, какие буквы и <b>в каком порядке</b> попадут в <code>actual</code> после одного клика. Не запускайте код сразу — сначала подумайте. Ответ не выводится на экран: консоль только сообщит, угадали ли вы.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="b"&gt;Кнопка&lt;/button&gt;`;
+const b = document.querySelector("#b");
+const actual = [];
+
+b.onclick = () =&gt; actual.push("A");
+b.onclick = () =&gt; actual.push("B");
+b.addEventListener("click", () =&gt; actual.push("C"));
+b.addEventListener("click", () =&gt; actual.push("D"));
+b.click();
+
+const prediction = [];   // впишите буквы в строках, например ["X", "Y"]
+
+console.log(prediction.join(" ") === actual.join(" ") ? "Прогноз верный" : "Прогноз неверный");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Прогноз верный</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Что делает второе присваивание <code>b.onclick = …</code> с первым? Одна ли функция останется в этом «слоте»?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Чтобы проверить себя, временно добавьте <code>console.log(actual.join(" "))</code> перед последней строкой. Но сначала сделайте прогноз!</p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ЗАДАЧА 1.4</span><h4>Лимит кликов</h4><span class="level mid">средняя</span></header>
+          <p>Акция: только первые три клика получают «скидку». Допишите обработчик <code>onClick</code>: он увеличивает счётчик, выводит «Клик 1», «Клик 2», «Клик 3», а на третьем клике дополнительно выводит «Лимит исчерпан, обработчик снят» и <b>сам себя снимает</b>. Дальше кнопка молчит (код нажмёт её пять раз).</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="promo"&gt;Скидка&lt;/button&gt;`;
+const promo = document.querySelector("#promo");
+let count = 0;
+
+function onClick() {
+  // ваш код здесь
+}
+
+promo.addEventListener("click", onClick);
+
+for (let i = 0; i &lt; 5; i++) {
+  promo.click();
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Клик 1
+Клик 2
+Клик 3
+Лимит исчерпан, обработчик снят</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри функции: <code>count++</code>, потом <code>console.log("Клик " + count)</code>, потом <code>if (count === 3) { … }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Снять обработчик: <code>promo.removeEventListener("click", onClick);</code> — функция у нас в переменной с именем <code>onClick</code>, поэтому снять её можно.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 02 -->
+    <section class="topic" id="event-object">
+      <h2 data-toc="Объект события"><span class="num">02</span> Объект события</h2>
+      <p>Когда браузер вызывает ваш обработчик, он передаёт ему <b>один аргумент</b> — объект события. Обычно его называют <code>event</code>, <code>evt</code> или коротко <code>e</code>. В нём лежит всё, что известно о случившемся: какого оно типа, на каком элементе произошло, где была мышь, какая клавиша нажата.</p>
+
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Диспетчер маршрутки записывает в журнал: «<b>что</b> случилось (посадка), <b>где</b> (остановка «Шохмансур»), <b>во сколько</b>, <b>кто</b> сел». Объект события — такой же журнальный листок. Хотите узнать подробности — загляните в него.</p>
+      </div>
+
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="pay" class="btn"&gt;Оплатить&lt;/button&gt;`;
+const pay = document.querySelector("#pay");
+
+pay.addEventListener("click", (event) =&gt; {
+  console.log("Тип события:", event.type);
+  console.log("Элемент:", event.target.id);
+  console.log("Тег:", event.target.tagName);
+  console.log("Это Event?", event instanceof Event);
+});
+
+pay.click();
+</pre>
+
+      <h3>Самые полезные свойства</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Свойство</th><th>Что даёт</th><th>Пример</th></tr></thead>
+        <tbody>
+          <tr><td><code>event.type</code></td><td>Тип события строкой</td><td><code>"click"</code>, <code>"input"</code></td></tr>
+          <tr><td><code>event.target</code></td><td>Элемент, на котором событие <b>произошло</b></td><td>Кнопка или значок внутри неё</td></tr>
+          <tr><td><code>event.currentTarget</code></td><td>Элемент, на котором <b>висит</b> ваш обработчик</td><td>Тот, у кого вызвали <code>addEventListener</code></td></tr>
+          <tr><td><code>event.clientX / clientY</code></td><td>Координаты мыши в окне (у событий мыши)</td><td><code>120</code>, <code>45</code></td></tr>
+          <tr><td><code>event.key</code></td><td>Какая клавиша нажата (у клавиатурных событий)</td><td><code>"Enter"</code>, <code>"a"</code>, <code>"Escape"</code></td></tr>
+          <tr><td><code>event.target.value</code></td><td>Текст в поле ввода (у <code>input</code>)</td><td><code>"Душанбе"</code></td></tr>
+          <tr><td><code>event.preventDefault()</code></td><td>Отменить действие браузера по умолчанию</td><td>Раздел 04</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Мышь и клавиатура</h3>
+      <p>Как «нажать клавишу» из кода? Создаём событие вручную и отправляем его элементу методом <code>dispatchEvent</code>. Так мы будем делать в задачах — для вашего обработчика это выглядит как настоящее нажатие.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="field" placeholder="Введите имя"&gt;`;
+const field = document.querySelector("#field");
+
+field.addEventListener("keydown", (e) =&gt; {
+  console.log("Нажата клавиша:", e.key);
+});
+
+field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+field.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+</pre>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;div id="map" style="width:300px;height:200px"&gt;Карта&lt;/div&gt;`;
+const map = document.querySelector("#map");
+
+map.addEventListener("click", (e) =&gt; {
+  console.log(`Клик в точке (${e.clientX}, ${e.clientY})`);
+});
+
+map.dispatchEvent(new MouseEvent("click", { clientX: 120, clientY: 45 }));
+</pre>
+
+      <h3>target и currentTarget: кто сработал и кто слушает</h3>
+      <p>Это два разных свойства, и путаница между ними — одна из самых частых. Пусть внутри кнопки есть значок <code>&lt;b&gt;</code>. Если щёлкнуть по значку, то:</p>
+      <dl class="terms">
+        <dt>target</dt><dd>Самый глубокий элемент, по которому <b>реально</b> щёлкнули: значок <code>&lt;b&gt;</code>.</dd>
+        <dt>currentTarget</dt><dd>Элемент, у которого <b>вызван</b> обработчик: кнопка. Всегда тот, на ком вы написали <code>addEventListener</code>.</dd>
+      </dl>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="cart"&gt;&lt;b id="icon"&gt;🛒&lt;/b&gt; Корзина&lt;/button&gt;`;
+const cart = document.querySelector("#cart");
+const icon = document.querySelector("#icon");
+
+cart.addEventListener("click", (e) =&gt; {
+  console.log("target:", e.target.tagName);
+  console.log("currentTarget:", e.currentTarget.tagName);
+});
+
+icon.click();   // щёлкнули по значку внутри кнопки
+cart.click();   // щёлкнули по самой кнопке
+</pre>
+      <p>Пока элемент один, они совпадают. Но как только внутри есть вложенные элементы, <code>target</code> может оказаться «глубже». Это важно: в разделе 06 мы построим на этом целую технику.</p>
+
+      <div class="callout tip"><b>А что такое this?</b>
+        <p>В обычной функции-обработчике <code>this</code> тоже указывает на элемент, на котором висит обработчик — то же, что <code>currentTarget</code>. В стрелочной функции <code>this</code> другой. Чтобы не гадать, всегда используйте <code>event.currentTarget</code> — он работает везде одинаково.</p>
+      </div>
+
+      <div class="callout warn"><b>Частая ошибка: свойство не из того события</b>
+        <p>Набор свойств зависит от типа события. У клика нет клавиши, у нажатия клавиши нет координат мыши. JavaScript не ругается — он просто вернёт <code>undefined</code>, и вы потратите полчаса на поиск «бага».</p>
+      </div>
+<pre class="code" data-run data-title="Частая ошибка: у клика нет свойства key">
+document.body.innerHTML = `&lt;button id="b"&gt;Кнопка&lt;/button&gt;`;
+const b = document.querySelector("#b");
+
+b.addEventListener("click", (e) =&gt; {
+  console.log(e.key);        // undefined — клавиши у клика нет
+  console.log(e.clientX);    // а координаты есть (0, потому что клик программный)
+});
+b.click();
+</pre>
+      <p>Если сомневаетесь, какие свойства есть у события, выведите весь объект: <code>console.log(e)</code> — и посмотрите в DevTools.</p>
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/introduction-browser-events#obekt-sobytiya" target="_blank" rel="noopener">learn.javascript.ru — Объект события</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Event/currentTarget" target="_blank" rel="noopener">MDN — Event.currentTarget</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/KeyboardEvent/key" target="_blank" rel="noopener">MDN — KeyboardEvent.key</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Паспорт события</h4><span class="level easy">лёгкая</span></header>
+          <p>Допишите обработчик клика по кнопке <code>#pay</code>: он выводит три строки — тип события, <code>id</code> элемента-источника и название его тега. Формат — как в ожидаемом результате.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="pay"&gt;Оплатить&lt;/button&gt;`;
+const pay = document.querySelector("#pay");
+
+pay.addEventListener("click", (event) =&gt; {
+  // ваш код здесь
+});
+
+pay.click();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Событие: click
+Элемент: pay
+Тег: BUTTON</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Тип — <code>event.type</code>, элемент — <code>event.target</code>, у него есть свойства <code>id</code> и <code>tagName</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Шаблонная строка: <code>console.log(`Событие: ${event.type}`);</code> — три таких вызова.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Реакция на клавиши</h4><span class="level mid">средняя</span></header>
+          <p>В поле <code>#msg</code> «нажимают» три клавиши. Обработчик <code>keydown</code> должен реагировать так: <code>Enter</code> → «Отправка», <code>Escape</code> → «Очистка», любая другая → «Нажата клавиша: » и её название.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="msg"&gt;`;
+const msg = document.querySelector("#msg");
+
+// ваш код здесь
+
+for (const key of ["a", "Enter", "Escape"]) {
+  msg.dispatchEvent(new KeyboardEvent("keydown", { key }));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Нажата клавиша: a
+Отправка
+Очистка</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Название клавиши — <code>event.key</code>. Удобно разобрать случаи через <code>if … else if … else</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>if (event.key === "Enter") { … } else if (event.key === "Escape") { … } else { console.log("Нажата клавиша: " + event.key); }</code></p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Кто сработал, а кто слушает</h4><span class="level mid">средняя</span></header>
+          <p>В кнопке <code>#order</code> лежит значок <code>&lt;b id="icon"&gt;</code>. Подпишитесь на клик по <b>кнопке</b> и выведите две строки: тег <code>target</code> и тег <code>currentTarget</code>. Код дважды «щёлкнет»: сначала по значку, потом по кнопке. Сравните, что изменилось.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;button id="order"&gt;&lt;b id="icon"&gt;🚕&lt;/b&gt; Заказать такси&lt;/button&gt;`;
+const order = document.querySelector("#order");
+const icon = document.querySelector("#icon");
+
+// ваш код здесь: обработчик на order
+
+icon.click();
+console.log("---");
+order.click();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>target: B
+currentTarget: BUTTON
+---
+target: BUTTON
+currentTarget: BUTTON</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Обработчик вешается на <code>order</code> — не на <code>icon</code>. Клик по значку «поднимется» к кнопке сам, об этом подробно в разделе 05.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>order.addEventListener("click", (e) =&gt; { console.log("target: " + e.target.tagName); console.log("currentTarget: " + e.currentTarget.tagName); });</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 03 -->
+    <section class="topic" id="event-types">
+      <h2 data-toc="Типы событий"><span class="num">03</span> Какие бывают события</h2>
+      <p>Событий в браузере десятки, но в повседневной работе вы будете пользоваться пятью-семью. Вот те, что встречаются в каждом втором проекте:</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Событие</th><th>Когда срабатывает</th><th>Где используют</th></tr></thead>
+        <tbody>
+          <tr><td><code>click</code></td><td>Клик мышью, касание пальцем, Enter на кнопке</td><td>Кнопки, карточки, меню</td></tr>
+          <tr><td><code>dblclick</code>, <code>contextmenu</code></td><td>Двойной клик, правая кнопка мыши</td><td>Редактирование по двойному клику, своё меню</td></tr>
+          <tr><td><code>mouseover</code> / <code>mouseout</code></td><td>Мышь зашла на элемент / ушла с него</td><td>Подсказки, подсветка</td></tr>
+          <tr><td><code>keydown</code> / <code>keyup</code></td><td>Клавиша нажата / отпущена</td><td>Горячие клавиши, Enter, Escape</td></tr>
+          <tr><td><code>input</code></td><td><b>Каждое</b> изменение текста в поле</td><td>Живой поиск, счётчик символов</td></tr>
+          <tr><td><code>change</code></td><td>Значение «зафиксировано»: выбрали пункт, поставили галочку, ушли из поля</td><td>Select, checkbox, radio</td></tr>
+          <tr><td><code>focus</code> / <code>blur</code></td><td>Поле получило фокус / потеряло его</td><td>Подсветка поля, проверка при уходе</td></tr>
+          <tr><td><code>submit</code></td><td>Форма отправляется (кнопка или Enter)</td><td>Все формы — заявки, вход, поиск</td></tr>
+          <tr><td><code>DOMContentLoaded</code></td><td>HTML полностью прочитан и построен</td><td>Старт скрипта, который подключили в <code>&lt;head&gt;</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Вы пишете сообщение в Telegram. Событие <code>input</code> — это «собеседник печатает…»: оно приходит на каждую букву. А <code>change</code> — это «сообщение отправлено»: пришло один раз, когда вы закончили. Для живого поиска нужен <code>input</code>, для выбора города в списке — <code>change</code>.</p>
+      </div>
+
+      <h3>input: значение поля на каждую букву</h3>
+      <p>Текст из поля читаем через <code>event.target.value</code> (или <code>input.value</code>). Это всегда <b>строка</b>, даже если пользователь ввёл цифры. Чтобы сымитировать ввод в коде, ставим <code>value</code> и отправляем событие <code>input</code>:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="name"&gt;`;
+const name = document.querySelector("#name");
+
+name.addEventListener("input", (e) =&gt; {
+  console.log("Сейчас в поле:", e.target.value);
+});
+
+for (const text of ["Ф", "Фа", "Фар", "Фарход"]) {
+  name.value = text;
+  name.dispatchEvent(new Event("input"));
+}
+</pre>
+
+      <h3>change, checkbox и select</h3>
+      <p>У флажка читаем <code>checked</code> (<code>true</code>/<code>false</code>), у выпадающего списка — <code>value</code> выбранного пункта:</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;label&gt;&lt;input type="checkbox" id="sugar"&gt; С сахаром&lt;/label&gt;
+  &lt;select id="tea"&gt;&lt;option&gt;Чёрный&lt;/option&gt;&lt;option&gt;Зелёный&lt;/option&gt;&lt;/select&gt;`;
+const sugar = document.querySelector("#sugar");
+const tea = document.querySelector("#tea");
+
+sugar.addEventListener("change", (e) =&gt; console.log("Сахар:", e.target.checked));
+tea.addEventListener("change", (e) =&gt; console.log("Чай:", e.target.value));
+
+sugar.checked = true;
+sugar.dispatchEvent(new Event("change"));
+tea.value = "Зелёный";
+tea.dispatchEvent(new Event("change"));
+</pre>
+
+      <h3>Живой пример: поиск и счётчик</h3>
+      <p>Нажмите <b>▶ Запустить</b> и печатайте в поле. Список фильтруется на каждую букву — это событие <code>input</code> в чистом виде.</p>
+      <div class="playground" data-mode="dom" data-title="Живой поиск по городам">
+<pre class="code" data-lang="html">
+&lt;input id="search" placeholder="Найти город…"&gt;
+&lt;small id="info"&gt;Введите хотя бы букву&lt;/small&gt;
+&lt;ul id="cities"&gt;
+  &lt;li&gt;Душанбе&lt;/li&gt;&lt;li&gt;Худжанд&lt;/li&gt;&lt;li&gt;Бохтар&lt;/li&gt;
+  &lt;li&gt;Куляб&lt;/li&gt;&lt;li&gt;Истаравшан&lt;/li&gt;&lt;li&gt;Хорог&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+input { font: inherit; padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 10px; }
+small { margin-left: 8px; color: #667085; }
+li { padding: 2px 0; }
+</pre>
+<pre class="code" data-lang="js">
+const search = document.querySelector("#search");
+const info = document.querySelector("#info");
+const items = document.querySelectorAll("#cities li");
+
+search.addEventListener("input", (event) =&gt; {
+  const query = event.target.value.trim().toLowerCase();
+  let shown = 0;
+
+  items.forEach((li) =&gt; {
+    const match = li.textContent.toLowerCase().includes(query);
+    li.hidden = !match;          // прячем несовпавшие
+    if (match) shown++;
+  });
+
+  info.textContent = `Символов: ${query.length}, найдено: ${shown}`;
+  console.log(`Запрос «${query}» → ${shown}`);
+});
+</pre>
+      </div>
+
+      <div class="callout warn"><b>Частая ошибка: путают input и change у текстового поля</b>
+        <p>У текстового поля <code>change</code> срабатывает только когда вы <b>ушли из поля</b> или нажали Enter. Если повесить на него живой поиск, результат появится «с опозданием» — и пользователь решит, что сайт зависает. Для поиска и счётчиков берите <code>input</code>.</p>
+      </div>
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/keyboard-events" target="_blank" rel="noopener">learn.javascript.ru — Клавиатура: keydown и keyup</a> · <a href="https://developer.mozilla.org/ru/docs/Web/Events" target="_blank" rel="noopener">MDN — Справочник событий</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Счётчик символов</h4><span class="level easy">лёгкая</span></header>
+          <p>Сделайте счётчик для поля «О себе», как в анкете Ilmhona. На каждое событие <code>input</code> выводите строку «Символов: N», где N — длина текста в поле.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;textarea id="about"&gt;&lt;/textarea&gt;`;
+const about = document.querySelector("#about");
+
+// ваш код здесь
+
+for (const text of ["Привет", "Привет, Душанбе"]) {
+  about.value = text;
+  about.dispatchEvent(new Event("input"));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Символов: 6
+Символов: 15</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Текст из поля — <code>event.target.value</code>. Это строка, у строк есть свойство <code>length</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>about.addEventListener("input", (e) =&gt; console.log("Символов: " + e.target.value.length));</code></p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Поиск города на лету</h4><span class="level mid">средняя</span></header>
+          <p>На каждое событие <code>input</code> в поле <code>#q</code> найдите города из массива <code>cities</code>, в названии которых есть введённый текст (без учёта регистра, лишние пробелы по краям — убрать). Выведите «Запрос «текст»: » и города через запятую. Если ничего не нашлось — «ничего не найдено». В выводе запрос пишется как ввёл пользователь, но без пробелов по краям.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;input id="q"&gt;`;
+const q = document.querySelector("#q");
+const cities = ["Душанбе", "Худжанд", "Бохтар", "Куляб", "Истаравшан", "Хорог"];
+
+// ваш код здесь
+
+for (const text of ["ху", " ХО ", "а", "щ"]) {
+  q.value = text;
+  q.dispatchEvent(new Event("input"));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Запрос «ху»: Худжанд
+Запрос «ХО»: Хорог
+Запрос «а»: Душанбе, Худжанд, Бохтар, Истаравшан
+Запрос «щ»: ничего не найдено</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала приведите запрос в порядок: <code>const query = e.target.value.trim();</code>. Для сравнения используйте <code>query.toLowerCase()</code> и <code>city.toLowerCase().includes(…)</code>, а выводить — исходный <code>query</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const found = cities.filter(c =&gt; c.toLowerCase().includes(query.toLowerCase()));</code> Потом <code>found.length ? found.join(", ") : "ничего не найдено"</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Итоговая цена с доставкой</h4><span class="level mid">средняя</span></header>
+          <p>Товар стоит 100 сомони. Доставка платная, если стоит галочка <code>#delivery</code>: по Душанбе 10 сомони, по Худжанду 25. Напишите функцию <code>recalc</code>, которая выводит «Итого: N сомони», и подпишите её на <code>change</code> и у списка городов, и у флажка. Код ниже сам «меняет» значения четыре раза.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;select id="city"&gt;&lt;option&gt;Душанбе&lt;/option&gt;&lt;option&gt;Худжанд&lt;/option&gt;&lt;/select&gt;
+  &lt;label&gt;&lt;input type="checkbox" id="delivery"&gt; Доставка&lt;/label&gt;`;
+const city = document.querySelector("#city");
+const delivery = document.querySelector("#delivery");
+const price = 100;
+const fees = { "Душанбе": 10, "Худжанд": 25 };
+
+function recalc() {
+  // ваш код здесь: посчитать и вывести «Итого: N сомони»
+}
+
+// ваш код здесь: подписки на change
+
+const fire = (el) =&gt; el.dispatchEvent(new Event("change"));
+city.value = "Худжанд"; fire(city);
+delivery.checked = true; fire(delivery);
+city.value = "Душанбе"; fire(city);
+delivery.checked = false; fire(delivery);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Итого: 100 сомони
+Итого: 125 сомони
+Итого: 110 сомони
+Итого: 100 сомони</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри <code>recalc</code> читайте текущее состояние прямо из элементов: <code>city.value</code> и <code>delivery.checked</code>. Стоимость доставки — <code>fees[city.value]</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const total = price + (delivery.checked ? fees[city.value] : 0);</code> Подписка: <code>city.addEventListener("change", recalc);</code> и такая же для <code>delivery</code>. Скобок после <code>recalc</code> нет!</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 04 -->
+    <section class="topic" id="prevent-default">
+      <h2 data-toc="preventDefault"><span class="num">04</span> Действие по умолчанию: preventDefault</h2>
+      <p>У многих событий у браузера есть <b>своё действие по умолчанию</b>. Оно выполнится после ваших обработчиков, если его не остановить:</p>
+      <ul>
+        <li>клик по ссылке <code>&lt;a href&gt;</code> — переход на другую страницу;</li>
+        <li>отправка формы — перезагрузка страницы с данными;</li>
+        <li>клик правой кнопкой — контекстное меню;</li>
+        <li><code>Ctrl + S</code> — окно «Сохранить страницу»;</li>
+        <li>пробел на странице — прокрутка вниз.</li>
+      </ul>
+      <p>Метод <code>event.preventDefault()</code> говорит браузеру: «Не надо, дальше я сам». Ваш код при этом продолжает работать как обычно.</p>
+
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Вы подходите к турникету на станции, а контролёр говорит: «Стойте, сначала покажите билет». Вы собирались пройти (действие по умолчанию), но вас остановили — и теперь решаете, пустить ли. <code>preventDefault</code> — это поднятая рука контролёра: проход отменён, но всё остальное в зале идёт своим чередом.</p>
+      </div>
+
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;a id="promo" href="https://example.com/promo"&gt;Акция недели&lt;/a&gt;`;
+const promo = document.querySelector("#promo");
+
+promo.addEventListener("click", (e) =&gt; {
+  e.preventDefault();                       // остаёмся на странице
+  console.log("Переход отменён:", e.defaultPrevented);
+});
+
+promo.click();
+</pre>
+
+      <h3>Главный случай: форма</h3>
+      <p>Отправка формы по умолчанию <b>перезагружает страницу</b>: всё, что JavaScript успел нарисовать, исчезает. Поэтому почти любая форма на современном сайте обрабатывается так: слушаем <code>submit</code> у формы (не <code>click</code> у кнопки!), делаем <code>preventDefault()</code> и работаем с данными сами.</p>
+      <p>Почему именно <code>submit</code>, а не клик по кнопке? Форму можно отправить клавишей Enter в поле — клика по кнопке при этом не будет, а <code>submit</code> сработает всегда. В наших задачах форму «отправляет» код: он вручную запускает событие <code>submit</code> командой <code>form.dispatchEvent(new Event("submit", { cancelable: true }))</code>. Обработчик не заметит разницы, а страница при этом не перезагрузится.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form id="order"&gt;
+    &lt;input id="who" value="Мадина"&gt;
+    &lt;button&gt;Заказать&lt;/button&gt;
+  &lt;/form&gt;`;
+const order = document.querySelector("#order");
+const who = document.querySelector("#who");
+
+order.addEventListener("submit", (e) =&gt; {
+  e.preventDefault();   // без этой строки страница бы перезагрузилась
+  console.log("Заказ для:", who.value);
+});
+
+order.dispatchEvent(new Event("submit", { cancelable: true }));
+who.value = "Фарход";
+order.dispatchEvent(new Event("submit", { cancelable: true }));
+</pre>
+
+      <h3>Попробуйте сами</h3>
+      <p>Нажмите <b>▶ Запустить</b>, введите имя и нажмите Enter или кнопку. Страница не перезагружается, имя добавляется в список — это работа <code>preventDefault</code>.</p>
+      <div class="playground" data-mode="dom" data-title="Форма без перезагрузки">
+<pre class="code" data-lang="html">
+&lt;form id="join"&gt;
+  &lt;input id="who" placeholder="Ваше имя" autocomplete="off"&gt;
+  &lt;button&gt;Записаться&lt;/button&gt;
+&lt;/form&gt;
+&lt;ol id="people"&gt;&lt;/ol&gt;
+</pre>
+<pre class="code" data-lang="css">
+input, button { font: inherit; padding: 8px 12px; border-radius: 10px; border: 1px solid #d0d5dd; }
+button { background: #fff; cursor: pointer; }
+</pre>
+<pre class="code" data-lang="js">
+const join = document.querySelector("#join");
+const who = document.querySelector("#who");
+const people = document.querySelector("#people");
+
+join.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  const name = who.value.trim();
+  if (name === "") return;           // пустое имя не добавляем
+
+  const li = document.createElement("li");
+  li.textContent = name;
+  people.append(li);
+  who.value = "";
+  console.log("Записано человек:", people.children.length);
+});
+</pre>
+      </div>
+
+      <h3>Не путать с stopPropagation</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th></th><th><code>preventDefault()</code></th><th><code>stopPropagation()</code></th></tr></thead>
+        <tbody>
+          <tr><td>Что останавливает</td><td>Действие <b>браузера</b> (переход, отправку…)</td><td>Дальнейший путь события <b>вверх по элементам</b></td></tr>
+          <tr><td>Другие обработчики</td><td>Продолжают работать</td><td>Выше по цепочке не вызываются</td></tr>
+          <tr><td>О чём подробнее</td><td>Этот раздел</td><td>Раздел 05</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="callout warn"><b>Частая ошибка: preventDefault «не сработал»</b>
+        <p>Две типичные причины. Первая — вы повесили обработчик на <code>click</code> кнопки, а форму отправляют ещё и клавишей Enter: слушайте <code>submit</code>. Вторая — <code>preventDefault</code> вызван не во всех ветках: например, внутри <code>if</code>, а при ошибке валидации раньше сработал <code>return</code>. Сначала отмените действие, потом проверяйте.</p>
+      </div>
+<pre class="code" data-run data-title="Частая ошибка: отмена только в одной ветке">
+document.body.innerHTML = `&lt;form id="f"&gt;&lt;input id="i"&gt;&lt;/form&gt;`;
+const f = document.querySelector("#f");
+const i = document.querySelector("#i");
+
+f.addEventListener("submit", (e) =&gt; {
+  if (i.value === "") {
+    console.log("Пусто!");
+    return;                // ✖ вышли, не отменив отправку
+  }
+  e.preventDefault();
+  console.log("Отправка", i.value);
+});
+
+// имитируем отправку пустой формы и смотрим, отменили ли мы действие браузера
+const ev = new Event("submit", { cancelable: true });
+f.dispatchEvent(ev);
+console.log("Перезагрузка отменена?", ev.defaultPrevented);
+</pre>
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/default-browser-action" target="_blank" rel="noopener">learn.javascript.ru — Действия браузера по умолчанию</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Event/preventDefault" target="_blank" rel="noopener">MDN — Event.preventDefault</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Ссылка-ловушка</h4><span class="level easy">лёгкая</span></header>
+          <p>Ссылка <code>#promo</code> ведёт на внешний сайт, а мы хотим остаться на странице. Подпишитесь на клик, отмените переход и выведите две строки: «Переход отменён» и значение <code>event.defaultPrevented</code> (оно должно быть <code>true</code>).</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;a id="promo" href="https://example.com"&gt;Скидки&lt;/a&gt;`;
+const promo = document.querySelector("#promo");
+
+// ваш код здесь
+
+promo.click();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Переход отменён
+true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Обработчик клика получает <code>event</code>. Метод отмены — <code>event.preventDefault()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сначала вызовите <code>preventDefault()</code>, потом выведите <code>console.log("Переход отменён")</code> и <code>console.log(event.defaultPrevented)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Форма заявки</h4><span class="level mid">средняя</span></header>
+          <p>Напишите обработчик <code>submit</code> для формы заявки на курс. Он отменяет перезагрузку и проверяет имя: если поле <code>#name</code> пустое (после <code>trim()</code>) — выводит «Введите имя», иначе — «Заявка: имя, телефон». Код ниже отправляет форму дважды.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;form id="apply"&gt;
+    &lt;input id="name"&gt;
+    &lt;input id="phone"&gt;
+    &lt;button&gt;Отправить&lt;/button&gt;
+  &lt;/form&gt;`;
+const apply = document.querySelector("#apply");
+const nameInput = document.querySelector("#name");
+const phoneInput = document.querySelector("#phone");
+
+// ваш код здесь
+
+nameInput.value = "Мадина";
+phoneInput.value = "900 11 22 33";
+apply.dispatchEvent(new Event("submit", { cancelable: true }));
+
+nameInput.value = "   ";
+apply.dispatchEvent(new Event("submit", { cancelable: true }));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Заявка: Мадина, 900 11 22 33
+Введите имя</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Слушайте <code>submit</code> у формы <code>apply</code>, а не клик у кнопки. Первой строкой в обработчике — <code>event.preventDefault()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const name = nameInput.value.trim();</code> Потом <code>if (name === "") { console.log("Введите имя"); return; }</code> и вывод заявки через шаблонную строку.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Горячие клавиши редактора</h4><span class="level hard">сложная</span></header>
+          <p>Вы делаете онлайн-редактор. Подпишитесь на <code>keydown</code> у <code>document</code> и обработайте комбинации: <code>Ctrl + S</code> → «Сохранено», <code>Ctrl + Shift + S</code> → «Сохранить как…», <code>Ctrl + Z</code> → «Отмена». У этих комбинаций есть действие браузера по умолчанию — его нужно <b>отменить</b>. Остальные клавиши (например, просто <code>a</code>) не трогаем. Подсказка: при нажатом Shift буква в <code>event.key</code> приходит заглавной.</p>
+<pre class="code" data-run>
+const press = (key, ctrl, shift) =&gt; {
+  const ev = new KeyboardEvent("keydown", { key, ctrlKey: ctrl, shiftKey: shift, bubbles: true, cancelable: true });
+  document.dispatchEvent(ev);
+  const label = (ctrl ? "Ctrl + " : "") + (shift ? "Shift + " : "") + key;
+  console.log(`${label}: действие по умолчанию ${ev.defaultPrevented ? "отменено" : "работает"}`);
+};
+
+// ваш код здесь: подписка на keydown у document
+
+press("s", true, false);
+press("S", true, true);
+press("a", false, false);
+press("z", true, false);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Сохранено
+Ctrl + s: действие по умолчанию отменено
+Сохранить как…
+Ctrl + Shift + S: действие по умолчанию отменено
+a: действие по умолчанию работает
+Отмена
+Ctrl + z: действие по умолчанию отменено</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>У события есть булевы свойства <code>event.ctrlKey</code> и <code>event.shiftKey</code>. Приведите клавишу к одному регистру: <code>const key = event.key.toLowerCase();</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Сначала проверьте самую «узкую» комбинацию: <code>if (event.ctrlKey &amp;&amp; event.shiftKey &amp;&amp; key === "s") { … } else if (event.ctrlKey &amp;&amp; key === "s") { … } else if (event.ctrlKey &amp;&amp; key === "z") { … }</code>. В каждой ветке — <code>event.preventDefault()</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 05 -->
+    <section class="topic" id="bubbling">
+      <h2 data-toc="Всплытие"><span class="num">05</span> Всплытие и перехват</h2>
+      <p>Что произойдёт, если кнопка лежит внутри карточки, а карточка — внутри списка, и на <b>каждом</b> из них висит свой обработчик клика? Сработают все три — и в очень определённом порядке. Событие не «застревает» на элементе, по которому кликнули: оно <b>путешествует по цепочке родителей</b>.</p>
+
+      <figure class="diagram">
+        <div class="bub">
+          <div class="lvl l1"><span class="lbl">&lt;ul id="list"&gt; — обработчик №3</span>
+            <div class="lvl l2"><span class="lbl">&lt;li class="card"&gt; — обработчик №2</span>
+              <div class="lvl l3"><span class="lbl">&lt;button&gt; — обработчик №1 (сюда кликнули)</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="bub-flow">
+          <span class="down">1. погружение ↓ сверху вниз</span>
+          <span class="hit">2. цель: button</span>
+          <span class="up">3. всплытие ↑ снизу вверх</span>
+        </div>
+        <figcaption>Три фазы пути события. Обычные обработчики срабатывают на фазе всплытия: button → li → ul</figcaption>
+      </figure>
+
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>Пузырёк воздуха в стакане чая всплывает со дна к поверхности и проходит все слои. Клик по кнопке «всплывает» так же: сначала сообщает о себе кнопке, потом карточке, потом списку, потом <code>body</code>, <code>document</code>. А ещё это похоже на офис в Душанбе: сотрудник сообщает новость начальнику отдела, тот — директору, тот — владельцу.</p>
+      </div>
+
+      <ol class="steps">
+        <li><b>Погружение (capturing).</b> Событие спускается от <code>document</code> к цели. Обработчики здесь срабатывают только если вы специально попросили: <code>{ capture: true }</code>. Нужно редко.</li>
+        <li><b>Цель (target).</b> Событие доходит до элемента, по которому кликнули.</li>
+        <li><b>Всплытие (bubbling).</b> Событие поднимается обратно вверх до самого <code>document</code>. На этой фазе работают все обычные обработчики.</li>
+      </ol>
+
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li id="card"&gt;&lt;button id="btn"&gt;В корзину&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+
+for (const id of ["btn", "card", "list"]) {
+  document.getElementById(id).addEventListener("click", (e) =&gt; {
+    console.log(`сработал ${e.currentTarget.id}, а кликнули по ${e.target.id}`);
+  });
+}
+
+document.getElementById("btn").click();
+</pre>
+      <p>Обратите внимание на две вещи: порядок идёт <b>снизу вверх</b>, а <code>target</code> на всём пути остаётся одним и тем же — это тот, по кому кликнули. Меняется только <code>currentTarget</code>.</p>
+
+      <h3>Посмотрите вживую</h3>
+      <p>Нажмите <b>▶ Запустить</b> и кликните по внутренней кнопке, потом по средней и внешней рамке. Включите флажок — и всплытие остановится на кнопке.</p>
+      <div class="playground" data-mode="dom" data-title="Путь события">
+<pre class="code" data-lang="html">
+&lt;div id="outer" class="box"&gt;outer
+  &lt;div id="middle" class="box"&gt;middle
+    &lt;button id="inner"&gt;inner (нажмите)&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+&lt;label&gt;&lt;input type="checkbox" id="stop"&gt; stopPropagation на кнопке&lt;/label&gt;
+&lt;button id="clear"&gt;Очистить журнал&lt;/button&gt;
+&lt;ol id="log"&gt;&lt;/ol&gt;
+</pre>
+<pre class="code" data-lang="css">
+.box { padding: 10px 14px; margin: 6px 0; border: 2px solid #98a2b3; border-radius: 10px; }
+#outer { border-color: #2e90fa; }
+#middle { border-color: #f79009; }
+button { font: inherit; padding: 4px 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const log = document.querySelector("#log");
+const stop = document.querySelector("#stop");
+
+function write(text) {
+  const li = document.createElement("li");
+  li.textContent = text;
+  log.append(li);
+  console.log(text);
+}
+
+for (const id of ["outer", "middle", "inner"]) {
+  document.getElementById(id).addEventListener("click", (event) =&gt; {
+    write(`${event.currentTarget.id} (target: ${event.target.id})`);
+    if (id === "inner" &amp;&amp; stop.checked) event.stopPropagation();
+  });
+}
+
+document.querySelector("#clear").addEventListener("click", (e) =&gt; {
+  log.innerHTML = "";
+  e.stopPropagation();
+});
+</pre>
+      </div>
+
+      <h3>stopPropagation: оборвать путь</h3>
+      <p><code>event.stopPropagation()</code> прекращает всплытие: родители событие не получат. Выглядит соблазнительно, но используйте осторожно. Остановленное событие перестанет доходить и до чужого кода — например, до счётчика аналитики на <code>document</code>, и вы будете долго искать, почему он «пропускает» клики. Лучше обычно <b>проверить</b> в обработчике родителя, куда именно кликнули: <code>event.target === event.currentTarget</code>.</p>
+
+      <h3>Перехват: { capture: true }</h3>
+      <p>Если третьим аргументом передать <code>true</code> или <code>{ capture: true }</code>, обработчик сработает на фазе <b>погружения</b> — раньше, чем у самой цели. Так можно «встретить» событие до того, как оно дойдёт вниз.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;div id="wrap"&gt;&lt;button id="btn"&gt;Кнопка&lt;/button&gt;&lt;/div&gt;`;
+const wrap = document.querySelector("#wrap");
+const btn = document.querySelector("#btn");
+
+wrap.addEventListener("click", () =&gt; console.log("wrap: всплытие"));
+wrap.addEventListener("click", () =&gt; console.log("wrap: перехват"), { capture: true });
+btn.addEventListener("click", () =&gt; console.log("button: цель"));
+
+btn.click();
+</pre>
+      <p>Порядок: сначала перехват у <code>wrap</code> (спуск вниз), потом сама кнопка, потом всплытие у <code>wrap</code>.</p>
+
+      <div class="callout warn"><b>Не всё всплывает</b>
+        <p>События <code>focus</code> и <code>blur</code> не всплывают (вместо них у родителя слушайте <code>focusin</code> / <code>focusout</code>), а <code>mouseenter</code> и <code>mouseleave</code> — тоже нет (берите <code>mouseover</code> / <code>mouseout</code>). Кроме того, события, созданные вручную, по умолчанию не всплывают: нужно явно написать <code>new Event("input", { bubbles: true })</code>.</p>
+      </div>
+<pre class="code" data-run data-title="Частая ошибка: ручное событие не всплывает">
+document.body.innerHTML = `&lt;div id="form"&gt;&lt;input id="field"&gt;&lt;/div&gt;`;
+const form = document.querySelector("#form");
+const field = document.querySelector("#field");
+
+form.addEventListener("input", () =&gt; console.log("форма услышала ввод"));
+
+field.dispatchEvent(new Event("input"));                      // ✖ не всплывает — тишина
+console.log("---");
+field.dispatchEvent(new Event("input", { bubbles: true }));   // ✔ всплывает
+</pre>
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/bubbling-and-capturing" target="_blank" rel="noopener">learn.javascript.ru — Всплытие и погружение</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Event/stopPropagation" target="_blank" rel="noopener">MDN — Event.stopPropagation</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Предскажи путь клика</h4><span class="level easy">лёгкая</span></header>
+          <p>Три вложенных элемента, на каждом свой обработчик. Запишите в <code>prediction</code> идентификаторы в том порядке, в котором сработают обработчики после клика по самой внутренней кнопке <code>#c</code>. Консоль скажет только «верно» или «неверно».</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;div id="a"&gt;
+    &lt;div id="b"&gt;
+      &lt;button id="c"&gt;Кнопка&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;`;
+const actual = [];
+
+for (const id of ["a", "b", "c"]) {
+  document.getElementById(id).addEventListener("click", () =&gt; actual.push(id));
+}
+document.getElementById("c").click();
+
+const prediction = [];   // например ["x", "y", "z"]
+
+console.log(prediction.join(" ") === actual.join(" ") ? "Прогноз верный" : "Прогноз неверный");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Прогноз верный</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Вспомните схему: событие стартует у цели и поднимается вверх. Кто здесь цель?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Порядок идёт от самого глубокого элемента к самому внешнему. Подсмотреть можно, временно добавив <code>console.log(actual.join(" "))</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Перехватить раньше</h4><span class="level mid">средняя</span></header>
+          <p>У кнопки <code>#btn</code> и у её обёртки <code>#wrap</code> уже есть обычные обработчики. Допишите ещё один — на обёртке, но на фазе <b>погружения</b>: он должен выводить «Перехват: wrap» <b>раньше</b> всех. Ожидаемый порядок указан ниже.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;div id="wrap"&gt;&lt;button id="btn"&gt;Купить&lt;/button&gt;&lt;/div&gt;`;
+const wrap = document.querySelector("#wrap");
+const btn = document.querySelector("#btn");
+
+btn.addEventListener("click", () =&gt; console.log("Кнопка"));
+wrap.addEventListener("click", () =&gt; console.log("Всплытие: wrap"));
+
+// ваш код здесь
+
+btn.click();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Перехват: wrap
+Кнопка
+Всплытие: wrap</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Фаза погружения включается третьим аргументом <code>addEventListener</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>wrap.addEventListener("click", () =&gt; console.log("Перехват: wrap"), { capture: true });</code></p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Модальное окно закрывается само</h4><span class="level mid">средняя</span></header>
+          <p>Серый фон <code>#overlay</code> закрывает окно по клику. Внутри лежит само окно <code>#modal</code>. Баг: клик <b>внутри окна</b> тоже закрывает его, потому что событие всплывает до фона. Исправьте так, чтобы клик по окну выводил только «Клик внутри окна», а клик по фону — «Окно закрыто».</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;div id="overlay"&gt;
+    &lt;div id="modal"&gt;Вы уверены?&lt;/div&gt;
+  &lt;/div&gt;`;
+const overlay = document.querySelector("#overlay");
+const modal = document.querySelector("#modal");
+
+modal.addEventListener("click", () =&gt; {
+  console.log("Клик внутри окна");
+});
+
+overlay.addEventListener("click", () =&gt; {
+  console.log("Окно закрыто");
+});
+
+modal.click();
+overlay.click();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Клик внутри окна
+Окно закрыто</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запустите как есть: «Окно закрыто» выводится дважды. Первый раз — после клика по окну, из-за всплытия.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Два способа. Быстрый: в обработчике <code>modal</code> добавить параметр <code>event</code> и вызвать <code>event.stopPropagation()</code>. Аккуратнее: в обработчике <code>overlay</code> закрывать только если <code>event.target === event.currentTarget</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>Хлебные крошки клика</h4><span class="level hard">сложная</span></header>
+          <p>Для отладки аналитики нужно знать, <b>где именно</b> кликнули. Повесьте на <code>#shop</code> один обработчик, который по <code>event.target</code> поднимается вверх по <code>parentElement</code> до <code>#shop</code> включительно и выводит путь в формате «тег#id.класс &lt; … &lt; main#shop». Если у элемента нет id или класса — они не пишутся. Функция <code>describe(el)</code> уже заготовлена как место для вас.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;main id="shop"&gt;
+    &lt;article class="card"&gt;
+      &lt;h3 id="title"&gt;Дыня&lt;/h3&gt;
+      &lt;p class="info"&gt;Цена: &lt;b id="price"&gt;12&lt;/b&gt;&lt;/p&gt;
+      &lt;button id="buy"&gt;Купить&lt;/button&gt;
+    &lt;/article&gt;
+  &lt;/main&gt;`;
+const shop = document.querySelector("#shop");
+
+// тег в нижнем регистре + "#id", если есть + ".класс", если есть
+function describe(el) {
+  // ваш код здесь
+}
+
+// ваш код здесь: обработчик клика на shop
+
+for (const id of ["price", "title", "buy", "shop"]) {
+  document.getElementById(id).click();
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>b#price &lt; p.info &lt; article.card &lt; main#shop
+h3#title &lt; article.card &lt; main#shop
+button#buy &lt; article.card &lt; main#shop
+main#shop</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>describe</code>: <code>el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (el.className ? "." + el.className : "")</code>. Проверьте функцию отдельно, вызвав её для пары элементов.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Цикл подъёма: <code>let el = event.target; const path = []; while (true) { path.push(describe(el)); if (el === shop) break; el = el.parentElement; }</code>, затем <code>path.join(" &lt; ")</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 06 -->
+    <section class="topic" id="delegation">
+      <h2 data-toc="Делегирование"><span class="num">06</span> Делегирование событий</h2>
+      <p>Допустим, у вас список из 50 дел, и у каждого — кнопка «Удалить». Первая мысль: пройти циклом и повесить обработчик на каждую кнопку. Это работает, но есть три проблемы:</p>
+      <ul>
+        <li><b>Много обработчиков.</b> 50 кнопок — 50 слушателей в памяти. А если строк 5000?</li>
+        <li><b>Новые элементы «глухие».</b> Пользователь добавил дело — у новой кнопки обработчика нет, потому что цикл отработал раньше.</li>
+        <li><b>Лишняя работа.</b> Каждый элемент нужно подписывать и, при удалении, отписывать.</li>
+      </ul>
+      <p>Решение использует всплытие из прошлого раздела. Клик по любой кнопке <b>всё равно всплывёт</b> до общего родителя — списка. Значит, достаточно <b>одного</b> обработчика на родителе: он узнаёт, кто именно был целью, и решает, что делать. Это называется <b>делегированием</b> — родитель принимает события «по доверенности» за всех детей.</p>
+
+      <div class="callout analogy"><b>Аналогия из жизни</b>
+        <p>В Ilmhona нет охранника у двери каждой аудитории — есть один администратор на ресепшене. Все вопросы идут к нему: «Где аудитория 3?», «Кто сегодня ведёт?». Когда открывают новую аудиторию, нанимать нового охранника не нужно — администратор уже в курсе. Так и с делегированием: один «администратор» (родитель) обслуживает всех, в том числе тех, кто появится позже.</p>
+      </div>
+
+      <h3>Два подхода рядом</h3>
+      <div class="cols">
+        <div class="col bad"><b>Обработчик на каждый элемент</b>
+<pre class="code">
+for (const btn of list.querySelectorAll("button")) {
+  btn.addEventListener("click", remove);
+}
+// новые кнопки — без обработчика
+</pre>
+        </div>
+        <div class="col good"><b>Один на родителе</b>
+<pre class="code">
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button");
+  if (!btn) return;
+  remove(btn);
+});
+// работает и для будущих кнопок
+</pre>
+        </div>
+      </div>
+
+      <h3>Новый инструмент: closest</h3>
+      <p>Проблема: <code>event.target</code> — это самый глубокий элемент, по которому кликнули. Если в кнопке лежит значок <code>&lt;span&gt;</code>, целью будет значок, а не кнопка. Нужно «подняться» от цели к нужному элементу. Для этого есть метод <code>element.closest(selector)</code>: он проверяет сам элемент, затем родителя, затем родителя родителя — и возвращает первый подходящий под CSS-селектор. Если такого нет — <code>null</code>.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li class="item"&gt;&lt;button class="del"&gt;&lt;span class="icon"&gt;✕&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const icon = document.querySelector(".icon");
+
+console.log(icon.closest("button").className);   // del — поднялись на 1 уровень
+console.log(icon.closest("li").className);       // item — на 2 уровня
+console.log(icon.closest(".icon") === icon);     // true — сначала проверяется сам элемент
+console.log(icon.closest("table"));              // null — такого предка нет
+</pre>
+
+      <h3>Ещё один инструмент: data-атрибуты</h3>
+      <p>Как узнать, какую именно кнопку нажали — «удалить» или «в избранное»? И в какой строке? Не по тексту же кнопки угадывать. Для таких меток в HTML есть атрибуты <code>data-*</code>: вы сами придумываете имя, а в JS читаете через <code>element.dataset</code>.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;li data-id="42" data-user-name="Мадина"&gt;&lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;`;
+const li = document.querySelector("li");
+const btn = document.querySelector("button");
+
+console.log(li.dataset.id);          // "42" — всегда строка!
+console.log(li.dataset.userName);    // data-user-name → userName (camelCase)
+console.log(btn.dataset.action);     // "remove"
+console.log(Number(li.dataset.id) + 1);   // 43 — число делаем сами
+</pre>
+
+      <h3>Шаблон делегирования</h3>
+      <ol class="steps">
+        <li><b>Один обработчик на общего родителя</b> — список, таблицу, меню.</li>
+        <li><b>Найдите нужный элемент:</b> <code>const btn = event.target.closest("button[data-action]");</code></li>
+        <li><b>Ничего не нашли — выходим:</b> <code>if (!btn) return;</code> (клик мимо кнопок).</li>
+        <li><b>Проверьте, что кнопка внутри вашего списка:</b> <code>if (!list.contains(btn)) return;</code> Нужна, когда списки вложены друг в друга.</li>
+        <li><b>Поднимитесь к строке:</b> <code>const li = btn.closest("li");</code></li>
+        <li><b>Решайте по <code>dataset</code>:</b> <code>if (btn.dataset.action === "remove") li.remove();</code></li>
+      </ol>
+
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li data-id="1"&gt;Нон &lt;button data-action="remove"&gt;&lt;span&gt;✕&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+    &lt;li data-id="2"&gt;Чой &lt;button data-action="remove"&gt;&lt;span&gt;✕&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const list = document.querySelector("#list");
+
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn || !list.contains(btn)) return;
+  const li = btn.closest("li");
+  if (btn.dataset.action === "remove") {
+    console.log("Удаляю №" + li.dataset.id);
+    li.remove();
+  }
+});
+
+list.querySelector("span").click();   // кликнули по значку внутри кнопки — работает!
+console.log("Осталось:", list.children.length);
+
+// добавим новый пункт позже — обработчик не нужен
+const newLi = document.createElement("li");
+newLi.dataset.id = 3;
+newLi.innerHTML = `Лагман &lt;button data-action="remove"&gt;&lt;span&gt;✕&lt;/span&gt;&lt;/button&gt;`;
+list.append(newLi);
+newLi.querySelector("button").click();
+console.log("Осталось:", list.children.length);
+</pre>
+
+      <h3>Попробуйте сами</h3>
+      <p>Нажмите <b>▶ Запустить</b>. Удалите пару пунктов, затем добавьте новый кнопкой «Добавить пункт» — и убедитесь, что у нового кнопка «✕» работает без единой лишней строки подписки.</p>
+      <div class="playground" data-mode="dom" data-title="Меню чойхоны">
+<pre class="code" data-lang="html">
+&lt;button id="add"&gt;Добавить пункт&lt;/button&gt;
+&lt;ul id="menu"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Оши палав&lt;/span&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лагман&lt;/span&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+li { padding: 4px 0; }
+button { font: inherit; padding: 2px 10px; border-radius: 8px; border: 1px solid #d0d5dd; background: #fff; cursor: pointer; }
+</pre>
+<pre class="code" data-lang="js">
+const menu = document.querySelector("#menu");
+const dishes = ["Манту", "Самбуса", "Шурпо", "Кабоб"];
+let next = 0;
+
+// ОДИН обработчик на весь список
+menu.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) return;
+  const li = btn.closest("li");
+  console.log("Убрали:", li.querySelector(".name").textContent);
+  li.remove();
+});
+
+document.querySelector("#add").addEventListener("click", () =&gt; {
+  const li = document.createElement("li");
+  li.innerHTML = `&lt;span class="name"&gt;&lt;/span&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;`;
+  li.querySelector(".name").textContent = dishes[next++ % dishes.length];
+  menu.append(li);
+});
+</pre>
+      </div>
+
+      <div class="callout warn"><b>Частые ошибки делегирования</b>
+        <p><b>1. Используют <code>event.target</code> вместо <code>closest</code>.</b> Клик по значку внутри кнопки даёт цель-значок — и проверка <code>target.tagName === "BUTTON"</code> не срабатывает.</p>
+        <p><b>2. Делегируют событие, которое не всплывает.</b> <code>focus</code>, <code>blur</code>, <code>mouseenter</code> до родителя не дойдут — берите <code>focusin</code>, <code>focusout</code>, <code>mouseover</code>.</p>
+        <p><b>3. Забывают <code>if (!btn) return</code>.</b> Клик по пустому месту списка тоже вызывает обработчик, и <code>btn</code> будет <code>null</code>.</p>
+      </div>
+<pre class="code" data-run data-title="Частая ошибка: клик по значку внутри кнопки не замечен">
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li&gt;Нон &lt;button&gt;&lt;span id="icon"&gt;✕&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const list = document.querySelector("#list");
+
+list.addEventListener("click", (event) =&gt; {
+  if (event.target.tagName === "BUTTON") {          // ✖ цель — это SPAN
+    console.log("Кнопка нажата");
+  } else {
+    console.log("Цель:", event.target.tagName);     // мы окажемся здесь
+  }
+});
+
+document.querySelector("#icon").click();
+</pre>
+      <p>Бывает и обратное: делегирование — не всегда лучшее решение. Если элемент один (например, кнопка «Войти»), просто повесьте обработчик на него. Делегирование нужно для <b>списков, таблиц, меню</b> — там, где элементов много или они добавляются и удаляются.</p>
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/event-delegation" target="_blank" rel="noopener">learn.javascript.ru — Делегирование событий</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Element/closest" target="_blank" rel="noopener">MDN — Element.closest</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTML/How_to/Use_data_attributes" target="_blank" rel="noopener">MDN — data-атрибуты</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Один слушатель на всё меню</h4><span class="level easy">лёгкая</span></header>
+          <p>Меню столовой — список <code>#menu</code> с тремя блюдами. Повесьте <b>один</b> обработчик клика на сам список. Он выводит «Выбрано: название» только если целью был пункт <code>&lt;li&gt;</code>. Клик по самому списку (мимо пунктов) должен игнорироваться.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;ul id="menu"&gt;&lt;li&gt;Оши палав&lt;/li&gt;&lt;li&gt;Лагман&lt;/li&gt;&lt;li&gt;Манту&lt;/li&gt;&lt;/ul&gt;`;
+const menu = document.querySelector("#menu");
+
+// ваш код здесь: один обработчик на menu
+
+for (const li of menu.children) {
+  li.click();
+}
+menu.click();   // мимо пунктов — реакции быть не должно
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Выбрано: Оши палав
+Выбрано: Лагман
+Выбрано: Манту</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Элемент, по которому кликнули, — <code>event.target</code>. Проверьте его тег: <code>event.target.tagName === "LI"</code>. Для клика по самому списку <code>target</code> будет <code>UL</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>menu.addEventListener("click", (event) =&gt; { if (event.target.tagName !== "LI") return; console.log("Выбрано: " + event.target.textContent); });</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Кнопки «нравится» и «удалить»</h4><span class="level mid">средняя</span></header>
+          <p>В списке три блюда, у каждого кнопки <code>data-action="like"</code> и <code>data-action="remove"</code>. Напишите <b>один</b> обработчик на <code>#list</code> через <code>closest</code> и <code>dataset</code>. Для «like» выводите «Нравится: название (№id)», для «remove» — «Удалено: название (№id)» <b>и удаляйте пункт</b>. Клик не по кнопке игнорируйте. Название лежит в <code>.name</code>, id — в <code>data-id</code> у <code>&lt;li&gt;</code>.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="list"&gt;
+    &lt;li data-id="1"&gt;&lt;span class="name"&gt;Оши палав&lt;/span&gt; &lt;button data-action="like"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+    &lt;li data-id="2"&gt;&lt;span class="name"&gt;Лагман&lt;/span&gt; &lt;button data-action="like"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+    &lt;li data-id="3"&gt;&lt;span class="name"&gt;Манту&lt;/span&gt; &lt;button data-action="like"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const list = document.querySelector("#list");
+
+// ваш код здесь
+
+const press = (id, action) =&gt;
+  document.querySelector(`li[data-id="${id}"] [data-action="${action}"]`).click();
+
+press(2, "like");
+press(3, "remove");
+press(1, "like");
+list.querySelector(".name").click();   // клик по названию — игнорируем
+console.log("Осталось: " + list.children.length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Нравится: Лагман (№2)
+Удалено: Манту (№3)
+Нравится: Оши палав (№1)
+Осталось: 2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Начало обработчика: <code>const btn = event.target.closest("button[data-action]"); if (!btn) return; const li = btn.closest("li");</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Название: <code>li.querySelector(".name").textContent</code>, id: <code>li.dataset.id</code>, действие: <code>btn.dataset.action</code>. Ветки <code>if … else if</code> по действию; для удаления — <code>li.remove()</code> после вывода строки.</p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Новый пункт не отвечает</h4><span class="level mid">средняя</span></header>
+          <p>В меню на каждый пункт повешен свой обработчик. Приложение позже добавило пункт «Самбуса» — и у него обработчика нет, а в консоли ожидаются три строки. Перепишите подписку: <b>один</b> обработчик на <code>#menu</code> вместо цикла. Код ниже строки «приложение добавляет пункт» не меняйте.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `&lt;ul id="menu"&gt;&lt;li&gt;Нон&lt;/li&gt;&lt;li&gt;Чой&lt;/li&gt;&lt;/ul&gt;`;
+const menu = document.querySelector("#menu");
+
+// Сейчас: по обработчику на каждый пункт. Замените на ОДИН обработчик на menu
+for (const li of menu.querySelectorAll("li")) {
+  li.addEventListener("click", () =&gt; console.log("Заказано: " + li.textContent));
+}
+
+// --- приложение добавляет пункт (не меняйте) ---
+const extra = document.createElement("li");
+extra.textContent = "Самбуса";
+menu.append(extra);
+
+for (const li of menu.children) {
+  li.click();
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Заказано: Нон
+Заказано: Чой
+Заказано: Самбуса</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Удалите цикл <code>for</code> с подписками. Вместо него — одна строка <code>menu.addEventListener("click", …)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В обработчике: <code>const li = event.target.closest("li"); if (!li) return; console.log("Заказано: " + li.textContent);</code></p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ЗАДАЧА 6.4</span><h4>Корзина с «+» и «−»</h4><span class="level hard">сложная</span></header>
+          <p>Корзина магазина. У каждой строки <code>&lt;li&gt;</code> есть цена в <code>data-price</code>, количество в <code>.qty</code> и три кнопки: <code>inc</code> (+1), <code>dec</code> (−1; если стало 0 — строка удаляется) и <code>del</code> (удалить строку сразу). Один обработчик на <code>#cart</code>. После каждого действия вывод: «Итого: N сомони», а если корзина пуста — «Корзина пуста». Функция <code>press</code> уже готова.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="cart"&gt;
+    &lt;li data-price="4"&gt;&lt;span class="name"&gt;Нон&lt;/span&gt;
+      &lt;button data-action="dec"&gt;−&lt;/button&gt; &lt;b class="qty"&gt;1&lt;/b&gt; &lt;button data-action="inc"&gt;+&lt;/button&gt;
+      &lt;button data-action="del"&gt;✕&lt;/button&gt;&lt;/li&gt;
+    &lt;li data-price="18"&gt;&lt;span class="name"&gt;Чой&lt;/span&gt;
+      &lt;button data-action="dec"&gt;−&lt;/button&gt; &lt;b class="qty"&gt;2&lt;/b&gt; &lt;button data-action="inc"&gt;+&lt;/button&gt;
+      &lt;button data-action="del"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const cart = document.querySelector("#cart");
+
+function printTotal() {
+  // ваш код здесь: сумма по всем строкам или «Корзина пуста»
+}
+
+// ваш код здесь: один обработчик на cart
+
+const press = (name, action) =&gt; {
+  const li = [...cart.children].find((x) =&gt; x.querySelector(".name").textContent === name);
+  li.querySelector(`[data-action="${action}"]`).click();
+};
+
+press("Нон", "inc");
+press("Чой", "dec");
+press("Чой", "dec");
+press("Нон", "del");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Итого: 44 сомони
+Итого: 26 сомони
+Итого: 8 сомони
+Корзина пуста</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Разделите работу: <code>printTotal()</code> просто проходит по <code>cart.children</code> и суммирует <code>Number(li.dataset.price) * Number(li.querySelector(".qty").textContent)</code> — она ничего не знает про кнопки.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В обработчике: <code>closest("button[data-action]")</code>, затем <code>li = btn.closest("li")</code>, <code>qty</code> — элемент <code>li.querySelector(".qty")</code>. Для <code>dec</code>: <code>qty.textContent = Number(qty.textContent) - 1; if (Number(qty.textContent) === 0) li.remove();</code>. В конце каждого клика — <code>printTotal()</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 07 -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: описать баг"><span class="num">07</span> ИИ-блок: как описать баг</h2>
+      <p>«Кнопка не работает» — самая частая фраза начинающих программистов. И самая бесполезная: ни человек, ни ИИ не поймут, <b>что</b> именно сломалось. События — отличная тренировка, потому что баги в них всегда одного типа: «ожидал, что при клике будет X, а происходит Y (или ничего)». Научитесь описывать такой баг — и получите точный ответ от ИИ, а ещё чаще найдёте причину сами, пока пишете описание.</p>
+
+      <div class="callout ai"><b>Правила курса про ИИ — напоминаем</b>
+        <p>1) Сначала 15 минут пробуете сами. 2) Не вставляете код, который не можете объяснить строчка за строчкой — на проверке ДЗ преподаватель вправе спросить про любую строку. 3) В промпте всегда: контекст → задача → ограничения → формат ответа → проверка.</p>
+      </div>
+
+      <h3>Слабый и сильный баг-репорт</h3>
+<div class="prompt bad-prompt">у меня не работает кнопка удалить в списке, почему</div>
+<div class="prompt good-prompt">Контекст: учусь JavaScript, пишу список покупок на чистом JS (DOM, события).
+Баг: ожидаю, что клик по кнопке «✕» удаляет строку из списка. Получаю: удаляется только первая строка, новые пункты не удаляются совсем. Ошибок в консоли нет.
+Минимальный код (HTML + JS, 12 строк):
+[код]
+Что уже пробовал: вывел console.log(event.target) — при клике по значку внутри кнопки там SPAN.
+Формат ответа: 3 гипотезы причины по вероятности, к каждой — как проверить. Код целиком не переписывай.
+Проверка: после ответа я сам проверю каждую гипотезу в консоли.</div>
+
+      <h3>Как сделать минимальный пример</h3>
+      <ol class="steps">
+        <li><b>Скопируйте проблемный кусок</b> в отдельный файл или в песочницу на этой странице.</li>
+        <li><b>Выкиньте всё лишнее:</b> стили, соседние компоненты, функции, которые к багу не относятся. После каждого удаления проверяйте — баг ещё воспроизводится?</li>
+        <li><b>Замените реальные данные</b> на 2–3 простых элемента.</li>
+        <li><b>Запишите три вещи:</b> что вы делаете (кликаю на …), что ожидали, что получили. Ошибку из консоли копируйте <b>дословно</b>, не пересказывайте.</li>
+        <li><b>Ещё раз прочитайте.</b> Часто баг находится прямо на шаге 2. Это известный приём «резиновой уточки»: когда объясняешь проблему вслух, сам замечаешь ошибку.</li>
+      </ol>
+
+      <h3>Шаблон баг-репорта</h3>
+<div class="prompt">Контекст: [что за проект, какая тема, что уже знаю].
+Ожидал: [что должно происходить].
+Получил: [что происходит на самом деле + точный текст ошибки из консоли].
+Минимальный код: [не больше 20 строк].
+Что пробовал: [1–2 шага отладки и что они показали].
+Формат ответа: 3 гипотезы по вероятности, как проверить каждую. Код целиком не переписывай.
+Проверка: я проверю гипотезы по очереди и напишу, какая подтвердилась.</div>
+
+      <h3>Объяснить делегирование на своём коде</h3>
+      <p>Это строка из библиотеки промптов курса. Вставьте свой код списка и попросите объяснение — но проверьте, что понимаете, <b>почему</b> работает <code>event.target</code>:</p>
+<div class="prompt good-prompt">Объясни делегирование событий на этом примере: [код]. Покажи минимальную версию через один обработчик на родителе. Объясни простыми словами, что такое event.target и зачем здесь closest. Ответ — по шагам, не длиннее 15 строк.</div>
+      <p><b>Проверка ответа:</b> закройте ответ ИИ и своими словами объясните соседу по парте, как клик по кнопке доходит до списка. Не получается — читайте разделы 05–06 ещё раз.</p>
+
+      <h3>Типичные ошибки ИИ в событиях</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Что видите в ответе ИИ</th><th>В чём проблема</th><th>Как исправить</th></tr></thead>
+        <tbody>
+          <tr><td><code>onclick="..."</code> прямо в HTML</td><td>Смешивает разметку и код, сложно поддерживать</td><td><code>addEventListener</code> в JS-файле</td></tr>
+          <tr><td>Цикл с подпиской на каждый <code>li</code> / кнопку</td><td>Новые элементы останутся без обработчика</td><td>Делегирование на родителе</td></tr>
+          <tr><td><code>if (e.target.tagName === "BUTTON")</code></td><td>Не сработает на значке внутри кнопки</td><td><code>e.target.closest("button")</code></td></tr>
+          <tr><td><code>list.innerHTML += "&lt;li&gt;…&lt;/li&gt;"</code> в обработчике</td><td>Пересоздаёт весь список: теряются состояния и подписки на элементах</td><td><code>createElement</code> + <code>append</code></td></tr>
+          <tr><td>Форма: <code>click</code> на кнопке «Отправить»</td><td>Enter в поле отправит форму без клика</td><td><code>submit</code> у формы + <code>preventDefault()</code></td></tr>
+          <tr><td><code>e.stopPropagation()</code> «на всякий случай»</td><td>Ломает чужие обработчики выше (аналитика, закрытие меню)</td><td>Проверка <code>e.target === e.currentTarget</code></td></tr>
+          <tr><td><code>btn.addEventListener("click", handler())</code></td><td>Функция вызывается сразу, а не по клику</td><td>Без скобок: <code>handler</code></td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="practice">
+        <h3>Практика с ИИ</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Баг: клик по значку</h4><span class="level mid">средняя</span></header>
+          <p>Список избранного должен выводить «В избранное: название» при клике на звёздочку. Звёздочка — это <code>&lt;span class="icon"&gt;</code> внутри кнопки. Сейчас ничего не выводится. Сначала найдите причину сами (15 минут!). Потом — в комментарии над кодом — составьте для ИИ баг-репорт по шаблону (ожидал / получил / минимальный код) и сравните с тем, что ИИ предположит. Добейтесь ожидаемого вывода.</p>
+<pre class="code" data-run>
+document.body.innerHTML = `
+  &lt;ul id="menu"&gt;
+    &lt;li&gt;&lt;span class="name"&gt;Дыня&lt;/span&gt; &lt;button class="fav"&gt;&lt;span class="icon"&gt;★&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+    &lt;li&gt;&lt;span class="name"&gt;Гранат&lt;/span&gt; &lt;button class="fav"&gt;&lt;span class="icon"&gt;★&lt;/span&gt;&lt;/button&gt;&lt;/li&gt;
+  &lt;/ul&gt;`;
+const menu = document.querySelector("#menu");
+
+menu.addEventListener("click", (event) =&gt; {
+  if (event.target.tagName === "BUTTON") {
+    const name = event.target.parentElement.querySelector(".name").textContent;
+    console.log("В избранное: " + name);
+  }
+});
+
+// пользователь кликает по значку ★ внутри кнопки
+for (const icon of document.querySelectorAll(".icon")) {
+  icon.click();
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>В избранное: Дыня
+В избранное: Гранат</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Добавьте в обработчик <code>console.log(event.target.tagName)</code>. Что вы видите при клике на значок? Равно ли это <code>"BUTTON"</code>?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замените проверку на <code>const btn = event.target.closest(".fav"); if (!btn) return;</code>, а название ищите от кнопки: <code>btn.closest("li").querySelector(".name").textContent</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Соберите баг-репорт</h4><span class="level easy">лёгкая</span></header>
+          <p>Ситуация: скрипт подключён в <code>&lt;head&gt;</code>, а кнопка стоит в <code>&lt;body&gt;</code>. В консоли ошибка <code>TypeError: Cannot read properties of null (reading 'addEventListener')</code>. Напишите баг-репорт для ИИ в переменной <code>report</code> (это текст, никуда он не отправляется). Нужны блоки «Ожидал:», «Получил:», «Что пробовал:», точный текст ошибки и минимальный код с <code>addEventListener</code>. Длина — не больше 600 символов. Код сам проверит ваш текст. Внутри текста не используйте обратные кавычки.</p>
+<pre class="code" data-run>
+const report = `
+`;   // пишите баг-репорт между кавычками
+
+const checks = [
+  ["Есть «Ожидал:»", report.includes("Ожидал:")],
+  ["Есть «Получил:»", report.includes("Получил:")],
+  ["Есть точный текст ошибки", report.includes("Cannot read properties of null")],
+  ["Есть минимальный код", report.includes("addEventListener")],
+  ["Есть «Что пробовал:»", report.includes("Что пробовал:")],
+  ["Не длиннее 600 символов", report.length &lt;= 600]
+];
+for (const [name, ok] of checks) {
+  console.log((ok ? "✔ " : "✖ ") + name);
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>✔ Есть «Ожидал:»
+✔ Есть «Получил:»
+✔ Есть точный текст ошибки
+✔ Есть минимальный код
+✔ Есть «Что пробовал:»
+✔ Не длиннее 600 символов</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Скелет: «Ожидал: … Получил: … Минимальный код: … Что пробовал: …». Каждый блок — на новой строке прямо внутри <code>report</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Не пересказывайте ошибку — вставьте её дословно. В минимальном коде достаточно двух строк: <code>const btn = document.querySelector("#buy");</code> и <code>btn.addEventListener("click", () =&gt; console.log("Куплено"));</code>. Подумайте, что у вас получится, если скрипт запускается раньше, чем браузер прочитал <code>&lt;body&gt;</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 08 -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">08</span> Практика на уроке: список с кнопками</h2>
+      <p>Собираем «Покупки на базар» — список, где у каждого пункта две кнопки: <b>♥ в избранное</b> и <b>✕ удалить</b>. Обработчик <b>один</b>, на весь список. Идём тремя шагами, после каждого нажимайте <b>▶ Запустить</b> и проверяйте руками. Не копируйте — набирайте сами, так запоминается в разы лучше.</p>
+      <ol class="steps">
+        <li><b>Разведка.</b> Один обработчик на список. Узнаём, по какой кнопке и в какой строке кликнули.</li>
+        <li><b>Действия.</b> ♥ переключает класс <code>fav</code> у строки, ✕ удаляет строку.</li>
+        <li><b>Счётчик.</b> После каждого действия обновляем «Всего: N, избранных: M». Новые пункты работают сразу.</li>
+      </ol>
+
+      <h3>Шаг 1. Разведка</h3>
+      <p>Пока ничего не меняем — только печатаем в консоль, что поняли из клика. Кликайте по ♥, по ✕, по названию и мимо кнопок.</p>
+      <div class="playground" data-mode="dom" data-title="Шаг 1 · Разведка">
+<pre class="code" data-lang="html">
+&lt;h4&gt;Покупки на базар&lt;/h4&gt;
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лук&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+h4 { margin: 0 0 8px; }
+ul { list-style: none; padding: 0; margin: 0; max-width: 340px; }
+li { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+.name { flex: 1; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 8px; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+li.fav [data-action="fav"] { color: #d92d20; }
+#count { color: #667085; font-size: 14px; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) {
+    console.log("Клик мимо кнопок:", event.target.tagName);
+    return;
+  }
+  const li = btn.closest("li");
+  const name = li.querySelector(".name").textContent;
+  console.log(`Кнопка «${btn.dataset.action}» в строке «${name}»`);
+});
+</pre>
+      </div>
+
+      <h3>Шаг 2. Действия</h3>
+      <p>Теперь «разведку» заменяем настоящим поведением. ♥ переключает класс <code>fav</code> у строки (<code>classList.toggle</code> — из прошлого урока), ✕ удаляет строку целиком.</p>
+      <div class="playground" data-mode="dom" data-title="Шаг 2 · Действия">
+<pre class="code" data-lang="html">
+&lt;h4&gt;Покупки на базар&lt;/h4&gt;
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лук&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+h4 { margin: 0 0 8px; }
+ul { list-style: none; padding: 0; margin: 0; max-width: 340px; }
+li { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+.name { flex: 1; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 8px; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+li.fav [data-action="fav"] { color: #d92d20; }
+#count { color: #667085; font-size: 14px; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) return;                          // клик мимо кнопок
+
+  const li = btn.closest("li");
+  if (btn.dataset.action === "fav") {
+    li.classList.toggle("fav");              // есть класс — уберёт, нет — добавит
+  } else if (btn.dataset.action === "remove") {
+    li.remove();
+  }
+});
+</pre>
+      </div>
+
+      <h3>Шаг 3. Счётчик и новые пункты</h3>
+      <p>Добавляем функцию <code>updateCount</code> и вызываем её после каждого изменения — и один раз на старте. Кнопка «Добавить» создаёт пункт функцией <code>makeItem</code>. Обратите внимание: <b>ни одной новой подписки</b> на новые пункты — делегирование уже всё умеет.</p>
+      <div class="playground" data-mode="dom" data-title="Шаг 3 · Счётчик">
+<pre class="code" data-lang="html">
+&lt;h4&gt;Покупки на базар&lt;/h4&gt;
+&lt;button id="add"&gt;+ Добавить пункт&lt;/button&gt;
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лук&lt;/span&gt; &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt; &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+h4 { margin: 0 0 8px; }
+ul { list-style: none; padding: 0; margin: 8px 0; max-width: 340px; }
+li { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+.name { flex: 1; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 8px; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+li.fav [data-action="fav"] { color: #d92d20; }
+#count { color: #667085; font-size: 14px; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+const count = document.querySelector("#count");
+const extras = ["Зира", "Помидоры", "Масло", "Чой"];
+let next = 0;
+
+function updateCount() {
+  const total = list.children.length;
+  const favs = list.querySelectorAll("li.fav").length;
+  count.textContent = `Всего: ${total}, избранных: ${favs}`;
+}
+
+function makeItem(text) {
+  const li = document.createElement("li");
+  li.innerHTML = `&lt;span class="name"&gt;&lt;/span&gt;
+    &lt;button data-action="fav" title="В избранное"&gt;♥&lt;/button&gt;
+    &lt;button data-action="remove" title="Удалить"&gt;✕&lt;/button&gt;`;
+  li.querySelector(".name").textContent = text;   // текст — только через textContent
+  return li;
+}
+
+list.addEventListener("click", (event) =&gt; {
+  const btn = event.target.closest("button[data-action]");
+  if (!btn) return;
+
+  const li = btn.closest("li");
+  if (btn.dataset.action === "fav") li.classList.toggle("fav");
+  else if (btn.dataset.action === "remove") li.remove();
+  updateCount();
+});
+
+document.querySelector("#add").addEventListener("click", () =&gt; {
+  list.append(makeItem(extras[next++ % extras.length]));
+  updateCount();
+});
+
+updateCount();
+</pre>
+      </div>
+
+      <div class="callout tip"><b>Что запомнить из практики</b>
+        <p>Обработчик отвечает только за «что нажали». Общая функция <code>updateCount</code> отвечает только за «пересчитать и показать». Такое разделение делает код читаемым — и именно оно ждёт вас в больших проектах (урок 11 — состояние приложения).</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: соберите сами</h3>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Список с избранным и счётчиком</h4><span class="level mid">средняя</span></header>
+          <p>Повторите шаг 3 без подсказок, но уже сами. Нужны: функция <code>updateCount</code> (пишет в <code>#count</code> «Всего: N, избранных: M»), <b>один</b> обработчик клика на <code>#list</code> (♥ переключает класс <code>fav</code>, ✕ удаляет строку) и вызов <code>updateCount()</code> в нужных местах. Блок «автотест» внизу сам «кликает» по кнопкам, в том числе по новому пункту, добавленному позже, — не меняйте его.</p>
+          <div class="playground" data-mode="dom" data-title="Практика · Список с избранным">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Лук&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+ul { list-style: none; padding: 0; margin: 0 0 8px; max-width: 340px; }
+li { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+.name { flex: 1; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 8px; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+const count = document.querySelector("#count");
+
+function updateCount() {
+  // ваш код здесь
+}
+
+// ваш код здесь: ОДИН обработчик клика на list
+
+updateCount();
+
+// ===== автотест: не меняйте =====
+{
+  const q = (s) =&gt; document.querySelector(s);
+  const state = () =&gt; console.log(q("#count").textContent);
+
+  q('#list li:nth-child(1) [data-action="fav"]').click();
+  q('#list li:nth-child(3) [data-action="fav"]').click();
+  state();
+  q('#list li:nth-child(2) [data-action="remove"]').click();
+  state();
+  q('#list li:nth-child(1) [data-action="fav"]').click();
+  state();
+  q("#list .name").click();     // клик мимо кнопок ничего не меняет
+  q("#list").click();
+  state();
+
+  const li = document.createElement("li");    // пункт, добавленный позже
+  li.innerHTML = '&lt;span class="name"&gt;Зира&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;';
+  q("#list").append(li);
+  li.querySelector('[data-action="fav"]').click();
+  state();
+}
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Всего: 3, избранных: 2
+Всего: 2, избранных: 2
+Всего: 2, избранных: 1
+Всего: 2, избранных: 1
+Всего: 3, избранных: 2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Счётчик: <code>list.children.length</code> — всего строк, <code>list.querySelectorAll("li.fav").length</code> — избранных. Текст — шаблонной строкой в <code>count.textContent</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Обработчик: <code>const btn = event.target.closest("button[data-action]"); if (!btn) return;</code>, дальше <code>const li = btn.closest("li");</code> и две ветки по <code>btn.dataset.action</code>. В конце обработчика — <code>updateCount()</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 09 -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание: интерактивный список</h2>
+      <p>Допишите свой «интерактивный компонент»: список с <b>добавлением</b>, <b>удалением</b> и <b>фильтром по кнопкам</b>. Тему выберите сами: покупки, задачи на неделю, фильмы к просмотру, любимые места Душанбе. Результат этого ДЗ пригодится в мини-проекте на уроке 12.</p>
+
+      <h3>Что должно получиться</h3>
+      <ul>
+        <li><b>Форма добавления.</b> Поле и кнопка; пункт добавляется и по клику, и по Enter (событие <code>submit</code>, <code>preventDefault</code>). После добавления поле очищается.</li>
+        <li><b>Проверки.</b> Пустое имя (после <code>trim()</code>) и дубликаты (без учёта регистра) не добавляются.</li>
+        <li><b>Кнопки в каждой строке:</b> ♥ — в избранное (класс <code>fav</code>), ✕ — удалить. Всё через <b>один</b> обработчик на списке: <code>closest</code> + <code>data-action</code>.</li>
+        <li><b>Фильтр.</b> Две кнопки «Все» и «Избранные» (тоже делегированием на контейнере кнопок). Выбранная кнопка подсвечена. Фильтр продолжает работать после добавления, удаления и смены ♥.</li>
+        <li><b>Счётчик</b> «Всего: N, избранных: M».</li>
+        <li><b>Чистота.</b> Нет <code>onclick="…"</code> в HTML. Нет подписок на каждый <code>li</code>. Текст пользователя вставляется через <code>textContent</code>, а не <code>innerHTML</code>.</li>
+      </ul>
+      <p>Ниже — стартовая заготовка-песочница с автотестом: он повторяет типичные проверки (добавление, пустой ввод, дубликат, избранное, фильтр, удаление). Когда в консоли всё сойдётся — отправляйте свою версию с вашей темой и красивыми стилями.</p>
+
+      <div class="practice">
+        <h3>Практика: заготовка к ДЗ</h3>
+      <article class="task" id="t9-1">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Интерактивный список: добавить, удалить, отфильтровать</h4><span class="level hard">сложная</span></header>
+        <p>Заполните место «ваш код здесь»: форма, один обработчик на список, один — на кнопки фильтра, функции <code>applyFilter</code> и <code>updateCount</code>. Автотест внизу не меняйте.</p>
+        <div class="playground" data-mode="dom" data-title="ДЗ · Интерактивный список">
+<pre class="code" data-lang="html">
+&lt;form id="add-form"&gt;
+  &lt;input id="new-item" placeholder="Что купить?" autocomplete="off"&gt;
+  &lt;button&gt;Добавить&lt;/button&gt;
+&lt;/form&gt;
+&lt;div id="filters"&gt;
+  &lt;button data-filter="all" class="on"&gt;Все&lt;/button&gt;
+  &lt;button data-filter="fav"&gt;Избранные&lt;/button&gt;
+&lt;/div&gt;
+&lt;ul id="list"&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Морковь&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;span class="name"&gt;Рис&lt;/span&gt; &lt;button data-action="fav"&gt;♥&lt;/button&gt; &lt;button data-action="remove"&gt;✕&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p id="count"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+form, #filters { display: flex; gap: 6px; margin-bottom: 8px; }
+input { font: inherit; padding: 6px 10px; border: 1px solid #d0d5dd; border-radius: 8px; }
+button { font: inherit; border: 1px solid #d0d5dd; background: #fff; border-radius: 8px; cursor: pointer; padding: 2px 10px; }
+#filters .on { background: #1d2939; color: #fff; }
+ul { list-style: none; padding: 0; margin: 0 0 8px; max-width: 360px; }
+li { display: flex; gap: 8px; align-items: center; padding: 6px 10px; border: 1px solid #e4e7ec; border-radius: 10px; margin-bottom: 6px; }
+li[hidden] { display: none; }
+.name { flex: 1; }
+li.fav { background: #fef3f2; border-color: #fda29b; }
+li.fav .name { font-weight: 700; color: #b42318; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#add-form");
+const input = document.querySelector("#new-item");
+const filters = document.querySelector("#filters");
+const list = document.querySelector("#list");
+const count = document.querySelector("#count");
+let currentFilter = "all";
+
+function makeItem(text) {
+  const li = document.createElement("li");
+  li.innerHTML = `&lt;span class="name"&gt;&lt;/span&gt;
+    &lt;button data-action="fav"&gt;♥&lt;/button&gt;
+    &lt;button data-action="remove"&gt;✕&lt;/button&gt;`;
+  li.querySelector(".name").textContent = text;
+  return li;
+}
+
+function updateCount() {
+  // ваш код здесь: «Всего: N, избранных: M»
+}
+
+function applyFilter() {
+  // ваш код здесь: прячем (li.hidden = true) то, что не подходит под currentFilter
+}
+
+// ваш код здесь:
+// 1) submit у формы: preventDefault, trim, пустое и дубликат (без учёта регистра) — не добавлять, иначе append(makeItem(...)) и очистка поля
+// 2) ОДИН click на list: ♥ — toggle "fav", ✕ — remove
+// 3) ОДИН click на filters: запомнить фильтр (data-filter), подсветить кнопку классом "on"
+// после каждого изменения — applyFilter() и updateCount()
+
+applyFilter();
+updateCount();
+
+// ===== автотест: не меняйте =====
+{
+  const q = (s) =&gt; document.querySelector(s);
+  const items = () =&gt; [...document.querySelectorAll("#list li")];
+  const visible = () =&gt; items().filter((li) =&gt; !li.hidden).length;
+  const add = (text) =&gt; {
+    q("#new-item").value = text;
+    q("#add-form").dispatchEvent(new Event("submit", { cancelable: true }));
+  };
+
+  add("Лук");
+  add("   ");
+  add("лук");
+  add("Зира");
+  console.log("Всего: " + items().length);
+  q('#list li:nth-child(1) [data-action="fav"]').click();
+  q('#list li:nth-child(3) [data-action="fav"]').click();
+  console.log("Избранных: " + document.querySelectorAll("#list li.fav").length);
+  q('[data-filter="fav"]').click();
+  console.log("В фильтре «Избранные»: " + visible());
+  q('#list li:nth-child(1) [data-action="fav"]').click();
+  console.log("После снятия: " + visible());
+  q('[data-filter="all"]').click();
+  q('#list li:nth-child(2) [data-action="remove"]').click();
+  console.log("После удаления: " + items().length + ", видно " + visible());
+  console.log("Поле очищено: " + (q("#new-item").value === ""));
+  console.log(q("#count").textContent);
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Всего: 4
+Избранных: 2
+В фильтре «Избранные»: 2
+После снятия: 1
+После удаления: 3, видно 3
+Поле очищено: true
+Всего: 3, избранных: 1</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Начните с формы: <code>form.addEventListener("submit", (event) =&gt; { event.preventDefault(); … })</code>. Дубликат: <code>[...list.querySelectorAll(".name")].some(n =&gt; n.textContent.toLowerCase() === text.toLowerCase())</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>applyFilter</code>: для каждого <code>li</code> — <code>li.hidden = currentFilter === "fav" &amp;&amp; !li.classList.contains("fav");</code>. Не забудьте вызывать <code>applyFilter()</code> после ♥, ✕ и добавления: иначе в фильтре «Избранные» снятое сердечко не спрячет строку.</p></details>
+      </article>
+      </div>
+
+      <h3>Что сдать</h3>
+      <ul>
+        <li>Папку с <code>index.html</code>, <code>style.css</code>, <code>script.js</code> — ссылкой на репозиторий GitHub или архивом в Telegram-группу. Название темы напишите в сообщении.</li>
+        <li>Скриншот работающего списка (с добавленными пунктами, включённым фильтром).</li>
+        <li>Файл <code>prompts.md</code> (или раздел в README) с двумя вещами: (1) вашим баг-репортом для ИИ по шаблону из раздела 07 — по настоящему багу, который встретился вам; (2) одним абзацем: что подсказал ИИ и что из этого вы <b>не</b> взяли и почему.</li>
+      </ul>
+
+      <h3>Как оценим (0–10)</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Критерий</th><th>Баллы</th><th>Что смотрим</th></tr></thead>
+        <tbody>
+          <tr><td>Форма</td><td>2</td><td><code>submit</code> + <code>preventDefault</code>, Enter работает, пустое и дубликат отсекаются, поле очищается</td></tr>
+          <tr><td>Делегирование</td><td>3</td><td>Один обработчик на список, <code>closest</code>, <code>data-action</code>; новые пункты работают без дополнительных подписок</td></tr>
+          <tr><td>Фильтр</td><td>2</td><td>«Все» / «Избранные», подсветка активной кнопки, фильтр живёт после изменений</td></tr>
+          <tr><td>Счётчик</td><td>1</td><td>Всегда показывает верные числа</td></tr>
+          <tr><td>Чистота кода</td><td>1</td><td>Нет inline-обработчиков, <code>textContent</code> вместо <code>innerHTML</code> для ввода, понятные имена, нет повторов</td></tr>
+          <tr><td>ИИ-часть</td><td>1</td><td>Баг-репорт по шаблону и честный разбор ответа ИИ</td></tr>
+        </tbody>
+      </table></div>
+      <p><b>Бонус (по желанию, без баллов):</b> двойной клик по названию меняет его, клавиша <code>Escape</code> очищает поле, <code>Delete</code> удаляет последнюю строку.</p>
+      <div class="callout warn"><b>Напоминание</b>
+        <p>На проверке ДЗ преподаватель может попросить объяснить любую строку. Если вы не можете объяснить, как клик по ✕ доходит до обработчика на списке, — перечитайте разделы 05 и 06, прежде чем сдавать.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== итоги -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка">Шпаргалка урока</h2>
+      <ul>
+        <li><b>Событие</b> — сигнал от браузера. <b>Обработчик</b> — функция, которую мы передаём (без скобок!): <code>el.addEventListener("click", handler)</code>.</li>
+        <li>Обработчиков может быть много, они срабатывают в порядке добавления. Снять: <code>removeEventListener</code> (нужна та же функция). Один раз: <code>{ once: true }</code>. Свойство <code>onclick</code> хранит только один обработчик — не используем.</li>
+        <li>Обработчик получает <code>event</code>: <code>type</code>, <code>target</code> (где случилось), <code>currentTarget</code> (где висит обработчик), <code>key</code>, <code>clientX/Y</code>, <code>target.value</code>.</li>
+        <li>Частые события: <code>click</code>, <code>input</code> (каждая буква), <code>change</code> (значение зафиксировано), <code>keydown</code>, <code>submit</code>, <code>DOMContentLoaded</code>. У флажка читаем <code>checked</code>, у поля и списка — <code>value</code> (строка).</li>
+        <li>Из кода: <code>el.click()</code>, <code>el.dispatchEvent(new Event("input", { bubbles: true }))</code>, <code>form.dispatchEvent(new Event("submit", { cancelable: true }))</code>. Ручные события по умолчанию не всплывают.</li>
+        <li><code>event.preventDefault()</code> отменяет действие браузера: переход по ссылке, перезагрузку при <code>submit</code>, <code>Ctrl + S</code>. Формы слушаем по <code>submit</code>, а не по клику на кнопку.</li>
+        <li><b>Всплытие:</b> событие идёт от цели вверх по родителям (button → li → ul → body). <code>target</code> не меняется, <code>currentTarget</code> меняется. Погружение — <code>{ capture: true }</code>, нужно редко.</li>
+        <li><code>stopPropagation()</code> прерывает всплытие — используйте осторожно; чаще достаточно проверить <code>event.target === event.currentTarget</code>.</li>
+        <li><b>Делегирование:</b> один обработчик на родителе + <code>event.target.closest("селектор")</code> + <code>if (!el) return</code>. Работает для элементов, добавленных позже. Метки в HTML — <code>data-action</code>, <code>data-id</code>, читаем <code>el.dataset.action</code>.</li>
+        <li>Не всплывают: <code>focus</code>, <code>blur</code>, <code>mouseenter</code>, <code>mouseleave</code> — у родителя слушайте <code>focusin</code>, <code>focusout</code>, <code>mouseover</code>, <code>mouseout</code>.</li>
+        <li>Пользовательский текст в DOM — через <code>textContent</code>, не через <code>innerHTML</code>.</li>
+        <li>С ИИ: баг-репорт = ожидал / получил (ошибка дословно) / минимальный код (до 20 строк) / что пробовал / формат ответа. Проверяйте гипотезы по одной.</li>
+      </ul>
+    </section>

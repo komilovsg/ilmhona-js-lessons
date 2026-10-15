@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { modules } from '@/content/course';
+import { course, modules } from '@/content/course';
 import { courseItems, type CourseItem, type CourseStatus } from '@/lib/course-status';
 import { fmt } from '@/lib/i18n';
-import { lessons } from '@/content/lessons';
 import { useProgress } from '@/lib/progress';
 import { useT } from './I18nProvider';
 import { CheckIcon, DotIcon, LockIcon } from './roadmap/icons';
@@ -35,7 +34,7 @@ export default function LessonSwitcher({
   const panelId = useId();
 
   const items = useMemo(() => courseItems(progress.solved), [progress]);
-  const lesson = currentSlug ? lessons.find((l) => l.slug === currentSlug) : undefined;
+  const lesson = currentSlug ? course.find((l) => l.slug === currentSlug) : undefined;
 
   const close = useCallback(() => setOpen(false), []);
 

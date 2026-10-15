@@ -324,7 +324,7 @@ async function buildReact(id: string, jsx: string, css: string, rs: Messages['ru
 }
 
 /**
- * Run student code in a sandboxed iframe (allow-scripts only: no same-origin, no parent access).
+ * Run student code in a sandboxed iframe (allow-scripts + allow-forms so submit works; no same-origin, no parent access).
  * Results come back via postMessage keyed by run id; `e.source` is checked against the frame.
  * Watchdog: the frame sends a heartbeat; no beat for 3 s => stuck sync loop => frame removed.
  * Async work (timers, intervals, rAF, fetch) is tracked inside the frame; 'done' is posted when nothing
@@ -341,7 +341,7 @@ export function startRun(spec: RunSpec, opts: RunOptions): Job {
   const own = !frame;
   if (!frame) {
     frame = document.createElement('iframe');
-    frame.setAttribute('sandbox', 'allow-scripts');
+    frame.setAttribute('sandbox', 'allow-scripts allow-forms');
     frame.setAttribute('aria-hidden', 'true');
     frame.tabIndex = -1;
     // not display:none: rAF would not tick in a hidden frame
