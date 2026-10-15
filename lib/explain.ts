@@ -1,6 +1,11 @@
+export const EXPLAIN_STRINGS = {
+  network: 'Ошибка сети: проверьте адрес, интернет или CORS у API.',
+};
+
 /** Human-readable hints for common runtime errors (Russian, shown to students). */
 export function explain(msg: string): string {
   let m: RegExpMatchArray | null;
+  if (/Failed to fetch|NetworkError|Load failed|Network request failed/i.test(msg)) return EXPLAIN_STRINGS.network;
   if ((m = msg.match(/(\S+) is not defined/))) return `Переменная «${m[1]}» не найдена: её не объявили или она не видна в этом месте (область видимости).`;
   if ((m = msg.match(/access '(\S+)' before initialization|access lexical declaration '(\S+)'/))) return `К «${m[1] || m[2]}» обратились раньше, чем она объявлена через let/const. Перенесите вызов ниже объявления.`;
   if ((m = msg.match(/(\S+) is not a function/))) return `«${m[1]}» — не функция. Проверьте имя, скобки и порядок объявления.`;
