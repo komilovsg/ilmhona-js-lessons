@@ -277,22 +277,32 @@ const bootScript = (id: string, mode: string) =>
 
 const BASE_CSS =
   'html{color-scheme:light}body{margin:0;padding:12px;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1c2230;background:#fff}';
+/**
+ * Student code becomes a blob module mapped (import map, injected by a classic script) to the bare
+ * specifier "ilm-user". An inline module script imports it (so it runs at the usual place, before
+ * DOMContentLoaded); a second module script re-imports the same module record, so it resumes only after
+ * the student module has fully evaluated, including top-level await, and then signals the end.
+ * Errors (syntax / runtime) are reported by the first script through the window error event, as before;
+ * the second one just swallows them. blob: is allowed by our CSP (data: is not).
+ */
+const userModule = (code: string) =>
+  `<script>(function(){var s=document.createElement('script');s.type='importmap';` +
+  `s.textContent=JSON.stringify({imports:{'ilm-user':URL.createObjectURL(new Blob([${safe(JSON.stringify(code))}],{type:'text/javascript'}))}});` +
+  `document.currentScript.after(s);})()<\/script>`;
+const studentScript = `<script type="module">import 'ilm-user';<\/script>`;
+const endScript = `<script type="module">try { await import('ilm-user'); } catch {} __ilmEnd();<\/script>`;
 const END = `<script type="module">__ilmEnd()<\/script>`;
 
 function consoleDoc(id: string, code: string) {
-  return (
-    bootScript(id, 'console') +
-    // type="module": own scope (const top / name don't clash with window), strict mode, order kept
-    `<script type="module">\n${safe(code)}\n<\/script>` +
-    END
-  );
+  // module: own scope (const top / name don't clash with window), strict mode, order kept
+  return bootScript(id, 'console') + userModule(code) + studentScript + endScript;
 }
 
 function domDoc(id: string, s: { html: string; css: string; js: string }) {
   return (
     `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
-    `<style>${BASE_CSS}</style><style>${safeStyle(s.css)}</style>${bootScript(id, 'dom')}</head><body>${s.html}` +
-    `<script type="module">\n${safe(s.js)}\n<\/script>${END}</body></html>`
+    `<style>${BASE_CSS}</style><style>${safeStyle(s.css)}</style>${bootScript(id, 'dom')}${userModule(s.js)}</head><body>${s.html}` +
+    `${studentScript}${endScript}</body></html>`
   );
 }
 
