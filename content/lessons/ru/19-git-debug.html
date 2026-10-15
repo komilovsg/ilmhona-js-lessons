@@ -1,0 +1,1773 @@
+<style>
+  /* схема: четыре места, где живёт код */
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 140px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 8px; font-size: 13px; }
+  .flow .st.local { border-color: var(--accent); }
+  .flow .st.remote { border-color: var(--blue); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  @media (max-width: 640px) { .flow .ar { display: none; } }
+  /* схема веток (SVG) */
+  .gb { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; }
+  .gb .ln-main { stroke: var(--accent); stroke-width: 4; fill: none; stroke-linecap: round; }
+  .gb .ln-feat { stroke: var(--blue); stroke-width: 4; fill: none; stroke-linecap: round; }
+  .gb .dot-main { fill: var(--accent); stroke: var(--paper); stroke-width: 3; }
+  .gb .dot-feat { fill: var(--blue); stroke: var(--paper); stroke-width: 3; }
+  .gb .dot-merge { fill: var(--violet-ink); stroke: var(--paper); stroke-width: 3; }
+  .gb text { fill: var(--ink); font: 700 13px var(--font); }
+  .gb text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .gb text.tag-main { fill: var(--accent); font-weight: 800; }
+  .gb text.tag-feat { fill: var(--blue); font-weight: 800; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 19 · Инструменты и финал</p>
+      <h1>Git и GitHub + отладка кода</h1>
+      <p class="lead">Любой проект в команде живёт в Git, а любой код однажды ломается. Сегодня вы научитесь сохранять историю работы, предлагать изменения через pull request, разрешать конфликты и спокойно искать баги — вместо слов «у меня не работает».</p>
+      <ul class="goals">
+        <li>Делать коммиты в понятной истории и писать сообщения по Conventional Commits</li>
+        <li>Работать с ветками и проходить цикл «ветка → push → pull request → ревью → merge»</li>
+        <li>Разрешать конфликт слияния и настраивать <code>.gitignore</code></li>
+        <li>Ловить и бросать ошибки: <code>try / catch / finally</code>, <code>throw</code>, типы ошибок</li>
+        <li>Читать стек вызовов, ставить breakpoint в DevTools и смотреть вкладку Network</li>
+        <li>Описывать баг так, чтобы ИИ (и человек) смог помочь: минимальный воспроизводимый пример</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Блоки «Терминал» — это команды для вашего компьютера, в браузере они не запускаются: набирайте их в терминале VS Code. Код на JavaScript с кнопкой <b>▶ Запустить</b> — живой: его можно менять и проверять прямо здесь. Git мы моделируем обычными массивами и объектами, так что логику <code>add</code>, <code>commit</code>, веток и конфликтов можно потрогать без установки. Подсказки к задачам спрятаны: сначала попробуйте сами.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="git-basics">
+      <h2 data-toc="Основы Git"><span class="num">01</span> Git: история проекта</h2>
+
+      <p>Представьте, что вы делаете сайт для чойхоны. Сегодня всё работает, завтра вы «немного поправили» меню, и сайт сломался. Как вернуться? Копировать папку с названиями <code>site-final</code>, <code>site-final-2</code>, <code>site-final-REAL</code>? Так делают новички. Профессионалы используют <b>Git</b> — систему контроля версий. Она записывает каждое сохранённое состояние проекта, показывает, что и кто изменил, и позволяет вернуться к любому моменту.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия: семейный альбом</b>
+        <p>Вы выбираете из телефона снимки со свадьбы и кладёте их в конверт — это <code>git add</code>. Потом вклеиваете конверт в альбом и подписываете «Никоҳ, 12 июня» — это <code>git commit</code>. Альбом хранит все страницы по порядку. Захотите — откроете любую страницу и увидите, как всё выглядело тогда.</p>
+      </div>
+
+      <h3>Три зоны и четыре места</h3>
+      <p>Файл в Git проходит три зоны на вашем компьютере. Четвёртое место — сервер GitHub, куда вы отправляете копию.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>Рабочая папка</b><span>файлы, которые вы правите в редакторе</span></div>
+          <div class="ar">→</div>
+          <div class="st local"><b>Индекс (staging)</b><span>«конверт»: что войдёт в следующий коммит</span><code>git add</code></div>
+          <div class="ar">→</div>
+          <div class="st local"><b>Репозиторий</b><span>«альбом»: сохранённая история на вашем компьютере</span><code>git commit</code></div>
+          <div class="ar">→</div>
+          <div class="st remote"><b>GitHub (remote)</b><span>копия в интернете, общая для команды</span><code>git push</code></div>
+        </div>
+        <figcaption>Путь изменения: правка → git add → git commit → git push</figcaption>
+      </figure>
+
+      <h3>Первый репозиторий</h3>
+      <p>Один раз на компьютере нужно представиться — это имя попадёт в каждый коммит:</p>
+<pre class="code" data-title="Терминал">
+git config --global user.name "Ваше Имя"
+git config --global user.email "you@example.com"
+</pre>
+      <p>Теперь создадим проект и сделаем первый коммит:</p>
+<pre class="code" data-title="Терминал">
+mkdir chaykhona-site
+cd chaykhona-site
+git init -b main
+echo "# Чойхона" &gt; README.md
+git status
+git add README.md
+git commit -m "docs: add readme"
+git log --oneline
+</pre>
+      <p>Что произошло по шагам:</p>
+      <ol class="steps">
+        <li><b>git init</b> создал скрытую папку <code>.git</code> — в ней живёт вся история. Удалите её, и проект перестанет быть репозиторием.</li>
+        <li><b>git status</b> сказал: файл <code>README.md</code> «untracked» — Git его ещё не отслеживает.</li>
+        <li><b>git add</b> положил файл в индекс («конверт»).</li>
+        <li><b>git commit -m "…"</b> записал снимок с подписью.</li>
+        <li><b>git log --oneline</b> показал историю: короткий код коммита и подпись.</li>
+      </ol>
+
+      <h3>Команды, которые вы будете использовать каждый день</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Команда</th><th>Что делает</th></tr></thead>
+          <tbody>
+            <tr><td><code>git status</code></td><td>Показывает, какие файлы изменены, какие в индексе, какие не отслеживаются</td></tr>
+            <tr><td><code>git add файл</code> / <code>git add .</code></td><td>Кладёт файл (или все изменения) в индекс</td></tr>
+            <tr><td><code>git commit -m "текст"</code></td><td>Сохраняет индекс как коммит с подписью</td></tr>
+            <tr><td><code>git log --oneline</code></td><td>История коротко, по одной строке на коммит</td></tr>
+            <tr><td><code>git diff</code></td><td>Что изменено, но ещё не в индексе</td></tr>
+            <tr><td><code>git diff --staged</code></td><td>Что лежит в индексе и войдёт в коммит</td></tr>
+            <tr><td><code>git restore файл</code></td><td>Отменяет несохранённые правки файла (вернёт его к последнему коммиту)</td></tr>
+            <tr><td><code>git restore --staged файл</code></td><td>Достаёт файл из индекса, правки остаются в папке</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>Частые ошибки</b>
+        <p><b>1.</b> <code>git add .</code> не глядя: в коммит попадают лишние файлы (пароли, <code>node_modules</code>). Сначала <code>git status</code>, потом <code>git add</code>.</p>
+        <p><b>2.</b> <code>git commit</code> без <code>-m</code> открывает текстовый редактор Vim. Если застряли: нажмите <code>Esc</code>, введите <code>:q!</code> и Enter. Либо всегда пишите <code>-m</code>.</p>
+        <p><b>3.</b> Один гигантский коммит «всё за неделю». Коммит — это одна законченная мысль: «добавил фильтр», «починил итоговую сумму».</p>
+      </div>
+
+      <p>Чтобы почувствовать, как устроены зоны, смоделируем их кодом. Это первая задача на странице.</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Мы моделируем Git обычным JavaScript — так вы увидите, что внутри нет магии.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Три зоны Git в коде</h4><span class="level easy">лёгкая</span></header>
+          <p>Мы смоделируем три зоны Git обычными массивами. Допишите <code>add</code> (<code>git add</code>: файл переезжает из <code>work</code> в <code>staged</code>) и <code>commit</code> (<code>git commit</code>: всё из <code>staged</code> уходит в новый коммит, а <code>staged</code> очищается). История выводится как в <code>git log</code> — новые коммиты сверху.</p>
+<pre class="code" data-run>
+const repo = {
+  work: ["index.html", "style.css", "app.js"], // изменённые файлы
+  staged: [],                                  // подготовлены: git add
+  commits: [],                                 // история: git commit
+};
+
+function add(file) {
+  // убрать файл из work и положить в staged
+}
+
+function commit(message) {
+  // сохранить файлы из staged в новый коммит { message, files }
+  // и очистить staged
+}
+
+add("index.html");
+add("style.css");
+commit("add page skeleton");
+add("app.js");
+commit("add order counter");
+
+for (let i = repo.commits.length - 1; i &gt;= 0; i--) {
+  const c = repo.commits[i];
+  console.log(`${i + 1}. ${c.message} (${c.files.join(", ")})`);
+}
+console.log(repo.work.length, repo.staged.length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>2. add order counter (app.js)
+1. add page skeleton (index.html, style.css)
+0 0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>add</code> нужны две вещи: убрать файл из <code>work</code> (например, через <code>filter</code>) и сделать <code>push</code> в <code>staged</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>commit</code> сохраните <b>копию</b> списка: <code>files: [...repo.staged]</code>. Потом <code>repo.staged = []</code>. Привычка копировать пригодится в разделе 8 — там мутация ломает программы.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Что покажет git status</h4><span class="level easy">лёгкая</span></header>
+          <p>Функция <code>statusLine</code> описывает файл так, как это делает <code>git status</code>. Но один случай она не знает: файл уже в индексе (<code>staged</code>), а после <code>git add</code> его <b>ещё раз изменили</b> (<code>changedAfterAdd: true</code>). Для него нужна строка <code>staged, but changed again: имя</code>. Допишите условие.</p>
+<pre class="code" data-run>
+const files = [
+  { name: "index.html", tracked: true, changed: false, staged: false },
+  { name: "app.js", tracked: true, changed: true, staged: false },
+  { name: "notes.txt", tracked: false, changed: true, staged: false },
+  { name: "style.css", tracked: true, changed: true, staged: true, changedAfterAdd: false },
+  { name: "README.md", tracked: true, changed: true, staged: true, changedAfterAdd: true },
+];
+
+function statusLine(f) {
+  if (!f.tracked) return `untracked: ${f.name}`;
+  if (f.staged) return `to be committed: ${f.name}`;
+  if (f.changed) return `modified: ${f.name}`;
+  return null; // чистый файл в статусе не показывается
+}
+
+files.map(statusLine).filter(Boolean).forEach((line) =&gt; console.log(line));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>modified: app.js
+untracked: notes.txt
+to be committed: style.css
+staged, but changed again: README.md</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Новую проверку нужно поставить <b>перед</b> обычной проверкой <code>f.staged</code>: иначе сработает она, и до вашего условия дело не дойдёт.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>if (f.staged &amp;&amp; f.changedAfterAdd) return `staged, but changed again: ${f.name}`;</code></p></details>
+        </article>
+
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://git-scm.com/book/ru/v2/Основы-Git-Запись-изменений-в-репозиторий" target="_blank" rel="noopener">Pro Git — запись изменений в репозиторий</a>.</p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="branches">
+      <h2 data-toc="Ветки"><span class="num">02</span> Ветки: работаем, не ломая основное</h2>
+
+      <p>В репозитории есть главная ветка — обычно <code>main</code> (иногда её называют <code>master</code>). В ней лежит версия, которая «точно работает». Новую функцию делают в <b>отдельной ветке</b>: можно пробовать, ошибаться и коммитить сколько угодно — основная ветка не пострадает. Когда функция готова и проверена, ветку вливают обратно.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия: пробный плов</b>
+        <p>В большом казане варится плов для гостей — это <code>main</code>. Вы хотите проверить новый рецепт с айвой. Вы не лезете в общий казан, а берёте маленькую кастрюлю — это ветка. Получилось вкусно — добавили айву в общий казан (merge). Не получилось — выбросили кастрюлю, и гости ничего не заметили.</p>
+      </div>
+
+      <figure class="diagram">
+        <svg class="gb" viewBox="0 0 720 190" role="img" aria-label="Ветка feature отходит от main и возвращается через merge">
+          <path class="ln-main" d="M40 50 H680" />
+          <path class="ln-feat" d="M200 50 C230 50 230 140 270 140 H430 C470 140 470 50 520 50" />
+          <circle class="dot-main" cx="40" cy="50" r="10" /><circle class="dot-main" cx="120" cy="50" r="10" /><circle class="dot-main" cx="200" cy="50" r="10" />
+          <circle class="dot-feat" cx="290" cy="140" r="10" /><circle class="dot-feat" cx="370" cy="140" r="10" /><circle class="dot-feat" cx="450" cy="140" r="10" />
+          <circle class="dot-main" cx="360" cy="50" r="10" />
+          <circle class="dot-merge" cx="520" cy="50" r="12" />
+          <circle class="dot-main" cx="620" cy="50" r="10" />
+          <text x="40" y="26" text-anchor="middle">init</text>
+          <text x="120" y="26" text-anchor="middle">header</text>
+          <text x="200" y="26" text-anchor="middle">footer</text>
+          <text x="360" y="26" text-anchor="middle">fix typo</text>
+          <text x="520" y="26" text-anchor="middle">merge</text>
+          <text x="620" y="26" text-anchor="middle">release</text>
+          <text x="290" y="172" text-anchor="middle">filters</text>
+          <text x="370" y="172" text-anchor="middle">sort</text>
+          <text x="450" y="172" text-anchor="middle">tests</text>
+          <text class="tag-main" x="696" y="55" text-anchor="end" dy="22">main</text>
+          <text class="tag-feat" x="200" y="165" text-anchor="middle" dx="-70">feature/filters</text>
+          <text class="sub" x="125" y="84" text-anchor="middle">здесь ветка отошла</text>
+        </svg>
+        <figcaption>Зелёная линия — main, синяя — ветка feature/filters. Пока вы работаете в ветке, main живёт своей жизнью, потом ветки сливаются коммитом merge</figcaption>
+      </figure>
+
+      <p><b>Ветка — это не копия папки.</b> Это всего лишь подвижная «закладка» на один из коммитов. Новый коммит двигает закладку вперёд. Благодаря этому ветки в Git создаются мгновенно и стоят почти ничего. Особая закладка <code>HEAD</code> показывает, на какой ветке вы сейчас стоите.</p>
+
+<pre class="code" data-title="Терминал">
+git branch                         # список веток, звёздочка у текущей
+git switch -c feature/filters      # создать ветку и перейти на неё
+# ...правим файлы, git add, git commit...
+git log --oneline --graph --all    # история в виде дерева
+git switch main                    # вернуться на main
+git merge feature/filters          # влить ветку в main
+git branch -d feature/filters      # удалить ветку, она больше не нужна
+</pre>
+
+      <h3>Как называть ветки</h3>
+      <p>В командах ветку называют по шаблону <code>тип/короткое-описание</code>: <code>feature/order-filters</code>, <code>fix/wrong-total</code>, <code>docs/readme-tajik</code>. Английские слова, строчные буквы, без пробелов, слова через дефис. По имени сразу видно, что в ветке и зачем.</p>
+
+      <div class="callout warn">
+        <b>Частые ошибки</b>
+        <p><b>Работать прямо в main.</b> Тогда PR сделать не из чего, а в случае проблемы нечем откатиться. Привычка: сначала <code>git switch -c</code>, потом код.</p>
+        <p><b>Переключать ветку с несохранёнными правками.</b> Git либо перенесёт их, либо откажется. Лучше сначала сделать коммит.</p>
+      </div>
+
+      <p>Ветки — это граф коммитов, и мы можем обойти его кодом. Начнём с простого: пройдём цепочку «родитель → родитель», как это делает <code>git log</code>.</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>История ветки</h4><span class="level easy">лёгкая</span></header>
+          <p>Каждый коммит помнит своего «родителя». Ветка — это просто указатель на последний коммит. Допишите <code>history(branch)</code>: пройдите от конца ветки по цепочке <code>parent</code> и верните массив сообщений от новых к старым — так работает <code>git log</code>.</p>
+<pre class="code" data-run>
+const commits = [
+  { id: "c1", parent: null, message: "init project" },
+  { id: "c2", parent: "c1", message: "add header" },
+  { id: "c3", parent: "c2", message: "add footer" },   // конец main
+  { id: "f1", parent: "c2", message: "add filters" },  // ветка feature отошла от c2
+  { id: "f2", parent: "f1", message: "add sort" },     // конец feature
+];
+const branches = { main: "c3", feature: "f2" };
+const byId = Object.fromEntries(commits.map((c) =&gt; [c.id, c]));
+
+function history(branch) {
+  // начните с branches[branch] и идите по parent, пока он не станет null
+}
+
+console.log(history("main").join(" &lt;- "));
+console.log(history("feature").join(" &lt;- "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>add footer &lt;- add header &lt;- init project
+add sort &lt;- add filters &lt;- add header &lt;- init project</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Заведите <code>let id = branches[branch]</code> и цикл <code>while (id !== null)</code>. В теле: достаньте коммит <code>byId[id]</code>, сохраните его <code>message</code>, перейдите к <code>parent</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Не забудьте менять <code>id</code> в каждом витке, иначе цикл станет бесконечным.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Что есть только в моей ветке</h4><span class="level mid">средняя</span></header>
+          <p>Перед pull request полезно знать: какие коммиты есть в вашей ветке, но ещё не попали в основную? В Git это записывают как <code>main..feature</code>. Функция <code>history</code> уже готова. Допишите <code>onlyIn(branch, base)</code>: сообщения коммитов из <code>branch</code>, которых нет в <code>base</code>.</p>
+<pre class="code" data-run>
+const commits = [
+  { id: "c1", parent: null, message: "init project" },
+  { id: "c2", parent: "c1", message: "add header" },
+  { id: "c3", parent: "c2", message: "add footer" },   // конец main
+  { id: "f1", parent: "c2", message: "add filters" },  // ветка feature отошла от c2
+  { id: "f2", parent: "f1", message: "add sort" },     // конец feature
+];
+const branches = { main: "c3", feature: "f2" };
+const byId = Object.fromEntries(commits.map((c) =&gt; [c.id, c]));
+
+function history(branch) {
+  const result = [];
+  let id = branches[branch];
+  while (id !== null) {
+    result.push(byId[id].message);
+    id = byId[id].parent;
+  }
+  return result;
+}
+
+function onlyIn(branch, base) {
+  // вернуть массив сообщений
+}
+
+console.log(onlyIn("feature", "main").join(", "));
+console.log(onlyIn("main", "feature").join(", "));
+console.log(onlyIn("main", "main").length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>add sort, add filters
+add footer
+0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Получите историю обеих веток и оставьте в первой только то, чего нет во второй: <code>filter</code> + <code>includes</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return history(branch).filter((m) =&gt; !history(base).includes(m));</code></p></details>
+        </article>
+
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://git-scm.com/book/ru/v2/Ветвление-в-Git-О-ветвлении-в-двух-словах" target="_blank" rel="noopener">Pro Git — о ветвлении в двух словах</a>.</p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="github">
+      <h2 data-toc="GitHub и PR"><span class="num">03</span> GitHub: push, pull request, ревью</h2>
+
+      <p>Git живёт на вашем компьютере. <b>GitHub</b> — это сайт, где хранится копия репозитория (её называют <code>origin</code> — «удалённый репозиторий»). Именно через GitHub команда обменивается кодом, а работодатель смотрит ваше портфолио.</p>
+
+<pre class="code" data-title="Терминал">
+git remote add origin https://github.com/ВАШ_ЛОГИН/chaykhona-site.git
+git push -u origin main            # первая отправка, -u запоминает связь веток
+git push                           # дальше достаточно просто push
+git clone https://github.com/ВАШ_ЛОГИН/chaykhona-site.git   # скачать чужой репозиторий
+git pull                           # забрать новые коммиты с GitHub
+git fetch                          # только скачать информацию, ничего не менять
+</pre>
+
+      <p><code>git pull</code> — это <code>fetch</code> (скачать) + <code>merge</code> (влить в вашу ветку). Если на GitHub появились новые коммиты коллег, а у вас нет, перед <code>push</code> сначала делают <code>pull</code>.</p>
+
+      <h3>Pull request — главная идея командной работы</h3>
+      <p><b>Pull request (PR)</b> — это просьба: «посмотрите мои изменения в ветке и, если всё хорошо, влейте их в main». PR — не команда Git, а возможность GitHub. Вы пушите <b>ветку</b>, на сайте нажимаете «Compare &amp; pull request», пишете описание, а коллега читает изменения построчно, оставляет комментарии, одобряет или просит правки.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия: чек перед оплатой на бозоре</b>
+        <p>Продавец записал сумму на бумажке, но перед оплатой вы показываете бумажку соседу: «Проверь, правильно ли сложил?». Сосед нашёл ошибку в одну сомони — вы исправили, и только потом отдали деньги. PR — тот же «взгляд со стороны» перед тем, как код попадёт в основную ветку.</p>
+      </div>
+
+      <h3>Рабочий цикл в паре</h3>
+      <p>Именно так вы будете работать сегодня на занятии и дальше — в проектах и на работе:</p>
+      <ol class="steps">
+        <li><b>Обновите main</b>: <code>git switch main</code>, <code>git pull</code>.</li>
+        <li><b>Создайте ветку</b> под одну задачу: <code>git switch -c feature/order-filters</code>.</li>
+        <li><b>Работайте и коммитьте</b> небольшими осмысленными шагами.</li>
+        <li><b>Отправьте ветку</b>: <code>git push -u origin feature/order-filters</code>. GitHub напечатает ссылку для создания PR.</li>
+        <li><b>Откройте pull request</b>: заголовок, что сделано, зачем, как проверить. Назначьте напарника ревьюером.</li>
+        <li><b>Ревью</b>: напарник читает diff, пишет комментарии. Вы отвечаете и правите — новые коммиты в ту же ветку попадут в PR сами.</li>
+        <li><b>Merge</b>: после одобрения (approve) и успешных проверок PR вливают в main кнопкой <b>Merge pull request</b> на GitHub.</li>
+        <li><b>Уберите за собой</b>: <code>git switch main</code>, <code>git pull</code>, <code>git branch -d feature/order-filters</code>.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Что смотреть при ревью</b>
+        <p>Работает ли код (запустите ветку)? Понятны ли имена? Нет ли лишних файлов и <code>console.log</code>? Описаны ли граничные случаи (пустой список, ноль, ошибка сети)? Комментарий пишем про код, а не про человека: «Здесь при пустом списке будет ошибка» вместо «Ты забыл».</p>
+      </div>
+
+      <h3>Три способа влить PR</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Кнопка</th><th>Что получится в истории</th></tr></thead>
+          <tbody>
+            <tr><td>Create a merge commit</td><td>Все коммиты ветки сохраняются, плюс коммит слияния</td></tr>
+            <tr><td>Squash and merge</td><td>Все коммиты PR склеиваются в один — история main короче</td></tr>
+            <tr><td>Rebase and merge</td><td>Коммиты ветки переносятся в main по одному, без коммита слияния</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Для начала подойдёт первый вариант. Остальные вы выберете, когда в команде договорятся о стиле истории.</p>
+
+      <div class="callout warn">
+        <b>Правила безопасности</b>
+        <p><b>Не пушьте в main напрямую</b> и не сливайте свой PR без ревью. Во многих командах main закрыт: только через PR.</p>
+        <p><b>Не используйте <code>git push --force</code></b>, пока не понимаете, что делаете: команда стирает чужие коммиты на сервере.</p>
+        <p><b>Никогда не коммитьте пароли и ключи API.</b> Разберём в разделе про <code>.gitignore</code>.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Описание pull request</h4><span class="level mid">средняя</span></header>
+          <p>Хорошее описание PR экономит ревьюеру время. Допишите <code>buildPr(pr)</code>: функция возвращает <b>одну строку</b> в формате из «Ожидаемого результата»: заголовок «Что сделано» с маркированным списком, пустая строка, «Зачем», пустая строка, «Как проверить» с нумерованным списком.</p>
+<pre class="code" data-run>
+function buildPr(pr) {
+  // верните строку; соберите массив строк и вызовите join("\n")
+}
+
+const pr = {
+  what: ["добавлен фильтр заказов по статусу", "фильтр запоминается в localStorage"],
+  why: "Менеджер хочет быстро находить неоплаченные заказы.",
+  check: ["Откройте страницу заказов", "Выберите статус «Не оплачен»", "Обновите страницу: фильтр остался"],
+};
+console.log(buildPr(pr));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>## Что сделано
+- добавлен фильтр заказов по статусу
+- фильтр запоминается в localStorage
+
+## Зачем
+Менеджер хочет быстро находить неоплаченные заказы.
+
+## Как проверить
+1. Откройте страницу заказов
+2. Выберите статус «Не оплачен»
+3. Обновите страницу: фильтр остался</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Начните с массива <code>const lines = ["## Что сделано"]</code>. Пункты добавляйте через <code>forEach</code>: <code>lines.push(`- ${w}`)</code>. Пустая строка в массиве — это просто <code>""</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Нумерация: <code>pr.check.forEach((c, i) =&gt; lines.push(`${i + 1}. ${c}`))</code>. В конце — <code>lines.join("\n")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Можно ли делать merge</h4><span class="level hard">сложная</span></header>
+          <p>На GitHub кнопка Merge «серая», пока не выполнены условия. Допишите <code>mergeProblems(pr)</code>: функция возвращает массив причин (в таком порядке): «нет одобрения» (<code>approvals &lt; 1</code>), «проверки не прошли» (<code>checks</code> не равно <code>"passed"</code>), «есть конфликт» (<code>conflicts</code>), «это черновик» (<code>draft</code>). Если причин нет — пустой массив.</p>
+<pre class="code" data-run>
+function mergeProblems(pr) {
+  const problems = [];
+  // проверьте четыре условия и добавляйте причины в массив
+  return problems;
+}
+
+const prs = [
+  { title: "add order filters", approvals: 1, checks: "passed", conflicts: false, draft: false },
+  { title: "fix cart total", approvals: 0, checks: "passed", conflicts: false, draft: false },
+  { title: "wip: new header", approvals: 2, checks: "failed", conflicts: true, draft: true },
+];
+for (const pr of prs) {
+  const p = mergeProblems(pr);
+  console.log(`${pr.title}: ${p.length ? p.join("; ") : "можно мержить"}`);
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>add order filters: можно мержить
+fix cart total: нет одобрения
+wip: new header: проверки не прошли; есть конфликт; это черновик</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Четыре независимых <code>if</code>, каждый делает <code>problems.push("…")</code>. <code>else</code> здесь не нужен: причин может быть несколько сразу.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для проверок используйте <code>pr.approvals &lt; 1</code> и <code>pr.checks !== "passed"</code>.</p></details>
+        </article>
+
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://docs.github.com/ru/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests" target="_blank" rel="noopener">GitHub Docs — о pull request</a>, <a href="https://git-scm.com/book/ru/v2/Основы-Git-Работа-с-удалёнными-репозиториями" target="_blank" rel="noopener">Pro Git — удалённые репозитории</a>.</p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="conflicts">
+      <h2 data-toc="Конфликты"><span class="num">04</span> Конфликты слияния</h2>
+
+      <p>Git умеет сливать изменения автоматически, если вы и напарник правили <b>разные места</b>. Но если вы оба изменили <b>одну и ту же строку</b> по-разному, Git не знает, чья версия верна, и просит человека решить. Это и есть конфликт. Он не поломка, а обычная часть работы: в любой команде конфликты случаются каждую неделю.</p>
+
+      <p>Допустим, вы с напарником правили файл <code>rate.js</code>. Напарник уже влил свою ветку в <code>main</code>, а вы сделали <code>git pull origin main</code> в своей ветке:</p>
+<pre class="code" data-title="Терминал">
+git switch feature/rate
+git pull origin main
+# Auto-merging rate.js
+# CONFLICT (content): Merge conflict in rate.js
+# Automatic merge failed; fix conflicts and then commit the result.
+</pre>
+
+      <p>Git остановился и записал в файл <b>маркеры конфликта</b>:</p>
+<pre class="code" data-title="rate.js после неудачного merge" data-lang="js">
+// курс обмена
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+const convertUsd = (usd, rate = 10.9) =&gt; Math.round(usd * rate);
+=======
+const toSomoni = (usd) =&gt; usd * 11;
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; origin/main
+</pre>
+
+      <dl class="terms">
+        <dt>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD</dt><dd>Начало конфликта. Ниже — <b>ваша</b> версия (из ветки, на которой вы стоите).</dd>
+        <dt>=======</dt><dd>Разделитель. Ниже — версия <b>из другой ветки</b> (здесь <code>origin/main</code>).</dd>
+        <dt>&gt;&gt;&gt;&gt;&gt;&gt;&gt; origin/main</dt><dd>Конец конфликта и имя ветки, откуда пришла вторая версия.</dd>
+      </dl>
+
+      <h3>Как разрешить конфликт</h3>
+      <ol class="steps">
+        <li><b>Откройте файл</b> со словом CONFLICT. В VS Code над блоком появятся кнопки: <i>Accept Current</i> (моё), <i>Accept Incoming</i> (чужое), <i>Accept Both</i> (оба) и <i>Compare</i>.</li>
+        <li><b>Решите по смыслу</b>, что должно остаться. Иногда нужно взять кусочки из обеих версий — и написать итоговый код руками. Договоритесь с автором второй правки.</li>
+        <li><b>Удалите все три строки маркеров.</b> В файле должен остаться только нормальный код.</li>
+        <li><b>Запустите проект</b> и убедитесь, что всё работает.</li>
+        <li><b>Завершите слияние</b>:
+<pre class="code" data-title="Терминал">
+git add rate.js
+git commit -m "merge main into feature/rate"
+git push
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Если запутались</b>
+        <p>Команда <code>git merge --abort</code> (или <code>git rebase --abort</code>) отменяет слияние и возвращает всё, как было до него. Конфликт решают <b>в своей ветке до merge</b>: тогда в main попадёт уже чистый результат.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Опасная ошибка</b>
+        <p>Закоммитить файл, в котором остались строки <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>. Такой код не запустится. Перед <code>git add</code> поищите в проекте <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> (Ctrl+Shift+F в VS Code).</p>
+      </div>
+
+      <p>Маркеры — это обычный текст, и разобрать их можно кодом. Первую задачу вы решите руками, как в настоящем конфликте. Во второй напишете «автоматическое разрешение», как это делают редакторы.</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Решаем конфликт руками</h4><span class="level mid">средняя</span></header>
+          <p>После неудачного <code>merge</code> файл выглядит как в переменной <code>conflicted</code>. Команда решила: <b>имя</b> функции оставляем из <code>main</code> (<code>toSomoni</code>), а <b>формулу</b> берём из ветки <code>feature/rate</code>: параметр <code>rate</code> со значением по умолчанию <code>10.9</code> и округление. Впишите в <code>resolved</code> итоговый текст файла: без маркеров и с одной строкой кода. Четыре проверки ниже должны выдать <code>false / true / true / true</code>.</p>
+<pre class="code" data-run>
+const conflicted = `// курс обмена
+&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+const toSomoni = (usd) =&gt; usd * 11;
+=======
+const convertUsd = (usd, rate = 10.9) =&gt; Math.round(usd * rate);
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature/rate
+`;
+
+const resolved = `// курс обмена
+`; // допишите итоговую строку кода
+
+console.log("маркеры остались:", /&lt;&lt;&lt;&lt;&lt;&lt;&lt;|=======|&gt;&gt;&gt;&gt;&gt;&gt;&gt;/.test(resolved));
+console.log("имя из main:", resolved.includes("const toSomoni ="));
+console.log("формула из feature:", resolved.includes("rate = 10.9") &amp;&amp; resolved.includes("Math.round(usd * rate)"));
+console.log("лишнее убрано:", !resolved.includes("convertUsd") &amp;&amp; !resolved.includes("usd * 11"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>маркеры остались: false
+имя из main: true
+формула из feature: true
+лишнее убрано: true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Итог — одна строка: <code>const toSomoni = (usd, rate = 10.9) =&gt; Math.round(usd * rate);</code>. Строки с <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> и <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> в файле остаться не должны.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Проверка ищет в тексте точные куски: <code>const toSomoni =</code>, <code>rate = 10.9</code> и <code>Math.round(usd * rate)</code>. Следите за пробелами и опечатками.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Автоматическое разрешение</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>resolveAll(text, side)</code>, которая убирает маркеры конфликта. <code>side = "ours"</code> оставляет версию из <code>HEAD</code> (до <code>=======</code>), <code>"theirs"</code> — версию из чужой ветки (после <code>=======</code>), <code>"both"</code> — обе подряд. Строки вне конфликта сохраняются как есть. Идите по строкам и помните, в какой части блока сейчас находитесь.</p>
+<pre class="code" data-run>
+const conflicted = [
+  "&lt;h1&gt;Илмхона&lt;/h1&gt;",
+  "&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD",
+  "&lt;p&gt;Курсы программирования&lt;/p&gt;",
+  "=======",
+  "&lt;p&gt;Курсы Frontend и ИИ&lt;/p&gt;",
+  "&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature/text",
+  "&lt;footer&gt;Душанбе&lt;/footer&gt;",
+].join("\n");
+
+function resolveAll(text, side) {
+  const out = [];
+  let part = "none"; // none | ours | theirs
+  for (const line of text.split("\n")) {
+    // ваш код
+  }
+  return out.join("\n");
+}
+
+for (const side of ["ours", "theirs", "both"]) {
+  console.log(side + ": " + resolveAll(conflicted, side).split("\n").join(" / "));
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ours: &lt;h1&gt;Илмхона&lt;/h1&gt; / &lt;p&gt;Курсы программирования&lt;/p&gt; / &lt;footer&gt;Душанбе&lt;/footer&gt;
+theirs: &lt;h1&gt;Илмхона&lt;/h1&gt; / &lt;p&gt;Курсы Frontend и ИИ&lt;/p&gt; / &lt;footer&gt;Душанбе&lt;/footer&gt;
+both: &lt;h1&gt;Илмхона&lt;/h1&gt; / &lt;p&gt;Курсы программирования&lt;/p&gt; / &lt;p&gt;Курсы Frontend и ИИ&lt;/p&gt; / &lt;footer&gt;Душанбе&lt;/footer&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три «переключателя»: строка, начинающаяся с <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; </code>, включает режим <code>"ours"</code>; строка <code>=======</code> — <code>"theirs"</code>; строка с <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt; </code> возвращает <code>"none"</code>. Сами маркеры в результат не попадают.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Строку вне конфликта (<code>part === "none"</code>) добавляем всегда; строку внутри — только если <code>part === side</code> или <code>side === "both"</code>.</p></details>
+        </article>
+
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://git-scm.com/book/ru/v2/Ветвление-в-Git-Основы-ветвления-и-слияния" target="_blank" rel="noopener">Pro Git — основы ветвления и слияния (конфликты)</a>.</p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="ignore-messages">
+      <h2 data-toc=".gitignore и коммиты"><span class="num">05</span> .gitignore и сообщения коммитов</h2>
+
+      <h3>.gitignore: что не должно попасть в репозиторий</h3>
+      <p>В папке проекта бывают файлы, которые нельзя или не нужно хранить в Git. Их перечисляют в файле <code>.gitignore</code> в корне проекта: Git не будет их отслеживать и не покажет в <code>git status</code>.</p>
+
+<pre class="code" data-title=".gitignore">
+# зависимости: восстанавливаются командой npm install
+node_modules/
+
+# готовая сборка: создаётся командой npm run build
+dist/
+
+# секреты: пароли, ключи API
+.env
+
+# логи и системный мусор
+*.log
+.DS_Store
+</pre>
+
+      <dl class="terms">
+        <dt>имя/</dt><dd>Папка с этим именем, где бы она ни лежала: <code>dist/</code>, <code>node_modules/</code>.</dd>
+        <dt>*.расширение</dt><dd>Все файлы с таким окончанием: <code>*.log</code>.</dd>
+        <dt>имя</dt><dd>Файл с точно таким именем: <code>.env</code>. Файл <code>.env.example</code> под это правило не попадёт.</dd>
+        <dt>!имя</dt><dd>Исключение: вернуть файл под контроль Git. Стоит после общего правила.</dd>
+        <dt># текст</dt><dd>Комментарий.</dd>
+      </dl>
+      <p>Настоящий <code>.gitignore</code> поддерживает ещё много синтаксиса (<code>**</code>, пути со слэшем), но этого хватит почти всегда. В задаче ниже вы пользуетесь именно таким упрощённым «движком».</p>
+
+      <div class="callout warn">
+        <b>Самая дорогая ошибка</b>
+        <p>Закоммитили <code>.env</code> с ключом, а потом добавили его в <code>.gitignore</code>. Не помогает: файл уже в истории. Любой, кто откроет репозиторий, найдёт ключ в старом коммите. Правильно: сразу <b>отозвать (сменить) ключ</b> у сервиса и только потом чистить репозиторий. Если файл уже отслеживается, его можно убрать из Git командой <code>git rm --cached .env</code> — на диске он останется.</p>
+      </div>
+
+      <h3>Сообщения коммитов: Conventional Commits</h3>
+      <p>Через полгода вы не вспомните, что значило «update» или «fix». Поэтому в командах договариваются о формате: <code>тип(область): что сделано</code>. Область необязательна.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Тип</th><th>Когда</th><th>Пример</th></tr></thead>
+          <tbody>
+            <tr><td><code>feat</code></td><td>новая возможность</td><td><code>feat: add order filters</code></td></tr>
+            <tr><td><code>fix</code></td><td>исправление бага</td><td><code>fix(cart): count first item in total</code></td></tr>
+            <tr><td><code>docs</code></td><td>документация, README</td><td><code>docs: add install steps</code></td></tr>
+            <tr><td><code>style</code></td><td>форматирование без смысла</td><td><code>style: format with prettier</code></td></tr>
+            <tr><td><code>refactor</code></td><td>переписали, поведение то же</td><td><code>refactor: extract calcTotal</code></td></tr>
+            <tr><td><code>test</code></td><td>тесты</td><td><code>test: cover empty cart</code></td></tr>
+            <tr><td><code>chore</code></td><td>служебное: зависимости, настройки</td><td><code>chore: bump deps</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cols">
+        <div class="col bad"><b>Плохо</b><p><code>update</code>, <code>fix</code>, <code>changes</code>, <code>asdf</code>, <code>final</code>, <code>Fixed bug.</code> Непонятно что, где и зачем; нельзя найти нужный коммит.</p></div>
+        <div class="col good"><b>Хорошо</b><p><code>fix: wrong total in cart</code>, <code>feat(ui): add dark theme</code>. Глагол в повелительном наклонении («add», «fix»), строчные буквы, до 50 символов, без точки, одна мысль на коммит.</p></div>
+      </div>
+
+      <p>Чтобы закрепить, посмотрим, как классификация сообщений выглядит в коде. Запустите пример и поменяйте сообщения:</p>
+<pre class="code" data-run data-title="Тип коммита по сообщению">
+const messages = ["feat: add filters", "fix(cart): sum", "update", "docs: readme"];
+
+for (const m of messages) {
+  const match = m.match(/^([a-z]+)(\([^)]*\))?: /);
+  console.log(m.padEnd(20), "->", match ? match[1] : "нет типа");
+}
+</pre>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Пишем .gitignore</h4><span class="level mid">средняя</span></header>
+          <p>Ниже — упрощённый «движок» <code>.gitignore</code> (он понимает <code>имя/</code>, <code>*.расширение</code>, точное имя и <code>!отмену</code>). Впишите в массив <code>rules</code> такие правила, чтобы <b>игнорировались</b> папки <code>node_modules</code>, <code>dist</code>, <code>coverage</code>, файл <code>.env</code> (но не <code>.env.example</code>), системный <code>.DS_Store</code> и все <code>*.log</code>, <b>кроме</b> <code>keep.log</code>. Остальное должно остаться под контролем Git.</p>
+<pre class="code" data-run>
+function matchRule(rule, path) {
+  const parts = path.split("/");
+  const name = parts[parts.length - 1];
+  if (rule.endsWith("/")) {                          // «папка/»: любой каталог с таким именем
+    return parts.slice(0, -1).includes(rule.slice(0, -1));
+  }
+  if (rule.startsWith("*.")) return name.endsWith(rule.slice(1)); // «*.log»: по расширению
+  return name === rule;                              // точное имя файла
+}
+
+function isIgnored(path, rules) {
+  let ignored = false;
+  for (const rule of rules) {                        // правила читаются сверху вниз
+    if (rule.startsWith("!")) {                      // «!имя» возвращает файл обратно
+      if (matchRule(rule.slice(1), path)) ignored = false;
+    } else if (matchRule(rule, path)) {
+      ignored = true;
+    }
+  }
+  return ignored;
+}
+
+const paths = [
+  "node_modules/react/index.js", "dist/app.js", "src/app.js", ".env", ".env.example",
+  "debug.log", "logs/server.log", "keep.log", "README.md", ".DS_Store", "src/.DS_Store", "coverage/index.html",
+];
+
+const rules = [
+  // впишите правила строками
+];
+
+console.log("игнорируются:", paths.filter((p) =&gt; isIgnored(p, rules)).join(", "));
+console.log("остаются:", paths.filter((p) =&gt; !isIgnored(p, rules)).join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>игнорируются: node_modules/react/index.js, dist/app.js, .env, debug.log, logs/server.log, .DS_Store, src/.DS_Store, coverage/index.html
+остаются: src/app.js, .env.example, keep.log, README.md</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Папки пишутся со слэшем на конце: <code>"dist/"</code>. Расширение — со звёздочкой: <code>"*.log"</code>. Файл — точным именем: <code>".env"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Исключение обязано стоять <b>после</b> общего правила: <code>"*.log", "!keep.log"</code>. Побеждает последнее подходящее правило.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Статистика коммитов</h4><span class="level easy">лёгкая</span></header>
+          <p>В формате Conventional Commits сообщение начинается с типа: <code>feat: …</code>, <code>fix(cart): …</code>. Допишите <code>commitType(msg)</code>: она возвращает тип (слово до двоеточия или до скобки) либо <code>"other"</code>, если сообщение не по формату. Подсчёт и вывод уже готовы.</p>
+<pre class="code" data-run>
+const messages = [
+  "feat: add order filters",
+  "fix: wrong total in cart",
+  "docs: update readme",
+  "fix(cart): off-by-one in loop",
+  "update",
+  "feat(ui): dark theme",
+  "fix: crash on empty order",
+  "Changes",
+];
+
+function commitType(msg) {
+  // регулярка: слово в начале, необязательная (область), двоеточие и пробел
+  return "other";
+}
+
+const counts = {};
+for (const m of messages) {
+  const type = commitType(m);
+  counts[type] = (counts[type] || 0) + 1;
+}
+console.log(JSON.stringify(counts));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>{"feat":2,"fix":3,"docs":1,"other":2}</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Регулярка: <code>/^([a-z]+)(\([^)]*\))?: /</code>. Первая группа — тип, вторая (необязательная) — область в скобках.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const m = msg.match(regex); return m ? m[1] : "other";</code></p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Линтер коммитов</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>lintCommit(msg)</code> — массив проблем. Правила: (1) сообщение должно начинаться с <code>feat|fix|docs|style|refactor|test|chore</code>, необязательной <code>(области)</code> и <code>: </code>; иначе одна проблема «нет типа вида feat: …» — дальше можно не проверять; (2) «тема длиннее 50 символов» (темой считаем текст после <code>: </code>); (3) «тема с заглавной буквы»; (4) «точка в конце». Пустой массив значит «всё хорошо».</p>
+<pre class="code" data-run>
+function lintCommit(msg) {
+  const problems = [];
+  return problems;
+}
+
+const list = [
+  "feat: add order filters",
+  "Fixed bug.",
+  "fix(cart): Wrong total.",
+  "docs: describe in the readme how to install dependencies and run the project",
+];
+for (const m of list) {
+  const p = lintCommit(m);
+  console.log(`${m.slice(0, 24)} -&gt; ${p.length ? p.join("; ") : "ok"}`);
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>feat: add order filters -&gt; ok
+Fixed bug. -&gt; нет типа вида feat: …
+fix(cart): Wrong total. -&gt; тема с заглавной буквы; точка в конце
+docs: describe in the re -&gt; тема длиннее 50 символов</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Одна регулярка с тремя группами: <code>/^(feat|fix|docs|style|refactor|test|chore)(\([^)]*\))?: (.+)$/</code>. Тема — это <code>m[3]</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Если <code>match</code> вернул <code>null</code> — сразу <code>return ["нет типа вида feat: …"]</code>. Остальные проверки — три независимых <code>if</code> с <code>push</code>.</p></details>
+        </article>
+
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://www.conventionalcommits.org/ru/v1.0.0/" target="_blank" rel="noopener">Conventional Commits</a>, <a href="https://git-scm.com/docs/gitignore" target="_blank" rel="noopener">документация .gitignore</a>.</p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="errors">
+      <h2 data-toc="Ошибки и try/catch"><span class="num">06</span> Ошибки: try / catch / finally и throw</h2>
+
+      <p>Ошибки случаются у всех: пользователь ввёл пустую строку, сервер не ответил, из <code>localStorage</code> пришёл мусор. Если ничего не делать, программа остановится на первой же строке с ошибкой. Задача разработчика — <b>заранее предусмотреть</b> места, где код может упасть, и сделать так, чтобы пользователь увидел понятное сообщение, а не белый экран.</p>
+
+      <h3>try / catch / finally</h3>
+      <div class="callout analogy">
+        <b>Аналогия: страховка в маршрутке</b>
+        <p><code>try</code> — «попробуем проехать по этой дороге». <code>catch</code> — запасной план, если дорога перекрыта: свернуть и поехать в объезд. <code>finally</code> — то, что произойдёт в любом случае: выйти из маршрутки и заплатить водителю.</p>
+      </div>
+
+<pre class="code" data-run data-title="Три блока">
+function readAge(text) {
+  try {
+    const age = JSON.parse(text);          // может бросить ошибку
+    console.log("прочитали:", age);
+    return age;
+  } catch (error) {
+    console.log("не получилось:", error.name);
+    return 0;                              // запасной план
+  } finally {
+    console.log("— чтение закончено —");   // выполняется всегда
+  }
+}
+
+console.log(readAge("19"));
+console.log(readAge("девятнадцать"));
+</pre>
+
+      <p>Ошибка внутри <code>try</code> немедленно прерывает его, и управление уходит в <code>catch</code>. Оставшиеся строки <code>try</code> пропускаются. В <code>catch</code> приходит объект ошибки (его обычно называют <code>error</code> или <code>e</code>).</p>
+
+      <h3>Что внутри объекта ошибки</h3>
+      <dl class="terms">
+        <dt>name</dt><dd>Тип ошибки: <code>TypeError</code>, <code>ReferenceError</code>, <code>SyntaxError</code>, <code>RangeError</code>…</dd>
+        <dt>message</dt><dd>Человеческое описание: «Cannot read properties of null».</dd>
+        <dt>stack</dt><dd>Стек вызовов — цепочка функций, которые привели к ошибке. Разберём в разделе 7.</dd>
+      </dl>
+
+      <h3>Основные типы ошибок</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Тип</th><th>Когда возникает</th><th>Пример</th></tr></thead>
+          <tbody>
+            <tr><td><code>TypeError</code></td><td>Действие невозможно для этого типа значения: читаем свойство у <code>null</code> / <code>undefined</code>, вызываем не функцию</td><td><code>null.name</code></td></tr>
+            <tr><td><code>ReferenceError</code></td><td>Переменная не существует (опечатка, не объявлена, вне области видимости)</td><td><code>console.log(pirce)</code></td></tr>
+            <tr><td><code>SyntaxError</code></td><td>Код написан не по правилам языка; также ошибки <code>JSON.parse</code></td><td><code>JSON.parse("{a: 1}")</code></td></tr>
+            <tr><td><code>RangeError</code></td><td>Значение вне допустимого диапазона</td><td><code>new Array(-1)</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre class="code" data-run data-title="Смотрим на объект ошибки">
+try {
+  const user = null;
+  console.log(user.name);
+} catch (error) {
+  console.log("name:", error.name);
+  console.log("message:", error.message);
+  console.log("есть stack:", typeof error.stack === "string");
+}
+</pre>
+
+      <h3>throw: бросаем свою ошибку</h3>
+      <p>Иногда ошибку нужно создать самому. Например, функция получила от пользователя отрицательное количество. <code>throw</code> прерывает текущую функцию и «бросает» ошибку вверх — до ближайшего <code>catch</code>. Бросайте <b>объект ошибки</b> (<code>new Error("текст")</code>), а не просто строку: у объекта есть стек.</p>
+
+<pre class="code" data-run data-title="throw new Error">
+function setQuantity(qty) {
+  if (!Number.isInteger(qty)) throw new TypeError("Количество должно быть целым числом");
+  if (qty &lt; 1) throw new RangeError("Количество не может быть меньше 1");
+  return qty;
+}
+
+for (const value of [3, 0, 2.5]) {
+  try {
+    console.log("ок:", setQuantity(value));
+  } catch (e) {
+    console.log(`${e.name}: ${e.message}`);
+  }
+}
+</pre>
+
+      <div class="callout warn">
+        <b>Частая ошибка: пустой catch</b>
+        <p>Пустой <code>catch (e) {}</code> «проглатывает» ошибку: программа молчит и ведёт себя странно, а причину не найти. Минимум — выведите ошибку в консоль или покажите пользователю сообщение. И ловите только те ошибки, которые умеете обработать: остальные пробрасывайте дальше через <code>throw e</code> (задача 6.5).</p>
+      </div>
+
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+function risky() {
+  throw new Error("что-то пошло не так");
+}
+
+risky();   // ошибка не поймана: выполнение остановилось
+console.log("до этой строки мы уже не дойдём");
+</pre>
+
+      <p>Ошибки в асинхронном коде ловят тем же <code>try / catch</code> вокруг <code>await</code> (вы видели это на уроке 13, а на следующих уроках будете так обрабатывать запросы <code>fetch</code>). Отдельный <code>try</code> вокруг <code>setTimeout</code> не сработает: колбэк выполнится позже, когда блок уже завершился.</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Предскажи: порядок с finally</h4><span class="level easy">лёгкая</span></header>
+          <p>Сначала <b>без запуска</b> запишите на бумаге или в комментарии, в каком порядке появятся три строки. Блок <code>finally</code> выполняется «всегда» — даже если в <code>try</code> уже был <code>return</code>. Затем запустите код и сверьтесь. Менять код не нужно — сверьте свой прогноз с результатом.</p>
+<pre class="code" data-run>
+function test() {
+  try {
+    console.log("1: try");
+    return "результат";
+  } catch (e) {
+    console.log("catch");
+  } finally {
+    console.log("2: finally");
+  }
+  console.log("после");
+}
+
+console.log("3:", test());
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1: try
+2: finally
+3: результат</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Функция заканчивается на <code>return</code>, но значение «отдаётся» наружу только после того, как выполнится <code>finally</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Строка «после» не появится: функция уже вернула значение. «catch» не появится: ошибки не было.</p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Имя ошибки</h4><span class="level easy">лёгкая</span></header>
+          <p>Допишите <code>errorName(fn)</code>: вызовите функцию внутри <code>try</code>, а если она бросила ошибку — верните её <code>name</code> (например, <code>"TypeError"</code>). Если ошибки нет — верните <code>"ok"</code>.</p>
+<pre class="code" data-run>
+function errorName(fn) {
+  // try / catch
+}
+
+const tests = [
+  () =&gt; { const user = null; return user.name; },
+  () =&gt; missingVariable + 1,
+  () =&gt; JSON.parse("{name: 'Али'}"),
+  () =&gt; new Array(-5),
+  () =&gt; 2 + 2,
+];
+tests.forEach((t, i) =&gt; console.log(i + 1, errorName(t)));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1 TypeError
+2 ReferenceError
+3 SyntaxError
+4 RangeError
+5 ok</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Структура: <code>try { fn(); return "ok"; } catch (e) { return e.name; }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Свойство <code>name</code> у объекта ошибки — это «тип»: <code>TypeError</code>, <code>ReferenceError</code>, <code>SyntaxError</code>, <code>RangeError</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Безопасное чтение JSON</h4><span class="level mid">средняя</span></header>
+          <p>Данные из <code>localStorage</code> или с сервера бывают повреждены. Допишите <code>safeParse(text, fallback)</code>: возвращает результат <code>JSON.parse</code>, а при ошибке выводит <code>ошибка чтения: ИмяОшибки</code> и возвращает <code>fallback</code>.</p>
+<pre class="code" data-run>
+function safeParse(text, fallback) {
+  // try / catch
+}
+
+console.log(safeParse('{"name":"Фарҳод","age":19}', null).name);
+console.log(safeParse("{name: Фарҳод}", "пусто"));
+console.log(safeParse("", []).length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Фарҳод
+ошибка чтения: SyntaxError
+пусто
+ошибка чтения: SyntaxError
+0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>try</code> — <code>return JSON.parse(text)</code>. В <code>catch</code> — <code>console.log("ошибка чтения:", e.name)</code> и <code>return fallback</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Пустая строка тоже невалидный JSON, поэтому для третьего вызова <code>catch</code> тоже сработает и вернёт пустой массив.</p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ЗАДАЧА 6.4</span><h4>Свои ошибки через throw</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>withdraw(balance, amount)</code> — снятие сомони. Если <code>amount</code> не больше нуля, бросьте <code>new RangeError("Сумма должна быть больше нуля")</code>. Если <code>amount</code> больше баланса — <code>new Error("Недостаточно сомони")</code>. Иначе верните остаток. Порядок проверок — как в условии.</p>
+<pre class="code" data-run>
+function withdraw(balance, amount) {
+  // две проверки с throw, затем return
+}
+
+for (const amount of [200, 0, 5000, -10]) {
+  try {
+    console.log("остаток:", withdraw(1000, amount));
+  } catch (e) {
+    console.log(`${e.name}: ${e.message}`);
+  } finally {
+    console.log("— операция завершена —");
+  }
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>остаток: 800
+— операция завершена —
+RangeError: Сумма должна быть больше нуля
+— операция завершена —
+Error: Недостаточно сомони
+— операция завершена —
+RangeError: Сумма должна быть больше нуля
+— операция завершена —</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>throw</code> сразу прерывает функцию, поэтому после него <code>else</code> не нужен: <code>if (amount &lt;= 0) throw new RangeError("…");</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Блок <code>finally</code> в цикле выполнится после каждой операции — и успешной, и неудачной.</p></details>
+        </article>
+
+        <article class="task" id="t6-5">
+          <header><span class="task-num">ЗАДАЧА 6.5</span><h4>Ловим только свои ошибки</h4><span class="level hard">сложная</span></header>
+          <p>Хороший <code>catch</code> обрабатывает только те ошибки, которые ожидает, а чужие пробрасывает дальше: <code>throw e</code>. Допишите <code>validate(order)</code>: если у заказа нет <code>name</code>, вызовите <code>fail("name", "укажите имя")</code>; если <code>qty</code> меньше 1 — <code>fail("qty", "минимум 1 штука")</code>. Вспомогательная функция <code>fail</code> уже есть. Вызов <code>process(null)</code> должен упасть настоящим <code>TypeError</code>, который <code>process</code> не глотает.</p>
+<pre class="code" data-run>
+function fail(field, message) {
+  const e = new Error(message);
+  e.name = "ValidationError";
+  e.field = field;
+  throw e;
+}
+
+function validate(order) {
+  // две проверки через fail(...)
+}
+
+function process(order) {
+  try {
+    validate(order);
+    return "заказ принят";
+  } catch (e) {
+    if (e.name === "ValidationError") return `поле ${e.field}: ${e.message}`;
+    throw e; // чужие ошибки не глотаем
+  }
+}
+
+console.log(process({ name: "Мадина", qty: 2 }));
+console.log(process({ name: "", qty: 2 }));
+console.log(process({ name: "Рустам", qty: 0 }));
+try {
+  process(null);
+} catch (e) {
+  console.log("неожиданная ошибка:", e.name);
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>заказ принят
+поле name: укажите имя
+поле qty: минимум 1 штука
+неожиданная ошибка: TypeError</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>if (!order.name) fail("name", "укажите имя");</code>. Вторая проверка пишется так же, с условием <code>order.qty &lt; 1</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для <code>null</code> первая же строка <code>order.name</code> бросит <code>TypeError</code>: у <code>null</code> нет свойств. Ваш <code>validate</code> этот случай специально обрабатывать не должен.</p></details>
+        </article>
+
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/try-catch" target="_blank" rel="noopener">learn.javascript.ru — обработка ошибок, try…catch</a>, <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Statements/try...catch" target="_blank" rel="noopener">MDN — try...catch</a>.</p>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="devtools">
+      <h2 data-toc="Стек и DevTools"><span class="num">07</span> Стек вызовов и DevTools</h2>
+
+      <h3>Как читать красную ошибку</h3>
+      <p>Когда код падает, браузер печатает красную строку и <b>стек вызовов</b>: список функций от места ошибки до самого начала. Читайте его <b>сверху вниз</b>: первая строка — где упало, следующие — кто вызвал эту функцию.</p>
+
+<pre class="code" data-title="Ошибка в консоли браузера">
+Uncaught TypeError: Cannot read properties of undefined (reading 'price')
+    at calcTotal (cart.js:12:23)
+    at renderCart (ui.js:48:15)
+    at HTMLButtonElement.&lt;anonymous&gt; (main.js:7:3)
+</pre>
+
+      <ol class="steps">
+        <li><b>Тип и сообщение</b>: <code>TypeError</code> — читаем свойство <code>price</code> у <code>undefined</code>. Значит, где-то вместо товара пришёл <code>undefined</code>.</li>
+        <li><b>Верхняя строка стека</b>: <code>calcTotal (cart.js:12:23)</code> — функция <code>calcTotal</code>, файл <code>cart.js</code>, строка 12, символ 23. Здесь упало.</li>
+        <li><b>Вторая строка</b>: <code>renderCart</code> вызвала <code>calcTotal</code>. Часто баг не в верхней функции, а в том, <b>что ей передали</b>.</li>
+        <li><b>Последняя строка</b>: всё началось с клика по кнопке в <code>main.js</code>.</li>
+      </ol>
+      <p>Клик по <code>cart.js:12</code> в консоли DevTools откроет этот файл на нужной строке.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия: цепочка передачи в Илмхоне</b>
+        <p>Студент спрашивает куратора, куратор — преподавателя, преподаватель — методиста, и в конце выясняется, что в расписании ошибка. Стек — это запись, <i>кто кого спросил</i>. Чтобы найти, откуда ошибка, идём по цепочке снизу вверх, но смотрим на верхний вызов: именно он «не смог».</p>
+      </div>
+
+<pre class="code" data-run data-title="Стек в коде: свойство stack">
+function inner() {
+  throw new Error("сломалось внутри");
+}
+function outer() {
+  inner();
+}
+
+try {
+  outer();
+} catch (e) {
+  const first = e.stack.split("\n")[0];   // первая строка стека — «Тип: сообщение»
+  console.log(first);
+  console.log("в стеке есть outer:", e.stack.includes("outer"));
+}
+</pre>
+
+      <h3>DevTools: инструменты разработчика</h3>
+      <p>Откройте DevTools на любой странице: <b>F12</b> или <b>Ctrl+Shift+I</b> (на Mac — <b>Cmd+Option+I</b>). Главные вкладки для отладки:</p>
+
+      <h4>Console — консоль</h4>
+      <p>Показывает ошибки, предупреждения и ваши <code>console.log</code>. Можно набирать JavaScript прямо в консоли и сразу получать результат. Полезные методы:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Метод</th><th>Зачем</th></tr></thead>
+          <tbody>
+            <tr><td><code>console.log(x)</code></td><td>Просто вывести значение. Трюк: <code>console.log({ price, qty })</code> выведет имена вместе со значениями</td></tr>
+            <tr><td><code>console.table(array)</code></td><td>В DevTools покажет массив объектов как таблицу со столбцами. (На этой странице вывод текстовый: таблицу вы увидите только в настоящем браузере)</td></tr>
+            <tr><td><code>console.trace()</code></td><td>Печатает стек: «кто вызвал эту функцию?» — удобно, когда не понятно, откуда пришёл вызов</td></tr>
+            <tr><td><code>console.error()</code> / <code>console.warn()</code></td><td>Красное сообщение / жёлтое предупреждение — их легко отфильтровать</td></tr>
+            <tr><td><code>console.group()</code> / <code>console.groupEnd()</code></td><td>Сворачиваемая группа сообщений</td></tr>
+            <tr><td><code>console.time("t")</code> / <code>console.timeEnd("t")</code></td><td>Замер времени между двумя точками</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre class="code" data-run data-title="Подписанный вывод">
+const price = 20;
+const qty = 3;
+
+console.log(price, qty);           // 20 3 — что есть что?
+console.log({ price, qty });       // { price: 20, qty: 3 } — понятно сразу
+console.log("итого:", price * qty);
+</pre>
+
+      <h4>Sources — пошаговая отладка и breakpoints</h4>
+      <p>Вместо десятка <code>console.log</code> можно <b>остановить программу</b> на нужной строке и осмотреться. Откройте вкладку <b>Sources</b>, выберите файл и кликните по <b>номеру строки</b> слева: появится синяя метка — <b>breakpoint</b>. Теперь выполните действие на странице (например, нажмите кнопку): выполнение замрёт перед этой строкой.</p>
+      <ol class="steps">
+        <li><b>Осмотритесь.</b> Справа в панели <b>Scope</b> видны значения всех переменных на этот момент. В <b>Watch</b> можно добавить любое выражение, например <code>items.length</code>. В <b>Call Stack</b> — тот самый стек вызовов.</li>
+        <li><b>Идите по шагам.</b> <b>F10</b> (Step over) — выполнить строку и перейти к следующей. <b>F11</b> (Step into) — зайти внутрь вызываемой функции. <b>Shift+F11</b> (Step out) — выйти из функции. <b>F8</b> — продолжить до следующего breakpoint.</li>
+        <li><b>Сравните ожидание с реальностью.</b> На какой строке значение стало не таким, как вы думали? Это и есть место бага.</li>
+      </ol>
+      <p>Удобные вариации: <b>условный breakpoint</b> (правый клик по номеру строки → Add conditional breakpoint, например <code>i === 3</code>) и <b>Pause on exceptions</b> (кнопка с паузой): DevTools сам остановится в момент, когда код бросит ошибку.</p>
+
+      <h4>Оператор debugger</h4>
+      <p>Если не хочется искать нужную строку в DevTools, поставьте в коде оператор <code>debugger;</code>. Когда DevTools открыты, выполнение остановится именно здесь, как на breakpoint. Если DevTools закрыты, оператор ничего не делает.</p>
+<pre class="code" data-title="debugger в коде" data-lang="js">
+function calcTotal(items) {
+  let sum = 0;
+  for (const item of items) {
+    debugger;               // здесь программа остановится, если открыт DevTools
+    sum += item.price;
+  }
+  return sum;
+}
+</pre>
+      <div class="callout warn">
+        <b>Не оставляйте debugger и лишние console.log в коде</b>
+        <p>Перед коммитом и pull request удалите их. Ревьюер увидит такой мусор в diff — и вернёт PR на доработку.</p>
+      </div>
+
+      <h4>Network — сеть</h4>
+      <p>Вкладка <b>Network</b> показывает каждый запрос страницы: HTML, картинки, <code>fetch</code> к API. Включите её <b>до</b> действия на странице (или обновите страницу). Для запросов <code>fetch</code> нажмите фильтр <b>Fetch/XHR</b>.</p>
+      <ul>
+        <li><b>Status</b>: <code>200</code> — успех, <code>404</code> — адрес не найден, <code>500</code> — сломался сервер. Красная строка — запрос не удался (например, нет интернета).</li>
+        <li>Кликните по запросу: <b>Headers</b> (адрес, метод, заголовки), <b>Payload</b> (что отправили), <b>Preview / Response</b> (что ответил сервер), <b>Timing</b> (сколько ждали).</li>
+        <li>Типичный вопрос «почему на странице пусто?»: смотрим в Network — пришёл ли ответ, какой статус, нет ли ошибки в теле ответа.</li>
+      </ul>
+
+      <h3>Метод отладки: шесть шагов</h3>
+      <ol class="steps">
+        <li><b>Воспроизведите</b> баг: что именно нажимать и вводить, чтобы он повторился каждый раз.</li>
+        <li><b>Сузьте</b>: уберите всё лишнее, пока не останется минимальный код с багом.</li>
+        <li><b>Прочитайте</b> сообщение об ошибке и стек. Часто ответ уже написан там.</li>
+        <li><b>Выдвиньте гипотезу</b>: «значение стало <code>undefined</code> здесь, потому что…».</li>
+        <li><b>Проверьте гипотезу</b> одной проверкой: <code>console.log</code> или breakpoint. Одной, а не пятью сразу.</li>
+        <li><b>Исправьте и перепроверьте</b>: баг ушёл, остальное не сломалось? Напишите в коммите, что было причиной.</li>
+      </ol>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Читаем стек вызовов</h4><span class="level mid">средняя</span></header>
+          <p>Перед вами текст стека ошибки (как в красной строке консоли). Допишите <code>parseFrame(line)</code>: из строки вида <code>at calcTotal (cart.js:12:23)</code> достаньте имя функции, файл и номер строки. Вернуть нужно объект <code>{ fn, file, line }</code>. Остальное уже готово: код отбирает строки, начинающиеся с <code>at</code>, и печатает итог.</p>
+<pre class="code" data-run>
+const stack = `TypeError: Cannot read properties of undefined (reading 'price')
+    at calcTotal (cart.js:12:23)
+    at renderCart (ui.js:48:15)
+    at HTMLButtonElement.&lt;anonymous&gt; (main.js:7:3)`;
+
+function parseFrame(line) {
+  // регулярка: at (.+?) \((.+?):(\d+):(\d+)\)
+  return { fn: "?", file: "?", line: 0 };
+}
+
+const frames = stack.split("\n").filter((l) =&gt; l.trim().startsWith("at ")).map(parseFrame);
+console.log("ошибка в:", frames[0].fn, frames[0].file, frames[0].line);
+console.log("глубина стека:", frames.length);
+console.log("всё началось в файле:", frames[frames.length - 1].file);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ошибка в: calcTotal cart.js 12
+глубина стека: 3
+всё началось в файле: main.js</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Регулярка в скобках-группах: <code>/at (.+?) \((.+?):(\d+):(\d+)\)/</code>. Группы 1, 2, 3 — функция, файл, строка. Скобки вокруг места в стеке нужно экранировать: <code>\(</code> и <code>\)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const m = line.match(…); return { fn: m[1], file: m[2], line: Number(m[3]) };</code></p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Лог вместо breakpoint</h4><span class="level easy">лёгкая</span></header>
+          <p>Без DevTools «посмотреть внутрь» цикла можно через <code>console.log</code>. Добавьте в цикл <b>одну</b> строку лога так, чтобы после обработки каждого числа выводилось <code>n=…, sum=…</code> (значения на этот момент). Итоговое значение функция печатает сама.</p>
+<pre class="code" data-run>
+function sumPositive(numbers) {
+  let sum = 0;
+  for (const n of numbers) {
+    if (n &gt; 0) sum += n;
+    // сюда добавьте console.log
+  }
+  return sum;
+}
+
+console.log(sumPositive([5, -3, 10, 0, 7]));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>n=5, sum=5
+n=-3, sum=5
+n=10, sum=15
+n=0, sum=15
+n=7, sum=22
+22</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Лог ставим <b>после</b> строки с <code>if</code>, но внутри цикла: так он увидит уже обновлённую сумму.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>console.log(`n=${n}, sum=${sum}`);</code></p></details>
+        </article>
+
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.chrome.com/docs/devtools/javascript" target="_blank" rel="noopener">Chrome DevTools — отладка JavaScript</a>, <a href="https://learn.javascript.ru/debugging-chrome" target="_blank" rel="noopener">learn.javascript.ru — отладка в браузере</a>.</p>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="bug-hunt">
+      <h2 data-toc="Найди и почини баг"><span class="num">08</span> Найди и почини баг</h2>
+
+      <p>Большая часть багов — это небольшой набор «классических» ошибок. Если вы знаете, как они выглядят, искать станет в разы быстрее. Вот карта:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Тип бага</th><th>Как выглядит</th><th>Где искать</th></tr></thead>
+          <tbody>
+            <tr><td><b>Off-by-one</b> (ошибка на единицу)</td><td><code>NaN</code> или <code>undefined</code> в конце списка; пропущен первый или последний элемент</td><td>Границы циклов: <code>&lt;</code> против <code>&lt;=</code>, старт с 0 или 1, <code>slice</code></td></tr>
+            <tr><td><b>Неверное сравнение</b></td><td>Условие срабатывает «не на тех» значениях; сортировка в странном порядке</td><td><code>=</code> вместо <code>===</code>, строки вместо чисел, <code>&gt;</code> вместо <code>&gt;=</code>, <code>sort()</code> без функции</td></tr>
+            <tr><td><b>Порядок async</b></td><td>В выводе «Promise», сообщения идут не в том порядке, данные «ещё не пришли»</td><td>Пропущенный <code>await</code>, <code>forEach</code> с <code>async</code>, ожидание результата вне <code>then</code></td></tr>
+            <tr><td><b>Мутация</b></td><td>Данные меняются «сами по себе» в другом месте программы</td><td><code>sort</code>, <code>push</code>, <code>splice</code> на исходном массиве; копия, которая на самом деле — ссылка; <code>fill([])</code></td></tr>
+            <tr><td><b>Область видимости</b></td><td>В колбэках цикла всегда одно и то же значение</td><td><code>var</code> вместо <code>let</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <b>Правило для задач ниже</b>
+        <p>Сначала <b>запустите код как есть</b> и посмотрите, что он выводит — сравните с ожидаемым результатом. Прочитайте подсказку «симптома» в условии. Выдвиньте гипотезу, исправьте <b>одно</b> место и запустите снова. Подсказки открывайте только после своей попытки.</p>
+      </div>
+
+      <h3>Пример разбора</h3>
+      <p>Вот баг и его отладка «на словах». Запустите:</p>
+<pre class="code" data-run data-title="Что выведется?">
+const scores = [70, 85, 90];
+
+function average(list) {
+  let sum = 0;
+  for (let i = 0; i &lt; list.length; i++) {
+    sum += list[i];
+  }
+  return sum / list.length + 1;
+}
+
+console.log(average(scores));
+</pre>
+      <p>Ожидали около <b>81.67</b>, получили около <b>82.67</b>. Гипотеза: что-то прибавляется лишнее. Проверка: <code>console.log(sum / list.length)</code> перед <code>return</code> — это 81.67. Значит, виновата последняя строка: <code>+ 1</code> лишняя. Видите: мы не «правили наугад», а сузили поиск проверкой.</p>
+
+      <h3>Off-by-one и неверные сравнения</h3>
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Баг: лишний шаг цикла</h4><span class="level easy">лёгкая</span></header>
+          <p>Корзина должна вернуть сумму <b>445</b>, а выводится что-то странное. Найдите причину (подсказка в консоли: у какого элемента нет цены?) и исправьте одну строку.</p>
+<pre class="code" data-run>
+const prices = [120, 80, 45, 200];
+
+function total(list) {
+  let sum = 0;
+  for (let i = 0; i &lt;= list.length; i++) {
+    sum += list[i];
+  }
+  return sum;
+}
+
+console.log(total(prices));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>445</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В массиве из 4 элементов индексы идут от 0 до 3. На последнем витке цикла <code>i</code> равен 4, а <code>list[4]</code> — это <code>undefined</code>. Сложение числа с <code>undefined</code> даёт <code>NaN</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замените <code>&lt;=</code> на <code>&lt;</code>. Правило: «до длины, не включая её».</p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Баг: страницы не с той позиции</h4><span class="level mid">средняя</span></header>
+          <p>Список студентов Илмхоны показывается по 3 человека на странице. Первая страница должна начинаться с «Алишер», но выводится не то. Исправьте <code>getPage</code>, чтобы страницы 1, 2, 3 выводили нужные группы.</p>
+<pre class="code" data-run>
+const students = ["Алишер", "Бахтиёр", "Дилшод", "Зарина", "Мадина", "Нигина", "Рустам"];
+
+function getPage(list, page, size) {
+  const start = page * size;
+  return list.slice(start, start + size);
+}
+
+console.log(getPage(students, 1, 3).join(", "));
+console.log(getPage(students, 2, 3).join(", "));
+console.log(getPage(students, 3, 3).join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Алишер, Бахтиёр, Дилшод
+Зарина, Мадина, Нигина
+Рустам</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Люди считают страницы с 1, а массив — с 0. Первая страница начинается с индекса 0, вторая — с индекса 3.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Начало страницы: <code>(page - 1) * size</code>.</p></details>
+        </article>
+
+        <article class="task" id="t8-3">
+          <header><span class="task-num">ЗАДАЧА 8.3</span><h4>Баг: топ-3 по баллам</h4><span class="level easy">лёгкая</span></header>
+          <p>Функция должна вернуть три лучших балла по убыванию: <code>100, 85, 42</code>. Но сортировка выдаёт странный порядок. Почему <code>sort()</code> без аргументов ошибается с числами? Исправьте.</p>
+<pre class="code" data-run>
+function top3(scores) {
+  const sorted = [...scores].sort();
+  return sorted.reverse().slice(0, 3);
+}
+
+console.log(top3([85, 9, 100, 42, 7]).join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>100, 85, 42</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Без функции сравнения <code>sort</code> превращает числа в строки и сортирует по буквам: «100» идёт раньше «42», а «9» — позже «85».</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Передайте <code>(a, b) =&gt; b - a</code> — так получится порядок по убыванию, и <code>reverse()</code> уже не нужен.</p></details>
+        </article>
+
+        <article class="task" id="t8-4">
+          <header><span class="task-num">ЗАДАЧА 8.4</span><h4>Баг: строки вместо чисел</h4><span class="level mid">средняя</span></header>
+          <p>Значения из полей формы всегда приходят <b>строками</b>. <code>cheaper("9", "100")</code> должна вернуть <code>9</code>, а <code>cheaper("45", "5")</code> — <code>5</code>. В <code>label</code> тоже ошибка: цена 0 должна печататься как «бесплатно». Найдите <b>два</b> бага.</p>
+<pre class="code" data-run>
+function cheaper(a, b) {
+  return a &lt; b ? a : b;
+}
+
+function label(price) {
+  if (price = 0) return "бесплатно";
+  return price + " сомони";
+}
+
+console.log(cheaper("9", "100"));
+console.log(cheaper("45", "5"));
+console.log(label(35));
+console.log(label(0));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>9
+5
+35 сомони
+бесплатно</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Две строки сравниваются «по алфавиту»: <code>"9" &lt; "100"</code> ложно, потому что «9» идёт после «1». Преобразуйте значения: <code>Number(a) &lt; Number(b)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>label</code> один знак <code>=</code> — это <b>присваивание</b>: цена становится 0 при каждом вызове. Нужно сравнение <code>===</code>.</p></details>
+        </article>
+
+
+        <h3>Порядок асинхронного кода</h3>
+        <article class="task" id="t8-5">
+          <header><span class="task-num">ЗАДАЧА 8.5</span><h4>Баг: forEach и await</h4><span class="level mid">средняя</span></header>
+          <p>Три блюда готовятся по очереди, и «Все блюда готовы!» должно появиться <b>после</b> трёх строк «… готов». Сейчас итоговая строка выводится первой. Исправьте код: <code>forEach</code> не умеет ждать <code>async</code>-колбэки. Замените его цикл на тот, который умеет.</p>
+<pre class="code" data-run>
+const delay = (ms) =&gt; new Promise((resolve) =&gt; setTimeout(resolve, ms));
+
+async function cook(dish) {
+  await delay(10);
+  return `${dish} готов`;
+}
+
+const dishes = ["плов", "самбуса", "лагман"];
+
+async function main() {
+  dishes.forEach(async (d) =&gt; {
+    console.log(await cook(d));
+  });
+  console.log("Все блюда готовы!");
+}
+
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>плов готов
+самбуса готов
+лагман готов
+Все блюда готовы!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>forEach</code> запускает колбэки и не ждёт их результата, поэтому <code>main</code> сразу идёт дальше. Цикл <code>for…of</code> внутри <code>async</code>-функции ждёт каждый <code>await</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>for (const d of dishes) { console.log(await cook(d)); }</code></p></details>
+        </article>
+
+        <article class="task" id="t8-6">
+          <header><span class="task-num">ЗАДАЧА 8.6</span><h4>Баг: забыли await</h4><span class="level mid">средняя</span></header>
+          <p>Должно вывестись <code>Итого: 80</code> (30 + 50). Вместо этого получается текст с «Promise». Функция <code>getPrice</code> асинхронная. Исправьте <code>showTotal</code>.</p>
+<pre class="code" data-run>
+const getPrice = (id) =&gt; new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(id * 10), 20));
+
+async function showTotal() {
+  const a = getPrice(3);
+  const b = getPrice(5);
+  console.log("Итого:", a + b);
+}
+
+showTotal();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Итого: 80</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Без <code>await</code> в переменной лежит сам промис, а не число. Сложение двух промисов превращает их в строки.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Поставьте <code>await</code> перед каждым <code>getPrice(...)</code>. Или используйте <code>Promise.all</code>, если хотите получить обе цены одновременно.</p></details>
+        </article>
+
+        <article class="task" id="t8-7">
+          <header><span class="task-num">ЗАДАЧА 8.7</span><h4>Баг: таймеры в цикле</h4><span class="level easy">лёгкая</span></header>
+          <p>Три таймера должны напечатать <code>таймер 1</code>, <code>таймер 2</code>, <code>таймер 3</code>. Но они печатают одно и то же число. Исправьте объявление переменной цикла — менять нужно одно слово.</p>
+<pre class="code" data-run>
+for (var i = 1; i &lt;= 3; i++) {
+  setTimeout(() =&gt; console.log("таймер", i), i * 10);
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>таймер 1
+таймер 2
+таймер 3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Переменная <code>var</code> одна на весь цикл, и к моменту срабатывания таймеров цикл уже закончился (<code>i</code> стал 4).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>С <code>let</code> на каждом витке создаётся своя переменная <code>i</code>.</p></details>
+        </article>
+
+
+        <h3>Мутация и общие ссылки</h3>
+        <article class="task" id="t8-8">
+          <header><span class="task-num">ЗАДАЧА 8.8</span><h4>Баг: sort портит корзину</h4><span class="level mid">средняя</span></header>
+          <p>Функция <code>cheapest</code> должна только <b>найти</b> самый дешёвый товар, а порядок в корзине менять нельзя: после вызова в корзине по-прежнему <code>Чай, Нон, Плов</code>. Сейчас порядок меняется. Исправьте одну строку.</p>
+<pre class="code" data-run>
+const cart = [
+  { name: "Чай", price: 15 },
+  { name: "Нон", price: 4 },
+  { name: "Плов", price: 35 },
+];
+
+function cheapest(items) {
+  return items.sort((a, b) =&gt; a.price - b.price)[0];
+}
+
+console.log(cheapest(cart).name);
+console.log(cart.map((i) =&gt; i.name).join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Нон
+Чай, Нон, Плов</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>sort</code> меняет сам массив (мутирует), а не возвращает новый. В <code>items</code> лежит ссылка на тот же массив, что и <code>cart</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Отсортируйте копию: <code>[...items].sort(…)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t8-9">
+          <header><span class="task-num">ЗАДАЧА 8.9</span><h4>Баг: общая ссылка</h4><span class="level hard">сложная</span></header>
+          <p>Два бага с одной причиной — несколько «переменных» смотрят на один и тот же массив. (1) Сетка из трёх строк: после добавления «A1» в первую и «C1» в третью длины должны быть <code>1,0,1</code>. (2) Копия состояния <code>copy</code> не должна влиять на <code>state</code>: теги в нём должны остаться <code>js</code>. Исправьте обе части.</p>
+<pre class="code" data-run>
+const grid = new Array(3).fill([]);
+grid[0].push("A1");
+grid[2].push("C1");
+console.log(grid.map((row) =&gt; row.length).join(","));
+
+const state = { user: "Али", tags: ["js"] };
+const copy = { ...state };
+copy.tags.push("git");
+console.log(state.tags.join(","));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>1,0,1
+js</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>new Array(3).fill([])</code> кладёт в три ячейки <b>один и тот же</b> массив. Нужно создать три разных: <code>Array.from({ length: 3 }, () =&gt; [])</code> — функция вызывается для каждой ячейки заново.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Spread <code>{ ...state }</code> копирует только верхний уровень, а <code>tags</code> остаётся общим. Скопируйте и его: <code>{ ...state, tags: [...state.tags] }</code>.</p></details>
+        </article>
+
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/array-methods#sort-fn" target="_blank" rel="noopener">learn.javascript.ru — сортировка sort(fn)</a>, <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Array/sort" target="_blank" rel="noopener">MDN — Array.prototype.sort</a>.</p>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="ai-block">
+      <h2 data-toc="ИИ: коммиты и баги"><span class="num">09</span> ИИ: коммиты, описание PR и вопрос про баг</h2>
+
+      <div class="callout ai">
+        <b>ИИ-блок урока</b>
+        <p>ИИ хорошо делает две вещи: формулирует коммит по готовому diff и подсказывает гипотезы про баг. Но ответственность на вас: <b>diff вы прочитали сами</b>, а гипотезы <b>проверяете запуском</b>, а не верите на слово. Правила курса: сначала 15 минут пробуйте сами; не вставляйте код, который не можете объяснить построчно.</p>
+      </div>
+
+      <h3>1. Коммит и описание PR по diff</h3>
+      <p>Скопируйте вывод <code>git diff --staged</code> и попросите ИИ сформулировать сообщение. Без контекста он напишет «update files»:</p>
+      <div class="prompt bad-prompt">придумай коммит</div>
+      <div class="prompt good-prompt">Вот diff: [вставьте вывод git diff --staged]. Напиши коммит-сообщение в стиле Conventional Commits (тип: тема, до 50 символов, английский, повелительное наклонение, без точки) и краткое описание PR: что сделано и зачем. Формат ответа: сначала одна строка коммита, потом PR из трёх разделов «Что сделано», «Зачем», «Как проверить». Не придумывай то, чего нет в diff.</div>
+      <p>Что проверить в ответе:</p>
+      <ul>
+        <li>Тип соответствует правде: <code>feat</code> или <code>fix</code>, а не «на всякий случай».</li>
+        <li>В тексте нет того, чего нет в diff (ИИ любит добавлять «улучшил производительность», когда вы её не трогали).</li>
+        <li>Сообщение конкретное: пропустите его через проверки из задач 5.3 и 9.2.</li>
+        <li>Если в diff две разные мысли, лучше разбить на два коммита, а не просить ИИ «объединить красиво».</li>
+      </ul>
+
+      <h3>2. Баг: вместо «не работает» — минимальный воспроизводимый пример</h3>
+      <div class="prompt bad-prompt">у меня не работает корзина, исправь</div>
+      <div class="prompt good-prompt">Баг: ожидаю [что], получаю [что]. Минимальный код: [код]. Ошибка в консоли: [текст]. Дай 3 гипотезы причины по вероятности.</div>
+
+      <p><b>Минимальный воспроизводимый пример</b> (minimal reproducible example, MRE) — самый короткий код, в котором баг всё ещё виден. Как его получить:</p>
+      <ol class="steps">
+        <li><b>Скопируйте</b> проблемное место в отдельный файл или в консоль на этой странице.</li>
+        <li><b>Удаляйте</b> всё лишнее по кусочку: стили, соседние функции, лишние поля. После каждого шага проверяйте, что баг на месте.</li>
+        <li><b>Подставьте простые данные</b> вместо запросов к серверу: массив из 2–3 элементов.</li>
+        <li><b>Запишите</b> ожидаемый и фактический результат, а также текст ошибки <b>дословно</b>.</li>
+      </ol>
+      <p>Бонус: пока вы упрощали код, вы часто сами находите баг. Это нормально и очень ценно. Метод называется «утёнок»: объяснить проблему вслух настолько ясно, что ответ находится сам.</p>
+
+      <div class="callout warn">
+        <b>Как не надо работать с гипотезами</b>
+        <p>ИИ дал три гипотезы. Проверяйте <b>по очереди</b>, от самой вероятной, и после каждой — запуск. Если вставить сразу три «исправления», вы не узнаете, какое сработало, и не научитесь замечать этот баг в следующий раз. Также ИИ иногда уверенно советует несуществующие методы: незнакомое название проверяйте в MDN.</p>
+      </div>
+
+      <p>В шпаргалку промптов добавьте две строки этого урока — «Коммиты и pull request» и «Баг вместо „не работает“». Потренируем оба навыка кодом.</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t9-1">
+          <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Промпт с минимальным примером</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>bugPrompt(bug)</code>: она собирает из описания бага готовый промпт для ИИ по формату курса — четыре строки (код идёт со второй строки). Если ошибки в консоли нет (<code>bug.error</code> не задана), в строке ошибки пишем <code>нет</code>.</p>
+<pre class="code" data-run>
+function bugPrompt(bug) {
+  // верните строку из строк:
+  // Баг: ожидаю «…», получаю «…».
+  // Минимальный код:
+  // &lt;код&gt;
+  // Ошибка в консоли: …
+  // Дай 3 гипотезы причины по вероятности.
+}
+
+console.log(bugPrompt({
+  expected: "45",
+  actual: "NaN",
+  code: "const prices = [20, 25];\nlet sum = 0;\nfor (let i = 0; i &lt;= prices.length; i++) sum += prices[i];\nconsole.log(sum);",
+}));
+console.log("---");
+console.log(bugPrompt({ expected: "Привет, Али", actual: "Привет, undefined", code: "greet({ nam: 'Али' })", error: "ошибки нет" }));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Баг: ожидаю «45», получаю «NaN».
+Минимальный код:
+const prices = [20, 25];
+let sum = 0;
+for (let i = 0; i &lt;= prices.length; i++) sum += prices[i];
+console.log(sum);
+Ошибка в консоли: нет
+Дай 3 гипотезы причины по вероятности.
+---
+Баг: ожидаю «Привет, Али», получаю «Привет, undefined».
+Минимальный код:
+greet({ nam: 'Али' })
+Ошибка в консоли: ошибки нет
+Дай 3 гипотезы причины по вероятности.</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Соберите массив из пяти строк (вторая — «Минимальный код:», третья — сам код) и объедините через <code>join("\n")</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для необязательного поля подойдёт оператор <code>??</code>: <code>bug.error ?? "нет"</code> вернёт «нет», если ошибка не задана.</p></details>
+        </article>
+
+        <article class="task" id="t9-2">
+          <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Расплывчатые сообщения от ИИ</h4><span class="level easy">лёгкая</span></header>
+          <p>ИИ иногда предлагает коммиты вроде «update» или «fix: bug». Допишите <code>isVague(msg)</code>: сообщение расплывчато, если после типа и двоеточия (если они есть) в теме меньше двух слов <b>или</b> есть слово из списка <code>generic</code>.</p>
+<pre class="code" data-run>
+const generic = ["stuff", "things", "changes", "bug", "bugs", "code", "files"];
+
+function isVague(msg) {
+  // 1) уберите тип: msg.replace(/^\w+(\([^)]*\))?:\s*/, "")
+  // 2) посчитайте слова и проверьте generic
+  return false;
+}
+
+const ai = [
+  "feat: add order filters",
+  "update",
+  "fix: bug",
+  "chore: bump deps",
+  "fix: update stuff",
+  "docs: describe setup steps",
+];
+ai.forEach((m) =&gt; console.log(`${m} -&gt; ${isVague(m) ? "vague" : "ok"}`));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>feat: add order filters -&gt; ok
+update -&gt; vague
+fix: bug -&gt; vague
+chore: bump deps -&gt; ok
+fix: update stuff -&gt; vague
+docs: describe setup steps -&gt; ok</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Тему получаем так: <code>msg.replace(/^\w+(\([^)]*\))?:\s*/, "")</code>. Для «update» (без двоеточия) эта замена ничего не изменит — и это правильно.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const words = subject.split(/\s+/).filter(Boolean); return words.length &lt; 2 || words.some((w) =&gt; generic.includes(w));</code></p></details>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ============ 10 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">10</span> Практика на уроке: работа в парах</h2>
+
+      <p>Цель: пройти полный цикл командной работы — <b>ветка → PR → ревью → merge</b> — и найти три подсаженных бага в проекте напарника. Работаем в парах: студент А и студент Б. Ориентир по времени на 90 минут: подготовка 10, цикл с PR 35, конфликт 10, охота за багами 25, разбор 10.</p>
+
+      <h3>Часть 1. Репозиторий и роли (10 минут)</h3>
+      <ol class="steps">
+        <li><b>Студент А</b> создаёт на GitHub репозиторий <code>pair-shop</code> (с README) и в настройках <b>Settings → Collaborators</b> приглашает Б. Б принимает приглашение в почте.</li>
+        <li>Оба клонируют репозиторий:
+<pre class="code" data-title="Терминал">
+git clone https://github.com/ЛОГИН_А/pair-shop.git
+cd pair-shop
+</pre>
+        </li>
+        <li>Договоритесь, что вы делаете: А — функцию <code>calcTotal</code> и <code>discount</code>, Б — отображение корзины. Каждый работает в <b>своём файле</b>.</li>
+      </ol>
+
+      <h3>Часть 2. Ветка, коммиты, PR (35 минут)</h3>
+      <ol class="steps">
+        <li>Каждый создаёт свою ветку: А — <code>feature/calc-total</code>, Б — <code>feature/cart-view</code>.</li>
+        <li>Сделайте <b>минимум три коммита</b> в ветке, каждый — одна мысль, сообщения по Conventional Commits:
+<pre class="code" data-title="Терминал">
+git add cart.js
+git commit -m "feat: add calcTotal"
+git add cart.js
+git commit -m "feat: add 10 percent discount"
+git add README.md
+git commit -m "docs: describe cart module"
+</pre>
+        </li>
+        <li>Отправьте ветку и откройте pull request на GitHub. В описании — три раздела: «Что сделано», «Зачем», «Как проверить». Ревьюер — напарник.
+<pre class="code" data-title="Терминал">
+git push -u origin feature/calc-total
+</pre>
+        </li>
+        <li><b>Ревью:</b> прочитайте PR напарника по чек-листу из раздела 3. Оставьте <b>минимум два</b> комментария к конкретным строкам: один с вопросом, один с предложением. Запустите код ветки.</li>
+        <li>Автор отвечает на комментарии и правит код <b>новыми коммитами</b> в ту же ветку. Ревьюер нажимает <b>Approve</b>.</li>
+        <li>Автор нажимает <b>Merge pull request</b>. Затем оба обновляют main:
+<pre class="code" data-title="Терминал">
+git switch main
+git pull
+git branch -d feature/calc-total
+</pre>
+        </li>
+      </ol>
+
+      <h3>Часть 3. Конфликт нарочно (10 минут)</h3>
+      <ol class="steps">
+        <li>Оба создают новые ветки от свежего <code>main</code> и меняют <b>одну и ту же строку</b> в README (например, заголовок) — по-разному.</li>
+        <li>А вливает свой PR первым. Б делает <code>git pull origin main</code> в своей ветке — появляется конфликт.</li>
+        <li>Б решает конфликт вместе с А (договариваются об итоговом тексте), делает <code>git add</code>, <code>git commit</code>, <code>git push</code>. PR Б обновился и больше не конфликтует.</li>
+      </ol>
+
+      <h3>Часть 4. Три подсаженных бага (25 минут)</h3>
+      <p>Каждый тайком вносит в свой проект <b>три бага разных типов</b> (из карты в разделе 8) и пушит в новую ветку <code>bugs/названия</code>. Напарник чинит их, пользуясь методом из раздела 7: воспроизвести, прочитать ошибку, поставить breakpoint или лог, сделать исправление отдельным коммитом <code>fix: …</code> с причиной. Тренировочная версия такого проекта — задача ниже: прочитайте её как ревью чужого кода.</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+
+        <article class="task" id="t10-1">
+          <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Три бага в чужом проекте</h4><span class="level hard">сложная</span></header>
+          <p>Напарник написал корзину магазина Илмхоны и просит о ревью. Скидка 10% действует от 500 сомони <b>включительно</b>, доставка стоит 15 сомони и добавляется <b>только к копии</b> корзины. В коде спрятаны <b>три</b> бага разных типов. Найдите их, исправьте и в комментарии над каждой правкой напишите причину одной строкой. Ожидаемые числа ниже — это правильные ответы.</p>
+<pre class="code" data-run>
+const products = [
+  { id: 1, name: "Курс Frontend", price: 450 },
+  { id: 2, name: "Футболка Илмхоны", price: 80 },
+  { id: 3, name: "Блокнот", price: 20 },
+];
+
+function calcTotal(items) {
+  let sum = 0;
+  for (let i = 1; i &lt; items.length; i++) {
+    sum += items[i].price;
+  }
+  return sum;
+}
+
+function priceWithDiscount(items) {
+  const total = calcTotal(items);
+  return total &gt; 500 ? total * 0.9 : total;
+}
+
+function withDelivery(items) {
+  items.push({ id: 0, name: "Доставка", price: 15 });
+  return items;
+}
+
+const cart = [products[0], products[1], products[2]];
+const cart500 = [products[0], { id: 9, name: "Стикеры", price: 50 }];
+
+console.log(calcTotal(cart));
+console.log(priceWithDiscount(cart));
+console.log(priceWithDiscount(cart500));
+console.log(calcTotal(withDelivery(cart)));
+console.log(cart.length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>550
+495
+450
+565
+3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три бага: (1) цикл начинается с <code>i = 1</code> и пропускает первый товар; (2) в <code>priceWithDiscount</code> стоит <code>&gt;</code> вместо <code>&gt;=</code> — ровно 500 не получает скидку; (3) <code>push</code> меняет исходную корзину.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Проверьте себя числами: сумма корзины 550, со скидкой 495, корзина на ровно 500 — 450, с доставкой 565, после этого в исходной корзине по-прежнему 3 товара.</p></details>
+        </article>
+
+      </div>
+
+      <div class="callout tip">
+        <b>Чек-лист пары на выходе</b>
+        <p>В репозитории: три и более коммита с осмысленными сообщениями, один влитый PR с описанием и ревью-комментариями, один разрешённый конфликт, три <code>fix:</code>-коммита с описанием причины. Если чего-то нет, доделайте дома: это входит в домашнее задание.</p>
+      </div>
+    </section>
+
+    <!-- ============ HOMEWORK ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">11</span> Домашнее задание</h2>
+
+      <p>Оформите репозиторий так, чтобы его не стыдно было показать работодателю, и найдите три бага с разбором причины. Можно взять проект одного из прошлых уроков (например, мини-проект №1) или проект из пары.</p>
+
+      <h3>Часть 1. Репозиторий</h3>
+      <ol>
+        <li>Репозиторий на GitHub публичный, у него осмысленное имя и описание.</li>
+        <li>В истории <b>минимум 10 осмысленных коммитов</b> по Conventional Commits: каждый — одна мысль, ни одного «update», «fix», «final». Проверьте историю командой <code>git log --oneline</code>.</li>
+        <li>Есть <b>минимум одна ветка</b> кроме <code>main</code> и влитый pull request с описанием (что сделано, зачем, как проверить). Если работаете в одиночку, откройте PR из своей ветки в <code>main</code> и сами посмотрите diff как ревьюер.</li>
+        <li>В корне есть <code>.gitignore</code> (минимум: <code>node_modules/</code>, <code>.env</code>, <code>.DS_Store</code>, <code>*.log</code>) и в репозитории нет мусорных файлов.</li>
+        <li>В корне есть <code>README.md</code> по шаблону ниже.</li>
+      </ol>
+
+<pre class="code" data-title="README.md — шаблон">
+# Название проекта
+
+Одно предложение: что это и для кого.
+
+## Что умеет
+- функция 1
+- функция 2
+
+## Как запустить
+1. Склонируйте репозиторий
+2. Откройте index.html в браузере (или npm install &amp;&amp; npm run dev)
+
+## Скриншот
+![скриншот](screenshot.png)
+
+## Что я использовал
+HTML, CSS, JavaScript, Git/GitHub
+
+## Автор
+Имя, группа Илмхоны
+</pre>
+
+      <h3>Часть 2. Три бага</h3>
+      <ol>
+        <li>Найдите в своём или в чужом проекте <b>три реальных бага разных типов</b>: например, off-by-one, неверное сравнение, мутация, ошибка порядка асинхронного кода. Если не нашлось — внесите их в копию проекта сами и попросите знакомого найти.</li>
+        <li>Для каждого бага сделайте <b>отдельный коммит</b> <code>fix: …</code> с исправлением.</li>
+        <li>Создайте в репозитории файл <code>BUGS.md</code> и опишите каждый баг по шаблону ниже.</li>
+        <li>Один из трёх разборов сопроводите промптом к ИИ в формате «минимальный воспроизводимый пример» и вставьте в файл ответ ИИ вместе со своей оценкой: что подтвердилось запуском, а что оказалось неверным.</li>
+      </ol>
+
+<pre class="code" data-title="BUGS.md — шаблон">
+## Баг 1: итоговая сумма корзины меньше правильной
+
+- **Симптом:** ожидал 550, получил 530.
+- **Как воспроизвести:** добавить три товара и посмотреть сумму.
+- **Причина:** цикл начинался с i = 1 и пропускал первый товар (off-by-one).
+- **Как нашёл:** поставил breakpoint в calcTotal, увидел, что цикл идёт с индекса 1.
+- **Исправление:** коммит `a1b2c3d` — `fix: count first item in total`.
+- **Как не допустить снова:** проверять границы цикла на массиве из 1 и 0 элементов.
+</pre>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Ссылку на публичный репозиторий GitHub.</li>
+        <li>Ссылку на влитый pull request.</li>
+        <li>В репозитории: <code>README.md</code>, <code>.gitignore</code>, <code>BUGS.md</code>.</li>
+      </ul>
+
+      <h3>Как оцениваем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>10+ осмысленных коммитов по формату, нет «update» и «fix» без пояснения</td><td>3</td></tr>
+            <tr><td>Ветка, pull request с описанием, влит в <code>main</code></td><td>2</td></tr>
+            <tr><td><code>.gitignore</code> и <code>README.md</code> оформлены по шаблону, нет мусорных файлов</td><td>2</td></tr>
+            <tr><td>Три бага разных типов с отдельными <code>fix:</code>-коммитами</td><td>2</td></tr>
+            <tr><td>В <code>BUGS.md</code> понятны причина и как нашли; один разбор с ИИ и проверкой запуском</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Перед сдачей</b>
+        <p>Откройте репозиторий в приватном окне браузера: всё ли видно без входа? Проверьте <code>git log --oneline</code>: прочитайте сообщения как незнакомец. Если ИИ помогал с кодом или разбором, вы должны уметь объяснить каждую строку на защите.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Три зоны:</b> рабочая папка → индекс (<code>git add</code>) → репозиторий (<code>git commit</code>); GitHub — копия в сети (<code>git push</code> / <code>git pull</code>). Перед <code>add</code> всегда <code>git status</code>.</li>
+        <li><b>Ветка</b> — закладка на коммит. <code>git switch -c feature/имя</code>, работа, <code>push</code>. В <code>main</code> напрямую не пишем.</li>
+        <li><b>Цикл в паре:</b> ветка → коммиты → push → pull request → ревью (комментарии, approve) → merge → удалить ветку.</li>
+        <li><b>Конфликт:</b> маркеры <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> / <code>=======</code> / <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>. Выбрать итог, удалить маркеры, запустить, <code>add</code> + <code>commit</code>. Запутались — <code>git merge --abort</code>.</li>
+        <li><b>.gitignore:</b> <code>node_modules/</code>, <code>dist/</code>, <code>.env</code>, <code>*.log</code>, <code>.DS_Store</code>. Секрет, попавший в историю, считается утёкшим: меняем ключ.</li>
+        <li><b>Коммит:</b> <code>тип(область): что сделано</code> — <code>feat</code>, <code>fix</code>, <code>docs</code>, <code>style</code>, <code>refactor</code>, <code>test</code>, <code>chore</code>. До 50 символов, строчные, без точки, одна мысль.</li>
+        <li><b>try / catch / finally:</b> <code>catch</code> получает ошибку, <code>finally</code> выполняется всегда. <code>throw new Error("текст")</code> бросает свою ошибку. Пустой <code>catch</code> — плохо; чужие ошибки пробрасываем дальше.</li>
+        <li><b>Типы ошибок:</b> <code>TypeError</code> (не то значение, <code>null.x</code>), <code>ReferenceError</code> (нет переменной), <code>SyntaxError</code> (плохой синтаксис / JSON), <code>RangeError</code> (вне диапазона).</li>
+        <li><b>Стек:</b> читаем сверху вниз: где упало, кто вызвал. <b>DevTools:</b> Console (<code>log</code>, <code>table</code>, <code>trace</code>), Sources (breakpoint по номеру строки, F10 / F11 / F8, Watch, Scope), <code>debugger;</code>, Network (статус, ответ, время).</li>
+        <li><b>Классические баги:</b> off-by-one (<code>&lt;</code> / <code>&lt;=</code>, индексы с 0), сравнение (<code>===</code>, строки против чисел, <code>sort(fn)</code>), async (<code>await</code>, <code>for…of</code> вместо <code>forEach</code>), мутация (<code>[...arr]</code>, <code>Array.from</code>), <code>var</code> в цикле.</li>
+        <li><b>Метод отладки:</b> воспроизвести → сузить → прочитать ошибку → гипотеза → одна проверка → исправить и перепроверить.</li>
+        <li><b>С ИИ:</b> коммит и PR — по вашему diff, текст проверяем. Баг — минимальный пример + ожидание/факт + дословная ошибка + «3 гипотезы»; проверяем по очереди запуском.</li>
+      </ul>
+    </section>
