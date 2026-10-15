@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useProgress } from '@/lib/progress';
+import { useT } from './I18nProvider';
 
 export type TocItem = { id: string; label: string; taskIds: string[] };
 
 export default function Toc({ items, lessonSlug }: { items: TocItem[]; lessonSlug: string }) {
   const progress = useProgress();
+  const { t } = useT();
   const [active, setActive] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,7 +27,7 @@ export default function Toc({ items, lessonSlug }: { items: TocItem[]; lessonSlu
 
   return (
     <>
-      <p>Содержание</p>
+      <p>{t.toc.title}</p>
       <ol>
         {items.map((it) => {
           const n = it.taskIds.filter((t) => progress.solved[`${lessonSlug}:${t}`]).length;
