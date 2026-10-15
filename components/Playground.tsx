@@ -4,22 +4,12 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import type { Lang } from '@/lib/highlight';
 import { startRun, type Job, type OutLine, type RunSpec } from '@/lib/runner';
-import { CODEBLOCK_STRINGS } from './CodeBlock';
 import CodeEditor, { type CodeEditorHandle } from './CodeEditor';
+import { useT } from './I18nProvider';
 import { TaskContext } from './TaskContext';
 
 export type PlaygroundFile = { name: string; lang: Lang; code: string };
 
-export const PLAYGROUND_STRINGS = {
-  hintDom: 'HTML + CSS + JS',
-  hintReact: 'React (JSX)',
-  preview: 'Предпросмотр',
-  previewAria: 'Результат выполнения кода',
-  hide: 'Свернуть',
-  show: 'Показать',
-  empty: 'Нажмите «Запустить», чтобы увидеть результат.',
-  tabs: 'Файлы',
-};
 
 const MIN_H = 80;
 const MAX_H = 420;
@@ -28,6 +18,8 @@ const BLANK = '<!doctype html><title></title>';
 type Props = { mode: 'dom' | 'react'; title?: string; files: PlaygroundFile[] };
 
 export default function Playground({ mode, title, files }: Props) {
+  const { t } = useT();
+  const S = t.playground;
   const task = useContext(TaskContext);
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(files.map((f) => [f.name, f.code])));
   const [active, setActive] = useState(files[0].name);
@@ -61,6 +53,7 @@ export default function Playground({ mode, title, files }: Props) {
         ? { mode: 'react', jsx: get('App.jsx'), css: get('style.css') }
         : { mode: 'dom', html: get('index.html'), css: get('style.css'), js: get('script.js') };
     const j = startRun(spec, {
+      strings: { runner: t.runner, explain: t.explain },
       frame: frame.current,
       onLines: (lines) => my === seq.current && setOut(lines),
       onHeight: (h) => my === seq.current && setHeight(Math.min(MAX_H, Math.max(MIN_H, h))),
@@ -92,18 +85,18 @@ export default function Playground({ mode, title, files }: Props) {
           <i />
         </span>
         <span className="hint-edit">
-          {title || (mode === 'react' ? PLAYGROUND_STRINGS.hintReact : PLAYGROUND_STRINGS.hintDom)}
+          {title || (mode === 'react' ? S.hintReact : S.hintDom)}
           <span className="kbd-hint"> · Ctrl + Enter</span>
         </span>
-        <button type="button" className="reset" title={CODEBLOCK_STRINGS.resetTitle} onClick={reset}>
-          {CODEBLOCK_STRINGS.reset}
+        <button type="button" className="reset" title={t.codeBlock.resetTitle} onClick={reset}>
+          {t.codeBlock.reset}
         </button>
         <button type="button" className={'run' + (running ? ' busy' : '')} aria-busy={running} onClick={doRun}>
-          {running ? CODEBLOCK_STRINGS.running : CODEBLOCK_STRINGS.run}
+          {running ? t.codeBlock.running : t.codeBlock.run}
         </button>
       </div>
 
-      <div className="pg-tabs" role="tablist" aria-label={PLAYGROUND_STRINGS.tabs}>
+      <div className="pg-tabs" role="tablist" aria-label={S.tabs}>
         {files.map((f) => (
           <button
             key={f.name}
@@ -135,18 +128,18 @@ export default function Playground({ mode, title, files }: Props) {
 
       <div className="pg-preview">
         <div className="pg-bar">
-          <span>{PLAYGROUND_STRINGS.preview}</span>
+          <span>{S.preview}</span>
           <button type="button" className="pg-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-            {open ? PLAYGROUND_STRINGS.hide : PLAYGROUND_STRINGS.show}
+            {open ? S.hide : S.show}
           </button>
         </div>
-        {!ran && open && <div className="pg-empty">{PLAYGROUND_STRINGS.empty}</div>}
+        {!ran && open && <div className="pg-empty">{S.empty}</div>}
         <div className="pg-stage" hidden={!ran || !open}>
           <iframe
             ref={frame}
             className="pg-frame"
             sandbox="allow-scripts"
-            title={PLAYGROUND_STRINGS.previewAria}
+            title={S.previewAria}
             style={{ height }}
           />
         </div>

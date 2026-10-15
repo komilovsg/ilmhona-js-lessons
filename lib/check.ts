@@ -1,12 +1,8 @@
-// Auto-check: compare console output with the task's expected text. Pure, no imports (runnable by node).
+// Auto-check: compare console output with the task's expected text. Pure, no runtime imports (runnable by node).
+import type { Messages } from '../messages/ru';
 
-export const CHECK_STRINGS = {
-  ok: '✓ Верно!',
-  okAgain: '✓ Верно',
-  lineDiff: (n: number, exp: string, got: string) => `Почти! Строка ${n}: ожидалось «${exp}», получено «${got}»`,
-  missing: (exp: number, got: number) => `Не хватает строк: ожидалось ${exp}, получено ${got}`,
-  extra: (exp: number, got: number) => `Лишние строки: ожидалось ${exp}, получено ${got}`,
-};
+/** Dictionary section with the diff messages (`t.check`). */
+export type CheckStrings = Messages['check'];
 
 type Line = { text: string; cls?: string };
 
@@ -45,8 +41,8 @@ export function matches(expected: string[], actual: string[], hadError: boolean)
 
 const clip = (s: string, max = 48) => (s.length > max ? s.slice(0, max - 1) + '…' : s);
 
-export function diffMessage(d: Diff): string {
-  if (d.ok) return CHECK_STRINGS.okAgain;
-  if (d.kind === 'line') return CHECK_STRINGS.lineDiff(d.line, clip(d.exp), clip(d.got));
-  return d.kind === 'missing' ? CHECK_STRINGS.missing(d.exp, d.got) : CHECK_STRINGS.extra(d.exp, d.got);
+export function diffMessage(d: Diff, s: CheckStrings): string {
+  if (d.ok) return s.okAgain;
+  if (d.kind === 'line') return s.lineDiff(d.line, clip(d.exp), clip(d.got));
+  return d.kind === 'missing' ? s.missing(d.exp, d.got) : s.extra(d.exp, d.got);
 }

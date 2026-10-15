@@ -2,19 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { CHECK_STRINGS, diffLines, diffMessage, normalizeOutput, normalizeText } from '@/lib/check';
+import { diffLines, diffMessage, normalizeOutput, normalizeText } from '@/lib/check';
 import { confetti, reducedMotion } from '@/lib/confetti';
 import { calcXp, hintPenaltyPct } from '@/lib/game';
 import { getSnapshot, markSolved, noteHint, unmark, useProgress } from '@/lib/progress';
+import { useT } from './I18nProvider';
 import { TaskContext, type TaskContextValue } from './TaskContext';
 
-const STRINGS = {
-  solved: '✓ Решено',
-  markAsSolved: '○ Отметить как решённую',
-  manualTitle: (xp: number) => `Без автопроверки: +${xp} XP (50% от полной награды)`,
-  xpSuffix: (xp: number) => `+${xp} XP`,
-  hintCost: (pct: number) => `−${pct}% XP`,
-};
 
 type Props = { id: string; lessonSlug: string; level: TaskContextValue['level']; children: ReactNode };
 type Feedback = { kind: 'ok' | 'again' | 'diff'; text: string };
@@ -23,6 +17,7 @@ type Chip = { xp: number; top: number; left: number };
 const CONFETTI = { easy: 28, mid: 50, hard: 90 } as const;
 
 export default function Task({ id, lessonSlug, level, children }: Props) {
+  const { t } = useT();
   const ref = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const lastWrap = useRef<Element | null>(null);
@@ -73,12 +68,12 @@ export default function Task({ id, lessonSlug, level, children }: Props) {
       if (!expected.length) return;
       if (r.hadError) return setFb(null);
       const d = diffLines(expected, normalizeOutput(r.lines));
-      if (!d.ok) return setFb({ kind: 'diff', text: diffMessage(d) });
-      if (getSnapshot().solved[key]) return setFb({ kind: 'again', text: CHECK_STRINGS.okAgain });
+      if (!d.ok) return setFb({ kind: 'diff', text: diffMessage(d, t.check) });
+      if (getSnapshot().solved[key]) return setFb({ kind: 'again', text: t.check.okAgain });
       const xp = award(true, el.querySelector('.code-wrap:not(details *) .run'));
-      setFb({ kind: 'ok', text: `${CHECK_STRINGS.ok} ${STRINGS.xpSuffix(xp)}` });
+      setFb({ kind: 'ok', text: `${t.check.ok} ${t.task.xpSuffix(xp)}` });
     },
-    [award, key],
+    [award, key, t],
   );
 
   const ctx = useMemo<TaskContextValue>(
@@ -111,10 +106,10 @@ export default function Task({ id, lessonSlug, level, children }: Props) {
       const pct = pos < 0 ? 0 : hintPenaltyPct(pos + 1) - hintPenaltyPct(pos);
       const sum = d.querySelector('summary');
       if (!sum) return;
-      if (d.open && pct > 0 && !s.solved[key]) sum.dataset.cost = STRINGS.hintCost(pct);
+      if (d.open && pct > 0 && !s.solved[key]) sum.dataset.cost = t.task.hintCost(pct);
       else delete sum.dataset.cost;
     });
-  }, [key]);
+  }, [key, t]);
 
   useEffect(syncCosts, [syncCosts, done, hintCount]);
 
@@ -155,7 +150,7 @@ export default function Task({ id, lessonSlug, level, children }: Props) {
           ref={toggleRef}
           type="button"
           className="done-toggle"
-          title={done ? undefined : STRINGS.manualTitle(manualXp)}
+          title={done ? undefined : t.task.manualTitle(manualXp)}
           onClick={() => {
             if (done) {
               unmark(lessonSlug, id);
@@ -165,11 +160,11 @@ export default function Task({ id, lessonSlug, level, children }: Props) {
             }
           }}
         >
-          {done ? STRINGS.solved + (rec.xp ? ` · ${STRINGS.xpSuffix(rec.xp)}` : '') : STRINGS.markAsSolved}
+          {done ? t.task.solved + (rec.xp ? ` · ${t.task.xpSuffix(rec.xp)}` : '') : t.task.markAsSolved}
         </button>
         {chip && (
           <span className="xp-chip" style={{ top: chip.top, left: chip.left }} aria-hidden="true">
-            {STRINGS.xpSuffix(chip.xp)}
+            {t.task.xpSuffix(chip.xp)}
           </span>
         )}
         {host &&

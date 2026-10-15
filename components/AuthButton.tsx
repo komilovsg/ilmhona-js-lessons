@@ -7,36 +7,6 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import type { SyncStatus } from '@/lib/sync';
 
-const T = {
-  signIn: 'Войти',
-  dialogTitle: 'Вход в Ilmhona',
-  dialogLead: 'Войдите, чтобы прогресс сохранялся на всех устройствах и попадал в рейтинг.',
-  google: 'Войти через Google',
-  or: 'или',
-  emailLabel: 'Email',
-  emailPlaceholder: 'you@example.com',
-  sendLink: 'Отправить ссылку',
-  sending: 'Отправляем…',
-  linkSent: 'Ссылка отправлена. Откройте письмо в этом же браузере.',
-  close: 'Закрыть',
-  account: 'Аккаунт',
-  rename: 'Изменить имя',
-  save: 'Сохранить',
-  cancel: 'Отмена',
-  nameLabel: 'Имя в рейтинге',
-  nameInvalid: 'Имя: от 2 до 32 символов.',
-  leaderboard: 'Рейтинг',
-  signOut: 'Выйти',
-  errGeneric: 'Не получилось. Попробуйте ещё раз.',
-  errCallback: 'Не удалось войти: ссылка устарела или уже использована.',
-  errRate: 'Слишком много попыток. Подождите минуту.',
-  sync: {
-    idle: '',
-    syncing: 'Синхронизация…',
-    synced: 'Прогресс сохранён в облаке',
-    offline: 'Нет связи — сохраним позже',
-  } satisfies Record<SyncStatus, string>,
-};
 
 type Profile = { display_name: string; avatar_url: string | null };
 type Libs = { sb: SupabaseClient; sync: typeof import('@/lib/sync') };
@@ -58,6 +28,7 @@ export default function AuthButton() {
 }
 
 function AuthButtonInner() {
+  const T = useT().t.auth;
   const [libs, setLibs] = useState<Libs | null>(null);
   const [user, setUser] = useState<User | null | undefined>(undefined); // undefined = loading
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -112,6 +83,7 @@ function AuthButtonInner() {
       unsubAuth?.();
       unsubSync?.();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- subscribe once; the message is read only at mount
   }, []);
 
   // The dialog only exists once the auth state is known (signed out).
@@ -156,6 +128,7 @@ function SignInDialog({
   sb: SupabaseClient | null;
   initialError: string | null;
 }) {
+  const T = useT().t.auth;
   const titleId = useId();
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
@@ -248,7 +221,8 @@ function UserMenu({
   setProfile: (p: Profile) => void;
   syncStatus: SyncStatus;
 }) {
-  const { locale } = useT();
+  const { locale, t } = useT();
+  const T = t.auth;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');

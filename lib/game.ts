@@ -1,30 +1,20 @@
 // Game rules: XP, levels, streaks, achievements. Pure functions over ProgressState.
+import type { Messages } from '../messages/ru';
 import type { ProgressState } from './progress';
 
-export const GAME_STRINGS = {
-  ranks: [
-    'Стажёр',
-    'Джуниор',
-    'Уверенный джуниор',
-    'Мидл',
-    'Крепкий мидл',
-    'Сеньор',
-    'Тимлид',
-    'Архитектор',
-    'Гуру JS',
-    'Легенда Ilmhona',
-  ],
-  achievements: {
-    first: { emoji: '🌱', title: 'Первая задача', desc: 'Решите свою первую задачу', how: 'Решите любую задачу' },
-    lesson: { emoji: '🎓', title: 'Урок пройден', desc: 'Все задачи урока решены', how: 'Решите все задачи одного урока' },
-    nohints: { emoji: '🧠', title: 'Своей головой', desc: '5 задач без подсказок', how: 'Решите 5 задач, не открывая подсказки' },
-    hard3: { emoji: '💪', title: 'Крепкий орешек', desc: '3 сложные задачи', how: 'Решите 3 сложные задачи' },
-    streak3: { emoji: '🔥', title: 'Серия 3 дня', desc: '3 дня подряд с решённой задачей', how: 'Решайте хотя бы по задаче 3 дня подряд' },
-    streak7: { emoji: '⚡', title: 'Серия 7 дней', desc: 'Неделя практики без пропусков', how: 'Решайте хотя бы по задаче 7 дней подряд' },
-    owl: { emoji: '🦉', title: 'Ночная сова', desc: 'Задача решена между 00:00 и 05:00', how: 'Решите задачу ночью (00:00–05:00)' },
-    sprint: { emoji: '🏃', title: 'Спринт', desc: '3 задачи за 10 минут', how: 'Решите 3 задачи в пределах 10 минут' },
-  },
-};
+/** Dictionary section with rank names and achievement texts (`t.game`). */
+export type GameStrings = Messages['game'];
+
+const EMOJI = {
+  first: '🌱',
+  lesson: '🎓',
+  nohints: '🧠',
+  hard3: '💪',
+  streak3: '🔥',
+  streak7: '⚡',
+  owl: '🦉',
+  sprint: '🏃',
+} as const;
 
 export type Lvl = 'easy' | 'mid' | 'hard' | null;
 export const BASE_XP = { easy: 10, mid: 20, hard: 40 } as const;
@@ -50,13 +40,13 @@ export function totalXp(s: ProgressState): number {
 
 export type LevelInfo = { level: number; rank: string; xp: number; floor: number; next: number | null; pct: number };
 
-export function levelInfo(xp: number): LevelInfo {
+export function levelInfo(xp: number, ranks: readonly string[]): LevelInfo {
   let i = 0;
   while (i + 1 < LEVEL_THRESHOLDS.length && xp >= LEVEL_THRESHOLDS[i + 1]) i++;
   const floor = LEVEL_THRESHOLDS[i];
   const next = LEVEL_THRESHOLDS[i + 1] ?? null;
   const pct = next === null ? 100 : Math.round(((xp - floor) / (next - floor)) * 100);
-  return { level: i + 1, rank: GAME_STRINGS.ranks[i], xp, floor, next, pct };
+  return { level: i + 1, rank: ranks[i], xp, floor, next, pct };
 }
 
 // ---- streaks (local calendar days) ----
@@ -101,7 +91,7 @@ export function longestStreak(s: ProgressState): number {
 export type Meta = Record<string, Record<string, 'e' | 'm' | 'h'>>;
 export type Achievement = { id: string; emoji: string; title: string; desc: string; how: string; unlocked: boolean };
 
-export function achievements(s: ProgressState, meta: Meta): Achievement[] {
+export function achievements(s: ProgressState, meta: Meta, strings: GameStrings): Achievement[] {
   const entries = Object.entries(s.solved);
   const times = entries.map(([, r]) => new Date(r.solvedAt).getTime()).filter((t) => !isNaN(t)).sort((a, b) => a - b);
   const levelOf = (key: string) => {
@@ -113,7 +103,7 @@ export function achievements(s: ProgressState, meta: Meta): Achievement[] {
     return ids.length > 0 && ids.every((id) => s.solved[`${slug}:${id}`]);
   });
   const streak = longestStreak(s);
-  const unlocked: Record<keyof typeof GAME_STRINGS.achievements, boolean> = {
+  const unlocked: Record<keyof typeof EMOJI, boolean> = {
     first: entries.length >= 1,
     lesson: lessonDone,
     nohints: entries.filter(([, r]) => r.auto && r.hints.length === 0).length >= 5,
@@ -123,9 +113,10 @@ export function achievements(s: ProgressState, meta: Meta): Achievement[] {
     owl: times.some((t) => new Date(t).getHours() < 5),
     sprint: times.some((t, i) => i >= 2 && t - times[i - 2] <= 10 * 60000),
   };
-  return (Object.keys(GAME_STRINGS.achievements) as (keyof typeof unlocked)[]).map((id) => ({
+  return (Object.keys(EMOJI) as (keyof typeof EMOJI)[]).map((id) => ({
     id,
-    ...GAME_STRINGS.achievements[id],
+    emoji: EMOJI[id],
+    ...strings.achievements[id],
     unlocked: unlocked[id],
   }));
 }

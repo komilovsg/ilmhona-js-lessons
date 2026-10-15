@@ -4,12 +4,9 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref
 import { flushSync } from 'react-dom';
 import { highlightLang, type Lang } from '@/lib/highlight';
 import type { MountedEditor } from '@/lib/cm';
+import { useT } from './I18nProvider';
 
 export type CodeEditorHandle = { getValue: () => string };
-
-export const EDITOR_STRINGS = {
-  label: 'Редактор кода. Нажмите, чтобы редактировать.',
-};
 
 type Props = {
   value: string;
@@ -32,6 +29,8 @@ const loadCm = () => (cmModule ??= import('@/lib/cm'));
  * Read-only blocks never load CodeMirror.
  */
 export default function CodeEditor({ value, onChange, onRun, readOnly, lang = 'js', handle }: Props) {
+  const { t } = useT();
+  const cmStrings = t.cm;
   const hostRef = useRef<HTMLDivElement | null>(null);
   const cm = useRef<MountedEditor | null>(null);
   const starting = useRef(false);
@@ -55,6 +54,7 @@ export default function CodeEditor({ value, onChange, onRun, readOnly, lang = 'j
         if (!host) return;
         const ed = mod.mountEditor({
           parent: host,
+          strings: cmStrings,
           doc: cb.current.value,
           lang,
           onRun: (v) => cb.current.onRun(v),
@@ -73,7 +73,7 @@ export default function CodeEditor({ value, onChange, onRun, readOnly, lang = 'j
         starting.current = false;
       }
     },
-    [lang],
+    [lang, cmStrings],
   );
 
   // Reset (or any external value change) -> replace the document
@@ -98,7 +98,7 @@ export default function CodeEditor({ value, onChange, onRun, readOnly, lang = 'j
           className="code"
           data-editable=""
           tabIndex={0}
-          aria-label={EDITOR_STRINGS.label}
+          aria-label={t.editor.label}
           onPointerEnter={() => void loadCm()}
           onPointerDown={(e) => {
             if (e.button !== 0) return;

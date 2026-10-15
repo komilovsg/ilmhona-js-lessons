@@ -4,20 +4,15 @@ import { useContext, useEffect, useRef, useState } from 'react';
 import type { Lang } from '@/lib/highlight';
 import { startRun, type Job, type OutLine } from '@/lib/runner';
 import CodeEditor, { type CodeEditorHandle } from './CodeEditor';
+import { useT } from './I18nProvider';
 import { TaskContext } from './TaskContext';
 
-export const CODEBLOCK_STRINGS = {
-  editable: 'Можно редактировать',
-  readonly: 'JavaScript',
-  resetTitle: 'Вернуть исходный код',
-  reset: '↺ Сброс',
-  run: '▶ Запустить',
-  running: '… выполняется',
-};
 
 type Props = { code: string; run?: boolean; title?: string; lang?: Lang };
 
 export default function CodeBlock({ code, run: runnable = false, title, lang = 'js' }: Props) {
+  const { t } = useT();
+  const S = t.codeBlock;
   const task = useContext(TaskContext);
   const [value, setValue] = useState(code);
   const [out, setOut] = useState<{ lines: OutLine[] } | null>(null);
@@ -35,7 +30,7 @@ export default function CodeBlock({ code, run: runnable = false, title, lang = '
     setOut({ lines: [] });
     setVisible(true);
     setRunning(true);
-    const j = startRun({ mode: 'console', code: text }, { onLines: (lines) => my === seq.current && setOut({ lines }) });
+    const j = startRun({ mode: 'console', code: text }, { strings: { runner: t.runner, explain: t.explain }, onLines: (lines) => my === seq.current && setOut({ lines }) });
     job.current = j;
     const res = await j.result;
     if (my !== seq.current) return;
@@ -55,13 +50,13 @@ export default function CodeBlock({ code, run: runnable = false, title, lang = '
         {runnable ? (
           <>
             <span className="hint-edit">
-              {title || CODEBLOCK_STRINGS.editable}
+              {title || S.editable}
               <span className="kbd-hint"> · Ctrl + Enter</span>
             </span>
             <button
               type="button"
               className="reset"
-              title={CODEBLOCK_STRINGS.resetTitle}
+              title={S.resetTitle}
               onClick={() => {
                 job.current?.stop();
                 seq.current++;
@@ -70,7 +65,7 @@ export default function CodeBlock({ code, run: runnable = false, title, lang = '
                 setVisible(false);
               }}
             >
-              {CODEBLOCK_STRINGS.reset}
+              {S.reset}
             </button>
             <button
               type="button"
@@ -78,11 +73,11 @@ export default function CodeBlock({ code, run: runnable = false, title, lang = '
               aria-busy={running}
               onClick={() => doRun(editor.current?.getValue() ?? value)}
             >
-              {running ? CODEBLOCK_STRINGS.running : CODEBLOCK_STRINGS.run}
+              {running ? S.running : S.run}
             </button>
           </>
         ) : (
-          <span className="hint-edit">{title || CODEBLOCK_STRINGS.readonly}</span>
+          <span className="hint-edit">{title || S.readonly}</span>
         )}
       </div>
       <CodeEditor value={value} onChange={setValue} onRun={doRun} readOnly={!runnable} lang={lang} handle={editor} />

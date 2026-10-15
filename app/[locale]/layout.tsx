@@ -56,7 +56,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
-        <I18nProvider locale={locale} messages={getMessages(locale)}>
+        <I18nProvider locale={locale}>
           <Header taskIds={getTaskIds()} />
           {children}
         </I18nProvider>
