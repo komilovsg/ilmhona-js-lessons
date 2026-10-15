@@ -19,13 +19,16 @@ export default function Header({ taskIds }: { taskIds: Record<string, string[]> 
 
   return (
     <header className="topbar">
-      <Link className="brand" href={`/${locale}/lessons/functions`}>
+      <Link className="brand" href={`/${locale}`}>
         <span className="brand-mark">I</span>
         <span>
           Ilmhona <small>{t.header.brandSub}</small>
         </span>
       </Link>
       <nav className="lessons" aria-label={t.header.lessonsNav}>
+        <Link href={`/${locale}`} aria-current={pathname === `/${locale}` ? 'page' : undefined}>
+          {t.roadmap.nav}
+        </Link>
         {lessons.map((l) => (
           <Link key={l.slug} href={`/${locale}/lessons/${l.slug}`} aria-current={l === current ? 'page' : undefined}>
             {`${l.num}. ${l.title[locale]}`}
