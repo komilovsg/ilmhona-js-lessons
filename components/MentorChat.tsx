@@ -1,14 +1,15 @@
 'use client';
 
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { closeMentor, getMentor, getServerMentor, openMentor, subscribeMentor } from '@/lib/mentor-client';
+import { closeMentor, getMentor, getServerMentor, openMentor, splitSigned, subscribeMentor } from '@/lib/mentor-client';
 import { fmt } from '@/lib/i18n';
 import { redactCodeField, redactMessage } from '@/lib/redact';
 import { useT } from './I18nProvider';
 import MentorBot from './MentorBot';
 import MentorFab, { hasFabPos, resetFabPos } from './MentorFab';
 
-type Msg = { role: 'user' | 'model'; text: string; red?: boolean };
+type Msg = { role: 'user' | 'model'; text: string; red?: boolean; sig?: string };
+type Turn = { role: Msg['role']; text: string; sig?: string };
 type Ctx = { taskId?: string; code?: string; output?: string };
 
 const storeKey = (slug: string) => `mentor:${slug}`;
@@ -17,24 +18,34 @@ function load(slug: string): Msg[] {
   try {
     const v = JSON.parse(sessionStorage.getItem(storeKey(slug)) ?? '[]');
     return Array.isArray(v)
-      ? v.filter((m) => m && (m.role === 'user' || m.role === 'model') && typeof m.text === 'string' && m.text.trim())
+      ? v
+          .filter((m) => m && (m.role === 'user' || m.role === 'model') && typeof m.text === 'string' && m.text.trim())
+          .map((m) => ({ role: m.role, text: m.text, red: m.red === true, sig: typeof m.sig === 'string' ? m.sig : undefined }))
       : [];
   } catch {
     return [];
   }
 }
 
-/** What goes upstream: no empty turns, consecutive same-role turns merged (a failed turn leaves two user turns), starts with a user turn. */
-function history(msgs: Msg[]): { role: Msg['role']; text: string }[] {
-  const out: { role: Msg['role']; text: string }[] = [];
+const BODY_BUDGET = 56 * 1024; // server rejects bodies over 64 KB
+
+/**
+ * What goes upstream: no empty turns, consecutive user turns merged (a failed turn leaves two), starts with a user turn.
+ * Model turns are sent verbatim with their signature (the server drops unsigned ones), so they are never cut.
+ */
+function history(msgs: Msg[], extraBytes: number): Turn[] {
+  const out: Turn[] = [];
   for (const m of msgs) {
     if (!m.text.trim()) continue;
     const last = out[out.length - 1];
-    if (last && last.role === m.role) last.text += '\n' + m.text;
-    else out.push({ role: m.role, text: m.text });
+    if (m.role === 'model') {
+      if (m.sig && m.text.length <= 4000) out.push({ role: 'model', text: m.text, sig: m.sig });
+    } else if (last?.role === 'user') last.text += '\n' + m.text;
+    else out.push({ role: 'user', text: m.text });
   }
-  let h = out.map((x) => ({ role: x.role, text: x.text.slice(-2000) })).slice(-12);
-  while (h.length && h[0].role === 'model') h = h.slice(1);
+  let h = out.map((x) => (x.role === 'user' ? { ...x, text: x.text.slice(-2000) } : x)).slice(-12);
+  const size = (t: Turn[]) => new TextEncoder().encode(JSON.stringify(t)).length + extraBytes;
+  while (h.length > 1 && (h[0].role === 'model' || size(h) > BODY_BUDGET)) h = h.slice(1);
   return h;
 }
 
@@ -74,6 +85,7 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
   const [err, setErr] = useState<string | null>(null);
   const [canRetry, setCanRetry] = useState(false);
   const [off, setOff] = useState(false);
+  const [wait, setWait] = useState(0); // seconds until retry is allowed after a "busy" answer
   const [seen, setSeen] = useState(m.seq);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -109,6 +121,12 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
 
   useEffect(() => () => abort.current?.abort(), []);
 
+  useEffect(() => {
+    if (wait <= 0) return;
+    const id = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(id);
+  }, [wait]);
+
   function close() {
     closeMentor();
     opener.current?.focus();
@@ -127,7 +145,7 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
 
   /** Send the typed text, or (retry) re-ask the last user message without adding a new one. */
   async function send(retry = false) {
-    if (busy) return;
+    if (busy || wait > 0) return;
     let base = messages.filter((x) => x.text.trim());
     if (retry) {
       if (base[base.length - 1]?.role !== 'user') return;
@@ -147,17 +165,13 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
     let got = '';
     let failed = false;
     try {
+      const code = ctx.code ? redactCodeField(ctx.code.slice(0, 6000)).text : undefined;
+      const output = ctx.output ? redactCodeField(ctx.output.slice(-3000)).text : undefined;
+      const extra = new TextEncoder().encode(`${code ?? ''}${output ?? ''}`).length + 512;
       const res = await fetch('/api/mentor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          locale,
-          lessonSlug,
-          taskId: ctx.taskId,
-          code: ctx.code ? redactCodeField(ctx.code.slice(0, 6000)).text : undefined,
-          output: ctx.output ? redactCodeField(ctx.output.slice(-3000)).text : undefined,
-          messages: history(base),
-        }),
+        body: JSON.stringify({ locale, lessonSlug, taskId: ctx.taskId, code, output, messages: history(base, extra) }),
         signal: ac.signal,
       });
       if (!res.ok || !res.body) {
@@ -165,8 +179,13 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
         const j = await res.json().catch(() => ({}));
         if (res.status === 503 && j.error === 'not_configured') {
           setOff(true);
+        } else if (res.status === 503 && j.error === 'busy') {
+          setErr(S.busy);
+          setCanRetry(true);
+          setWait(Math.min(300, Math.max(1, Number(res.headers.get('Retry-After')) || Number(j.retryAfter) || 30)));
         } else {
-          setErr(res.status === 429 && typeof j.message === 'string' ? j.message : S.errGeneric);
+          const limited = res.status === 429 ? j.messages?.[locale] : undefined;
+          setErr(typeof limited === 'string' ? limited : S.errGeneric);
           setCanRetry(res.status !== 400);
         }
       } else {
@@ -176,10 +195,10 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
           const { done, value } = await reader.read();
           if (done) break;
           got += dec.decode(value, { stream: true });
-          const snap = got;
-          setMessages((cur) => [...cur.slice(0, -1), { role: 'model', text: snap }]);
+          const snap = splitSigned(got);
+          setMessages((cur) => [...cur.slice(0, -1), { role: 'model', text: snap.text, sig: snap.sig }]);
         }
-        if (!got.trim()) {
+        if (!splitSigned(got).text.trim()) {
           failed = true;
           setErr(S.errGeneric);
           setCanRetry(true);
@@ -264,8 +283,8 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
                     <p className="mentor-err" role="alert">
                       {err}
                       {canRetry && (
-                        <button type="button" className="mentor-retry" onClick={() => void send(true)}>
-                          {S.retry}
+                        <button type="button" className="mentor-retry" onClick={() => void send(true)} disabled={wait > 0}>
+                          {wait > 0 ? `${S.retry} (${wait})` : S.retry}
                         </button>
                       )}
                     </p>
@@ -304,7 +323,7 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
                   }
                 }}
               />
-              <button type="submit" disabled={off || busy || !input.trim()}>
+              <button type="submit" disabled={off || busy || wait > 0 || !input.trim()}>
                 {S.send}
               </button>
             </form>

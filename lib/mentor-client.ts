@@ -32,3 +32,10 @@ export function readTaskContext(task: Element): { code: string; output: string }
   const out = [...wrap.querySelectorAll('.output.show .line')].map((l) => l.textContent ?? '');
   return { code: code.slice(0, 6000), output: out.join('\n').slice(-3000) };
 }
+
+/** The reply stream ends with SIG_SEP + server signature; the signature goes back with the turn next time. */
+const SIG_SEP = '\u001e'; // keep in sync with lib/mentor-guard.ts
+export function splitSigned(raw: string): { text: string; sig?: string } {
+  const i = raw.indexOf(SIG_SEP);
+  return i < 0 ? { text: raw } : { text: raw.slice(0, i), sig: raw.slice(i + 1) || undefined };
+}
