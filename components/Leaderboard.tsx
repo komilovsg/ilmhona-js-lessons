@@ -36,26 +36,56 @@ export default function Leaderboard() {
 
 function LeaderboardTable() {
   const T = useT().t.leaderboard;
+  const [userId, setUserId] = useState<string | null | undefined>(undefined); // undefined = loading
   const [rows, setRows] = useState<Entry[] | null>(null);
+  const [listed, setListed] = useState(true);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
+  // The leaderboard is for signed-in students only (the RPC is not executable by anon).
   useEffect(() => {
+    let alive = true;
+    let unsub: (() => void) | undefined;
+    (async () => {
+      const { getBrowserSupabase } = await import('@/lib/supabase/client');
+      const sb = getBrowserSupabase();
+      if (!alive || !sb) return;
+      const { data } = sb.auth.onAuthStateChange((_event, session) => {
+        // Don't await Supabase calls inside this callback (auth lock); defer instead.
+        setTimeout(() => alive && setUserId(session?.user.id ?? null), 0);
+      });
+      unsub = () => data.subscription.unsubscribe();
+    })();
+    return () => {
+      alive = false;
+      unsub?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
     let alive = true;
     (async () => {
       const { getBrowserSupabase } = await import('@/lib/supabase/client');
       const sb = getBrowserSupabase();
       if (!sb) return;
-      const { data, error } = await sb.rpc('leaderboard', { limit_n: 50 });
+      const [board, me] = await Promise.all([
+        sb.rpc('leaderboard', { limit_n: 50 }),
+        sb.from('profiles').select('show_on_leaderboard').eq('id', userId).maybeSingle(),
+      ]);
       if (!alive) return;
-      if (error) setFailed(true);
-      else setRows((data ?? []) as Entry[]);
+      if (board.error) setFailed(true);
+      else {
+        setRows((board.data ?? []) as Entry[]);
+        setListed(!!(me.data as { show_on_leaderboard?: boolean } | null)?.show_on_leaderboard);
+      }
     })();
     return () => {
       alive = false;
     };
-  }, [attempt]);
+  }, [userId, attempt]);
 
+  if (userId === null) return <p className="lb-note">{T.signInPrompt}</p>;
   if (failed) {
     return (
       <p className="lb-note">
@@ -74,49 +104,59 @@ function LeaderboardTable() {
     );
   }
   if (!rows) return <p className="lb-note" aria-busy="true">{T.loading}</p>;
-  if (!rows.length) return <p className="lb-note">{T.empty}</p>;
+  const notListed = !listed && <p className="lb-note">{T.notListed}</p>;
+  if (!rows.length)
+    return (
+      <>
+        {notListed}
+        <p className="lb-note">{T.empty}</p>
+      </>
+    );
 
   return (
-    <div className="table-wrap">
-      <table className="lb-table">
-        <thead>
-          <tr>
-            <th scope="col">{T.place}</th>
-            <th scope="col">{T.name}</th>
-            <th scope="col" className="num">
-              {T.xp}
-            </th>
-            <th scope="col" className="num">
-              {T.solved}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.rank}-${i}`} className={r.is_me ? 'me' : undefined} aria-current={r.is_me ? 'true' : undefined}>
-              <td className="lb-rank">{MEDALS[r.rank] ? <span role="img" aria-label={String(r.rank)}>{MEDALS[r.rank]}</span> : r.rank}</td>
-              <td>
-                <div className="lb-name">
-                  {isSafeAvatar(r.avatar_url) ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- external OAuth avatar, tiny
-                    <img src={r.avatar_url} alt="" width={24} height={24} loading="lazy" referrerPolicy="no-referrer" />
-                  ) : (
-                    <span className="auth-initial" aria-hidden="true">
-                      {r.display_name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                  <span>{r.display_name}</span>
-                  {r.is_me && <em className="lb-you">{T.you}</em>}
-                </div>
-              </td>
-              <td className="num">
-                <b>{r.xp_total}</b>
-              </td>
-              <td className="num">{r.solved_count}</td>
+    <>
+      {notListed}
+      <div className="table-wrap">
+        <table className="lb-table">
+          <thead>
+            <tr>
+              <th scope="col">{T.place}</th>
+              <th scope="col">{T.name}</th>
+              <th scope="col" className="num">
+                {T.xp}
+              </th>
+              <th scope="col" className="num">
+                {T.solved}
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={`${r.rank}-${i}`} className={r.is_me ? 'me' : undefined} aria-current={r.is_me ? 'true' : undefined}>
+                <td className="lb-rank">{MEDALS[r.rank] ? <span role="img" aria-label={String(r.rank)}>{MEDALS[r.rank]}</span> : r.rank}</td>
+                <td>
+                  <div className="lb-name">
+                    {isSafeAvatar(r.avatar_url) ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- external OAuth avatar, tiny
+                      <img src={r.avatar_url} alt="" width={24} height={24} loading="lazy" referrerPolicy="no-referrer" />
+                    ) : (
+                      <span className="auth-initial" aria-hidden="true">
+                        {r.display_name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span>{r.display_name}</span>
+                    {r.is_me && <em className="lb-you">{T.you}</em>}
+                  </div>
+                </td>
+                <td className="num">
+                  <b>{r.xp_total}</b>
+                </td>
+                <td className="num">{r.solved_count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
