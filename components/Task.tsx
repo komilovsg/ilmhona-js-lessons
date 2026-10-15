@@ -81,10 +81,11 @@ export default function Task({ id, lessonSlug, level, children }: Props) {
     [id, lessonSlug, level, onRunResult],
   );
 
-  // Feedback line goes right after the task's own (non-hint) code block.
+  // Feedback line goes right after the task's first runnable (non-hint) code block.
   useEffect(() => {
     const el = ref.current;
-    const wrap = el && [...el.querySelectorAll('.code-wrap')].find((w) => !w.closest('details'));
+    const wraps = el ? [...el.querySelectorAll('.code-wrap')].filter((w) => !w.closest('details')) : [];
+    const wrap = wraps.find((w) => w.querySelector('button.run')) ?? wraps[0];
     if (!wrap) return;
     const div = document.createElement('div');
     wrap.after(div);
