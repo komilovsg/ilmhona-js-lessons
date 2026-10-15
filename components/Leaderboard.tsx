@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { isSafeAvatar } from '@/lib/avatar';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { useT } from './I18nProvider';
 
@@ -96,7 +97,7 @@ function LeaderboardTable() {
               <td className="lb-rank">{MEDALS[r.rank] ? <span role="img" aria-label={String(r.rank)}>{MEDALS[r.rank]}</span> : r.rank}</td>
               <td>
                 <div className="lb-name">
-                  {r.avatar_url ? (
+                  {isSafeAvatar(r.avatar_url) ? (
                     // eslint-disable-next-line @next/next/no-img-element -- external OAuth avatar, tiny
                     <img src={r.avatar_url} alt="" width={24} height={24} loading="lazy" referrerPolicy="no-referrer" />
                   ) : (

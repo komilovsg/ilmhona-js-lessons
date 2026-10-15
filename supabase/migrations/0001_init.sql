@@ -11,7 +11,13 @@
 --    column too (RLS is row-level, and PostgREST needs the id to join).
 --  * Users may change only their display_name (column-level GRANT). avatar_url comes from the
 --    OAuth provider at sign-up; letting clients set it would allow arbitrary image URLs
---    (tracking pixels, inappropriate images) on a page every student sees.
+--    (tracking pixels, inappropriate images) on a page every student sees. raw_user_meta_data
+--    is NOT trusted for it: an email (OTP) sign-up can put anything there via options.data. The
+--    trigger takes the avatar only when raw_app_meta_data.provider = 'google' (server-set) and
+--    the URL is a Google profile photo; the column CHECK enforces the same host.
+--  * display_name rejects control chars and invisible / bidi-override chars (U+200B-U+200F,
+--    U+202A-U+202E, U+2060-U+2064, U+FEFF) so names can't be blank-looking or reorder the
+--    leaderboard text. The trigger strips them; the client strips the same set on rename.
 --  * task_progress: owner-only CRUD.
 --
 -- Known ceiling: XP is client-reported. A student can insert fake rows (up to 40 XP each,
@@ -26,8 +32,10 @@ create table if not exists public.profiles (
   display_name text not null
                check (char_length(display_name) between 2 and 32
                       and display_name = btrim(display_name)
-                      and display_name !~ '[[:cntrl:]]'),
-  avatar_url   text check (avatar_url is null or (avatar_url ~ '^https://' and char_length(avatar_url) <= 500)),
+                      and display_name !~ '[[:cntrl:]\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]'),
+  avatar_url   text check (avatar_url is null
+                           or (avatar_url ~ '^https://lh[0-9]+\.googleusercontent\.com/'
+                               and char_length(avatar_url) <= 500)),
   created_at   timestamptz not null default now()
 );
 
@@ -65,16 +73,23 @@ begin
     nullif(btrim(new.raw_user_meta_data ->> 'name'), ''),
     split_part(coalesce(new.email, ''), '@', 1)
   );
-  v_name := pg_catalog.regexp_replace(v_name, '[[:cntrl:]]', '', 'g');
+  v_name := pg_catalog.regexp_replace(
+    v_name, '[[:cntrl:]\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]', '', 'g');
   v_name := pg_catalog.btrim(pg_catalog.regexp_replace(v_name, '\s+', ' ', 'g'));
   v_name := pg_catalog.btrim(pg_catalog.left(v_name, 32));
   if v_name is null or pg_catalog.char_length(v_name) < 2 then
     v_name := 'Ученик ' || pg_catalog.substr(pg_catalog.md5(pg_catalog.random()::text), 1, 4);
   end if;
 
-  v_avatar := coalesce(new.raw_user_meta_data ->> 'avatar_url', new.raw_user_meta_data ->> 'picture');
-  if v_avatar is null or v_avatar !~ '^https://' or pg_catalog.char_length(v_avatar) > 500 then
-    v_avatar := null;
+  -- Avatar only from a Google sign-up (provider is set by the auth server, not the client).
+  v_avatar := null;
+  if new.raw_app_meta_data ->> 'provider' = 'google' then
+    v_avatar := coalesce(new.raw_user_meta_data ->> 'avatar_url', new.raw_user_meta_data ->> 'picture');
+    if v_avatar is null
+       or v_avatar !~ '^https://lh[0-9]+\.googleusercontent\.com/'
+       or pg_catalog.char_length(v_avatar) > 500 then
+      v_avatar := null;
+    end if;
   end if;
 
   insert into public.profiles (id, display_name, avatar_url)

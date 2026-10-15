@@ -7,6 +7,7 @@ import { isTheme, readTheme, resolveTheme, THEME_KEY, type Theme } from '@/lib/t
 import { useT } from './I18nProvider';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { isSafeAvatar } from '@/lib/avatar';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import type { SyncStatus } from '@/lib/sync';
 
@@ -14,7 +15,12 @@ import type { SyncStatus } from '@/lib/sync';
 type Profile = { display_name: string; avatar_url: string | null };
 type Libs = { sb: SupabaseClient; sync: typeof import('@/lib/sync') };
 
-const cleanName = (s: string) => s.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim();
+// Control chars + invisible/bidi-override chars (same set as the profiles CHECK in 0001_init.sql).
+const cleanName = (s: string) =>
+  s
+    .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 const validName = (s: string) => s.length >= 2 && s.length <= 32;
 
 function currentPath() {
@@ -296,7 +302,7 @@ function MenuView({ auth }: { auth?: AuthProps }) {
   const name = signedIn
     ? (profile?.display_name ?? cleanName(String(meta.full_name ?? meta.name ?? user.email?.split('@')[0] ?? '')))
     : '';
-  const avatar = profile?.avatar_url ?? null;
+  const avatar = isSafeAvatar(profile?.avatar_url) ? profile.avatar_url : null;
   const initial = (name || '?').charAt(0).toUpperCase();
 
   const close = useCallback(() => {

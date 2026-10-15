@@ -1,49 +1,30 @@
-import type { EmailOtpType } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
+import { safeNext } from '@/lib/safe-next';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createServerSupabase } from '@/lib/supabase/server';
 
-const OTP_TYPES: EmailOtpType[] = ['magiclink', 'email', 'signup', 'invite', 'recovery', 'email_change'];
-
-/** Only same-origin relative paths: "/x?y#z". Rejects "//host", "/\host", absolute URLs, control chars. */
-function safeNext(raw: string | null, origin: string): string {
-  if (!raw || !raw.startsWith('/') || raw.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(raw)) return '/';
-  try {
-    const url = new URL(raw, origin);
-    if (url.origin !== origin) return '/';
-    url.searchParams.delete('auth_error');
-    return url.pathname + url.search + url.hash;
-  } catch {
-    return '/';
-  }
-}
-
 /**
- * OAuth (Google) and magic-link landing. Supports both the PKCE `code` flow (default email
- * template; must be opened in the same browser) and the `token_hash` flow (custom template,
- * works on any device — see supabase/README.md).
+ * OAuth (Google) and magic-link landing. PKCE `code` flow only: the code verifier lives in a
+ * cookie of the browser that started sign-in, so a link forwarded by someone else can't log the
+ * victim into the sender's account (login CSRF). That is also why a magic link must be opened in
+ * the same browser. Do not add a `token_hash` / verifyOtp branch here.
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
+  // A validated URL object; redirect to it (or a clone), never re-resolve it as a string.
   const next = safeNext(searchParams.get('next'), origin);
   const fail = () => {
-    const url = new URL(next, origin);
+    const url = new URL(next);
     url.searchParams.set('auth_error', '1');
     return NextResponse.redirect(url);
   };
-  if (!isSupabaseConfigured) return NextResponse.redirect(new URL(next, origin));
+  if (!isSupabaseConfigured) return NextResponse.redirect(next);
 
   const code = searchParams.get('code');
-  const tokenHash = searchParams.get('token_hash');
-  const type = searchParams.get('type') as EmailOtpType | null;
-  const supabase = await createServerSupabase();
-
   if (code) {
+    const supabase = await createServerSupabase();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(new URL(next, origin));
-  } else if (tokenHash && type && OTP_TYPES.includes(type)) {
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
-    if (!error) return NextResponse.redirect(new URL(next, origin));
+    if (!error) return NextResponse.redirect(next);
   }
   return fail();
 }

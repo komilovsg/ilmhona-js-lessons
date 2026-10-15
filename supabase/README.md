@@ -2,7 +2,8 @@
 
 The backend is optional. Without the env vars below the site works fully local (progress in
 `localStorage`, no "Войти" button, no network calls). With them, students can sign in (Google or an
-email link), their progress syncs across devices, and `/leaderboard` shows the top 50.
+email link opened in the same browser), their progress syncs across devices, and `/leaderboard`
+shows the top 50.
 
 Everything fits the Supabase **free** plan.
 
@@ -55,21 +56,13 @@ Email sign-in is on by default (**Authentication → Sign In / Providers → Ema
   plans, only to members of your Supabase organization. For a real class, set up custom SMTP:
   **Authentication → Emails → SMTP Settings** (e.g. Resend, Brevo or Mailgun free tiers; you need a
   domain you control). Until then use Google sign-in.
-- **Same browser by default.** The default email template uses a PKCE link, which only works in the
-  browser where the student requested it. To make links work on any device (e.g. requested on a
-  school PC, opened on a phone), change **both** the **Magic Link** and the **Confirm signup**
-  templates (**Authentication → Emails → Templates**; a student's very first link uses
-  "Confirm signup") to:
-
-  ```html
-  <h2>Вход в Ilmhona</h2>
-  <p><a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next=/">Войти</a></p>
-  ```
-
-  Keep `type=email` — it works for both new and returning students.
-
-  The `/auth/callback` route accepts both kinds of link. (A link opened on another device
-  signs in *that* device.)
+- **Google is the primary sign-in.** The email link is a fallback.
+- **Same browser only.** Magic links use PKCE: the link works only in the browser where the
+  student requested it (requested on a school PC → open the email on that PC). Keep the default
+  **Magic Link** / **Confirm signup** templates. Do **not** switch them to a `token_hash` link:
+  `/auth/callback` accepts only the PKCE `code` on purpose, because a `token_hash` link signs in
+  whoever opens it, so an attacker could send a student a link that logs them into the
+  attacker's account (login CSRF).
 
 ## 6. Environment variables
 
@@ -125,3 +118,21 @@ Other free-plan limits (500 MB database, 50k monthly active users) are far above
 - XP is reported by the browser, so a determined student could fake rows through the API
   (max 40 XP per row, max 1000 rows). Fine for a classroom leaderboard; a server-side task list or
   an Edge Function that checks solutions would close this.
+
+## Известные ограничения
+
+Known ceilings, accepted for a classroom deployment:
+
+- **XP is client-reported** (see above). Upgrade path: server-side task catalog or an Edge
+  Function that validates solutions before awarding XP.
+- **Leaderboard has no cache.** Every visit to `/leaderboard` calls `public.leaderboard()` directly.
+  Fine at classroom scale. Upgrade path: a cached Next.js route handler (`revalidate = 60`) in front
+  of the RPC.
+- **esm.sh without SRI.** The React playground imports React from `https://esm.sh` without
+  Subresource Integrity. Impact is limited because student code runs in a sandboxed `srcdoc`
+  iframe with an opaque origin (no access to the site's cookies or storage). Upgrade path:
+  self-host the vendor ESM bundles under `/vendor/`.
+- **Avatars are Google-only.** The migration keeps `avatar_url` only for Google sign-ups and only
+  for `https://lhN.googleusercontent.com/` URLs; email sign-ups always show the initial.
+- **CSP is Report-Only** (`next.config.ts`). Switch it to enforcing once the browser console
+  shows no unexpected reports during normal use.

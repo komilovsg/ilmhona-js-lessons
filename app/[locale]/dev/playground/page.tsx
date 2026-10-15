@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import parse from 'html-react-parser';
 import { makeReplaceOptions } from '@/lib/contentReplace';
 
-// Dev-only demo of the runner modes. Not linked anywhere, not indexed. Goes through the same
+// Dev-only demo of the runner modes (404 in production, see devPagesEnabled). Not linked anywhere, not indexed. Goes through the same
 // parse + replace path as lesson fragments, so it also proves the fragment format.
 export const metadata: Metadata = { title: 'Playground (dev)', robots: { index: false, follow: false } };
 
@@ -118,7 +119,12 @@ const markup = `
   </div>
 </section>`;
 
+// Hidden in production builds unless NEXT_PUBLIC_ENABLE_DEV_PAGES=1 (inlined at build time).
+const devPagesEnabled =
+  process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ENABLE_DEV_PAGES === '1';
+
 export default function PlaygroundDemo() {
+  if (!devPagesEnabled) notFound();
   return (
     <div className="layout" style={{ gridTemplateColumns: '1fr' }}>
       <main>
