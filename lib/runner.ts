@@ -76,8 +76,38 @@ function fmt(v, depth, seen) {
   return (isArr ? '[' : '{') + '\n' + parts.map(function (p) { return pad + p; }).join(',\n') + '\n' + '  '.repeat(depth) + (isArr ? ']' : '}');
 }
 const send = function (kind, text) { parent.postMessage({ ilmRun: ID, kind: kind, text: text }, '*'); };
-for (const k of ['log', 'info', 'debug', 'table', 'warn', 'error'])
+for (const k of ['log', 'info', 'debug', 'warn', 'error'])
   console[k] = function () { send(k, Array.prototype.map.call(arguments, function (x) { return fmt(x); }).join(' ')); };
+function cell(v) { return fmt(v, v !== null && typeof v === 'object' ? 1 : 0).replace(/\s*\n\s*/g, ' '); }
+function isRec(v) { return v !== null && typeof v === 'object' && !(v instanceof Error) && !(typeof Element !== 'undefined' && v instanceof Element); }
+function tableLines(data) {
+  if (!isRec(data)) return null;
+  const rows = Array.isArray(data) ? Array.from(data, function (v, i) { return [String(i), v]; }) : Object.keys(data).map(function (k) { return [k, data[k]]; });
+  const cols = [];
+  let hasValues = false;
+  rows.forEach(function (r) {
+    const v = r[1];
+    if (isRec(v)) (Array.isArray(v) ? Array.from(v, function (x, i) { return String(i); }) : Object.keys(v)).forEach(function (c) { if (cols.indexOf(c) < 0) cols.push(c); });
+    else hasValues = true;
+  });
+  const head = ['(index)'].concat(cols, hasValues ? ['Values'] : []);
+  const body = rows.map(function (r) {
+    const v = r[1];
+    return [r[0]].concat(cols.map(function (c) { return isRec(v) && Object.prototype.hasOwnProperty.call(v, c) ? cell(v[c]) : ''; }), hasValues ? [isRec(v) ? '' : cell(v)] : []);
+  });
+  const len = function (t) { return Array.from(t).length; };
+  const w = head.map(function (h, i) { return Math.max.apply(null, [len(h)].concat(body.map(function (r) { return len(r[i]); }))); });
+  const pad = function (t, n) { return t + ' '.repeat(n - len(t)); };
+  const line = function (l, m, r) { return l + w.map(function (n) { return '─'.repeat(n + 2); }).join(m) + r; };
+  const row = function (r) { return '│ ' + r.map(function (t, i) { return pad(t, w[i]); }).join(' │ ') + ' │'; };
+  return [line('┌', '┬', '┐'), row(head), line('├', '┼', '┤')].concat(body.map(row), [line('└', '┴', '┘')]);
+}
+console.table = function (data) {
+  const out = tableLines(data);
+  if (!out) return send('log', fmt(data));
+  out.forEach(function (l) { send('log', l); });
+};
+console.trace = function () { send('log', ['console.trace'].concat(Array.prototype.map.call(arguments, function (x) { return fmt(x); })).join(' ')); };
 addEventListener('error', function (e) { send('err', e.error && e.error.name ? e.error.name + ': ' + e.error.message : e.message); });
 addEventListener('unhandledrejection', function (e) {
   const r = e.reason;
@@ -264,7 +294,6 @@ function onMessage(e: MessageEvent) {
     const hint = explain(msg, r.opts.strings.explain);
     if (hint) push(r, { text: '↳ ' + hint, cls: 'warn-line' });
   } else {
-    if (d.kind === 'error') r.hadError = true;
     push(r, { text: String(d.text), cls: d.kind === 'warn' ? 'warn-line' : d.kind === 'error' ? 'err' : '' });
   }
 }
