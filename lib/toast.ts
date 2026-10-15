@@ -25,4 +25,5 @@ export const subscribeToasts = (l: () => void) => {
   return () => void listeners.delete(l);
 };
 export const getToasts = () => toasts;
-export const getServerToasts = (): Toast[] => [];
+const NO_TOASTS: Toast[] = [];
+export const getServerToasts = (): Toast[] => NO_TOASTS;

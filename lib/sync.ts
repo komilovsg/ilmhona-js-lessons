@@ -11,6 +11,7 @@ import { diffSolved, mergeSolved, sameSolved, solvedFromRows, type Row, type Row
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'offline';
 
 /** User id whose remote copy the local progress was last merged with. */
+// Legacy 'ilmhona:' prefix kept on purpose (renaming would break sync ownership of existing browsers).
 const OWNER_KEY = 'ilmhona:sync:owner';
 const DEBOUNCE_MS = 800;
 const MAX_BACKOFF_MS = 60_000;

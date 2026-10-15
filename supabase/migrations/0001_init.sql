@@ -1,23 +1,29 @@
--- Ilmhona: accounts, cross-device progress sync, public leaderboard.
+-- MakeFirstStep: accounts, cross-device progress sync, opt-in leaderboard.
 -- Run once in the Supabase SQL editor (or `supabase db push`). Safe to re-run.
 --
 -- Security model
 --  * Every table has RLS enabled; anon has no table privileges at all.
 --  * profiles: NO direct read access for other users. Each user reads/updates only their own
---    row. The public leaderboard goes through public.leaderboard(), a SECURITY DEFINER function
+--    row. The leaderboard goes through public.leaderboard(), a SECURITY DEFINER function
 --    that returns only aggregates + display name/avatar. This keeps user ids (= auth.users ids)
 --    and the list of all registered accounts private, and lets us control exactly which columns
 --    are exposed. A "public select on display_name/avatar" policy would have leaked the id
 --    column too (RLS is row-level, and PostgREST needs the id to join).
---  * Users may change only their display_name (column-level GRANT). avatar_url comes from the
+--  * Leaderboard privacy: it is opt-in (profiles.show_on_leaderboard, default false) and only
+--    signed-in users can call it (no anon EXECUTE). The default display_name is a random
+--    pseudonym ("Ученик 3f9a"), never derived from the email, the Google full name or the user id;
+--    a student who wants their real name shown types it themselves.
+--  * Users may change only display_name and show_on_leaderboard (column-level GRANT). avatar_url comes from the
 --    OAuth provider at sign-up; letting clients set it would allow arbitrary image URLs
 --    (tracking pixels, inappropriate images) on a page every student sees. raw_user_meta_data
 --    is NOT trusted for it: an email (OTP) sign-up can put anything there via options.data. The
 --    trigger takes the avatar only when raw_app_meta_data.provider = 'google' (server-set) and
 --    the URL is a Google profile photo; the column CHECK enforces the same host.
---  * display_name rejects control chars and invisible / bidi-override chars (U+200B-U+200F,
---    U+202A-U+202E, U+2060-U+2064, U+FEFF) so names can't be blank-looking or reorder the
---    leaderboard text. The trigger strips them; the client strips the same set on rename.
+--  * display_name must contain at least one letter or digit, and rejects control chars and
+--    invisible / bidi / filler chars (U+00AD, U+061C, U+115F, U+1160, U+180E, U+200B-U+200F,
+--    U+202A-U+202E, U+2060-U+2069, U+3164, U+FEFF, U+FFA0) so names can't be blank-looking or
+--    reorder the leaderboard text. The sign-up trigger only ever writes a generated pseudonym;
+--    the client strips the same set on rename and the CHECK rejects anything that slips through.
 --  * task_progress: owner-only CRUD.
 --
 -- Known ceiling: XP is client-reported. A student can insert fake rows (up to 40 XP each,
@@ -32,10 +38,14 @@ create table if not exists public.profiles (
   display_name text not null
                check (char_length(display_name) between 2 and 32
                       and display_name = btrim(display_name)
-                      and display_name !~ '[[:cntrl:]\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]'),
+                      -- [[:alnum:]] follows the DB locale (Supabase: C.UTF-8 = Unicode-aware); the
+                      -- Cyrillic block keeps Russian/Tajik names valid even under a plain "C" ctype.
+                      and display_name ~ '[[:alnum:]\u0400-\u04FF]'
+                      and display_name !~ '[[:cntrl:]\u00AD\u061C\u115F\u1160\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2069\u3164\uFEFF\uFFA0]'),
   avatar_url   text check (avatar_url is null
                            or (avatar_url ~ '^https://lh[0-9]+\.googleusercontent\.com/'
                                and char_length(avatar_url) <= 500)),
+  show_on_leaderboard boolean not null default false,
   created_at   timestamptz not null default now()
 );
 
@@ -43,7 +53,7 @@ alter table public.profiles enable row level security;
 
 revoke all on table public.profiles from public, anon, authenticated;
 grant select on table public.profiles to authenticated;
-grant update (display_name) on table public.profiles to authenticated;
+grant update (display_name, show_on_leaderboard) on table public.profiles to authenticated;
 -- No INSERT (the trigger creates rows) and no DELETE (cascades from auth.users).
 
 drop policy if exists "profiles: read own" on public.profiles;
@@ -57,7 +67,9 @@ create policy "profiles: update own" on public.profiles
   using (id = (select auth.uid()))
   with check (id = (select auth.uid()));
 
--- Auto-create a profile on sign-up.
+-- Auto-create a profile on sign-up. The name is always a random pseudonym: never the email,
+-- the OAuth full name or anything derived from the user id (privacy by default). Students rename
+-- themselves from the account menu.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -68,18 +80,7 @@ declare
   v_name   text;
   v_avatar text;
 begin
-  v_name := coalesce(
-    nullif(btrim(new.raw_user_meta_data ->> 'full_name'), ''),
-    nullif(btrim(new.raw_user_meta_data ->> 'name'), ''),
-    split_part(coalesce(new.email, ''), '@', 1)
-  );
-  v_name := pg_catalog.regexp_replace(
-    v_name, '[[:cntrl:]\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]', '', 'g');
-  v_name := pg_catalog.btrim(pg_catalog.regexp_replace(v_name, '\s+', ' ', 'g'));
-  v_name := pg_catalog.btrim(pg_catalog.left(v_name, 32));
-  if v_name is null or pg_catalog.char_length(v_name) < 2 then
-    v_name := 'Ученик ' || pg_catalog.substr(pg_catalog.md5(pg_catalog.random()::text), 1, 4);
-  end if;
+  v_name := 'Ученик ' || pg_catalog.substr(pg_catalog.md5(pg_catalog.gen_random_uuid()::text), 1, 4);
 
   -- Avatar only from a Google sign-up (provider is set by the auth server, not the client).
   v_avatar := null;
@@ -162,6 +163,10 @@ begin
   if new.solved_at > pg_catalog.now() then
     new.solved_at := pg_catalog.now();
   end if;
+  -- Serialize inserts per user so concurrent requests can't all pass the count check.
+  if tg_op = 'INSERT' then
+    perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext(new.user_id::text));
+  end if;
   if tg_op = 'INSERT'
      and (select count(*) from public.task_progress t where t.user_id = new.user_id) >= 1000 then
     raise exception 'task_progress row limit reached' using errcode = 'check_violation';
@@ -178,7 +183,9 @@ create trigger task_progress_guard
   for each row execute function public.task_progress_guard();
 
 -- ---------------------------------------------------------------- leaderboard
--- Aggregates only: never returns user ids or raw rows. is_me lets the caller find themselves.
+-- Aggregates only: never returns user ids or raw rows. Only users who opted in
+-- (show_on_leaderboard) are listed and ranked; callers must be signed in. is_me lets the caller
+-- find themselves (only when they opted in; the client reads its own flag to explain why not).
 create or replace function public.leaderboard(limit_n int default 50)
 returns table (
   rank         bigint,
@@ -208,10 +215,10 @@ as $$
          tt.solved_count,
          coalesce(tt.user_id = (select auth.uid()), false) as is_me
   from totals tt
-  join public.profiles p on p.id = tt.user_id
+  join public.profiles p on p.id = tt.user_id and p.show_on_leaderboard
   order by tt.xp_total desc, tt.solved_count desc, tt.last_solved asc, p.display_name
   limit greatest(1, least(coalesce(limit_n, 50), 100));
 $$;
 
-revoke all on function public.leaderboard(int) from public;
-grant execute on function public.leaderboard(int) to anon, authenticated;
+revoke all on function public.leaderboard(int) from public, anon, authenticated;
+grant execute on function public.leaderboard(int) to authenticated;

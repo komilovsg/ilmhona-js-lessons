@@ -1,0 +1,1968 @@
+<style>
+/* схема «действие → состояние → экран» (только для этого урока) */
+.loop-flow { display: flex; align-items: stretch; flex-wrap: wrap; gap: 10px; }
+.loop-flow .step { flex: 1 1 150px; padding: 12px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
+.loop-flow .step b { display: block; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.loop-flow .step code { display: block; margin-top: 6px; background: none; padding: 0; white-space: normal; }
+.loop-flow .step.s { border-color: var(--gold); }  .loop-flow .step.s b { color: var(--gold); }
+.loop-flow .step.r { border-color: var(--accent); } .loop-flow .step.r b { color: var(--accent); }
+.loop-flow .step.d { border-color: var(--blue); }  .loop-flow .step.d b { color: var(--blue); }
+.loop-flow .arrow { align-self: center; font: 700 18px var(--mono); color: var(--ink-3); }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 11 · DOM ва интерфейс</p>
+      <h1>Ҳолати барнома ва localStorage</h1>
+      <p class="lead">Шумо рӯйхати корҳо навиштед, ҷадвали браузерро бастед — ва ҳама чиз гум шуд. Барои корбар ин фалокат аст: ӯ даҳ дақиқа сарф кард, аммо сайт ҳама чизро фаромӯш кард. Дар барномаҳои воқеӣ сабади мағозаи интернетӣ, мавзӯи торик ва дарси нохондашуда аз нав бор шудани саҳифа мегузаранд. Имрӯз шумо ҳамаи маълумоти барномаро дар як ҷо нигоҳ доштан, экранро аз рӯи ин маълумот кашидан ва онро дар браузер захира кардан меомӯзед.</p>
+      <ul class="goals">
+        <li>Ҳолати барномаро бо як объект тавсиф кардан ва аз маълумоти «ҳосилшуда» фарқ кардан</li>
+        <li>Функсияи <code>render(state)</code>-ро навиштан, ки экранро танҳо аз рӯи ҳолат мекашад</li>
+        <li>Ҳолатро тавассути функсияҳои хурди амал тағйир додан: илова кардан, қайд кардан, нест кардан</li>
+        <li>Маълумотро тавассути <code>localStorage</code> якҷоя бо <code>JSON.stringify</code> ва <code>JSON.parse</code> захира кардан ва хондан</li>
+        <li>Вақте маълумот нест, вайрон ё кӯҳна аст, афтода намондан</li>
+        <li>Аз ЗС хоҳиш кардан, ки сохтори ҳолатро пешниҳод кунад ва онро бо сохтори худ муқоиса кардан</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Бо ин саҳифа чӣ тавр кор кардан лозим</b>
+      <p>Коди дар заминаи торик бо тугмаи <b>▶ Запустить</b> — зинда аст: тағйир диҳед ва иҷро кунед. Блокҳои «Амалиёт» худкор аз рӯи матн дар консол санҷида мешаванд. Дар якчанд вазифа саҳифаи хурд бо пешнамоиш ҳаст: дар чап код (ҷадвалҳои <b>index.html</b>, <b>style.css</b>, <b>script.js</b>), дар рост натиҷа. Ишораҳо пинҳон шудаанд — аввал худатон кӯшиш кунед.</p>
+      <p><b>Муҳим дар бораи localStorage.</b> Коди ин саҳифа дар «қуттии санҷиш»-и ҷудо кор мекунад, ки дар он <code>localStorage</code>-и воқеӣ нест. Мо инро дар бахши 04 муфассал таҳлил мекунем ва ба шумо ивазкунаки дақиқро бо ҳамон API медиҳем. Дар компютери шумо (дар вазифаи хонагӣ) шумо воқеиро истифода мебаред.</p>
+    </div>
+
+    <!-- ===================================================== 01 -->
+    <section class="topic" id="what-is-state">
+      <h2 data-toc="Ҳолат чист"><span class="num">01</span> Ҳолати барнома чист</h2>
+
+      <p><b>Ҳолат</b> (state) — ин ҳамаи маълумотест, ки барномаро <b>ҳамин ҳозир</b> тавсиф мекунанд ва метавонанд тағйир ёбанд: рӯйхати вазифаҳо, кадомашон иҷро шудаанд, филтри интихобшуда, мавзӯи тарҳ, маҳсулот дар сабад. Агар аз ҳолат «акс» гиред, аз рӯи он он чиро, ки корбар мебинад, пурра барқарор кардан мумкин аст.</p>
+
+      <div class="callout analogy">
+        <b>Муқоиса аз ҳаёт</b>
+        <p>Лавҳа дар истгоҳи автобус дар Душанбе. Худи лавҳа чизеро «дар хотир надорад»: он танҳо ҷадвалеро <b>нишон медиҳад</b>, ки дар системаи диспетчер аст. Рейси Хуҷандро бекор карданд — диспетчер сабтро иваз кард, ва лавҳа аз нав кашида шуд. Ҷадвал дар система — ин <b>ҳолат</b> аст. Лавҳа — <b>экран</b>. Агар касе навиштаи лавҳаро дастӣ, системаро нарасонда, ислоҳ мекард, ҳангоми навсозии навбатӣ ислоҳ нест мешуд, ва дар толор бетартибӣ оғоз мегардид.</p>
+      </div>
+
+      <h3>Навомӯзон чӣ тавр мекунанд: маълумот «пароканда» аст</h3>
+      <p>Аввалин чизе, ки ба хотир меояд — барои ҳар хурдакорӣ тағйирёбандаи алоҳида сохтан, ва қисми маълумотро умуман он чизе ҳисоб кардан, ки дар саҳифа навишта шудааст. Чунин код зуд ба бесаранҷомӣ табдил меёбад:</p>
+<pre class="code" data-run data-title="Маълумот дар ҷойҳои гуногун">
+let ownerName = "Мадина";
+let balance = 150;
+let operations = 2;
+let lastOperation = "пополнение";
+
+function showWallet() {
+  console.log(`${ownerName}: ${balance} сомони, операций: ${operations}, последняя — ${lastOperation}`);
+}
+
+showWallet();
+</pre>
+      <p>То даме ки тағйирёбандаҳо чортоянд, ин тоқатпазир аст. Аммо вақте бист шуданд, ба саволҳои оддӣ ҷавоб додан мумкин нест: маҳз чиро захира кардан лозим? Чиро ба функсия додан? Ҳангоми баромадани корбар чиро тоза кардан?</p>
+
+      <h3>Дар лоиҳаҳои воқеӣ чӣ тавр мекунанд: як объект</h3>
+      <p>Ҳамаи маълумоти тағйирёбандаи барномаро дар <b>як объект</b> мегузоранд — одатан онро <code>state</code> меноманд.</p>
+<pre class="code" data-run data-title="Тамоми ҳолат дар як объект">
+const state = {
+  ownerName: "Мадина",
+  balance: 150,
+  history: ["пополнение", "покупка"],
+};
+
+function showWallet(state) {
+  const last = state.history[state.history.length - 1];
+  console.log(`${state.ownerName}: ${state.balance} сомони, последняя операция — ${last}`);
+}
+
+showWallet(state);
+console.log(JSON.stringify(state)); // тамоми барнома — бо як нигоҳ
+</pre>
+      <p>Фоидаҳо фавран намоёнанд: функсияҳо <code>state</code>-ро мегиранд ва дигар чизеро намеҷӯянд; «чиро захира кардан» — ин танҳо <code>state</code> аст; ислоҳ осонтар аст — кифоя аст як объектро чоп кунед ва тамоми барномаро бубинед.</p>
+
+      <figure class="diagram">
+        <div class="loop-flow">
+          <div class="step d"><b>Амал</b><code>корбар «Добавить»-ро пахш кард</code></div>
+          <span class="arrow">→</span>
+          <div class="step s"><b>Ҳолат</b><code>state.todos як вазифа зиёд шуд</code></div>
+          <span class="arrow">→</span>
+          <div class="step r"><b>Экран</b><code>render(state) рӯйхатро аз нав кашид</code></div>
+        </div>
+        <figcaption>Давраи асосии ҳар интерфейс: амал ҳолатро тағйир медиҳад, экран аз рӯи ҳолат кашида мешавад. Тамоми дарс — дар бораи ҳамин давра.</figcaption>
+      </figure>
+
+      <h3>Чиро ба ҳолат гузоштан лозим, чиро не</h3>
+      <p>Дар ҳолат <b>далелҳои аслӣ</b>-ро нигоҳ медоранд, ки онҳоро аз маълумоти дигар баровардан мумкин нест. Ҳар чизеро, ки аз ҳолат ҳисоб кардан мумкин аст, дар он нигоҳ доштан лозим нест — ин <b>маълумоти ҳосилшуда</b> аст.</p>
+      <div class="cols">
+        <div class="col bad"><b>Зиёдатӣ дар ҳолат</b>
+          <p>Ҷамъ ва ҳисобкунак аз рӯйхат «алоҳида зиндагӣ мекунанд» — яктоашро нав кардан осон фаромӯш мешавад, ва онҳо ихтилоф мекунанд.</p>
+<pre class="code">
+const state = {
+  items: [{ title: "Самбуса", price: 5, qty: 3 }],
+  total: 15,        // ҳисоб кардан мумкин аст
+  itemsCount: 1,    // ҳисоб кардан мумкин аст
+};
+</pre>
+        </div>
+        <div class="col good"><b>Танҳо далелҳо</b>
+          <p>Дар ҳолат — маҳсулот. Ҷамъро функсия ҳисоб мекунад, ва он ҳамеша ба рӯз аст.</p>
+<pre class="code">
+const state = {
+  items: [{ title: "Самбуса", price: 5, qty: 3 }],
+};
+const getTotal = (state) =&gt;
+  state.items.reduce((sum, i) =&gt; sum + i.price * i.qty, 0);
+</pre>
+        </div>
+      </div>
+
+      <dl class="terms">
+        <dt>Ба ҳолат</dt><dd>Рӯйхати вазифаҳо, филтри интихобшуда, мавзӯъ, маҳсулот дар сабад, номи корбар, рақами қадами ҷорӣ.</dd>
+        <dt>На ба ҳолат</dt><dd>Ҷамъи сабад, шумораи вазифаҳои иҷрошуда, сатрҳои тайёри HTML — ҳар чизе ки аз ҳолат ҳисоб кардан мумкин аст.</dd>
+        <dt>Бошуурона қарор медиҳем</dt><dd>Чизҳои муваққатӣ мисли матни дар майдон чопшаванда. Онҳоро дар ҳолат нигоҳ доштан мумкин аст, ё захира накардан — дар ин бора боз дар бахши ЗС сухан меронем.</dd>
+      </dl>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Нусха кардани адад аз ҳолат ба тағйирёбандаи маҳаллӣ ва тағйир додани нусха. Адад ва сатрҳо <b>бо қимат</b> нусха мешаванд: нусхаро тағйир додем — ҳолат бетағйир монд.</p>
+      </div>
+<pre class="code" data-run data-title="Ҳолат тағйир наёфт">
+const state = { visitors: 10 };
+
+let visitors = state.visitors; // ададро нусха кардем
+visitors = visitors + 1;       // нусхаро тағйир додем
+
+console.log(visitors);         // → 11
+console.log(state.visitors);   // → 10 — дар ҳолат чизе тағйир наёфт
+</pre>
+
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/object" target="_blank" rel="noopener">learn.javascript.ru — Объекты</a> · <a href="https://learn.javascript.ru/object-copy" target="_blank" rel="noopener">Копирование объектов и ссылки</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+        <p>Маълумоти «пароканда»-ро ба ҳолат ҷамъ мекунем, нигоҳ накардани зиёдатиро меомӯзем ва хаторо меёбем.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Ҳамён дар як объект</h4><span class="level easy">осон</span></header>
+          <p>Маълумоти ҳамён дар се тағйирёбанда пароканда аст. Онҳоро ба як объекти <code>state</code> бо ҳамон номҳои майдонҳо ҷамъ кунед ва тавассути <code>JSON.stringify</code> чоп кунед.</p>
+<pre class="code" data-run>
+let owner = "Мадина";
+let balance = 150;
+let currency = "сомони";
+
+// const state = { ... }-ро бо майдонҳои owner, balance, currency созед
+
+
+console.log(JSON.stringify(state));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>{"owner":"Мадина","balance":150,"currency":"сомони"}</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Объект дар қавсҳои фигурӣ навишта мешавад: <code>{ калид: қимат, калид: қимат }</code>. Қиматҳоро аз тағйирёбандаҳои боло гирифтан мумкин аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Агар калид ва тағйирёбанда яксон номида шаванд, мухтасар навиштан мумкин аст: <code>{ owner, balance, currency }</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Сабад: ҳисоб мекунем, на нигоҳ медорем</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>getTotal(state)</code>-ро нависед, ки ҷамъи сабадро аз рӯи <code>state.items</code> <b>ҳисоб мекунад</b> (нарх × миқдор). Ҷамъро ба ҳолат гузоштан лозим нест: харидор миқдорро тағйир медиҳад, ва функсия ҳамеша аз нав ҳисоб мекунад.</p>
+<pre class="code" data-run>
+const state = {
+  items: [
+    { title: "Самбуса", price: 5, qty: 3 },
+    { title: "Чой", price: 8, qty: 2 },
+    { title: "Нон", price: 4, qty: 1 },
+  ],
+};
+
+// function getTotal(state) { ... }
+
+console.log(getTotal(state));
+state.items[2].qty = 3; // харидор боз нон гирифт
+console.log(getTotal(state));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>35
+43</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Тағйирёбандаи <code>sum = 0</code>-ро созед, бо давра аз <code>state.items</code> гузаред ва <code>item.price * item.qty</code>-ро илова кунед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ё кӯтоҳтар: <code>state.items.reduce((sum, item) =&gt; sum + item.price * item.qty, 0)</code>. <code>return</code>-ро фаромӯш накунед.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Хаторо ёб: ҳисобкунаке, ки ҳисоб намекунад</h4><span class="level mid">миёна</span></header>
+          <p>Маъмур дар даромадгоҳи синф «+1»-ро пахш мекунад, аммо шумораи меҳмонон намеафзояд. Сабабро ёбед ва функсияи <code>addVisitor</code>-ро ислоҳ кунед: он бояд <b>маҳз ҳолатро</b> тағйир диҳад.</p>
+<pre class="code" data-run>
+const state = { visitors: 0 };
+
+function addVisitor(state) {
+  let visitors = state.visitors;
+  visitors = visitors + 1;
+}
+
+addVisitor(state);
+addVisitor(state);
+addVisitor(state);
+console.log("Посетителей:", state.visitors);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Посетителей: 3</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Мисоли болоро дар бораи «нусха бо қимат» хонед. Функсия маҳз чиро зиёд мекунад — ададро дар ҳолат ё тағйирёбандаи худро?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Майдонро бевосита тағйир диҳед: <code>state.visitors = state.visitors + 1;</code> (ё <code>state.visitors++</code>).</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 02 -->
+    <section class="topic" id="render">
+      <h2 data-toc="Рендер аз ҳолат"><span class="num">02</span> Рендер аз ҳолат: render(state)</h2>
+
+      <p>Ғояи навбатӣ — аз ҳама муҳим дар дарс. Экран <b>зиндагии худро намекунад</b>: он ҳар дафъа аз нав аз рӯи ҳолат кашида мешавад. Барои ин функсияи <code>render</code>-ро менависанд. Он ҳолатро мегирад ва нишон медиҳад. Дигар чизе намекунад: чизеро тағйир намедиҳад ва чизеро ҳал намекунад.</p>
+
+      <p>Барои он ки ҳоло ба HTML парешон нашавем, «экран» дар мисоли аввал консол мешавад:</p>
+<pre class="code" data-run>
+const state = {
+  todos: [
+    { id: 1, text: "Купить нон", done: true },
+    { id: 2, text: "Сделать домашку по JS", done: false },
+  ],
+};
+
+function render(state) {
+  console.log("--- Список дел ---");
+  state.todos.forEach((todo) =&gt; {
+    const mark = todo.done ? "[x]" : "[ ]";
+    console.log(`${mark} ${todo.text}`);
+  });
+}
+
+render(state);
+</pre>
+
+      <p>Акнун ҳамин чиз дар саҳифаи воқеӣ. Ба сохтори скрипт диққат диҳед: дар боло ҳолат, баъд <code>render</code>, баъд амал ва коркардкунандаи клик. «Добавить блюдо»-ро пахш кунед ва бубинед, ки рӯйхат чӣ тавр тағйир меёбад:</p>
+
+      <div class="playground" data-mode="dom" data-title="Рендери аввал: рӯйхати таомҳо">
+<pre class="code" data-lang="html">
+&lt;button id="add"&gt;Добавить блюдо&lt;/button&gt;
+&lt;ul id="menu"&gt;&lt;/ul&gt;
+&lt;p id="info"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+ul { padding-left: 20px; }
+li { margin: 4px 0; }
+#info { color: #6b7280; }
+</pre>
+<pre class="code" data-lang="js">
+const menu = document.querySelector("#menu");
+const info = document.querySelector("#info");
+const addBtn = document.querySelector("#add");
+
+// 1. Ҳолат
+const state = {
+  dishes: ["Оши палав", "Самбуса"],
+};
+const NEXT = ["Курутоб", "Шакароб", "Манту", "Чакка"];
+
+// 2. Рендер: экранро аз рӯи ҳолат мекашад
+function render() {
+  menu.textContent = ""; // рӯйхатро пок кардем
+  state.dishes.forEach((name) =&gt; {
+    const li = document.createElement("li");
+    li.textContent = name;
+    menu.append(li);
+  });
+  info.textContent = `Блюд в меню: ${state.dishes.length}`;
+}
+
+// 3. Амал: ҳолатро тағйир медиҳад ва аз нав кашиданро талаб мекунад
+addBtn.addEventListener("click", () =&gt; {
+  const next = NEXT[state.dishes.length - 2];
+  if (next) state.dishes.push(next);
+  render();
+});
+
+render();
+console.log("блюд в состоянии:", state.dishes.length);
+</pre>
+      </div>
+
+      <h3>Қоидаҳои render-и хуб</h3>
+      <ol class="steps">
+        <li><b>Танҳо ҳолатро мехонад.</b> Маълумотро барои экран аз <code>state</code> мегирем, на аз DOM. Не <code>list.children.length</code>, балки <code>state.todos.length</code>.</li>
+        <li><b>Чизеро тағйир намедиҳад.</b> Дар дохили <code>render</code> <code>push</code>, <code>state.x = …</code> ва дигар тағйироти маълумот нест.</li>
+        <li><b>Ҳамаро пурра мекашад.</b> Контейнерро пок кардем ва аз нав сохтем. Барои рӯйхатҳо аз даҳҳо элемент ин фаврист, ва хатоҳо камтар: фикр кардан лозим нест, «маҳз чӣ тағйир ёфт».</li>
+        <li><b>Баъди ҳар амал даъват мешавад.</b> Ҳолатро тағйир додем — <code>render()</code>-ро даъват кардем. Фаромӯш кардем — экран «дурӯғ мегӯяд».</li>
+        <li><b>Ҳолати холиро кашида метавонад.</b> Агар вазифаҳо набошанд, «Список пуст»-ро нишон медиҳем, на холигии сафед.</li>
+      </ol>
+
+      <div class="callout analogy">
+        <b>Муқоиса аз ҳаёт</b>
+        <p>Ошпаз дар чойхона фармоишро аз рӯи чек ҷамъ мекунад, на аз рӯи хотира. Фармоиш тағйир ёфт — ба чек нигоҳ кард ва аз нав тайёр кард. Чек — ин ҳолат аст. Таом дар миз — экран. Бо чек баҳс кардан беҳуда аст: агар дар чек «бе пиёз» бошад, пиёз намешавад.</p>
+      </div>
+
+      <div class="cols">
+        <div class="col bad"><b>Ду сарчашмаи ҳақиқат</b>
+          <p>Шумораи вазифаҳо ҳам дар массив ва ҳам «дар саҳифа» нигоҳ дошта мешавад. Яктоашро нав кардан фаромӯш шуд — онҳо ихтилоф мекунанд.</p>
+<pre class="code">
+// ❌ маълумотро аз DOM мегирем
+const count = list.children.length;
+if (count &gt;= 5) {
+  alert("Слишком много задач");
+}
+</pre>
+        </div>
+        <div class="col good"><b>Як сарчашмаи ҳақиқат</b>
+          <p>Ҳақиқат — дар <code>state</code>. DOM — танҳо инъикоси он.</p>
+<pre class="code">
+// ✓ маълумотро аз ҳолат мегирем
+if (state.todos.length &gt;= 5) {
+  alert("Слишком много задач");
+}
+</pre>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Маълумотро тағйир додан ва фавран экранро дастӣ «ислоҳ кардан» (<code>li.textContent = …</code>, <code>li.remove()</code>) дар ҳар коркардкунанда. То даме ки элемент як аст — кор мекунад. Вақте филтрҳо, ҳисобкунакҳо ва захиракунӣ пайдо мешаванд, шумо гоҳ яктояшро, гоҳ дигаронро нав кардан фаромӯш мекунед. <code>state</code>-ро тағйир медиҳем, <code>render()</code>-ро даъват мекунем — ва тамом.</p>
+      </div>
+
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/dom-nodes" target="_blank" rel="noopener">learn.javascript.ru — DOM-дерево</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Document_Object_Model/Introduction" target="_blank" rel="noopener">MDN — Введение в DOM</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+        <p><code>render</code>-ро барои консол менависем: ин ҳамон мантиқест, ки барои саҳифа.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Аввалин render</h4><span class="level easy">осон</span></header>
+          <p><code>render(state)</code>-ро нависед: барои ҳар вазифа сатри <code>[x] матн</code> (агар иҷро шуда бошад) ё <code>[ ] матн</code> (агар не)-ро чоп кунед.</p>
+<pre class="code" data-run>
+const state = {
+  todos: [
+    { id: 1, text: "Купить нон", done: true },
+    { id: 2, text: "Сделать домашку по JS", done: false },
+    { id: 3, text: "Позвонить маме", done: false },
+  ],
+};
+
+// function render(state) { ... }
+
+render(state);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>[x] Купить нон
+[ ] Сделать домашку по JS
+[ ] Позвонить маме</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>state.todos</code>-ро тавассути <code>forEach</code> ё <code>for...of</code> гузаред ва барои ҳар вазифа як сатр чоп кунед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Нишонаро бо оператори сегона интихоб кунед: <code>todo.done ? "[x]" : "[ ]"</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Рӯйхати холӣ</h4><span class="level easy">осон</span></header>
+          <p><code>render</code>-ро бо ҳолати холӣ нависед: агар вазифаҳо набошанд, <code>Список пуст — добавьте первую задачу</code>-ро чоп кунед ва дигар чизе не. Формати рӯйхати ғайрихолӣ пештара (<code>[ ]</code> ва <code>[x]</code>).</p>
+<pre class="code" data-run>
+function render(state) {
+  // коди шумо
+}
+
+render({ todos: [] });
+render({ todos: [{ id: 1, text: "Выучить localStorage", done: false }] });
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Список пуст — добавьте первую задачу
+[ ] Выучить localStorage</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>state.todos.length === 0</code>-ро дар худи оғози функсия санҷед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар дохили <code>if</code> паёмро чоп кунед ва <code>return</code> кунед — он гоҳ боқимонда код иҷро намешавад (баромади барвақт).</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Хаторо ёб: аз нав кашиданро фаромӯш кардем</h4><span class="level mid">миёна</span></header>
+          <p>Баъди илова кардани вазифаҳо экран кӯҳна мемонад. Кодро чунон ислоҳ кунед, ки <code>render</code> баъди <b>ҳар</b> амал даъват шавад — аммо даъватро як маротиба, дар дохили <code>addTodo</code> навиштан лозим, на баъди ҳар даъвати беруна.</p>
+<pre class="code" data-run>
+const state = { todos: [{ id: 1, text: "Хлеб", done: false }] };
+
+function render(state) {
+  console.log("--- Экран ---");
+  state.todos.forEach((todo) =&gt; console.log(`${todo.done ? "[x]" : "[ ]"} ${todo.text}`));
+}
+
+function addTodo(text) {
+  state.todos.push({ id: state.todos.length + 1, text, done: false });
+}
+
+render(state);
+addTodo("Молоко");
+addTodo("Чой");
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>--- Экран ---
+[ ] Хлеб
+--- Экран ---
+[ ] Хлеб
+[ ] Молоко
+--- Экран ---
+[ ] Хлеб
+[ ] Молоко
+[ ] Чой</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҳолат тағйир ёфт, аммо экран не. Кӣ бояд ба экран бигӯяд «аз нав кашид»?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>render(state);</code>-ро ҳамчун сатри охир ба бадани <code>addTodo</code> илова кунед. Он гоҳ ҳар илова худкор экранро нав мекунад.</p></details>
+        </article>
+
+        <article class="task" id="t2-4">
+          <header><span class="task-num">ВАЗИФАИ 2.4</span><h4>Филтр ва ҳисобкунак</h4><span class="level hard">душвор</span></header>
+          <p>Дар ҳолат майдони <code>filter</code> пайдо шуд: <code>"all"</code>, <code>"active"</code> (танҳо иҷронашудаҳо) ё <code>"done"</code> (танҳо иҷрошудаҳо). <code>render</code>-ро нависед: сатри аввал <code>Фильтр: …</code>, баъд вазифаҳои мувофиқ дар формати <code>[x]</code>/<code>[ ]</code>, ва сатри охирин <code>Осталось: N</code> — шумораи вазифаҳои иҷронашуда <b>дар тамоми рӯйхат</b>, на танҳо дар байни намоёнҳо.</p>
+<pre class="code" data-run>
+const state = {
+  filter: "all",
+  todos: [
+    { id: 1, text: "Нон", done: true },
+    { id: 2, text: "Молоко", done: false },
+    { id: 3, text: "Чой", done: true },
+    { id: 4, text: "Зира", done: false },
+  ],
+};
+
+// function render(state) { ... }
+
+render(state);
+state.filter = "active";
+render(state);
+state.filter = "done";
+render(state);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Фильтр: all
+[x] Нон
+[ ] Молоко
+[x] Чой
+[ ] Зира
+Осталось: 2
+Фильтр: active
+[ ] Молоко
+[ ] Зира
+Осталось: 2
+Фильтр: done
+[x] Нон
+[x] Чой
+Осталось: 2</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аввал рӯйхатро барои нишон додан гиред: тавассути <code>filter</code> вазифаҳои ба <code>state.filter</code> мувофиқро нигоҳ доред. Барои <code>"all"</code> филтр кардан лозим нест.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҳисобкунак — ҳисоби алоҳида аз рӯи <code>state.todos</code>: <code>state.todos.filter((t) =&gt; !t.done).length</code>. Рӯйхати намоён ба он таъсир намерасонад.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 03 -->
+    <section class="topic" id="actions">
+      <h2 data-toc="Амалҳо болои ҳолат"><span class="num">03</span> Амалҳо: ҳолатро чӣ тавр дуруст тағйир додан</h2>
+
+      <p>Ҳолатро <b>функсияҳои хурди амал</b> (actions) тағйир медиҳанд: <code>addTodo</code>, <code>toggleTodo</code>, <code>removeTodo</code>. Коркардкунандаҳои ҳодисаҳо худашон ба маълумот намедароянд — онҳо танҳо амали лозимиро даъват мекунанд. Ҳар амал се корро мекунад: <b>ҳолатро тағйир медиҳад → <code>render()</code>-ро даъват мекунад</b> (ва дар бахшҳои оянда — боз захира мекунад).</p>
+
+      <figure class="diagram">
+        <div class="loop-flow">
+          <div class="step d"><b>Ҳодиса</b><code>клик ба тугма ё ба вазифа</code></div>
+          <span class="arrow">→</span>
+          <div class="step s"><b>Амал</b><code>addTodo(text)<br>toggleTodo(id)<br>removeTodo(id)</code></div>
+          <span class="arrow">→</span>
+          <div class="step r"><b>render()</b><code>экран аз нав аз рӯи state кашида мешавад</code></div>
+        </div>
+        <figcaption>Коркардкунанда → амал → рендер. Маълумот танҳо дар амалҳо тағйир меёбад.</figcaption>
+      </figure>
+
+      <h3>Се усул барои массивҳо дар ҳолат</h3>
+      <p>Ҳамаи тағйирот дар рӯйхат ба се амал мерасад. Мувофиқа мекунем, ки массивро <b>на «дар ҷои худ»</b> тағйир диҳем, балки <b>навашро таъин кунем</b> — ин тавр пайгирии он ки маҳз чӣ тағйир ёфт осонтар аст, ва маҳз ҳамин услуб дар React боз ба шумо лозим мешавад.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Чӣ мекунем</th><th>Усул</th><th>Сабт</th></tr></thead>
+          <tbody>
+            <tr><td><b>Илова кардан</b></td><td>spread <code>...</code></td><td><code>state.todos = [...state.todos, newTodo];</code></td></tr>
+            <tr><td><b>Якторо тағйир додан</b></td><td><code>map</code></td><td><code>state.todos = state.todos.map((t) =&gt; t.id === id ? { ...t, done: !t.done } : t);</code></td></tr>
+            <tr><td><b>Нест кардан</b></td><td><code>filter</code></td><td><code>state.todos = state.todos.filter((t) =&gt; t.id !== id);</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre class="code" data-run data-title="Се амал ва render">
+const state = { nextId: 1, todos: [] };
+
+function render() {
+  console.log("--- Экран ---");
+  if (state.todos.length === 0) console.log("(пусто)");
+  state.todos.forEach((t) =&gt; console.log(`${t.id}. ${t.done ? "[x]" : "[ ]"} ${t.text}`));
+}
+
+function addTodo(text) {
+  const todo = { id: state.nextId, text, done: false };
+  state.nextId = state.nextId + 1;
+  state.todos = [...state.todos, todo];
+  render();
+}
+
+function toggleTodo(id) {
+  state.todos = state.todos.map((t) =&gt; (t.id === id ? { ...t, done: !t.done } : t));
+  render();
+}
+
+function removeTodo(id) {
+  state.todos = state.todos.filter((t) =&gt; t.id !== id);
+  render();
+}
+
+addTodo("Купить нон");
+addTodo("Выучить JSON");
+toggleTodo(1);
+removeTodo(2);
+</pre>
+
+      <div class="callout analogy">
+        <b>Муқоиса аз ҳаёт</b>
+        <p>Касса дар мағоза дар Бозори Сабз. Харидор бо дасташ ба касса намедарояд — вай ба фурӯшанда мегӯяд: «илова кунед», «гиред», «қайд кунед». Фурӯшанда (амал) сабтро ба журнал (ҳолат) ворид мекунад ва натиҷаро дар дисплей (рендер) нишон медиҳад. Ҳамон амалҳои фаҳмо — ҳар дафъа. Касе дисплейро бо қалам ислоҳ намекунад.</p>
+      </div>
+
+      <h3>id-ро аз куҷо гирифтан</h3>
+      <p>Ҳар вазифа бояд <code>id</code>-и ягона дошта бошад: тавассути он мо онро барои қайд ё нест кардан меёбем. Васваса — гирифтани <code>state.todos.length + 1</code>. Он баъди аввалин нест кардан вайрон мешавад:</p>
+<pre class="code" data-run data-title="Тузоқ: id аз рӯи дарозии массив">
+let todos = [{ id: 1 }, { id: 2 }, { id: 3 }];
+
+todos = todos.filter((t) =&gt; t.id !== 1);          // якумро нест кардем: ду то монд
+todos = [...todos, { id: todos.length + 1 }];     // нав id = 3 гирифт
+
+console.log(todos.map((t) =&gt; t.id).join(","));    // → 2,3,3 — ду id-и якхела!
+</pre>
+      <p>Бинобар ин дар ҳолат ҳисобкунаки алоҳидаи <code>nextId</code>-ро нигоҳ медоранд: он танҳо меафзояд ва ҳеҷ гоҳ як рақамро ду маротиба намедиҳад.</p>
+
+      <h3>Амалҳо дар саҳифаи воқеӣ</h3>
+      <p>Вакилкуниро аз дарси 9 ба ёд оред: як коркардкунанда дар рӯйхат, ва элементи лозимиро тавассути <code>event.target.closest(...)</code> меёбем. Вазифаи лозимиро аз рӯи <code>data-id</code> муайян мекунем:</p>
+<pre class="code" data-title="Пайванд: клик → id → амал">
+list.addEventListener("click", (event) =&gt; {
+  const li = event.target.closest("li");
+  if (!li) return;                     // клик берун аз вазифаҳо
+  toggleTodo(Number(li.dataset.id));   // data-id — сатр, ба адад табдил медиҳем
+});
+</pre>
+      <p>Ба <code>Number(...)</code> диққат диҳед: қиматҳо аз <code>dataset</code> ҳамеша сатранд, ва <code>id</code> дар ҳолат — адад. Бе табдил <code>t.id === id</code> ҳеҷ гоҳ кор намекунад: <code>1 === "1"</code> — ин <code>false</code> аст.</p>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Ҳолатро тағйир додан ва натиҷаро дар тағйирёбандаи алоҳида захира кардан, дубора ба <code>state</code> таъин карданро фаромӯш карда. Усулҳои <code>map</code> ва <code>filter</code> массиви аслиро <b>тағйир намедиҳанд</b> — онҳо навашро бармегардонанд.</p>
+      </div>
+<pre class="code" data-run data-title="Натиҷаи map гум шуд">
+const state = { todos: [{ id: 1, done: false }] };
+
+state.todos.map((t) =&gt; ({ ...t, done: true })); // массиви навро ба ҷое нанавиштем
+console.log(state.todos[0].done);               // → false — чизе тағйир наёфт
+</pre>
+
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/array-methods" target="_blank" rel="noopener">learn.javascript.ru — Методы массивов</a> · <a href="https://learn.javascript.ru/event-delegation" target="_blank" rel="noopener">Делегирование событий</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+        <p>Амалҳоро барои рӯйхати корҳо ва сабад менависем. Ва дар вазифаи охири бахш — амал дар саҳифаи воқеӣ.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Амали addTodo</h4><span class="level easy">осон</span></header>
+          <p><code>addTodo(state, text)</code>-ро нависед: вазифаи <code>{ id, text, done: false }</code>-ро бо <code>id</code> аз <code>state.nextId</code> месозад, онро ба <code>state.todos</code> илова мекунад ва <code>nextId</code>-ро ба 1 зиёд мекунад.</p>
+<pre class="code" data-run>
+const state = { nextId: 1, todos: [] };
+
+// function addTodo(state, text) { ... }
+
+addTodo(state, "Купить нон");
+addTodo(state, "Выучить JSON");
+console.log(JSON.stringify(state));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>{"nextId":3,"todos":[{"id":1,"text":"Купить нон","done":false},{"id":2,"text":"Выучить JSON","done":false}]}</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аввал объекти вазифаро ҷамъ кунед, <code>id</code>-ро аз <code>state.nextId</code> гирифта. Тартиби майдонҳо: <code>id</code>, <code>text</code>, <code>done</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Се сатр: <code>todo</code>-ро сохтан; <code>state.todos = [...state.todos, todo];</code>; <code>state.nextId = state.nextId + 1;</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Иҷрошуда қайд кардан</h4><span class="level mid">миёна</span></header>
+          <p><code>toggleTodo(state, id)</code>-ро тавассути <code>map</code> нависед: дар вазифа бо <code>id</code>-и лозимӣ қимати <code>done</code> ба муқобил иваз мешавад, вазифаҳои боқимонда чун буданд мемонанд. Функсияи <code>marks</code> аллакай навишта шудааст — он нишон медиҳад, кадом вазифаҳо иҷро шудаанд.</p>
+<pre class="code" data-run>
+const state = {
+  todos: [
+    { id: 1, text: "Нон", done: false },
+    { id: 2, text: "Молоко", done: false },
+    { id: 3, text: "Чой", done: false },
+  ],
+};
+
+const marks = (state) =&gt; state.todos.map((t) =&gt; (t.done ? "x" : "-")).join("");
+
+// function toggleTodo(state, id) { ... }
+
+toggleTodo(state, 2);
+console.log(marks(state));
+toggleTodo(state, 1);
+console.log(marks(state));
+toggleTodo(state, 2);
+console.log(marks(state));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>-x-
+xx-
+x--</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар дохили <code>map</code> барои ҳар вазифа бипурсед: ин лозим аст? Агар ҳа — нусхаро бо <code>done</code>-и баръакс баргардонед, агар не — худи вазифаро.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>state.todos = state.todos.map((t) =&gt; (t.id === id ? { ...t, done: !t.done } : t));</code></p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Нест кардан бе такрори id</h4><span class="level mid">миёна</span></header>
+          <p><code>removeTodo(state, id)</code>-ро тавассути <code>filter</code> нависед. Функсияи <code>addTodo</code> аллакай тайёр аст ва <code>id</code>-ро аз <code>nextId</code> мегирад. Санҷед: баъди нест кардан ва илова кардани вазифаи нав ҳамаи <code>id</code> бояд ягона монанд.</p>
+<pre class="code" data-run>
+const state = {
+  nextId: 4,
+  todos: [
+    { id: 1, text: "Нон", done: false },
+    { id: 2, text: "Молоко", done: false },
+    { id: 3, text: "Чой", done: false },
+  ],
+};
+
+function addTodo(state, text) {
+  state.todos = [...state.todos, { id: state.nextId, text, done: false }];
+  state.nextId = state.nextId + 1;
+}
+
+// function removeTodo(state, id) { ... }
+
+removeTodo(state, 2);
+addTodo(state, "Зира");
+console.log(state.todos.map((t) =&gt; t.id).join(","));
+console.log("Задач:", state.todos.length);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>1,3,4
+Задач: 3</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>filter</code> элементҳоеро нигоҳ медорад, ки барои онҳо функсия <code>true</code> баргардонд. Ҳангоми нест кардан кадом вазифаҳоро нигоҳ доштан лозим?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>state.todos = state.todos.filter((t) =&gt; t.id !== id);</code> — ҳамаро ғайр аз вазифа бо ин <code>id</code> нигоҳ медорем.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ВАЗИФАИ 3.4</span><h4>Сабад: тағйири миқдор</h4><span class="level hard">душвор</span></header>
+          <p><code>changeQty(state, id, delta)</code>-ро нависед: <code>delta</code>-ро (метавонад манфӣ бошад) ба миқдори маҳсулот илова мекунад. Агар баъд аз ин миқдор <b>0 ё камтар</b> шуд, маҳсулот аз сабад нест карда мешавад. Функсияи <code>summary</code> аллакай тайёр аст.</p>
+<pre class="code" data-run>
+const state = {
+  items: [
+    { id: 1, title: "Самбуса", qty: 2 },
+    { id: 2, title: "Чой", qty: 1 },
+  ],
+};
+
+const summary = (state) =&gt;
+  state.items.map((i) =&gt; `${i.title}×${i.qty}`).join(", ") || "пусто";
+
+// function changeQty(state, id, delta) { ... }
+
+changeQty(state, 1, +1);
+console.log(summary(state));
+changeQty(state, 2, -1);
+console.log(summary(state));
+changeQty(state, 1, -5);
+console.log(summary(state));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Самбуса×3, Чой×1
+Самбуса×3
+пусто</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ду қадам: аввал <code>map</code> — миқдорро дар маҳсулоти лозимӣ тағйир медиҳем; баъд <code>filter</code> — танҳо маҳсулотро бо <code>qty &gt; 0</code> нигоҳ медорем.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>state.items = state.items.map((i) =&gt; (i.id === id ? { ...i, qty: i.qty + delta } : i)).filter((i) =&gt; i.qty &gt; 0);</code></p></details>
+        </article>
+
+        <article class="task" id="t3-5">
+          <header><span class="task-num">ВАЗИФАИ 3.5</span><h4>Ҳисобкунак дар саҳифа</h4><span class="level mid">миёна</span></header>
+          <p>Ҳисобкунаки меҳмононро ба итмом расонед: <code>render</code> ададро аз <code>state.visitors</code> дар элементи <code>#count</code> нишон медиҳад; тугмаи «+1» онро зиёд мекунад, ва тугмаи «−1» кам мекунад, аммо <b>на аз сифр паст</b>. Бояд ҳолатро тағйир дод, баъд <code>render()</code>-ро даъват кард. Сатрҳои поёни скрипт тугмаҳоро худашон мепахшанд ва санҷишро чоп мекунанд — онҳоро нест накунед.</p>
+          <div class="playground" data-mode="dom" data-title="Ҳисобкунаки меҳмононии курс">
+<pre class="code" data-lang="html">
+&lt;p&gt;Посетителей: &lt;b id="count"&gt;&lt;/b&gt;&lt;/p&gt;
+&lt;button id="plus"&gt;+1&lt;/button&gt;
+&lt;button id="minus"&gt;−1&lt;/button&gt;
+</pre>
+<pre class="code" data-lang="css">
+button { font-size: 18px; padding: 6px 16px; margin-right: 8px; }
+#count { font-size: 28px; }
+</pre>
+<pre class="code" data-lang="js">
+const countEl = document.querySelector("#count");
+const plusBtn = document.querySelector("#plus");
+const minusBtn = document.querySelector("#minus");
+
+const state = { visitors: 0 };
+
+function render() {
+  // TODO: state.visitors-ро дар countEl нишон диҳед
+}
+
+plusBtn.addEventListener("click", () =&gt; {
+  // TODO: state.visitors-ро зиёд кунед ва render()-ро даъват кунед
+});
+
+minusBtn.addEventListener("click", () =&gt; {
+  // TODO: кам кунед, аммо на аз 0 паст, ва render()-ро даъват кунед
+});
+
+render();
+
+// ---- санҷиши худкор: тағйир надиҳед ----
+for (let i = 0; i &lt; 3; i++) plusBtn.click();
+console.log("после +1:", state.visitors, countEl.textContent);
+for (let i = 0; i &lt; 5; i++) minusBtn.click();
+console.log("после −1:", state.visitors, countEl.textContent);
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>после +1: 3 3
+после −1: 0 0</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар <code>render</code> як сатр кофист: <code>countEl.textContent = state.visitors;</code>. Боқимонда — дар коркардкунандаҳо, ва дар ҳар кадом дар охир <code>render()</code> даъват мешавад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>На аз сифр паст: <code>state.visitors = Math.max(0, state.visitors - 1);</code> ё санҷиши <code>if (state.visitors &gt; 0)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 04 -->
+    <section class="topic" id="localstorage">
+      <h2 data-toc="localStorage"><span class="num">04</span> localStorage: хотираи браузер</h2>
+
+      <p>Ҳоло тамоми ҳолат дар тағйирёбанда зиндагӣ мекунад. Саҳифаро нав кардед — тағйирёбандаҳо аз нав сохта мешаванд, ва ҳолат сифр мешавад. Барои он ки маълумот аз нав бор шудан гузарад, онро ба ҷое гузоштан лозим аст, ки бо саҳифа гум намешавад. Барои ин браузер <b><code>localStorage</code></b> дорад — анбори хурди «калид → сатр», ки ба сайт вобаста аст.</p>
+
+      <div class="callout analogy">
+        <b>Муқоиса аз ҳаёт</b>
+        <p>Анбори ашё дар вокзал. Шумо ҷомадонро месупоред ва рақамча мегиред. Меравед, дар шаҳр сайр мекунед, рӯзи дигар бармегардед — ҷомадон ба ҷояш. Рақамча — ин <b>калид</b>, ҷомадон — <b>қимат</b>. Аммо ба ин анбор танҳо ашёи бастабандишударо гузоштан мумкин аст: <code>localStorage</code> <b>танҳо сатрҳоро</b> мегирад. Ҳама чизи дигарро бояд бастабандӣ кард — дар ин бора дар зер.</p>
+      </div>
+
+      <h3>Дар бораи localStorage чиро бояд донист</h3>
+      <ul>
+        <li>Ҷуфтҳои «калид — сатр»-ро нигоҳ медорад. Калидҳо низ сатранд.</li>
+        <li>Маълумот ҳангоми аз нав бор шудани саҳифа, бастани ҷадвал ва ҳатто аз нав оғоз кардани браузер <b>нест намешавад</b>.</li>
+        <li>Ҳар сайт анбори худро дорад: <code>makefirststep.tj</code> маълумоти <code>example.com</code>-ро намебинад.</li>
+        <li>Ҳаҷм — тақрибан 5 МБ барои як сайт: барои рӯйхати корҳо ё танзимот ин бо захира кифоя аст.</li>
+        <li>Корбар метавонад онро дар танзимот пок кунад ё дастӣ дар DevTools тағйир диҳад. Ба маълумоти аз он гирифташуда бовар кардан мумкин нест, ҳамон тавр ки ба воридот дар шакл.</li>
+        <li><b>Дар он ҷо паролҳо ва асрорро нигоҳ надоред:</b> ҳар скрипт дар саҳифа метавонад онҳоро бихонад.</li>
+      </ul>
+
+      <h3>Усулҳо</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Усул</th><th>Чӣ мекунад</th><th>Намуна</th></tr></thead>
+          <tbody>
+            <tr><td><code>setItem(key, value)</code></td><td>Қиматро (сатрро) аз рӯи калид менависад. Қимати кӯҳнаро иваз мекунад.</td><td><code>localStorage.setItem("theme", "dark")</code></td></tr>
+            <tr><td><code>getItem(key)</code></td><td>Қиматро мехонад. Агар калид набошад — <code>null</code> бармегардонад.</td><td><code>localStorage.getItem("theme")</code></td></tr>
+            <tr><td><code>removeItem(key)</code></td><td>Як сабтро нест мекунад.</td><td><code>localStorage.removeItem("theme")</code></td></tr>
+            <tr><td><code>clear()</code></td><td>Ҳамаи сабтҳои ин сайтро нест мекунад.</td><td><code>localStorage.clear()</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>Муҳим: дар қуттии санҷиши ин курс localStorage-и воқеӣ нест</b>
+        <p>Тамоми коди ин саҳифа дар тирезаи ҷудогона-«қуттии санҷиш» иҷро мешавад — мо ҳамин тавр компютери шуморо аз коди тасодуфии зараровар муҳофизат мекунем. Чунин тиреза «сайти худро» надорад, бинобар ин браузер дастрасии онро ба <code>localStorage</code> манъ мекунад. Худатон санҷед:</p>
+      </div>
+<pre class="code" data-run data-title="Дар қуттии санҷиш хато медиҳад">
+localStorage.setItem("theme", "dark");
+console.log(localStorage.getItem("theme"));
+</pre>
+      <p>Хатои дастрасӣ — гуноҳи шумо нест ва хатои дарс нест. То шумо ҳамоно машқ карда тавонед, мо <b>ивазкунак</b> медиҳем: объекти <code>storage</code> бо ҳамон усулҳои <code>setItem</code>, <code>getItem</code>, <code>removeItem</code>, <code>clear</code>. Он маълумотро дар хотира то даме ки коди шумо кор мекунад, нигоҳ медорад. Ва барои он ки «аз нав бор кардани саҳифа»-ро дар қуттии санҷиш ҳам нишон додан мумкин бошад, мо функсияи оғози барномаро якчанд маротиба пай дар пай дар як скрипт даъват мекунем: анбор мемонад, аммо тағйирёбандаҳои барнома не.</p>
+
+<pre class="code" data-run data-title="Ивазкунаки storage — ҳамон API, ки localStorage дорад">
+// ── ивазкунаки localStorage ─────────────────────────────────────
+// Дар қуттии санҷиш localStorage-и воқеӣ дастнорас аст — дар компютери шумо
+// window.localStorage-ро истифода баред. Боқимонда код тағйир намеёбад.
+function createStorage() {
+  let data = {};
+  return {
+    getItem(key) {
+      return Object.hasOwn(data, key) ? data[key] : null;
+    },
+    setItem(key, value) {
+      data[key] = String(value); // мисли воқеӣ: ҳама чиз ба сатр табдил меёбад
+    },
+    removeItem(key) {
+      delete data[key];
+    },
+    clear() {
+      data = {};
+    },
+  };
+}
+const storage = createStorage();
+// ─────────────────────────────────────────────────────────────
+
+storage.setItem("theme", "dark");
+console.log(storage.getItem("theme"));    // → dark
+console.log(storage.getItem("language")); // → null — чунин калид нест
+storage.removeItem("theme");
+console.log(storage.getItem("theme"));    // → null
+</pre>
+
+      <div class="callout tip">
+        <b>Чӣ тавр ба localStorage-и воқеӣ гузаштан</b>
+        <p>Тамоми кодро дар дарс тавассути тағйирёбандаи <code>storage</code> нависед. Дар компютери шумо, дар файли оддии HTML, кифоя аст ивазкунакро бо як сатр иваз кунед — боқимонда бе тағйирот кор мекунад:</p>
+<pre class="code" data-title="Дар компютери худатон">
+const storage = window.localStorage;
+</pre>
+        <p>Мехоҳед ҳоло воқеиро кӯшиш кунед? Ягон сайтро (ҳатто ҳамин)-ро кушоед, <b>F12</b> → ҷадвали <b>Console</b>-ро пахш кунед ва <code>localStorage.setItem("test", "привет")</code>, баъд <code>localStorage.getItem("test")</code>-ро ворид кунед. Сабтҳоро дар ҷадвали <b>Application</b> (дар Firefox — <b>Storage</b>) → <b>Local Storage</b> дидан мумкин аст. Дар ҳамон ҷо онҳоро таҳрир кардан ва нест кардан мумкин аст.</p>
+      </div>
+
+      <h3>Ҳама чиз ба сатр табдил меёбад</h3>
+      <p>Ин тузоқи асосӣ аст. Адад гузоштем — сатр гирифтем. Объект гузоштем — матни <code>"[object Object]"</code> гирифтем.</p>
+<pre class="code" data-run data-title="Тузоқ: танҳо сатрҳо">
+function createStorage() {
+  let data = {};
+  return {
+    getItem: (key) => (Object.hasOwn(data, key) ? data[key] : null),
+    setItem: (key, value) => { data[key] = String(value); },
+    removeItem: (key) => { delete data[key]; },
+    clear: () => { data = {}; },
+  };
+}
+const storage = createStorage();
+
+storage.setItem("visits", 5);
+const visits = storage.getItem("visits");
+console.log(typeof visits);   // → string, на number
+console.log(visits + 1);      // → 51 — сатрҳо мечаспанд!
+console.log(Number(visits) + 1); // → 6 — ин тавр дуруст аст
+
+storage.setItem("user", { name: "Фарход" });
+console.log(storage.getItem("user")); // → [object Object] — маълумот гум шуд
+</pre>
+      <p>Ададҳоро тавассути <code>Number(...)</code> бармегардонем. Ва барои объектҳо ва массивҳо абзори махсус ҳаст — JSON. Он маҳз барои «бастабандӣ»-и объект ба сатр ва «кушодан»-и бозгашт лозим аст. Бахши навбатӣ ба он бахшида шудааст.</p>
+
+      <h3>«Аз нав бор кардан» дар қуттии санҷиш</h3>
+      <p>Инак мо аз нав бор карданро чӣ тавр тақлид мекунем: функсияи <code>openSite</code> — ин «кушодани саҳифа» аст. Ҳар даъват аз сифр оғоз мекунад, аммо анбор боздидҳои гузаштаро дар хотир дорад:</p>
+<pre class="code" data-run data-title="Ҳисобкунаки боздидҳо: ҳар даъват — «боркунии нав»">
+function createStorage() {
+  let data = {};
+  return {
+    getItem: (key) => (Object.hasOwn(data, key) ? data[key] : null),
+    setItem: (key, value) => { data[key] = String(value); },
+    removeItem: (key) => { delete data[key]; },
+    clear: () => { data = {}; },
+  };
+}
+const storage = createStorage();
+
+function openSite() {
+  const saved = storage.getItem("visits");        // бори аввал — null
+  const visits = saved === null ? 1 : Number(saved) + 1;
+  storage.setItem("visits", visits);
+  console.log(`Добро пожаловать! Это визит №${visits}`);
+}
+
+openSite(); // корбар сайтро кушод
+openSite(); // саҳифаро аз нав бор кард
+openSite(); // рӯзи дигар кушод
+</pre>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Фаромӯш кардан, ки ҳангоми оғози аввал <code>getItem</code> <code>null</code> бармегардонад. Агар фавран <code>Number(null) + 1</code> кунед, <code>1</code> мешавад — тасодуфан кор мекунад, аммо <code>null.length</code> ё <code>JSON.parse(...).items</code> аллакай меафтанд. Ҳамеша фикр кунед: «Ва агар дар ин ҷо холӣ бошад-чӣ?».</p>
+      </div>
+
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/localstorage" target="_blank" rel="noopener">learn.javascript.ru — LocalStorage, sessionStorage</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Window/localStorage" target="_blank" rel="noopener">MDN — Window.localStorage</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+        <p>Дар вазифаҳои зер ивазкунаки тайёри <code>storage</code>-ро истифода баред (он дар сатрҳои аввал навишта шудааст — тағйир додани он лозим нест).</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Навиштан ва хондан</h4><span class="level easy">осон</span></header>
+          <p>Дар анбор калиди <code>academy</code>-ро бо қимати <code>MakeFirstStep</code> захира кунед. Баъд онро хонед ва чоп кунед. Баъд калиди <code>teacher</code>-ро, ки нест, хонед ва чоп кунед.</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+// коди шумо
+
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>MakeFirstStep
+null</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Навиштан: <code>storage.setItem("academy", "MakeFirstStep")</code>. Хондан: <code>storage.getItem("academy")</code> — натиҷаро тавассути <code>console.log</code> чоп кардан лозим.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Барои калиде, ки нест, <code>getItem</code> <code>null</code> бармегардонад — истисно нахоҳад буд.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Пешгӯӣ кунед: адад ё сатр?</h4><span class="level easy">осон</span></header>
+          <p>Аввал чопро <b>пешгӯӣ кунед</b> ва иҷро кунед. Сатри дуюм ҳоло <code>905</code>-ро нишон медиҳад, аммо <code>95</code> лозим аст. Кодро ислоҳ кунед: сатри аввал бояд ҳамоно <code>string</code>-ро чоп кунад.</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+storage.setItem("score", 90);
+const score = storage.getItem("score");
+console.log(typeof score);
+console.log(score + 5);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>string
+95</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аз <code>getItem</code> ҳамеша сатр меояд. Ва <code>"90" + 5</code> — ин часпонидани сатрҳост.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Қиматро пеш аз ҷамъ ба адад табдил диҳед: <code>Number(score) + 5</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Ҳисобкунаки боздидҳо</h4><span class="level mid">миёна</span></header>
+          <p><code>openSite()</code>-ро нависед: аз анбор калиди <code>visits</code>-ро мехонад (агар набошад — боздидҳо 0 ҳисоб мекунем), ба 1 зиёд мекунад, захира мекунад ва <code>Визит №N</code>-ро чоп мекунад. Баъди се «кушодан» чоп кунед, ки дар анбор чӣ ҳаст.</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+// function openSite() { ... }
+
+openSite();
+openSite();
+openSite();
+console.log("В хранилище:", storage.getItem("visits"));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Визит №1
+Визит №2
+Визит №3
+В хранилище: 3</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>saved = storage.getItem("visits")</code>-ро хонед. Агар <code>saved === null</code> — ин боздиди аввал аст, вагарна <code>Number(saved)</code> плюс 1.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ададро нав тавассути <code>storage.setItem("visits", visits)</code> нависед — ивазкунак худаш онро ба сатр табдил медиҳад.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ВАЗИФАИ 4.4</span><h4>Мавзӯи торик, ки интихобро дар хотир дорад</h4><span class="level mid">миёна</span></header>
+          <p><code>toggleTheme()</code>-ро нависед: калиди <code>theme</code>-ро мехонад (агар набошад — мавзӯъ <code>light</code>), ба муқобил иваз мекунад (<code>light</code> ↔ <code>dark</code>), захира мекунад ва мавзӯи навро чоп мекунад. Дар охир калидро нест кунед ва боварӣ ҳосил кунед, ки хондан <code>null</code> медиҳад.</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+// function toggleTheme() { ... }
+
+toggleTheme();
+toggleTheme();
+toggleTheme();
+storage.removeItem("theme");
+console.log(storage.getItem("theme"));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>dark
+light
+dark
+null</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Мавзӯи ҷорӣ: <code>storage.getItem("theme") || "light"</code> — агар <code>null</code> омад, <code>"light"</code> гирифта мешавад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Мавзӯи нав: <code>current === "light" ? "dark" : "light"</code>. Онро захира кунед ва чоп кунед.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 05 -->
+    <section class="topic" id="json">
+      <h2 data-toc="JSON ва ҳолат"><span class="num">05</span> JSON: ҳолатро ба сатр бастабандӣ мекунем</h2>
+
+      <p>Бо JSON шумо дар дарси 7 шинос шудед. Дар ин ҷо он вазифаи мушаххасро ҳал мекунад: <code>localStorage</code> танҳо сатрҳоро мегирад, ва ҳолати мо — объект бо массивҳост. Бинобар ин пеш аз навиштан мо объектро ба сатр <b>бастабандӣ мекунем</b> (<code>JSON.stringify</code>), ва баъди хондан — <b>боз мекунем</b> (<code>JSON.parse</code>).</p>
+
+      <figure class="diagram">
+        <div class="loop-flow">
+          <div class="step s"><b>state</b><code>{ todos: [...] }</code></div>
+          <span class="arrow">stringify →</span>
+          <div class="step d"><b>сатр</b><code>'{"todos":[...]}'</code></div>
+          <span class="arrow">setItem →</span>
+          <div class="step r"><b>localStorage</b><code>калид → сатр</code></div>
+        </div>
+        <figcaption>Захиракунӣ: объект → сатри JSON → анбор. Хондан ба самти муқобил меравад: getItem → parse → объект.</figcaption>
+      </figure>
+
+<pre class="code" data-run data-title="Ба он ҷо ва бозгашт">
+const state = {
+  filter: "all",
+  todos: [{ id: 1, text: "Купить нон", done: false }],
+};
+
+const raw = JSON.stringify(state);    // объект → сатр
+console.log(raw);
+console.log(typeof raw);              // → string
+
+const restored = JSON.parse(raw);     // сатр → объект
+console.log(restored.todos[0].text);  // → Купить нон
+console.log(restored === state);      // → false — ин нусхаи нав аст, на ҳамон объект
+</pre>
+
+      <div class="callout analogy">
+        <b>Муқоиса аз ҳаёт</b>
+        <p>Кӯч. Диванро якбора ба мошин ҷо намекунанд, бинобар ин онро ҷудо мекунанд, ба қуттиҳо мепечонанд ва мебаранд. Дар хонаи нав мувофиқи дастур боз ҷамъ мекунанд. <code>stringify</code> — «ҷудо кардан ва печонидан», <code>parse</code> — «ҷамъ кардан». Диван ҳамон аст, аммо ин аллакай нусхаи нави ҷамъшуда аст, на ҳамон худаш.</p>
+      </div>
+
+      <h3>Ҷуфти функсияҳои saveState / loadState</h3>
+      <p>То ки <code>JSON.stringify</code> ва <code>setItem</code>-ро дар даҳ ҷо нанависем, онҳоро дар ду функсия пинҳон мекунем. Тамоми барнома ба анбор танҳо тавассути онҳо муроҷиат мекунад:</p>
+<pre class="code" data-title="Қолаб: захира ва хондани ҳолат">
+const KEY = "todo-app:v1";   // калид: номи барнома + версияи формат
+
+function saveState(state) {
+  storage.setItem(KEY, JSON.stringify(state));
+}
+
+function loadState() {
+  const raw = storage.getItem(KEY);
+  return raw === null ? null : JSON.parse(raw);
+}
+</pre>
+      <p>Калид бо префикси <code>todo-app:</code> аз низоъ бо барномаҳои дигар дар ҳамон сайт муҳофизат мекунад, ва <code>:v1</code> вақте лозим мешавад, ки шумо формати ҳолатро тағйир диҳед: версияи нав калиди навро хонда метавонад ва ба маълумоти кӯҳна пешпо нахӯрад.</p>
+
+      <h3>Чӣ аз бастабандӣ намегузарад</h3>
+      <p>JSON — танҳо матн бо қиматҳои оддӣ аст. На ҳар чизе ки дар объект аст, онро ба он табдил додан мумкин аст:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Чӣ дар объект</th><th>Баъди stringify → parse чӣ мешавад</th></tr></thead>
+          <tbody>
+            <tr><td>Сатрҳо, адад, <code>true</code>/<code>false</code>, <code>null</code>, массивҳо, объектҳо</td><td>Бе тағйирот</td></tr>
+            <tr><td><code>undefined</code></td><td>Майдон нест мешавад</td></tr>
+            <tr><td>Функсияҳо ва усулҳо</td><td>Майдон нест мешавад</td></tr>
+            <tr><td>Санаи <code>new Date()</code></td><td><b>Сатр</b> мешавад (формати ISO), на сана</td></tr>
+            <tr><td><code>NaN</code>, <code>Infinity</code></td><td><code>null</code> мешаванд</td></tr>
+          </tbody>
+        </table>
+      </div>
+<pre class="code" data-run data-title="Чӣ дар роҳ гум шуд">
+const task = {
+  title: "Сдать проект",
+  deadline: new Date(0),    // сана → сатр
+  note: undefined,          // нест мешавад
+  remind() { console.log("!"); }, // нест мешавад
+};
+
+const copy = JSON.parse(JSON.stringify(task));
+console.log(JSON.stringify(copy));
+console.log(typeof copy.deadline);  // → string
+console.log(typeof copy.remind);    // → undefined
+</pre>
+      <p><b>Хулоса:</b> дар ҳолат маълумоти «оддӣ»-ро нигоҳ доред — сатрҳо, адад, қиматҳои булӣ, массивҳо ва объектҳо. Санаҳо — ҳамчун адад (<code>Date.now()</code>) ё сатр. Функсияҳоро ба ҳолат умуман намегузоранд: функсияҳо — амалҳоянд, онҳо дар код зиндагӣ мекунанд.</p>
+
+      <h3>Хатоҳои JSON</h3>
+      <p>Қоидаҳои формат сахтанд: калидҳо ва сатрҳо танҳо дар нохунакҳои <b>дугона</b>, бе вергул баъди элементи охирин, бе шарҳҳо. Вайрон кардед — <code>JSON.parse</code> истиснои <code>SyntaxError</code>-ро мепартояд, ва барнома меафтад. Мо муқобилат кардани инро дар бахши навбатӣ меомӯзем.</p>
+<pre class="code" data-run data-title="Ин код хато медиҳад">
+const raw = "{'text': 'нон'}";       // нохунакҳои ягона — ин JSON нест
+const data = JSON.parse(raw);        // ✖ SyntaxError
+console.log(data);
+</pre>
+
+      <div class="callout tip">
+        <b>Маслиҳат</b>
+        <p>Барои зуд «дида баромадани» ҳолати калон дар консол, <code>JSON.stringify(state, null, 2)</code>-ро даъват кунед — чоп бо ақибнишинӣ мешавад, ду фосила барои ҳар сатҳ. Барои захира дар <code>localStorage</code> ақибнишинӣ лозим нест.</p>
+      </div>
+
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/json" target="_blank" rel="noopener">learn.javascript.ru — Формат JSON, метод toJSON</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/JSON" target="_blank" rel="noopener">MDN — JSON</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+        <p>Бастабандӣ мекунем, мекушоем ва меёбем, ки дар роҳ чӣ гум мешавад.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Танзимотро бастабандӣ кунед</h4><span class="level easy">осон</span></header>
+          <p>Объекти танзимотро ба сатри JSON табдил диҳед. Худи сатрро, баъд навъи онро чоп кунед.</p>
+<pre class="code" data-run>
+const settings = {
+  theme: "dark",
+  fontSize: 16,
+  favorites: ["курутоб", "шакароб"],
+};
+
+// коди шумо: сатрро гиред ва онро ва навъи онро чоп кунед
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>{"theme":"dark","fontSize":16,"favorites":["курутоб","шакароб"]}
+string</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Усули лозимӣ — <code>JSON.stringify(settings)</code>. Натиҷаро ба тағйирёбанда захира кунед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Навъ чунин чоп мешавад: <code>console.log(typeof raw)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Маълумотро кушоед</h4><span class="level easy">осон</span></header>
+          <p>Аз анбор сатр омад. Онро кушоед ва чоп кунед: ном, шумораи тегҳо ва навъи майдони <code>age</code>.</p>
+<pre class="code" data-run>
+const raw = '{"name":"Фарход","age":21,"tags":["js","css","html"]}';
+
+// коди шумо
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Фарход
+3
+number</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>const data = JSON.parse(raw);</code> — баъд аз ин <code>data</code> объекти оддӣ аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>data.name</code>, <code>data.tags.length</code> ва <code>typeof data.age</code> — се даъвати <code>console.log</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ВАЗИФАИ 5.3</span><h4>Пешгӯӣ кунед: чӣ гум мешавад</h4><span class="level mid">миёна</span></header>
+          <p>Аввал <b>дар коғаз</b> пешгӯӣ кунед, ки чор сатр чӣ чоп мекунанд. Иҷро кунед ва муқоиса кунед. Баъд сатри панҷумро илова кунед: санаро аз сатр тавассути <code>new Date(copy.deadline)</code> барқарор кунед ва соли онро тавассути <code>getUTCFullYear()</code> чоп кунед.</p>
+<pre class="code" data-run>
+const task = {
+  title: "Сдать проект",
+  done: false,
+  deadline: new Date(0),
+  note: undefined,
+  remind() {
+    console.log("!");
+  },
+};
+
+const copy = JSON.parse(JSON.stringify(task));
+console.log(JSON.stringify(copy));
+console.log(typeof copy.deadline);
+console.log("note" in copy);
+console.log(typeof copy.remind);
+// сатри панҷум — аз они шумо
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>{"title":"Сдать проект","done":false,"deadline":"1970-01-01T00:00:00.000Z"}
+string
+false
+undefined
+1970</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҷадвали болоро ба ёд оред: сана ба сатр табдил меёбад, ва <code>undefined</code> ва функсияҳо нест мешаванд.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>console.log(new Date(copy.deadline).getUTCFullYear());</code> — санаи нав аз сатр ҷамъ мешавад.</p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ВАЗИФАИ 5.4</span><h4>saveState ва loadState</h4><span class="level mid">миёна</span></header>
+          <p>Ҷуфти <code>saveState(state)</code> ва <code>loadState()</code>-ро бо калиди <code>todo-app:v1</code> нависед. Санҷиш: ҳолатро захира кунед, онро дар хотира «вайрон кунед» ва боварӣ ҳосил кунед, ки <code>loadState()</code> варианти захирашударо баргардонд.</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+const KEY = "todo-app:v1";
+
+// function saveState(state) { ... }
+// function loadState() { ... }
+
+let state = {
+  todos: [
+    { id: 1, text: "Нон", done: true },
+    { id: 2, text: "Чой", done: false },
+  ],
+};
+
+saveState(state);
+state = { todos: [] }; // «аз нав бор кардан»: дар хотира ҳама чиз гум шуд
+
+const restored = loadState();
+console.log(restored.todos.length);
+console.log(restored.todos[0].text);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>2
+Нон</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар <code>saveState</code> — як сатр: <code>storage.setItem(KEY, JSON.stringify(state))</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар <code>loadState</code>: <code>return JSON.parse(storage.getItem(KEY));</code> — барои ин вазифа маълумот аллакай ҳаст, ҳолати холиро дар бахши навбатӣ таҳлил мекунем.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 06 -->
+    <section class="topic" id="empty-data">
+      <h2 data-toc="Маълумоти холӣ ва вайроншуда"><span class="num">06</span> Маълумоти холӣ, вайроншуда ва кӯҳнашуда</h2>
+
+      <p>Коде, ки «вақте ҳама чиз хуб аст» кор мекунад, нисфи кор аст. Нисфи дигар — вақте маълумот нест, вайрон шудааст ё бо версияи кӯҳнаи барнома навишта шуда буд, чӣ мешавад. Бо <code>localStorage</code> чунин чиз пайваста рух медиҳад:</p>
+      <ul>
+        <li><b>Оғози аввал.</b> Корбар бори аввал омад — дар анбор холист, <code>getItem</code> <code>null</code> бармегардонад.</li>
+        <li><b>Хасу хошок.</b> Касе сабтро дар DevTools ислоҳ кард, сабт қатъ шуд, барномаи дигар таҳти ҳамон калид чизи худро навишт.</li>
+        <li><b>Формати кӯҳна.</b> Дирӯз дар ҳолат майдони <code>filter</code> набуд, имрӯз шумо онро илова кардед, ва дар браузери корбар акси дирӯза мемонад.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Муқоиса аз ҳаёт</b>
+        <p>Анбор дар курс пеш аз оғози машғулот. Маъмур ҷевонро барои маркерҳо мекушояд: мабодо ҷевон холӣ бошад (рӯзи аввал), маркерҳо хушк шуда бошанд (маълумоти вайроншуда) ё ба ҷои онҳо стикерҳо аз семестри гузашта бошанд (формати кӯҳна)? Маъмури хуб воҳима намекунад: вай маҷмӯаи эҳтиётӣ дорад. Маҷмӯаи эҳтиётӣ дар код — ин <b>ҳолати пешфарз</b> аст.</p>
+      </div>
+
+      <h3>Анбори холӣ</h3>
+      <p>Агар калид набошад, <code>getItem</code> <code>null</code> бармегардонад. Инро ошкоро санҷед ва ҳолати пешфарзро баргардонед:</p>
+<pre class="code" data-run data-title="Оғози аввал: null → ҳолати пешфарз">
+function createStorage() {
+  let data = {};
+  return {
+    getItem: (key) => (Object.hasOwn(data, key) ? data[key] : null),
+    setItem: (key, value) => { data[key] = String(value); },
+    removeItem: (key) => { delete data[key]; },
+    clear: () => { data = {}; },
+  };
+}
+const storage = createStorage();
+
+const KEY = "todo-app:v1";
+const DEFAULT_STATE = { nextId: 1, todos: [] };
+
+function loadState() {
+  const raw = storage.getItem(KEY);
+  if (raw === null) return { ...DEFAULT_STATE, todos: [] }; // оғози аввал
+  return JSON.parse(raw);
+}
+
+console.log(JSON.stringify(loadState())); // анбор холӣ аст
+</pre>
+      <p>Ба <code>{ ...DEFAULT_STATE, todos: [] }</code> диққат диҳед: мо <b>нусхаи</b> пешфарзро бармегардонем, на худи объектро. Вагарна ҳамаи тағйирот ба «маҷмӯаи эҳтиётӣ» меафтад, ва ҳангоми барқароркунии навбатӣ он аллакай холӣ нахоҳад буд.</p>
+
+      <h3>JSON-и вайроншуда: try / catch</h3>
+      <p>Агар дар анбор сатре бошад, ки JSON-и дуруст нест, <code>JSON.parse</code> истисно мепартояд. Онро тавассути <code>try / catch</code> мегиранд (шумо инро дар дарси 7 дидед) ва ба ҳолати пешфарз бармегарданд:</p>
+<pre class="code" data-run data-title="try / catch дар атрофи JSON.parse">
+function safeParse(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.log("Данные повреждены:", error.name);
+    return null;
+  }
+}
+
+console.log(safeParse('{"ok":true}'));  // → { ok: true }
+console.log(safeParse("{oops"));        // → Данные повреждены: SyntaxError, потом null
+</pre>
+
+      <h3>Шакли нодуруст: месанҷем, ки дар дохил чӣ ҳаст</h3>
+      <p>Сатр метавонад <b>JSON-и дуруст</b> бошад, аммо тамоман на он чизе, ки мо интизор будем: адади <code>42</code>, сатр, <code>null</code>, объект ба ҷои массив. Бинобар ин баъди <code>parse</code> шакли маълумотро месанҷем:</p>
+<pre class="code" data-run data-title="Санҷиши шакли маълумот">
+function isValidTodos(value) {
+  return Array.isArray(value);
+}
+
+console.log(isValidTodos([]));            // → true
+console.log(isValidTodos({ a: 1 }));      // → false — объект, на массив
+console.log(isValidTodos(JSON.parse("42"))); // → false — адад
+console.log(isValidTodos(JSON.parse("null"))); // → false
+</pre>
+
+      <div class="callout warn">
+        <b>Тузоқи ҷолиб</b>
+        <p><code>JSON.parse(null)</code> намеафтад, балки <code>null</code> бармегардонад — зеро <code>null</code> аввал ба сатри <code>"null"</code> табдил меёбад, ва ин JSON-и дуруст аст. Дар натиҷа <code>JSON.parse(storage.getItem(key))</code> ҳангоми анбори холӣ «кор мекунад», аммо <code>null</code> бармегардонад, ва аллакай сатри навбатии <code>state.todos</code> бо <code>TypeError</code> меафтад. Бинобар ин санҷиши <code>raw === null</code> ҳамеша лозим аст.</p>
+      </div>
+
+      <h3>Ҳолат кӯҳна шуд: қиматҳои пешфарзро омехта мекунем</h3>
+      <p>Вақте дар ҳолат майдонҳои нав пайдо мешаванд, аксҳои кӯҳна онҳоро надоранд. Ҳал — аз ҳолати пешфарз оғоз кардан ва он чиро, ки дар анбор ёфтем, болои он «гузоштан»:</p>
+<pre class="code" data-run data-title="Омезиш: маълумоти кӯҳна + майдонҳои нав">
+const DEFAULT_STATE = { filter: "all", theme: "light", todos: [] };
+
+// акси дирӯза: майдонҳои filter ва theme ҳанӯз набуданд
+const saved = { todos: [{ id: 1, text: "Нон", done: false }] };
+
+const state = { ...DEFAULT_STATE, ...saved };
+console.log(JSON.stringify(state));
+// → майдонҳои filter ва theme бо пешфарз гирифта шуданд, todos — аз захирашуда
+</pre>
+
+      <h3>Ҳама чиз якҷоя: loadState-и боэътимод</h3>
+      <ol class="steps">
+        <li><b>Сатрро баровардем</b> тавассути <code>getItem</code>. Агар <code>null</code> — ҳолати пешфарзро баргардонем.</li>
+        <li><b>Кушодем</b> дар дохили <code>try / catch</code>. Хато — ҳолати пешфарзро баргардонем.</li>
+        <li><b>Шаклро санҷидем:</b> ин умуман объект аст (на адад, сатр, <code>null</code>, массив)? Не — ҳолати пешфарз.</li>
+        <li><b>Омехтем</b> қиматҳои пешфарзро барои майдонҳои намерасида ва майдонҳои муҳимро санҷидем: масалан, <code>todos</code> бояд массив бошад.</li>
+      </ol>
+<pre class="code" data-title="Қолаби боркунии боэътимод">
+function loadState() {
+  const raw = storage.getItem(KEY);
+  if (raw === null) return createDefaultState();     // 1. холӣ
+
+  let saved;
+  try {
+    saved = JSON.parse(raw);                         // 2. JSON-и вайроншуда
+  } catch {
+    return createDefaultState();
+  }
+
+  if (typeof saved !== "object" || saved === null || Array.isArray(saved)) {
+    return createDefaultState();                     // 3. ин объекти ҳолат нест
+  }
+
+  const state = { ...createDefaultState(), ...saved }; // 4. намерасидаро илова кардем
+  if (!Array.isArray(state.todos)) state.todos = [];   //    ва майдони муҳимро таъмир кардем
+  return state;
+}
+</pre>
+      <p>Печида менамояд, аммо навиштани он лозим аст <b>як маротиба</b>. Ба ивази ин барнома намеафтад, дар анбор ҳар чӣ бошад ҳам. Ин функсияро шумо ба лоиҳаи худ мегиред.</p>
+
+      <p class="muted">Барои муфассалтар хондан: <a href="https://learn.javascript.ru/try-catch" target="_blank" rel="noopener">learn.javascript.ru — Обработка ошибок, try…catch</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray" target="_blank" rel="noopener">MDN — Array.isArray()</a></p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+        <p>Афтоданро намеомӯзем. Ивазкунаки <code>storage</code> аллакай ба ҳар вазифа дохил шудааст.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Оғози аввал</h4><span class="level easy">осон</span></header>
+          <p><code>loadTodos()</code>-ро нависед: массиви вазифаҳоро аз калиди <code>todos</code> бармегардонад, ва агар калид набошад — массиви холӣ. Функсияи <code>saveTodos</code> аллакай тайёр аст.</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+function saveTodos(todos) {
+  storage.setItem("todos", JSON.stringify(todos));
+}
+
+// function loadTodos() { ... }
+
+console.log(loadTodos().length); // оғози аввал
+saveTodos(["Нон", "Чой"]);
+console.log(loadTodos().length);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>0
+2</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аввал <code>raw = storage.getItem("todos")</code>-ро хонед ва санҷед, ки оё он <code>null</code> нест.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>if (raw === null) return [];</code> ва баъд <code>return JSON.parse(raw);</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ВАЗИФАИ 6.2</span><h4>Маълумоти вайроншуда</h4><span class="level mid">миёна</span></header>
+          <p>Дар анбор касе хасу хошок навишт. <code>loadTodos()</code>-ро пурра кунед: агар <code>JSON.parse</code> афтод, <code>Данные повреждены — начинаем с пустого списка</code>-ро чоп кунед ва массиви холиро баргардонед.</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+function loadTodos() {
+  const raw = storage.getItem("todos");
+  if (raw === null) return [];
+  // коди шумо: маълумоти вайроншударо коркард кунед
+  return JSON.parse(raw);
+}
+
+storage.setItem("todos", "{oops");
+console.log(loadTodos().length);
+storage.setItem("todos", '["Нон","Чой"]');
+console.log(loadTodos().length);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Данные повреждены — начинаем с пустого списка
+0
+2</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Танҳо сатри <code>JSON.parse</code>-ро дар <code>try { ... } catch { ... }</code> печонед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар <code>try</code> — <code>return JSON.parse(raw);</code>, дар <code>catch</code> — <code>console.log(...)</code> бо паём ва <code>return [];</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ВАЗИФАИ 6.3</span><h4>JSON-и дуруст, аммо на он чиз</h4><span class="level mid">миёна</span></header>
+          <p>Акнун дар анбор JSON-и дуруст ҳаст, аммо на массив. Санҷиши шаклро ба итмом расонед: <code>loadTodos()</code> бояд танҳо массив баргардонад — дар ҳамаи ҳолатҳои дигар массиви холӣ.</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+function loadTodos() {
+  const raw = storage.getItem("todos");
+  if (raw === null) return [];
+  try {
+    const data = JSON.parse(raw);
+    // коди шумо: санҷед, ки data массив аст
+    return data;
+  } catch {
+    return [];
+  }
+}
+
+for (const raw of ['{"a":1}', "42", '["Нон"]', "null"]) {
+  storage.setItem("todos", raw);
+  console.log(loadTodos().length);
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>0
+0
+1
+0</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Барои санҷиши «ин массив аст?» функсияи тайёри <code>Array.isArray(data)</code> ҳаст. Санҷиши оддии <code>typeof</code> дар ин ҷо кӯмак намекунад: массив низ «объект» аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>return Array.isArray(data) ? data : [];</code></p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ВАЗИФАИ 6.4</span><h4>loadState-и боэътимод</h4><span class="level hard">душвор</span></header>
+          <p>Функсияи пурраи <code>loadState()</code>-ро аз рӯи қолаби дарс ҷамъ кунед. Ҳолати пешфарз: <code>{ filter: "all", theme: "light", todos: [] }</code>. Қоидаҳо: холӣ, JSON-и вайроншуда ё на объект (адад, сатр, <code>null</code>, массив) — ҳолати пешфарзро баргардонед. Вагарна майдонҳои намерасидаро омехта кунед, ва агар <code>todos</code> на массив баромад — онро ба <code>[]</code> иваз кунед (майдонҳои дигари захирашуда, масалан <code>filter</code>, мемонанд).</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+const KEY = "todo-app:v1";
+const createDefaultState = () => ({ filter: "all", theme: "light", todos: [] });
+
+// function loadState() { ... }
+
+console.log(JSON.stringify(loadState()));                 // 1. холӣ
+
+storage.setItem(KEY, '{"todos":[{"id":1,"text":"Нон","done":false}]}');
+console.log(JSON.stringify(loadState()));                 // 2. формати кӯҳна
+
+storage.setItem(KEY, "}{");
+console.log(JSON.stringify(loadState()));                 // 3. хасу хошок
+
+storage.setItem(KEY, '{"filter":"done","todos":"oops"}');
+console.log(JSON.stringify(loadState()));                 // 4. todos навъи нодуруст
+
+storage.setItem(KEY, "42");
+console.log(JSON.stringify(loadState()));                 // 5. на объект
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>{"filter":"all","theme":"light","todos":[]}
+{"filter":"all","theme":"light","todos":[{"id":1,"text":"Нон","done":false}]}
+{"filter":"all","theme":"light","todos":[]}
+{"filter":"done","theme":"light","todos":[]}
+{"filter":"all","theme":"light","todos":[]}</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Қадамҳои қолабро пайравӣ кунед: <code>null</code> → <code>try / catch</code> → санҷиши шакл → омезиш. Ҳар ҳолати «бад» бо <code>return createDefaultState()</code> анҷом меёбад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Омезиш: <code>const state = { ...createDefaultState(), ...saved };</code>. Баъд аз он <code>Array.isArray(state.todos)</code>-ро санҷед — агар не, <code>state.todos = [];</code> гузоред. Барои ҳолати «на объект» <code>typeof saved !== "object" || saved === null</code>-ро фавран баъди <code>parse</code> санҷед.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 07 -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ЗС: сохтори ҳолат"><span class="num">07</span> Блоки ЗС: талаб мекунем, ки сохтори ҳолатро пешниҳод кунад</h2>
+
+      <p>Муҳимтарин лаҳза дар ҳар барнома — <b>кадом маълумотро ва бо кадом намуд нигоҳ медоред</b>. Хато дар ин ҷо гарон меояд: сохтори ҳолатро аз нав сохтан, вақте ки <code>render</code>, амалҳо ва захиракунӣ аллакай навишта шудаанд, — ҳамон аст, ки пойдевори хонаи тайёрро аз нав созем. Бинобар ин маҳз ба ин ҷо ЗС-ро ҷалб кардан мувофиқ аст — аммо ҳамчун <b>андешаи дуюм</b>, на ҳамчун муаллиф.</p>
+
+      <div class="callout ai">
+        <b>Қоидаҳои курс, ки дар ин ҷо махсусан муҳиманд</b>
+        <p>1) Аввал <b>15 дақиқа худатон</b>: <code>state</code>-и худро дар коғаз ё дар код кашед. 2) Танҳо баъд промпт. 3) Коде, ки сатр ба сатр шарҳ дода наметавонед, ба лоиҳа ворид накунед. 4) Қарорро шумо қабул мекунед: ЗС пешниҳод мекунад, шумо муқоиса мекунед ва интихоб мекунед.</p>
+      </div>
+
+      <h3>Тартиби кор</h3>
+      <ol class="steps">
+        <li><b>Версияи худӣ.</b> Барномаро бо як ҷумла тавсиф кунед ва объекти <code>state</code>-ро тарҳрезӣ кунед. Қайд кунед, ки аз он чиро дар <code>localStorage</code> захира мекунед.</li>
+        <li><b>Промпт аз рӯи формула:</b> контекст → вазифа → маҳдудиятҳо → формати ҷавоб → санҷиш.</li>
+        <li><b>Муқоиса.</b> Тафовутҳоро ба ҷадвал нависед: майдон — дар ман — дар ЗС — чӣ ҳал кардам ва чаро.</li>
+        <li><b>Санҷиш.</b> Барои ҳар ҷои баҳсбарангез аз худ бипурсед: «агар дар ин ҷо холӣ бошад ё хасу хошок бошад, чӣ мешавад?».</li>
+      </ol>
+
+      <h3>Промпти бад ва хуб</h3>
+<div class="prompt bad-prompt">Фикр кун, ки маълумотро барои барномаи ман чӣ тавр нигоҳ дорам</div>
+      <p>Чаро бад аст: ЗС на барномаро медонад, на сатҳи шуморо, на ин ки маълумот дар куҷо нигоҳ дошта мешавад. Вай ё маслиҳати умумӣ медиҳад, ё фавран меъмории азимро дар фреймворке, ки шумо надоред.</p>
+
+<div class="prompt good-prompt">Контекст: ман навомӯз ҳастам, бо JavaScript-и холис бе китобхонаҳо менависам, лоиҳаи таълимӣ — ҳисобкунаки одатҳо. Корбар метавонад одат илова кунад, онро имрӯз иҷрошуда қайд кунад, нест кунад ва филтри «ҳама / иҷронашуда»-ро иваз кунад. Маълумот бояд аз нав бор шудани саҳифа гузарад.
+Вазифа: сохтори объекти ҳолатро пешниҳод кун ва шарҳ деҳ, ки аз он чиро ба localStorage гузоштан лозим.
+Маҳдудиятҳо: танҳо сатрҳо, адад, қиматҳои булӣ, массивҳо ва объектҳо (он чи аз JSON мегузарад); он чиро, ки ҳисоб кардан мумкин аст, нигоҳ надор; ҳар одат id-и ягона дорад.
+Формати ҷавоб: аввал намунаи объекти state ҳамчун коди JS; баъд рӯйхати майдонҳо — ба ҳар сатр «майдон — чаро лозим»; баъд чиро захира мекунем ва чиро не.
+Санҷиш: 2 ҳолатро ном бар, ки дар онҳо маълумоти захирашуда метавонад нодуруст бошад, ва чӣ тавр бо онҳо мубориза бурдан.</div>
+      <p>Ин варианти густурдаи қолаби ёддошти курс аст: <i>«Сохтори объекти ҳолатро барои барномаи [тавсиф] пешниҳод кун. Шарҳ деҳ, чаро чунин майдонҳо ва чиро ба localStorage гузорам»</i>. Мо контекст, маҳдудиятҳо ва санҷишро илова кардем — ва ҷавобе гирифтем, ки онро муқоиса кардан мумкин аст.</p>
+
+      <h3>Чек-лист: ҷавоби ЗС-ро чӣ тавр санҷидан</h3>
+      <ul>
+        <li><b>Оё маълумоти ҳосилшуда нест.</b> Агар дар ҳолат <code>total</code>, <code>doneCount</code> ё HTML-и тайёр бошад — онҳоро ҳисоб кардан мумкин аст, пас зиёдатианд.</li>
+        <li><b>id-ҳои ягона.</b> Онҳо аз куҷо мегиранд? <code>nextId</code> ҳаст, ё ЗС <code>length + 1</code>-ро пешниҳод мекунад (мо дидем, ки он чӣ анҷом меёбад)?</li>
+        <li><b>Навъҳои оддӣ.</b> Оё санаҳо, функсияҳо, <code>undefined</code> нестанд, ки аз JSON намегузаранд?</li>
+        <li><b>Чиро захира кардан.</b> Оё муваққатиро захира кардан лозим — масалан, матни дар майдон ҳамин ҳозир чопшаванда? Аксар вақт не: баъди аз нав бор шудан он лозим нест.</li>
+        <li><b>Версияи формат.</b> Оё ЗС калиди намуди <code>app:v1</code>-ро пешниҳод кард? Ҳангоми тағйири сохтор чӣ мешавад?</li>
+        <li><b>Маълумоти холӣ ва вайроншуда.</b> ЗС аксар вақт оғози аввал ва маълумоти вайроншударо «фаромӯш мекунад» — инро худатон илова кунед.</li>
+      </ul>
+
+      <h3>Ҷадвали муқоиса</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Савол</th><th>Версияи ман</th><th>Версияи ЗС</th><th>Қарор ва сабаб</th></tr></thead>
+          <tbody>
+            <tr><td>Одатҳоро чӣ тавр нигоҳ доштан?</td><td><code>habits: []</code></td><td><code>habits: [{ id, title, doneDates }]</code></td><td>Массиви объектҳоро бо <code>id</code> мегирам — барои нест кардан лозим аст</td></tr>
+            <tr><td>Ҳисобкунаки id дар куҷост?</td><td>нест</td><td><code>nextId</code></td><td><code>nextId</code>-ро илова мекунам — ҳифз аз такрор</td></tr>
+            <tr><td>Чиро захира кардан?</td><td>тамоми ҳолат</td><td>ҳама чиз, ғайр аз матни дар майдони воридкунӣ</td><td>Розӣ ҳастам: майдони воридкуниро захира намекунам</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Агар ҳама чиз мувофиқ омад — олӣ, шумо мисли тарроҳи ботаҷриба фикр мекунед. Агар фарқ дошта бошад — ин қиматноктарин ҷо аст: фаҳмед, далели кӣ қавитар аст. Ҳамин тавр ЗС меомӯзонад, на танҳо ба ҷои шумо мекунад.</p>
+
+      <div class="practice">
+        <h3>Амалиёт: мустаҳкам мекунем</h3>
+        <p>Аввал сохтори худӣ, баъд санҷиши «ҷавоби ЗС» бо хатоҳо.</p>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Сохтори ман дар муқобили сохтори ЗС</h4><span class="level mid">миёна</span></header>
+          <p>Ҳолатро барои барномаи «Ҷадвали курс» фикр кунед (машғулотҳо бо ном, рӯзи ҳафта ва вақт; «ширкат кард»-ро қайд кардан мумкин аст; рӯзи интихобшуда барои дидан ҳаст). Аввал версияи худро ҳамчун объекти <code>state</code> нависед ва онро тавассути <code>JSON.stringify(state, null, 2)</code> чоп кунед. Баъд ба ЗС промптро аз рӯи намунаи боло фиристед, ҷадвали муқоисаро дар дафтар пур кунед ва қайд кунед, ки чиро тағйир додед ва чаро. Ин вазифаро омӯзгор месанҷад — вақте тамом кардед, худатон қайд кунед.</p>
+<pre class="code" data-run>
+// 15 дақиқа худатон, бе ЗС
+const state = {
+  // сохтори шумо
+};
+
+console.log(JSON.stringify(state, null, 2));
+</pre>
+          <details class="hint"><summary>Ишора 1</summary><p>Фикр кунед: дар ин ҷо «далелҳои аслӣ» кадоманд (машғулотҳо, қайдҳо, рӯзи интихобшуда), ва чиро ҳисоб кардан мумкин аст (чанд машғулот иштирок шуд, рӯйхати машғулотҳо барои рӯзи интихобшуда)?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҳар машғулот <code>id</code> лозим дорад, ва дар решаи ҳолат — <code>nextId</code>. Рӯзи ҳафтаро осонтар бо сатр ё адади 1–7 нигоҳ доштан аст, на бо сана.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>«Ҷавоби ЗС»-ро санҷед: се хато</h4><span class="level hard">душвор</span></header>
+          <p>ЗС захиракунии рӯйхати одатҳоро навишт, аммо дар код <b>се хато</b> ҳаст — ҳама аз чек-лист. Онҳоро ёбед ва чунон ислоҳ кунед, ки чоп мисли зер бошад. Функсияҳо ва ҳолатро тағйир додан мумкин аст; се блоки чопи поёнро нарасонед.</p>
+<pre class="code" data-run>
+// ивазкунаки localStorage — тағйир надиҳед
+const storage = (() => { let d = {}; return {
+  getItem: (k) => (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) => { d[k] = String(v); },
+  removeItem: (k) => { delete d[k]; }, clear: () => { d = {}; } }; })();
+
+const habits = { nextId: 1, items: [] };
+
+function addHabit(title) {
+  habits.items = [...habits.items, { id: habits.items.length + 1, title }];
+}
+
+function save() {
+  storage.setItem("habits", habits);
+}
+
+function load() {
+  return JSON.parse(storage.getItem("habits"));
+}
+
+addHabit("Зарядка");
+addHabit("Чтение");
+addHabit("Вода");
+habits.items = habits.items.filter((h) =&gt; h.id !== 1); // «Зарядка»-ро нест кардем
+addHabit("Сон");
+console.log(habits.items.map((h) =&gt; h.id).join(","));
+
+save();
+console.log(load().items.length);
+
+storage.clear(); // браузери «тоза»
+console.log(load().items.length);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>2,3,4
+3
+0</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Баъди ҳар ислоҳ иҷро кунед ва хаторо хонед. Мушкилоти аввал аз рӯи сатр бо <code>id</code> намоён аст (такрор!), дуюм — аз рӯи он ки маҳз чӣ ба анбор навишта мешавад, сеюм — аз рӯи он ки <code>load()</code> ҳангоми анбори холӣ чӣ бармегардонад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>1) <code>id</code>-ро аз <code>habits.nextId</code> гиред ва онро зиёд кунед. 2) Пеш аз навиштан — <code>JSON.stringify(habits)</code>. 3) Дар <code>load</code> ҳангоми <code>null</code> ба ҷои <code>JSON.parse(null)</code> <code>{ nextId: 1, items: [] }</code>-ро баргардонед.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== 08 -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Амалиёт дар дарс"><span class="num">08</span> Амалиёт дар дарс: рӯйхати корҳо, ки ҳамаро дар хотир дорад</h2>
+
+      <p>Ҳамаро якҷоя ҷамъ мекунем: рӯйхати корҳо бо ҳолат, рендер, амалҳо ва захиракунӣ. Дар се марҳила мекунем, ва ҳар кадом бо санҷиш дар консол анҷом меёбад. Дар боло болои код — ҷадвалҳои <b>index.html</b>, <b>style.css</b>, <b>script.js</b>. Дар <b>script.js</b> ҳал мекунем: шарҳҳои <code>TODO</code>-ро ҷӯед.</p>
+
+      <figure class="diagram">
+        <div class="loop-flow">
+          <div class="step d"><b>Марҳилаи 1</b><code>ҳолат + render + амалҳо</code></div>
+          <span class="arrow">→</span>
+          <div class="step s"><b>Марҳилаи 2</b><code>saveState / loadState, «аз нав бор кардан»</code></div>
+          <span class="arrow">→</span>
+          <div class="step r"><b>Марҳилаи 3</b><code>маълумоти вайроншуда + нест кардан</code></div>
+        </div>
+        <figcaption>Ҳар марҳила худ ба худ кор мекунад. То санҷиш нагузашта бошад, ба марҳилаи оянда нагузаред.</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Дар бораи «аз нав бор кардан» дар қуттии санҷиш</b>
+        <p>Аз нав бор кардани воқеии саҳифаро дар ин ҷо иҷро кардан мумкин нест: он ивазкунаки <code>storage</code>-ро низ нест мекунад. Бинобар ин сатрҳои поёни скрипт онро худашон тақлид мекунанд: экранро пок мекунанд, тағйирёбандаи <code>state</code>-ро фаромӯш мекунанд ва боз <code>boot()</code>-ро даъват мекунанд. Баъд аз ин танҳо он чизе зинда монда метавонад, ки дар <code>storage</code> аст — мисли браузери воқеӣ. Санҷиши худкори поёнро нарасонед.</p>
+      </div>
+
+      <h3>Марҳилаи 1. Ҳолат, render ва амалҳо</h3>
+      <p>Аввал бе захиракунӣ: як ҳолат, як функсияи <code>render</code>, амалҳои <code>addTodo</code> ва <code>toggleTodo</code> ва ду коркардкунанда. Шакл вазифа илова мекунад, клик ба вазифа «иҷро шуд»-ро иваз мекунад (вакилкунӣ аз дарси 9).</p>
+
+      <div class="practice">
+        <h3>Амалиёт: марҳилаи 1</h3>
+        <article class="task" id="t8-1">
+        <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Марҳилаи 1: рӯйхати корҳо аз ҳолат</h4><span class="level mid">миёна</span></header>
+        <p>Ҳар чизеро, ки бо <code>TODO</code> қайд шудааст, ба итмом расонед: ҳисобкунаки «Осталось: N» дар <code>render</code>, амалҳои <code>addTodo</code> ва <code>toggleTodo</code>, коркардкунандаҳои шакл ва рӯйхат. Матни холӣ (аз ҷумла аз танҳо фосилаҳо) илова нашавад.</p>
+        <div class="playground" data-mode="dom" data-title="Рӯйхати корҳо, марҳилаи 1">
+<pre class="code" data-lang="html">
+&lt;form id="form"&gt;
+  &lt;input id="text" placeholder="Что нужно сделать?" autocomplete="off"&gt;
+  &lt;button&gt;Добавить&lt;/button&gt;
+&lt;/form&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+&lt;p id="counter"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+form { display: flex; gap: 8px; margin-bottom: 12px; }
+input { flex: 1; padding: 8px 10px; font-size: 16px; }
+button { padding: 8px 14px; font-size: 15px; cursor: pointer; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; cursor: pointer; }
+li.done span { text-decoration: line-through; color: #9ca3af; }
+li .remove { padding: 2px 8px; }
+#counter { color: #6b7280; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#form");
+const input = document.querySelector("#text");
+const list = document.querySelector("#list");
+const counter = document.querySelector("#counter");
+
+// 1. Ҳолат — ягона сарчашмаи ҳақиқат
+const state = { nextId: 1, todos: [] };
+
+// 2. Рендер: экранро аз рӯи ҳолат мекашад
+function render() {
+  list.textContent = "";
+  state.todos.forEach((todo) =&gt; {
+    const li = document.createElement("li");
+    li.dataset.id = todo.id;
+    li.className = todo.done ? "done" : "";
+    li.textContent = todo.text;
+    list.append(li);
+  });
+  // TODO: дар counter матни «Осталось: N»-ро нависед, ки N — шумораи вазифаҳои иҷронашуда
+}
+
+// 3. Амалҳо
+function addTodo(text) {
+  // TODO: { id: state.nextId, text, done: false }-ро ба state.todos илова кунед,
+  //       state.nextId-ро зиёд кунед ва render()-ро даъват кунед
+}
+
+function toggleTodo(id) {
+  // TODO: дар вазифа бо ин id done-ро баръакс кунед ва render()-ро даъват кунед
+}
+
+// 4. Ҳодисаҳо
+form.addEventListener("submit", (event) =&gt; {
+  // TODO: ирсоли шаклро бекор кунед, input.value-ро бе фосилаҳои канорӣ гиред,
+  //       агар матн холӣ набошад — addTodo-ро даъват кунед, баъд майдонро пок кунед
+});
+
+list.addEventListener("click", (event) =&gt; {
+  // TODO: li-и наздиктаринро ёбед (event.target.closest("li")); агар ёфтед —
+  //       toggleTodo(Number(li.dataset.id))-ро даъват кунед
+});
+
+// ---- санҷиши худкор: тағйир надиҳед ----
+function submitText(text) {
+  input.value = text;
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+}
+render();
+submitText("Купить нон");
+submitText("   ");
+submitText("Выучить localStorage");
+list.firstElementChild.click();
+console.log(state.todos.length, list.children.length);
+console.log(list.firstElementChild.className, counter.textContent);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>2 2
+done Осталось: 1</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Ҳисобкунак: <code>const left = state.todos.filter((t) =&gt; !t.done).length;</code>, баъд <code>counter.textContent = "Осталось: " + left;</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Амалҳо — мисли бахши 03: <code>addTodo</code> <code>state.todos = [...state.todos, {...}]</code> мекунад ва <code>nextId</code>-ро зиёд мекунад; <code>toggleTodo</code> <code>map</code>-ро истифода мебарад; ҳар ду бо <code>render()</code> анҷом меёбанд. Дар коркардкунандаи шакл <code>event.preventDefault()</code>-ро фаромӯш накунед.</p></details>
+      </article>
+      </div>
+
+      <h3>Марҳилаи 2. Захира ва барқарор мекунем</h3>
+      <p>Акнун хотира илова мекунем. Се чиз лозим аст: ду функсияи <code>saveState</code> ва <code>loadState</code>, даъвати <code>saveState()</code> дар охири ҳар амал ва функсияи <code>boot()</code> — «оғози саҳифа»: ҳолатро бор кардан ва экранро кашидан. Дар лоиҳаи воқеӣ сатри охири скрипт танҳо <code>boot();</code> аст.</p>
+
+      <div class="practice">
+        <h3>Амалиёт: марҳилаи 2</h3>
+        <article class="task" id="t8-2">
+        <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Марҳилаи 2: рӯйхат аз нав бор шудан мегузарад</h4><span class="level mid">миёна</span></header>
+        <p><code>saveState</code> (навиштани <code>JSON.stringify(state)</code> ба <code>storage</code> аз рӯи калиди <code>KEY</code>) ва <code>loadState</code> (агар анбор холӣ бошад — <code>{ nextId: 1, todos: [] }</code>-ро баргардонед, вагарна кушоед)-ро амалӣ кунед. <code>saveState()</code>-ро дар <code>addTodo</code> ва <code>toggleTodo</code> — пеш аз <code>render()</code> даъват кунед. Боқимонда коди марҳилаи 1 аллакай тайёр аст.</p>
+        <div class="playground" data-mode="dom" data-title="Рӯйхати корҳо, марҳилаи 2">
+<pre class="code" data-lang="html">
+&lt;form id="form"&gt;
+  &lt;input id="text" placeholder="Что нужно сделать?" autocomplete="off"&gt;
+  &lt;button&gt;Добавить&lt;/button&gt;
+&lt;/form&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+&lt;p id="counter"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+form { display: flex; gap: 8px; margin-bottom: 12px; }
+input { flex: 1; padding: 8px 10px; font-size: 16px; }
+button { padding: 8px 14px; font-size: 15px; cursor: pointer; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; cursor: pointer; }
+li.done span { text-decoration: line-through; color: #9ca3af; }
+li .remove { padding: 2px 8px; }
+#counter { color: #6b7280; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#form");
+const input = document.querySelector("#text");
+const list = document.querySelector("#list");
+const counter = document.querySelector("#counter");
+
+// ивазкунаки localStorage: дар қуттии санҷиш воқеӣ дастнорас аст.
+// Дар компютери худатон ин сатрҳоро бо ин иваз кунед: const storage = window.localStorage;
+const storage = (() =&gt; { let d = {}; return {
+  getItem: (k) =&gt; (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) =&gt; { d[k] = String(v); },
+  removeItem: (k) =&gt; { delete d[k]; }, clear: () =&gt; { d = {}; } }; })();
+
+const KEY = "todo-app:v1";
+let state; // дар boot() пур мешавад
+
+function saveState() {
+  // TODO: JSON.stringify(state)-ро ба storage аз рӯи калиди KEY нависед
+}
+
+function loadState() {
+  // TODO: аз storage хонед. Холӣ — { nextId: 1, todos: [] }-ро баргардонед.
+  //       Вагарна — JSON.parse(...)-и сатри хондашударо баргардонед
+}
+
+function render() {
+  list.textContent = "";
+  state.todos.forEach((todo) =&gt; {
+    const li = document.createElement("li");
+    li.dataset.id = todo.id;
+    li.className = todo.done ? "done" : "";
+    li.textContent = todo.text;
+    list.append(li);
+  });
+  const left = state.todos.filter((t) =&gt; !t.done).length;
+  counter.textContent = "Осталось: " + left;
+}
+
+function addTodo(text) {
+  state.todos = [...state.todos, { id: state.nextId, text, done: false }];
+  state.nextId = state.nextId + 1;
+  // TODO: ҳолатро захира кунед
+  render();
+}
+
+function toggleTodo(id) {
+  state.todos = state.todos.map((t) =&gt; (t.id === id ? { ...t, done: !t.done } : t));
+  // TODO: ҳолатро захира кунед
+  render();
+}
+
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  const text = input.value.trim();
+  if (text) addTodo(text);
+  input.value = "";
+});
+
+list.addEventListener("click", (event) =&gt; {
+  const li = event.target.closest("li");
+  if (li) toggleTodo(Number(li.dataset.id));
+});
+
+// «Оғози саҳифа»: ҳолатро бор кардан ва экранро кашидан
+function boot() {
+  state = loadState();
+  render();
+}
+
+// ---- санҷиши худкор: тағйир надиҳед ----
+function submitText(text) {
+  input.value = text;
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+}
+boot();
+submitText("Купить нон");
+submitText("Выучить localStorage");
+list.firstElementChild.click();
+console.log("до перезагрузки:", list.children.length, counter.textContent);
+
+// «аз нав бор кардан»: экран пок шуд, тағйирёбандаҳо фаромӯш шуданд — танҳо storage монд
+list.textContent = "";
+counter.textContent = "";
+state = null;
+boot();
+console.log("после:", list.children.length, list.firstElementChild.className, counter.textContent);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>до перезагрузки: 2 Осталось: 1
+после: 2 done Осталось: 1</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p><code>saveState</code> — як сатр бо <code>storage.setItem</code>. <code>loadState</code> — қолабро аз бахши 05 ба ёд оред, танҳо ба ҷои <code>null</code> ҳолати оғозӣ бармегардад.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>const raw = storage.getItem(KEY); return raw === null ? { nextId: 1, todos: [] } : JSON.parse(raw);</code>. Дар амалҳо: <code>saveState();</code> пеш аз <code>render();</code>.</p></details>
+      </article>
+      </div>
+
+      <h3>Марҳилаи 3. Ҳифз аз хасу хошок ва нест кардан</h3>
+      <p>Барномае, ки аз як сабти шикаста меафтад, барнома нест. <code>loadState</code>-ро боэътимод месозем (қолаб аз бахши 06) ва тугмаи «×»-ро барои нест кардани вазифа илова мекунем. Тугма дар дохили <code>li</code> аст, ва клик ба <code>li</code> аллакай вазифаро иваз мекунад — бинобар ин дар коркардкунандаи умумӣ аввал месанҷем, ки маҳз ба куҷо пахш карданд.</p>
+
+      <div class="practice">
+        <h3>Амалиёт: марҳилаи 3</h3>
+        <article class="task" id="t8-3">
+        <header><span class="task-num">ВАЗИФАИ 8.3</span><h4>Марҳилаи 3: боркунии боэътимод ва нест кардан</h4><span class="level hard">душвор</span></header>
+        <p>1) Дар <code>loadState</code> коркард кунед: анбори холӣ, JSON-и вайроншуда, ва шакли нодуруст — ҳолат бояд объекте бошад, ки <code>todos</code> дар он массив, ва <code>nextId</code> — адад аст; вагарна ҳолати пешфарзро баргардонед. 2) <code>removeTodo(id)</code>-ро тавассути <code>filter</code> ва коркарди тугмаи «×»-ро дар клик ба рӯйхат ба итмом расонед — пахши «×» бояд вазифаро нест кунад, на иваз.</p>
+        <div class="playground" data-mode="dom" data-title="Рӯйхати корҳо, марҳилаи 3">
+<pre class="code" data-lang="html">
+&lt;form id="form"&gt;
+  &lt;input id="text" placeholder="Что нужно сделать?" autocomplete="off"&gt;
+  &lt;button&gt;Добавить&lt;/button&gt;
+&lt;/form&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+&lt;p id="counter"&gt;&lt;/p&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; }
+form { display: flex; gap: 8px; margin-bottom: 12px; }
+input { flex: 1; padding: 8px 10px; font-size: 16px; }
+button { padding: 8px 14px; font-size: 15px; cursor: pointer; }
+ul { list-style: none; padding: 0; margin: 0; }
+li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; cursor: pointer; }
+li.done span { text-decoration: line-through; color: #9ca3af; }
+li .remove { padding: 2px 8px; }
+#counter { color: #6b7280; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const form = document.querySelector("#form");
+const input = document.querySelector("#text");
+const list = document.querySelector("#list");
+const counter = document.querySelector("#counter");
+
+// ивазкунаки localStorage: дар компютери худатон — const storage = window.localStorage;
+const storage = (() =&gt; { let d = {}; return {
+  getItem: (k) =&gt; (Object.hasOwn(d, k) ? d[k] : null), setItem: (k, v) =&gt; { d[k] = String(v); },
+  removeItem: (k) =&gt; { delete d[k]; }, clear: () =&gt; { d = {}; } }; })();
+
+const KEY = "todo-app:v1";
+const createDefaultState = () =&gt; ({ nextId: 1, todos: [] });
+let state;
+
+function saveState() {
+  storage.setItem(KEY, JSON.stringify(state));
+}
+
+function loadState() {
+  // TODO: ҳоло функсия аз хасу хошок меафтад. Аз рӯи қолаб кунед:
+  //  1) холӣ (null) — createDefaultState()
+  //  2) JSON.parse дар try / catch — ҳангоми хато createDefaultState()
+  //  3) на объект, todos на массив ё nextId на адад — createDefaultState()
+  return JSON.parse(storage.getItem(KEY));
+}
+
+function render() {
+  list.textContent = "";
+  state.todos.forEach((todo) =&gt; {
+    const li = document.createElement("li");
+    li.dataset.id = todo.id;
+    li.className = todo.done ? "done" : "";
+    const text = document.createElement("span");
+    text.textContent = todo.text;
+    const remove = document.createElement("button");
+    remove.className = "remove";
+    remove.textContent = "×";
+    li.append(text, remove);
+    list.append(li);
+  });
+  const left = state.todos.filter((t) =&gt; !t.done).length;
+  counter.textContent = "Осталось: " + left;
+}
+
+function addTodo(text) {
+  state.todos = [...state.todos, { id: state.nextId, text, done: false }];
+  state.nextId = state.nextId + 1;
+  saveState();
+  render();
+}
+
+function toggleTodo(id) {
+  state.todos = state.todos.map((t) =&gt; (t.id === id ? { ...t, done: !t.done } : t));
+  saveState();
+  render();
+}
+
+function removeTodo(id) {
+  // TODO: вазифаро бо ин id нест кунед (filter), ҳолатро захира кунед, render()-ро даъват кунед
+}
+
+form.addEventListener("submit", (event) =&gt; {
+  event.preventDefault();
+  const text = input.value.trim();
+  if (text) addTodo(text);
+  input.value = "";
+});
+
+list.addEventListener("click", (event) =&gt; {
+  const li = event.target.closest("li");
+  if (!li) return;
+  const id = Number(li.dataset.id);
+  // TODO: агар ба тугмаи «×» пахш карданд (event.target.matches(".remove")) — removeTodo(id),
+  //       вагарна — toggleTodo(id)
+});
+
+function boot() {
+  state = loadState();
+  render();
+}
+
+// ---- санҷиши худкор: тағйир надиҳед ----
+function submitText(text) {
+  input.value = text;
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+}
+storage.setItem(KEY, "{oops"); // дар анбор хасу хошок
+boot();
+console.log("битые данные:", list.children.length);
+
+submitText("Нон");
+submitText("Чой");
+submitText("Зира");
+list.children[1].querySelector(".remove").click();
+console.log(state.todos.map((t) =&gt; t.text).join(", "), counter.textContent);
+
+list.textContent = "";
+state = null;
+boot();
+console.log("после перезагрузки:", list.children.length);
+
+storage.setItem(KEY, '{"todos":"oops"}'); // JSON-и дуруст, аммо на он чиз
+boot();
+console.log("неверная форма:", list.children.length);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>битые данные: 0
+Нон, Зира Осталось: 2
+после перезагрузки: 2
+неверная форма: 0</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Боркунии боэътимод — се <code>return createDefaultState()</code> дар се ҳолати гуногун аст. Санҷиши шакл: <code>typeof saved === "object" &amp;&amp; saved !== null &amp;&amp; Array.isArray(saved.todos) &amp;&amp; typeof saved.nextId === "number"</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Клик ба рӯйхат: <code>if (event.target.matches(".remove")) removeTodo(id); else toggleTodo(id);</code>. Дар дохили <code>removeTodo</code> — <code>state.todos = state.todos.filter((t) =&gt; t.id !== id);</code>, баъд <code>saveState()</code> ва <code>render()</code>.</p></details>
+      </article>
+      </div>
+
+      <div class="callout tip">
+        <b>Шумо чӣ сохтед</b>
+        <p>Ин скелетест, ки қариб ҳамаи интерфейсҳо бар он такя мекунанд: <b>ҳолат → амалҳо → render → захиракунӣ</b>. Трекери вазифаҳо ва одатҳо аз лоиҳаи хурд дар дарси 12 — ҳамон скелет бо майдонҳои дигар аст. Кӯшиш кунед ба он филтри «ҳама / фаъол / иҷрошуда»-ро (вазифаи 2.4) илова кунед ва филтри интихобшударо захира кунед.</p>
+      </div>
+    </section>
+
+    <!-- ===================================================== HOMEWORK -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">09</span> Вазифаи хонагӣ: ба лоиҳаи дарси 9 захиракуниро илова кунед</h2>
+
+      <p>Лоиҳаи худро аз дарси 9 (саҳифаи интерактивӣ бо ҳодисаҳо ва вакилкунӣ) гиред ва ба он <b>дар хотир доштани маълумот</b>-ро омӯзонед. Дар ин ҷо шумо дар компютери худатон кор мекунед — яъне <b>воқеии</b> <code>localStorage</code>-ро истифода мебаред: <code>const storage = window.localStorage;</code>.</p>
+
+      <h3>Чӣ бояд кард</h3>
+      <ul class="goals">
+        <li>Дар лоиҳа як ҳолат — объекти <code>state</code> ҳаст. Дар ҳеҷ ҷо маълумоте нест, ки танҳо дар DOM «зиндагӣ» мекунад.</li>
+        <li>Экранро функсияи <code>render()</code> мекашад. Коркардкунандаҳои ҳодисаҳо амалҳоро даъват мекунанд, ва онҳо — <code>render()</code>-ро.</li>
+        <li><code>saveState()</code> ва <code>loadState()</code> ҳастанд; калид бо префикси лоиҳа ва версия, масалан <code>myproject:v1</code>.</li>
+        <li>Ҳолат баъди ҳар амал захира мешавад ва ҳангоми кушодани саҳифа барқарор мешавад: ҷадвалро бастем, дубора кушодем — ҳама чиз ба ҷояш.</li>
+        <li><code>loadState()</code> аз инҳо мегузарад: анбори холӣ, JSON-и вайроншуда, шакли нодурусти маълумот ва майдонҳои нави намерасида.</li>
+        <li>Тугмаи «Сбросить» ҳаст, ки маълумоти барномаро пок мекунад (<code>removeItem</code> аз рӯи калиди шумо) ва ҳолати оғозиро бармегардонад.</li>
+        <li>Дар ҳолат маълумоти ҳосилшуда, функсияҳо ва объектҳои сана нестанд.</li>
+      </ul>
+
+      <h3>Кори худро чӣ тавр санҷидан</h3>
+      <ol class="steps">
+        <li>Якчанд элемент илова кунед, саҳифаро нав кунед (<b>F5</b>) — ҳама чиз ба ҷояш?</li>
+        <li>DevTools (<b>F12</b>) → <b>Application</b> → <b>Local Storage</b>-ро кушоед. Калиди худро ёбед, нигоҳ кунед, қимат чӣ гуна менамояд.</li>
+        <li>Қиматро дастӣ вайрон кунед: қавси охиринро нест кунед. Саҳифаро нав кунед — барнома бояд бо ҳолати оғозӣ оғоз шавад, на бо хато дар консол биафтад.</li>
+        <li>Калидро нест кунед — саҳифа бояд «мисли бори аввал» кушода шавад.</li>
+        <li>«Сбросить»-ро пахш кунед — маълумот ҳам аз экран, ҳам аз анбор нест шуд?</li>
+      </ol>
+
+      <div class="callout ai">
+        <b>ЗС дар вазифаи хонагӣ</b>
+        <p>Қоидаи курс: 15 дақиқа худатон. Сохтори ҳолати худро дар файли <code>NOTES.md</code> нависед. Баъд аз ЗС мувофиқи намунаи бахши 07 пурсед ва ба ҳамон файл ҷадвали «аз они ман / ЗС / қарор»-ро илова кунед. Дар код танҳо он чиро гузоред, ки сатр ба сатр шарҳ дода метавонед. Ҳатман пурсед: «2 ҳолатро ном бар, ки дар онҳо маълумоти захирашуда нодуруст мешавад» — ва онҳоро бо даст санҷед.</p>
+      </div>
+
+      <h3>Чиро супоред</h3>
+      <ul>
+        <li>Папкаи лоиҳа (архив ё истинод), ки дар он захиракунӣ кор мекунад.</li>
+        <li>Файли <code>NOTES.md</code>: сохтори ҳолати шумо, калид дар <code>localStorage</code>, чӣ захира мешавад ва чӣ не, ҷадвали муқоиса бо ЗС.</li>
+        <li>Сабти кӯтоҳи экран (то 30 сония): маълумот илова кардем → саҳифаро нав кардем → маълумот ба ҷояш → қиматро вайрон кардем → барнома наафтод.</li>
+      </ul>
+
+      <h3>Чӣ тавр баҳо дода мешавад (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Меъёр</th><th>Холҳо</th></tr></thead>
+          <tbody>
+            <tr><td>Як ҳолати <code>state</code> ва <code>render()</code>, бе «ҳақиқат дар DOM»</td><td>2</td></tr>
+            <tr><td>Маълумот баъди аз нав бор шудан захира ва барқарор мешавад</td><td>3</td></tr>
+            <tr><td>Кори дуруст ҳангоми анбори холӣ ва вайроншуда</td><td>2</td></tr>
+            <tr><td>Сохтори тоза: навъҳои оддӣ, id-ҳои ягона, калид бо версия, тугмаи барқароркунӣ</td><td>1</td></tr>
+            <tr><td><code>NOTES.md</code> ва муқоиса бо ЗС: қарор бо суханони худӣ шарҳ дода шудааст</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>Агар саҳифа ҳамчун файл кушода шуда бошад</b>
+        <p>Дар аксари браузерҳо <code>localStorage</code> барои файлҳои <code>file://</code> низ кор мекунад, аммо файлҳои гуногун метавонанд маълумоти умумӣ ё алоҳида дошта бошанд — ин аз браузер вобаста аст. Боэътимодтар аст лоиҳаро тавассути Live Server дар VS Code оғоз кунед: он гоҳ он суроғаи оддии намуди <code>localhost:5500</code> ва анбори худро дорад.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Ёддошт"><span class="num">✓</span> Ёддошти дарс</h2>
+      <ul>
+        <li><b>Ҳолат</b> — ҳамаи маълумоти тағйирёбандаи барнома дар як объекти <code>state</code>. Танҳо далелҳои аслиро нигоҳ доштан; он чи ҳисоб кардан мумкин аст (ҷамъ, ҳисобкунак), бо функсия ҳисоб мекунем.</li>
+        <li><b>render(state)</b> экранро пурра ва танҳо аз рӯи ҳолат мекашад: чизеро тағйир намедиҳад, маълумотро аз DOM намехонад, рӯйхати холиро кашида метавонад.</li>
+        <li><b>Давра:</b> ҳодиса → амал (<code>addTodo</code>, <code>toggleTodo</code>, <code>removeTodo</code>) → <code>state</code>-ро тағйир додем → <code>render()</code> → <code>saveState()</code>.</li>
+        <li><b>Массивҳо дар ҳолат:</b> илова кардан — <code>[...arr, item]</code>, тағйир додан — <code>map</code>, нест кардан — <code>filter</code>. Натиҷаро дубора ба <code>state</code> таъин мекунем. Id-ро аз <code>nextId</code> мегирем, на аз <code>length + 1</code>.</li>
+        <li><b>localStorage:</b> <code>setItem(k, v)</code>, <code>getItem(k)</code> (калид нест — <code>null</code>), <code>removeItem(k)</code>, <code>clear()</code>. Танҳо сатрҳоро нигоҳ медорад, баъди аз нав бор шудан зинда мемонад, тақрибан 5 МБ, барои ҳар сайт худӣ. Асрорро нигоҳ надоред.</li>
+        <li><b>Дар қуттии санҷиши курс</b> <code>localStorage</code>-и воқеӣ дастнорас аст — ивазкунаки <code>storage</code>-ро бо ҳамон API истифода мебарем. Дар компютери худатон: <code>const storage = window.localStorage;</code>. Воқеиро дар DevTools → Application → Local Storage санҷидан мумкин аст.</li>
+        <li><b>JSON:</b> <code>JSON.stringify(state)</code> пеш аз навиштан, <code>JSON.parse(raw)</code> баъди хондан. Намегузаранд: <code>undefined</code>, функсияҳо, санаҳо (сатр мешаванд).</li>
+        <li><b>loadState-и боэътимод:</b> <code>null</code> → ҳолати пешфарз; <code>JSON.parse</code> дар <code>try / catch</code>; санҷиши шакл; <code>{ ...defaults, ...saved }</code> барои майдонҳои нав. Калид бо префикс ва версия: <code>app:v1</code>.</li>
+        <li><b>ЗС:</b> аввал сохтори ҳолати худӣ (15 дақиқа), баъд промпт аз рӯи формула ва муқоиса дар ҷадвал. Санҷидан: оё маълумоти ҳосилшуда нест, id аз куҷо аст, чиро захира кардан, бо маълумоти холӣ ва вайроншуда чӣ мешавад.</li>
+      </ul>
+    </section>

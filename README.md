@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.svg">
-    <img src="docs/readme/hero-light.svg" alt="Ilmhona · Frontend + ИИ — интерактивный курс JavaScript: живой код в уроке, автопроверка задач, XP" width="100%">
+    <img src="docs/readme/hero-light.svg" alt="MakeFirstStep · Frontend + ИИ — интерактивный курс JavaScript: живой код в уроке, автопроверка задач, XP" width="100%">
   </picture>
 </p>
 
@@ -9,7 +9,7 @@
 
 ## Что это
 
-**Ilmhona · Frontend + ИИ** — интерактивный курс JavaScript для студентов Таджикистана на русском и таджикском (`ru` / `tg`). Это 24-урочная дорожная карта от функций до React. Все 24 урока доступны.
+**MakeFirstStep · Frontend + ИИ** — интерактивный курс JavaScript для студентов Таджикистана на русском и таджикском (`ru` / `tg`). Это 24-урочная дорожная карта от функций до React. Все 24 урока доступны.
 
 - **Живой код в уроке.** Редактор на CodeMirror 6: код можно менять и запускать прямо на странице.
 - **Песочница-раннер.** Консоль, DOM-превью, `async`/`fetch`, React/JSX. Код студента выполняется в изолированном iframe.
@@ -125,7 +125,7 @@ console.log("Ассалому алейкум!");
   <pre class="code" data-run>
 // решение студента
   </pre>
-  <div class="expected"><b>Ожидаемый результат</b><pre>Ассалому алейкум, Ilmhona!</pre></div>
+  <div class="expected"><b>Ожидаемый результат</b><pre>Ассалому алейкум, MakeFirstStep!</pre></div>
   <details class="hint"><summary>Подсказка 1</summary><p>Текст подсказки.</p></details>
   <details class="hint"><summary>Подсказка 2</summary><p>Ещё одна.</p></details>
 </article>
@@ -175,7 +175,7 @@ console.log("Ассалому алейкум!");
 | 7 | 1200 | Тимлид |
 | 8 | 1700 | Архитектор |
 | 9 | 2300 | Гуру JS |
-| 10 | 3000 | Легенда Ilmhona |
+| 10 | 3000 | Легенда MakeFirstStep |
 
 ## Структура проекта
 
@@ -193,4 +193,4 @@ docs/readme/         графика для этого README
 
 ## Лицензия
 
-Все права защищены © Ilmhona.
+Все права защищены © MakeFirstStep.

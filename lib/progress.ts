@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { cleanProgress } from '@/lib/supabase/merge';
 
 export type TaskRecord = { solvedAt: string; auto: boolean; hints: number[]; xp: number };
 export type ProgressState = {
@@ -9,8 +10,10 @@ export type ProgressState = {
   updatedAt: string;
 };
 
+// NOTE: storage keys keep the legacy 'ilmhona:' prefix on purpose: renaming would wipe students' saved progress.
 const KEY = 'ilmhona:v2';
 const MIGRATED_KEY = 'ilmhona:v2:migrated';
+const CORRUPT_KEY = 'ilmhona:v2:corrupt';
 const OLD_PREFIX = 'ilmhona:';
 
 const EMPTY: ProgressState = { version: 2, solved: {}, hintsOpened: {}, updatedAt: '' };
@@ -37,11 +40,11 @@ function lsSet(k: string, v: string) {
 function parse(raw: string | null): ProgressState {
   if (!raw) return EMPTY;
   try {
-    const p = JSON.parse(raw) as Partial<ProgressState>;
-    if (p && p.version === 2 && p.solved && typeof p.solved === 'object') {
-      return { version: 2, solved: p.solved, hintsOpened: p.hintsOpened ?? {}, updatedAt: p.updatedAt ?? '' };
-    }
+    const clean = cleanProgress(JSON.parse(raw));
+    if (clean) return clean;
   } catch {}
+  // Unreadable or wrong shape: keep a copy for debugging, start empty.
+  lsSet(CORRUPT_KEY, raw.slice(0, 200000));
   return EMPTY;
 }
 

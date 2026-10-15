@@ -1,0 +1,1611 @@
+<style>
+  /* длинные однострочные фрагменты кода в тексте и подсказках должны переноситься */
+  .topic p code, .topic li code, .topic dd code, .topic details code { white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 14 · Async ва API</p>
+      <h1>fetch ва HTTP</h1>
+      <p class="lead">Қурби сомонӣ дар барномаи бонк, обу ҳавои Душанбе, рӯйхати мол дар дӯкони интернетӣ, ленти хабарҳо: ҳамаи инҳо на дар браузери шумо, балки дар компютерҳои бегона — серверҳо ҷойгиранд. Барои гирифтани маълумот аз он ҷо саҳифа дархости HTTP мефиристад ва ҷавобро интизор мешавад. Имрӯз шумо меомӯзед, ки инро бо JavaScript-и пок тавассути <code>fetch</code> иҷро кунед — ва печонандаи худии <code>api.js</code>-ро созед, ки онро дар ҳар лоиҳаи оянда истифода мебаред.</p>
+      <ul class="goals">
+        <li>Шарҳ додан, ки дархости HTTP ва ҷавоб аз чӣ иборатанд: усул, URL, сарлавҳаҳо, бадан, статус</li>
+        <li>Фарқ кардани усулҳои GET, POST, PUT, PATCH, DELETE ва гурӯҳҳои рамзҳои статус 2xx / 3xx / 4xx / 5xx</li>
+        <li>Дархост кардан тавассути <code>fetch</code> ва хондани ҷавоб: <code>response.json()</code>, <code>status</code>, <code>ok</code>, <code>headers</code></li>
+        <li>Фиристодани маълумот бо усули POST: сарлавҳаи <code>Content-Type</code> ва <code>JSON.stringify</code></li>
+        <li>Фарқ кардани хатои шабакавӣ аз ҷавоби «404» ва коркарди ҳардуи онҳо тавассути <code>response.ok</code> ва <code>try / catch</code></li>
+        <li>Сохтани печонандаи <code>api.js</code> ва санҷидани коде, ки ЗС навиштааст, дар ҷавобҳои хатоӣ</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Бо ин саҳифа чӣ тавр кор кардан лозим</b>
+      <p>Коди дар заминаи торик бо тугмаи <b>▶ Иҷро кардан</b> зинда аст. Дар ин дарс бисёр мисолҳо <b>ба интернет мераванд</b> (ба серверҳои таълимии jsonplaceholder ва dummyjson): як-ду сония интизор шавед, то ҷавоб ояд ва консол сатрҳоро пурра кунад. Агар интернет набошад, дархостҳо меафтанд — ва ин ҳам таҷрибаи судманд аст: дар поён мо чунин вазъиятҳоро коркард карданро меомӯзем. Як қисми вазифаҳо бе шабака кор мекунанд (дар онҳо мо худамон ҷавобҳои серверро «қалбакӣ» месозем) — онҳо фавран санҷида мешаванд. Ишораҳо зери қулфак 🔒 пинҳонанд.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="http">
+      <h2 data-toc="HTTP"><span class="num">01</span> HTTP: браузер бо сервер чӣ тавр гап мезанад</h2>
+
+      <p><b>Муштарӣ (клиент)</b> — ин браузери шумост (ё коди шумо дар он). <b>Сервер</b> — компютере, ки маълумот дар он ҷойгир аст. Онҳо мувофиқи қоидаҳои протоколи <b>HTTP</b> муошират мекунанд: клиент <b>дархост</b> (request) мефиристад, сервер <b>ҷавоб</b> (response) бармегардонад. Ҳамеша ба навбат: сервер худаш аввал навиштанро оғоз намекунад.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо дар қаҳвахона назди Рӯдакӣ тавассути пешхизмат фармоиш медиҳед. <b>Дархост</b>: «Палав биёред (<b>усул</b>) (<b>суроғаи</b> хӯрок дар меню), бе сабзӣ (<b>сарлавҳа</b> бо хоҳишҳо)». <b>Ҷавоб</b>: пешхизмат бармегардад ва аввал <b>статус</b> мегӯяд — «Овардам» (200) ё «Чунин хӯрок нест» (404) ё «Ошпаз бемор шуд» (500), баъд <b>баданаи</b> ҷавобро — худи палавро — ба рӯи миз мегузорад.</p>
+      </div>
+
+      <h3>Суроға аз чӣ иборат аст</h3>
+      <p>Суроғаи захира <b>URL</b> номида мешавад. Он якчанд қисм дорад ва браузер онҳоро бо ёрии синфи дарунсохти <code>URL</code> таҷзия карда метавонад.</p>
+
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="протокол">https://</span><span class="part p2" data-label="хост (сервер)">jsonplaceholder.typicode.com</span><span class="part p3" data-label="роҳ">/todos</span><span class="part p4" data-label="параметрҳо (query)">?userId=1&amp;_limit=3</span>
+        </div>
+        <figcaption>Протокол — «чӣ тавр гап мезанем», хост — «бо кӣ», роҳ — «чиро металабем», параметрҳо — «возеҳкуниҳо»</figcaption>
+      </figure>
+
+<pre class="code" data-run data-title="URL-ро ба қисмҳо таҷзия мекунем">
+const url = new URL("https://jsonplaceholder.typicode.com/todos?userId=1&amp;_limit=3");
+
+console.log(url.protocol);               // https:
+console.log(url.hostname);               // jsonplaceholder.typicode.com
+console.log(url.pathname);               // /todos
+console.log(url.searchParams.get("userId"));   // 1  (ҳамеша сатр!)
+</pre>
+
+      <h3>Дархост ва ҷавоб</h3>
+      <p>Дархост аз чор қисм, ҷавоб аз се қисм иборат аст. Ин схемаро дар хотир доред: вай барои фаҳмидани ҳама гуна ҳуҷҷатгузории API лозим аст.</p>
+
+      <div class="cols">
+        <div class="col good"><b>Дархост (клиент → сервер)</b><p><b>Усул</b> (чӣ кор кардан) · <b>URL</b> (дар куҷо) · <b>сарлавҳаҳо</b> (маълумоти хидматӣ) · <b>бадан</b> (маълумот, агар мефиристем).</p></div>
+        <div class="col good"><b>Ҷавоб (сервер → клиент)</b><p><b>Статус</b> (рақам: чӣ тавр гузашт) · <b>сарлавҳаҳо</b> (масалан, навъи маълумот) · <b>бадан</b> (худи маълумот, аксаран JSON).</p></div>
+      </div>
+
+      <h3>Усулҳо: феъли дархост</h3>
+      <p>Усул ба сервер мегӯяд, ки мо <b>чиро иҷро кардан мехоҳем</b>. Барои кор бо маълумот панҷ усули асосӣ ҳаст. Суроғаи онҳо метавонад якхела бошад — фақат феъл фарқ мекунад.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Усул</th><th>Чӣ мекунад</th><th>Мисол аз ҳаёт</th><th>Бадани дархост</th></tr></thead>
+          <tbody>
+            <tr><td><code>GET</code></td><td>Маълумот гирифтан</td><td>Менюро дидан</td><td>не</td></tr>
+            <tr><td><code>POST</code></td><td>Сабти нав сохтан</td><td>Фармоиши нав додан</td><td>ҳа</td></tr>
+            <tr><td><code>PUT</code></td><td>Сабтро пурра иваз кардан</td><td>Фармоишро аз нав навиштан</td><td>ҳа</td></tr>
+            <tr><td><code>PATCH</code></td><td>Як қисми сабтро тағйир додан</td><td>Танҳо суроғаи расониданро иваз кардан</td><td>ҳа</td></tr>
+            <tr><td><code>DELETE</code></td><td>Сабтро нест кардан</td><td>Фармоишро бекор кардан</td><td>не</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Агар усул нишон дода нашавад, браузер <code>GET</code>-ро истифода мебарад. Имрӯз мо қариб ҳама вақт маълумот мегирем, ба усулҳои дигар дар қисми 05 мерасем.</p>
+
+      <h3>Рамзҳои статус: рақаме, ки сервер аввал мегӯяд</h3>
+      <p>Рақами аввали рамз — ин <b>гурӯҳ</b> аст. Агар гурӯҳҳоро дар хотир доред, 90%-и рамзҳоро бе маълумотнома мефаҳмед.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Рамз</th><th>Гурӯҳ</th><th>Маъно</th><th>Мисолҳои маъмул</th></tr></thead>
+          <tbody>
+            <tr><td><b>2xx</b></td><td>Муваффақият</td><td>Ҳама чиз хуб шуд</td><td><code>200 OK</code>, <code>201 Created</code> (сохта шуд), <code>204 No Content</code> (муваффақият, аммо бадан нест)</td></tr>
+            <tr><td><b>3xx</b></td><td>Равонакунӣ</td><td>Дар ҷои дигар ҷустуҷӯ кунед</td><td><code>301</code> саҳифа кӯчид, <code>304</code> чизе тағйир наёфт</td></tr>
+            <tr><td><b>4xx</b></td><td>Хатои клиент</td><td>Шумо чизеро нодуруст кардед</td><td><code>400</code> дархости бад, <code>401</code> ворид нашудед, <code>403</code> ҳуқуқ нест, <code>404</code> ёфт нашуд, <code>429</code> хеле зуд-зуд</td></tr>
+            <tr><td><b>5xx</b></td><td>Хатои сервер</td><td>Назди онҳо вайрон шуд</td><td><code>500</code> хатои дохилӣ, <code>503</code> сервер дастнорас аст</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Сарлавҳаҳо: ёддоштҳои хидматӣ</h3>
+      <dl class="terms">
+        <dt>Content-Type</dt><dd>Бадан кадом навъ аст. Барои JSON ин <code>application/json</code> аст. Ҳам дар дархост (чиро мефиристем), ҳам дар ҷавоб (чиро гирифтем) мешавад.</dd>
+        <dt>Accept</dt><dd>Дар дархост: «ман кадом формати ҷавобро мефаҳмам».</dd>
+        <dt>Authorization</dt><dd>Дар дархост: калид ё токен, ки тасдиқ мекунад шумо кистед. Бе он API-ҳои пӯшида бо <code>401</code> ҷавоб медиҳанд. Дар ин дарс он лозим нест — мо API-ҳои кушодаро мегирем.</dd>
+      </dl>
+
+      <h3>JSON: забоне, ки API-ҳо бо он гап мезананд</h3>
+      <p>Маълумот тавассути шабака ҳамчун <b>матн</b> мегузарад. Объектҳо ва массивҳоро ба матни формати JSON табдил медиҳанд ва баръакс: <code>JSON.stringify(объект)</code> → сатр, <code>JSON.parse(сатр)</code> → объект. Қоидаҳо аз JS сахттаранд: калидҳо ва сатрҳо танҳо дар <b>нохунакҳои дукарата</b>, бе шарҳҳо ва бе вергул дар охир.</p>
+
+<pre class="code" data-run data-title="Ба он ҷо ва баргашт">
+const student = { name: "Мадина", age: 17, courses: ["JS", "CSS"] };
+
+const text = JSON.stringify(student);
+console.log(text);                  // ин сатр аст
+console.log(typeof text);
+
+const back = JSON.parse(text);
+console.log(back.name, back.courses.length);
+</pre>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>JSON-ро «мисли дар JavaScript» навиштан: бе нохунак дар калидҳо ё бо нохунакҳои яккарата. Чунин матнро <code>JSON.parse</code> қабул намекунад ва <code>SyntaxError</code> мепартояд.</p>
+      </div>
+<pre class="code" data-run data-title="Ин код хато медиҳад">
+const text = "{ name: 'Мадина' }";    // ✖ калид бе нохунак, сатр дар нохунакҳои яккарата
+
+const student = JSON.parse(text);
+console.log(student.name);
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/json" target="_blank" rel="noopener">learn.javascript.ru — Формати JSON</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/Overview" target="_blank" rel="noopener">MDN — Шарҳи HTTP</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/Status" target="_blank" rel="noopener">MDN — Рамзҳои ҷавоби HTTP</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Дар ин ҷо интернет ҳанӯз лозим нест: таҷзияи суроғаҳо, рамзҳои статус ва JSON-ро машқ мекунем.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Таҷзияи суроға</h4><span class="level easy">осон</span></header>
+          <p>Аз суроғаи мағоза се сатр чоп кунед: номи хост, роҳ ва қимати параметри <code>category</code>.</p>
+<pre class="code" data-run>
+const url = new URL("https://shop.example.tj/catalog/shoes?category=kids&amp;page=2");
+
+// url.hostname, url.pathname ва параметри category-ро чоп кунед
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>shop.example.tj
+/catalog/shoes
+kids</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Хост ва роҳ дар хусусиятҳои <code>url.hostname</code> ва <code>url.pathname</code> ҷойгиранд.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Параметрро бо усул мегирем: <code>url.searchParams.get("category")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Рамз чӣ маъно дорад</h4><span class="level easy">осон</span></header>
+          <p>Функсияи <code>describeStatus(code)</code>-ро анҷом диҳед: вай барои 200–299 «успех», барои 300–399 «перенаправление», барои 400–499 «ошибка клиента», барои 500–599 «ошибка сервера» ва барои ҳама чизи дигар «неизвестно»-ро бармегардонад.</p>
+<pre class="code" data-run>
+function describeStatus(code) {
+  // коди шумо
+}
+
+for (const code of [200, 201, 301, 404, 500, 99]) {
+  console.log(code + ": " + describeStatus(code));
+}
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>200: успех
+201: успех
+301: перенаправление
+404: ошибка клиента
+500: ошибка сервера
+99: неизвестно</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Занҷири <code>if … else if</code>-ро бо нобаробариҳо истифода баред: <code>code &gt;= 200 &amp;&amp; code &lt; 300</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Шохаи охирини <code>else</code> «неизвестно»-ро бармегардонад — вай ҳам 99-ро, ҳам ҳар чизи аз 599 боло мегирад.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Хаторо ёб: JSON-и вайроншуда</h4><span class="level mid">миёна</span></header>
+          <p>Сервер матн фиристод, аммо <code>JSON.parse</code> бо он меафтад. <b>Матн</b>-ро (бе ламс кардани кодҳои дигар) чунон ислоҳ кунед, ки JSON-и дуруст шавад.</p>
+<pre class="code" data-run>
+const text = "{ name: 'Мадина', age: 17, active: true, }";
+
+const student = JSON.parse(text);
+console.log(student.name + " " + student.age);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Мадина 17</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар JSON калидҳо ҳам дар нохунак навишта мешаванд ва нохунакҳо танҳо дукарата мебошанд. Дар дохили сатри оддии JS онҳоро бояд экран кард: <code>\"</code> — ё тамоми сатрро дар нохунакҳои яккарата гирифт.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Хатои дигаре дар охир пинҳон шудааст: вергул баъд аз қимати охирин дар JSON манъ аст. Дуруст: <code>'{"name": "Мадина", "age": 17, "active": true}'</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ВАЗИФАИ 1.4</span><h4>Суроғаро бо параметрҳо ҷамъ кун</h4><span class="level hard">душвор</span></header>
+          <p>Функсияи <code>buildUrl(base, params)</code>-ро нависед, ки ба суроға параметрҳоро аз объект мечаспонад. <code>URLSearchParams</code>-ро истифода баред — вай худаш <code>&amp;</code>-ро мегузорад ва ҳарфҳои русиро рамзгузорӣ мекунад.</p>
+<pre class="code" data-run>
+function buildUrl(base, params) {
+  // коди шумо
+}
+
+console.log(buildUrl("https://api.example.tj/products", { q: "плов", page: 2, limit: 10 }));
+console.log(buildUrl("https://api.example.tj/products", {}));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>https://api.example.tj/products?q=%D0%BF%D0%BB%D0%BE%D0%B2&amp;page=2&amp;limit=10
+https://api.example.tj/products</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>new URLSearchParams(params).toString()</code> объектро ба сатри намуди <code>q=...&amp;page=2</code> табдил медиҳад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Агар параметрҳо набошанд, сатр холӣ мешавад — он гоҳ аломати <code>?</code> лозим нест: <code>return query ? base + "?" + query : base;</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="fetch">
+      <h2 data-toc="fetch"><span class="num">02</span> fetch: дархости аввалин</h2>
+
+      <p><code>fetch(url)</code> — функсияи дарунсохти браузер барои дархостҳои HTTP. Ягон чизро пайваст кардан лозим нест. Вай <b>промис</b> бармегардонад (дарси 13), барои ҳамин бо он тавассути <code>then</code> ё, қулайтар, тавассути <code>async / await</code> кор мекунанд. Мекӯшем як вазифаро аз сервери таълимии jsonplaceholder гирем — вай махсус барои машқ кардан сохта шудааст:</p>
+
+<pre class="code" data-run data-title="Дархости аввалин">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+  const todo = await response.json();
+
+  console.log(todo.title);
+  console.log("выполнена?", todo.completed);
+}
+
+main();
+</pre>
+
+      <p>Сатрҳо кам аст, аммо дар ин ҷо <b>ду</b> <code>await</code> ҳаст ва ин тасодуф нест. Биёед фаҳмем, барои чӣ.</p>
+
+      <ol class="steps">
+        <li><code>fetch(url)</code> дархостро мефиристад. Промис ҳамин ки <b>оғози ҷавоб</b> — статус ва сарлавҳаҳо — расад, иҷро мешавад.</li>
+        <li><code>await</code> ба мо объекти <code>response</code>-ро медиҳад — ин «лифофа» аст: дар он статус ва сарлавҳаҳо ҳастанд, бадан бошад ҳанӯз дар роҳи шабака буда метавонад.</li>
+        <li><code>response.json()</code> баданро то охир мехонад ва матни JSON-ро ба объект табдил медиҳад. Ин ҳам промис аст — барои ҳамин <code>await</code>-и дуюм.</li>
+      </ol>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо аз нонвойхона расониданро фармоиш додед. Аввал курйер занг мезанад: «Фармоиш қабул шуд, меравам» — ин <code>response</code> бо статус аст. Баъд ӯ бо қуттӣ назди шумо мебарояд — ин <code>response.json()</code> аст. Занг ва қуттӣ дар вақтҳои гуногун меоянд, барои ҳамин ду бор интизор шудан лозим мешавад.</p>
+      </div>
+
+      <h3>Дар response чӣ ҳаст</h3>
+      <dl class="terms">
+        <dt>response.status</dt><dd>Рақам — рамзи статус: <code>200</code>, <code>404</code>, <code>500</code>…</dd>
+        <dt>response.ok</dt><dd><code>true</code>, агар статус аз 200 то 299 бошад. Судмандтарин санҷиш — ба он дар қисми 04 бармегардем.</dd>
+        <dt>response.headers</dt><dd>Сарлавҳаҳои ҷавоб. Бо усули <code>get</code> хонда мешаванд: <code>response.headers.get("content-type")</code>.</dd>
+        <dt>response.json()</dt><dd>Баданро ҳамчун JSON хондан → объект ё массив мегирем.</dd>
+        <dt>response.text()</dt><dd>Баданро ҳамчун матни оддӣ хондан (қулай аст, агар на JSON омада бошад).</dd>
+      </dl>
+
+<pre class="code" data-run data-title="Ба «лифофа» менигарем">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+
+  console.log("статус:", response.status);
+  console.log("ok:", response.ok);
+  console.log("тип данных:", response.headers.get("content-type"));
+}
+
+main();
+</pre>
+
+      <h3>Ҳамин чиз тавассути then</h3>
+      <p>Варианти бе <code>async / await</code> низ дар кодҳои бегона вомехӯрад — шумо бояд онро шиносед. Маъно ҳамон аст, фақат дохилшавӣ дигар аст:</p>
+
+<pre class="code" data-run data-title="fetch + then">
+fetch("https://jsonplaceholder.typicode.com/todos/1")
+  .then((response) =&gt; response.json())
+  .then((todo) =&gt; {
+    console.log("Задача:", todo.title);
+  });
+</pre>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p><code>await</code>-ро пеш аз <code>fetch</code> ё пеш аз <code>response.json()</code> фаромӯш кардан. Он гоҳ дар тағйирёбанда на маълумот, балки <b>промис</b> мемонад ва ҳама муроҷиат ба майдонҳо <code>undefined</code> медиҳанд.</p>
+      </div>
+<pre class="code" data-run data-title="Хато: await-и дуюм нест">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+  const todo = response.json();     // ✖ await-ро фаромӯш кардем — ин промис аст, на объект
+
+  console.log(todo.title);          // undefined
+}
+
+main();
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Fetch_API/Using_Fetch" target="_blank" rel="noopener">MDN — Истифодаи Fetch</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Ин вазифаҳо ба jsonplaceholder мераванд: баъд аз иҷро як сония интизор шавед.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Номи аввалин</h4><span class="level easy">осон</span></header>
+          <p>Постро бо рақами 1 аз суроғаи <code>https://jsonplaceholder.typicode.com/posts/1</code> бор кунед ва майдони <code>userId</code>-и онро, баъд <code>id</code>-ро чоп кунед.</p>
+<pre class="code" data-run>
+async function main() {
+  // дархост, response.json(), чоп
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>1
+1</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ду қадам: <code>const response = await fetch(…)</code>, баъд <code>const post = await response.json()</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Баъд аз ин: <code>console.log(post.userId); console.log(post.id);</code></p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Назар ба лифофа</h4><span class="level easy">осон</span></header>
+          <p><code>https://jsonplaceholder.typicode.com/users/1</code>-ро дархост кунед. <b>Бе хондани бадан</b> чоп кунед: статус, <code>ok</code> ва ҷавоб ба саволи «оё сарлавҳаи <code>content-type</code> калимаи json-ро дорад» (усули сатри <code>includes</code>).</p>
+<pre class="code" data-run>
+async function main() {
+  // fetch, баъд се сатри чоп
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>200
+true
+true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Хусусиятҳои <code>response.status</code> ва <code>response.ok</code> бе <code>await</code> хонда мешаванд — онҳо аллакай расидаанд.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>console.log(response.headers.get("content-type").includes("json"));</code></p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Тартибро пешгӯӣ кун: дархост «дар паси парда» мегузарад</h4><span class="level mid">миёна</span></header>
+          <p>Нишонаҳо ба массив бо кадом тартиб меафтанд? Дарси 13-ро ба ёд оред: то даме ки <code>fetch</code> ҷавобро интизор аст, JavaScript дар ҷояш намеистад. Пешгӯиро ба <code>prediction</code> ворид кунед ва иҷро намоед.</p>
+<pre class="code" data-run>
+const actual = [];
+const log = (label) =&gt; actual.push(label);
+
+async function main() {
+  log("A");
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/1");
+  log("B");
+  await response.json();
+  log("C");
+}
+
+main();
+log("D");
+
+const prediction = [];   // пешгӯии шумо: тартиби нишонаҳо
+
+// --- санҷиш, тағйир надиҳед ---
+setTimeout(() =&gt; console.log(actual.join(" ") === prediction.join(" ") ? "Верно!" : "Не угадали, подумайте ещё"), 3000);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Верно!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Функсияи <code>main</code> то аввалин <code>await</code> синхронӣ кор мекунад: нишонаи A фавран гузошта мешавад. Баъд вай «хоб меравад» ва идоракунӣ ба берун бармегардад — ба нишонаи D.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Баъд аз D код ҷавобро интизор мешавад: аввал баъд аз <code>await</code>-и якум идома меёбад (B), баъд баъд аз дуюм (C). Натиҷа: A D B C.</p></details>
+        </article>
+
+        <article class="task" id="t2-4">
+          <header><span class="task-num">ВАЗИФАИ 2.4</span><h4>Ду боркунии вобаста</h4><span class="level mid">миёна</span></header>
+          <p>Вазифаи <code>/todos/1</code> майдони <code>userId</code> дорад — рақами муаллиф. Вазифаро бор кунед, баъд муаллифро аз суроғаи <code>/users/ + userId</code> гиред ва чоп кунед: <code>Задача «название» у имя</code>. Суроғаи сервер: <code>https://jsonplaceholder.typicode.com</code>.</p>
+<pre class="code" data-run>
+const API = "https://jsonplaceholder.typicode.com";
+
+async function main() {
+  // 1) вазифаи 1-ро бор кунед
+  // 2) корбарро аз рӯи todo.userId бор кунед
+  // 3) сатрро чоп кунед
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Задача «delectus aut autem» у Leanne Graham</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Суроғаи дархости дуюмро аз маълумоти якум ҷамъ мекунем: <code>`${API}/users/${todo.userId}`</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҳар дархост — ин ҷуфт аст: <code>const r = await fetch(…); const data = await r.json();</code>. Чунин ҷуфтҳо назди шумо ду то мешавад.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="json">
+      <h2 data-toc="Бадани ҷавоб"><span class="num">03</span> Бадани ҷавоб: json(), text() ва параметрҳои дархост</h2>
+
+      <p>Серверҳо маълумотро дар ду намуд медиҳанд: <b>як объект</b> (<code>/users/1</code>) ва <b>рӯйхат</b> (<code>/users</code> — массив). Баъд аз <code>response.json()</code> шумо объектҳо ва массивҳои оддии JavaScript мегиред ва бо онҳо шумо аллакай кор карда метавонед: <code>map</code>, <code>filter</code>, деструктуризатсия, <code>?.</code>.</p>
+
+<pre class="code" data-run data-title="Рӯйхат: массиви объектҳо">
+const API = "https://jsonplaceholder.typicode.com";
+
+async function main() {
+  const response = await fetch(API + "/users");
+  const users = await response.json();
+
+  console.log("Пользователей:", users.length);
+
+  const names = users.slice(0, 3).map((user) =&gt; user.name);
+  console.log(names.join(", "));
+}
+
+main();
+</pre>
+
+      <h3>Маълумоти дохилшуда</h3>
+      <p>Ҷавобҳои воқеӣ қариб ҳамеша дохилшуда мебошанд: корбар суроға дорад, суроға — шаҳр. Деструктуризатсия аз дарси 7 дар ин ҷо хеле бамаврид аст:</p>
+
+<pre class="code" data-run data-title="Дохилшударо мегирем">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/users/1");
+  const { name, email, address: { city } } = await response.json();
+
+  console.log(`${name}, ${city}, ${email}`);
+}
+
+main();
+</pre>
+
+      <h3>Параметрҳои дархост: танҳо лозимаро металабем</h3>
+      <p>Ҳамаро пайдарпай зеркашӣ кардан — исрофкорӣ аст. Аксари API-ҳо параметрҳоро баъд аз аломати <code>?</code> мефаҳманд: филтрҳо, маҳдудиятҳо, ҷустуҷӯ. Дар jsonplaceholder, масалан, <code>?_limit=3</code> танҳо се сабтро бармегардонад, <code>?userId=2</code> бошад — танҳо сабтҳои корбари дуюмро.</p>
+
+<pre class="code" data-run data-title="Филтр дар тарафи сервер">
+async function main() {
+  const url = "https://jsonplaceholder.typicode.com/todos?userId=2&amp;_limit=3";
+  const todos = await (await fetch(url)).json();
+
+  console.log("Получили:", todos.length);
+  console.log("Все от пользователя 2:", todos.every((t) =&gt; t.userId === 2));
+}
+
+main();
+</pre>
+      <p>Сатри <code>await (await fetch(url)).json()</code> — навишти фушурдаи ду қадам аст. Душвортар хонда мешавад, барои ҳамин ҳоло беҳтар аст қадам ба қадам нависед.</p>
+
+      <h3>json() ё text()?</h3>
+      <p><code>json()</code> дар вуруд JSON-и дурустро интизор аст. Агар сервер саҳифаи HTML бо хато ё ҷавоби холӣ фиристад, <code>json()</code> <code>SyntaxError</code> мепартояд. <code>text()</code> бошад ҳамеша матн бармегардонад — онро нишон додан ё ба лог навиштан мумкин аст. Барои машқ кардан бе интернет мо «ҷавоби қалбакӣ» сохта метавонем: конструктори <code>new Response(матн)</code> айнан ҳамон объектеро месозад, ки аз сервери воқеӣ меояд.</p>
+
+<pre class="code" data-run data-title="Ҷавоби қалбакӣ барои машқ">
+async function main() {
+  const response = new Response(JSON.stringify({ city: "Душанбе", temp: 21 }));
+
+  const data = await response.json();
+  console.log(data.city + ": " + data.temp);
+}
+
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Бадани ҷавобро <b>танҳо як маротиба</b> хондан мумкин аст. <code>text()</code>-ро даъват кардед — баъд <code>json()</code> дигар кор намекунад: маълумот «нӯшида шуд». Баданро як бор хонед ва натиҷаро дар тағйирёбанда нигоҳ доред.</p>
+      </div>
+<pre class="code" data-run data-title="Ин код хато медиҳад">
+async function main() {
+  const response = new Response(JSON.stringify({ city: "Душанбе" }));
+
+  const text = await response.text();   // бадан хонда шуд
+  const data = await response.json();   // ✖ бори дуюм мехонем
+
+  console.log(text, data);
+}
+
+main();
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch: хондани ҷавоб</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Response/json" target="_blank" rel="noopener">MDN — Response.json()</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Се вазифаи аввал</h4><span class="level easy">осон</span></header>
+          <p><code>https://jsonplaceholder.typicode.com/todos?_limit=3</code>-ро бор кунед ва номи вазифаҳоро бо рақамҳо чоп кунед: <code>1. название</code>, <code>2. название</code>…</p>
+<pre class="code" data-run>
+async function main() {
+  // дархост, json(), давра бо рақамҳо
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>1. delectus aut autem
+2. quis ut nam facilis et officia qui
+3. fugiat veniam minus</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҷавоб — массив аст. Онро тавассути <code>forEach((todo, index) =&gt; …)</code> тай кунед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Рақами сатр — <code>index + 1</code>: <code>console.log(`${index + 1}. ${todo.title}`)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Корти корбар</h4><span class="level mid">миёна</span></header>
+          <p><code>/users/1</code>-ро бор кунед ва сатри намуди <code>Leanne Graham — Gwenborough (Bret)</code>-ро чоп кунед: ном, шаҳр аз <code>address</code>-и дохилшуда ва дар қавс — <code>username</code>.</p>
+<pre class="code" data-run>
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/users/1");
+  // деструктуризатсия ва чоп
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Leanne Graham — Gwenborough (Bret)</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Майдони дохилшударо ҳамин тавр гирифтан мумкин аст: <code>const { name, username, address: { city } } = await response.json();</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Сатрро бо нохунакҳои қолабӣ ҷамъ мекунем: <code>`${name} — ${city} (${username})`</code>. Хати дарозро аз шарт нусха кунед.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Чанд кор иҷро шудааст</h4><span class="level mid">миёна</span></header>
+          <p>Ҳамаи вазифаҳои корбари аввалро бор кунед: <code>/todos?userId=1</code>. Чоп кунед, ки ҳамагӣ чанд вазифа ҳаст ва аз онҳо чандтоаш иҷро шудааст (<code>completed === true</code>).</p>
+<pre class="code" data-run>
+async function main() {
+  // дархост бо параметри userId=1
+  // ҳамагӣ ва иҷрошуда
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Всего: 20
+Выполнено: 11</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Суроға: <code>"https://jsonplaceholder.typicode.com/todos?userId=1"</code>. Дарозии массив — <code>todos.length</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Иҷрошудаҳо: <code>todos.filter((todo) =&gt; todo.completed).length</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ВАЗИФАИ 3.4</span><h4>Хаторо ёб: бадан ду бор хонда шуд</h4><span class="level mid">миёна</span></header>
+          <p>Барномасоз мехост аввал матни «хом»-и ҷавобро барои лог нигоҳ дорад, баъд аз он маълумот гирад. Код меафтад. Онро чунон ислоҳ кунед, ки бадан <b>як маротиба</b> хонда шавад: аввал <code>text()</code>, объектро бошад тавассути <code>JSON.parse</code> гиред.</p>
+<pre class="code" data-run>
+async function main() {
+  const response = new Response(JSON.stringify({ city: "Душанбе", temp: 21 }));
+
+  const raw = await response.text();
+  console.log("Длина текста:", raw.length);
+
+  const data = await response.json();
+  console.log(data.city + ": " + data.temp + "°C");
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Длина текста: 28
+Душанбе: 21°C</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Мушкил дар сатри <code>await response.json()</code> аст — бадан аллакай бо усули <code>text()</code> хонда шудааст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Онро бо <code>const data = JSON.parse(raw);</code> иваз кунед — матн назди мо аллакай дар тағйирёбандаи <code>raw</code> ҳаст.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="errors">
+      <h2 data-toc="Хатоҳо"><span class="num">04</span> Хатоҳо: 404 — хатои fetch нест</h2>
+
+      <p>Ин барои навомӯзон ғайричашмдоштарин ҷост. Дархост метавонад <b>ду навъи комилан гуногуни</b> ноком дошта бошад — ва <code>fetch</code> ба онҳо гуногун муносибат мекунад.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо бо маршрутка ба Рӯдакӣ меравед. <b>Хатои шабакавӣ</b> — маршрутка дар роҳ вайрон шуд ва шумо умуман нарасидед (интернет нест, суроғаи сервер нодуруст, сервер хомӯш аст). <b>Ҷавоб бо рамзи 404 ё 500</b> — шумо расидед, ба мағоза даромадед, фурӯшанда бошад мегӯяд «чунин мол нест» ё «имрӯз мо пӯшидаем». Шумо бо сервер алоқа кардед, вай ҷавоб дод — фақат на он чизе, ки шумо интизор будед.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Вазъият</th><th><code>fetch</code> чӣ мекунад</th><th>Чӣ тавр фаҳмидан</th></tr></thead>
+          <tbody>
+            <tr><td>Шабака нест, сервер дастнорас аст, суроға нодуруст</td><td>Промис <b>рад мешавад</b> (хатои <code>TypeError</code>)</td><td><code>catch</code> кор мекунад</td></tr>
+            <tr><td>Сервер 404, 500 ва ғайра ҷавоб дод</td><td>Промис <b>бомуваффақият иҷро мешавад</b>!</td><td><code>response.ok</code> ё <code>response.status</code>-ро санҷед</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Бинед: дархости вазифаи вуҷуднадошта хато напартофт. <code>catch</code> хомӯш аст, <code>ok</code> бошад ба <code>false</code> баробар аст.</p>
+
+<pre class="code" data-run data-title="404 ба catch намеафтад">
+async function main() {
+  try {
+    const response = await fetch("https://jsonplaceholder.typicode.com/todos/99999");
+    console.log("запрос дошёл до сервера");
+    console.log("статус:", response.status, "ok:", response.ok);
+  } catch (error) {
+    console.log("сюда мы не попадём");
+  }
+}
+
+main();
+</pre>
+
+      <h3>Схемаи дуруст: ok-ро месанҷем ва хаторо худамон мепартоем</h3>
+      <p>Барои он ки ҳарду ноком дар як ҷой коркард шаванд, «статуси бад»-ро ба хатои ҳақиқӣ табдил медиҳем:</p>
+
+<pre class="code" data-run data-title="Қолабе, ки шумо ҳамеша менависед">
+async function loadTodo(id) {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/" + id);
+
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);   // 404 → хатои ҳақиқӣ
+  }
+  return response.json();
+}
+
+async function main() {
+  for (const id of [1, 99999]) {
+    try {
+      const todo = await loadTodo(id);
+      console.log("Нашли:", todo.title);
+    } catch (error) {
+      console.log("Ошибка:", error.message);
+    }
+  }
+}
+
+main();
+</pre>
+
+      <h3>Хатои шабакавӣ: сервер умуман нест</h3>
+      <p>Вақте дархост ба сервер расида натавонист, <code>fetch</code> промисро рад мекунад ва <code>catch</code> хатои навъи <code>TypeError</code> мегирад. Барои тақлид кардани ин суроғаеро мегирем, ки яқинан вуҷуд надорад (минтақаи <code>.invalid</code> барои суроғаҳои «вуҷуднадошта» ҷудо карда шудааст):</p>
+
+<pre class="code" data-run data-title="Сервер вуҷуд надорад">
+async function main() {
+  try {
+    await fetch("https://no-such-server.invalid/data");
+    console.log("не дойдём досюда");
+  } catch (error) {
+    console.log("Сеть недоступна. Тип ошибки:", error.name);
+  }
+}
+
+main();
+</pre>
+      <p>Матни худи хато дар браузерҳои гуногун фарқ мекунад (дар Chrome — <code>Failed to fetch</code>, дар Safari — <code>Load failed</code>), барои ҳамин ба <code>error.message</code> такя кардан мумкин нест. Боэътимодтар аст ба <code>error.name</code> нигаред ё оддӣ ба корбар матни фаҳмои худатонро нишон диҳед.</p>
+
+      <div class="callout tip">
+        <b>Сабаби дигари «Failed to fetch» — CORS</b>
+        <p>Браузер ба саҳифаҳо иҷозат намедиҳад ҷавобҳои серверҳои бегонаро хонанд, агар онҳо ошкоро иҷозат надода бошанд (сарлавҳаи <code>Access-Control-Allow-Origin</code>). API-ҳои таълимии оммавӣ ба ҳама иҷозат медиҳанд, барои ҳамин назди мо ҳама чиз кор мекунад. Аммо вақте сервери «пӯшида»-ро дархост кунед, дар консол паёми сурх дар бораи <b>CORS</b> пайдо мешавад, <code>fetch</code> бошад ҳамон хатои шабакавиро медиҳад. Ин хатои коди шумо нест: соҳиби сервер бояд дархостҳоро аз сайти шумо иҷозат диҳад. Муфассалтар дар дарсҳои оянда таҳлил мекунем.</p>
+      </div>
+
+      <h3>Вақте бадан JSON нест</h3>
+      <p>Нохушии сеюм: сервер ҷавоб дод, аммо дар бадан JSON нест (масалан, саҳифаи HTML «Хидмат муваққатан дастнорас аст»). Он гоҳ <code>response.json()</code> <code>SyntaxError</code> мепартояд. Дар ҷавоби қалбакӣ месанҷем:</p>
+
+<pre class="code" data-run data-title="Бадан JSON нест">
+async function main() {
+  const response = new Response("&lt;html&gt;Сервис временно недоступен&lt;/html&gt;", { status: 503 });
+
+  try {
+    const data = await response.json();
+    console.log(data);
+  } catch (error) {
+    console.log("Не удалось разобрать JSON. Тип ошибки:", error.name);
+  }
+}
+
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Фавран <code>response.json()</code>-ро иҷро кардан ва ба беҳтарин умедвор будан. Барои ҷавоби 404 бо бадани холӣ (<code>{}</code>) код «кор мекунад» ва ба ҷои маълумот <code>undefined</code> медиҳад — сабаби воқеӣ (сабт ёфт нашуд) бошад ношинохта мемонад.</p>
+      </div>
+<pre class="code" data-run data-title="Хато: санҷиши ok нест">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/99999");
+  const todo = await response.json();      // ✖ статус 404, аммо хато нест
+
+  console.log("Название задачи:", todo.title);   // undefined
+}
+
+main();
+</pre>
+
+      <h3>finally: «Боркунӣ…»-ро дар ҳар натиҷа нест мекунем</h3>
+      <p>Блоки <code>finally</code> ҳам баъд аз муваффақият, ҳам баъд аз хато иҷро мешавад. Ин ҷои беҳтарин барои пинҳон кардани нишондиҳандаи боркунӣ ё аз нав фаъол кардани тугма аст (мо инро дар дарси 13 мекардем).</p>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch: response.ok</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Response/ok" target="_blank" rel="noopener">MDN — Response.ok</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/CORS" target="_blank" rel="noopener">MDN — CORS</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Статуси вазифаи вуҷуднадошта</h4><span class="level easy">осон</span></header>
+          <p><code>https://jsonplaceholder.typicode.com/todos/99999</code>-ро дархост кунед ва дар як сатр <code>статус ok</code>-ро чоп кунед — яъне рамзи ҷавоб ва қимати <code>response.ok</code>-ро бо фосила. Баданро хондан лозим нест.</p>
+<pre class="code" data-run>
+async function main() {
+  // fetch ва як сатри чоп
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>404 false</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>const response = await fetch(…)</code> кифоя аст. Баданро хондан лозим нест — статус аллакай дар <code>response</code> ҳаст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>console.log(response.status, response.ok);</code> — <code>console.log</code> худаш байни аргументҳо фосила мегузорад.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Боркунӣ бо санҷиш</h4><span class="level mid">миёна</span></header>
+          <p><code>loadTodo(id)</code>-ро анҷом диҳед: агар ҷавоб <code>ok</code> набошад — <code>new Error("HTTP " + response.status)</code>-ро бипартоед, вагарна маълумотро баргардонед. Баъд давра бояд номи вазифаи 1 ва хатои 99999-ро чоп кунад.</p>
+<pre class="code" data-run>
+async function loadTodo(id) {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/" + id);
+  // санҷиши ok ва баргардонидани маълумот
+}
+
+async function main() {
+  for (const id of [1, 99999]) {
+    try {
+      const todo = await loadTodo(id);
+      console.log(todo.title);
+    } catch (error) {
+      console.log("Ошибка: " + error.message);
+    }
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>delectus aut autem
+Ошибка: HTTP 404</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Шарт: <code>if (!response.ok) { throw new Error(…); }</code> — пеш аз баргардонидани маълумот.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Баргардонидан: <code>return response.json();</code> — функсияи <code>async</code> худаш натиҷаро ба промис мепечонад.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Сервер ҷавоб намедиҳад</h4><span class="level easy">осон</span></header>
+          <p>Дархостро ба <code>https://no-such-server.invalid/data</code> фиристед. Хаторо дастгир кунед ва <code>Сеть недоступна: ТипОшибки</code>-ро чоп кунед, ба ҷои «ТипОшибки» <code>error.name</code>-ро гузошта.</p>
+<pre class="code" data-run>
+async function main() {
+  // try / catch дар атрофи fetch
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Сеть недоступна: TypeError</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>await fetch(…)</code>-ро ба <code>try</code> печонед, дар <code>catch (error)</code> бошад паёмро чоп кунед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>console.log("Сеть недоступна: " + error.name);</code></p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ВАЗИФАИ 4.4</span><h4>Хондани бехатари JSON</h4><span class="level hard">душвор</span></header>
+          <p><code>readData(response)</code>-ро нависед: агар статус <code>ok</code> набошад, вай сатри <code>"Ошибка сервера: " + status</code>-ро бармегардонад. Агар статус хуб бошад, аммо бадан JSON набошад, <code>"Ответ не JSON"</code>-ро бармегардонад. Вагарна — худи маълумотро. Ҷавобҳо қалбакианд (бе интернет), барои ҳамин натиҷа фавриист.</p>
+<pre class="code" data-run>
+async function readData(response) {
+  // коди шумо
+}
+
+async function main() {
+  const answers = [
+    new Response(JSON.stringify({ city: "Худжанд" })),
+    new Response("{}", { status: 404 }),
+    new Response("&lt;html&gt;Привет&lt;/html&gt;"),
+    new Response("Сервис недоступен", { status: 503 }),
+  ];
+
+  for (const response of answers) {
+    const result = await readData(response);
+    console.log(typeof result === "string" ? result : result.city);
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Худжанд
+Ошибка сервера: 404
+Ответ не JSON
+Ошибка сервера: 503</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аввал <code>if (!response.ok) return …</code>. Баргашти барвақт аз дохилшавии зиёдатӣ халос мекунад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Таҷзияи JSON-ро ба <code>try { return await response.json(); } catch { return "Ответ не JSON"; }</code> печонед — бе <code>await</code> пеш аз <code>response.json()</code> хато ба <code>catch</code> намеафтад.</p></details>
+        </article>
+
+        <article class="task" id="t4-5">
+          <header><span class="task-num">ВАЗИФАИ 4.5</span><h4>Се боркунӣ бо finally</h4><span class="level hard">душвор</span></header>
+          <p>Вазифаҳоро бо рақамҳои 1, 99999 ва 2 ба навбат бор кунед. Барои ҳар кадом: <code>Загружаем #id</code>-ро чоп кунед; ҳангоми муваффақият — номро, ҳангоми хато — <code>Ошибка: HTTP 404</code> (рамз аз ҷавоб); дар ҳар сурат — сатри <code>— готово</code>-ро (тавассути <code>finally</code>).</p>
+<pre class="code" data-run>
+async function loadTodo(id) {
+  const response = await fetch("https://jsonplaceholder.typicode.com/todos/" + id);
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+  return response.json();
+}
+
+async function main() {
+  for (const id of [1, 99999, 2]) {
+    // try / catch / finally
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Загружаем #1
+delectus aut autem
+— готово
+Загружаем #99999
+Ошибка: HTTP 404
+— готово
+Загружаем #2
+quis ut nam facilis et officia qui
+— готово</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Сатри «Загружаем»-ро пеш аз <code>try</code> чоп кунед. Дар дохили давра ҳар се блок лозим аст: <code>try</code>, <code>catch</code>, <code>finally</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>try { const todo = await loadTodo(id); console.log(todo.title); } catch (error) { console.log("Ошибка: " + error.message); } finally { console.log("— готово"); }</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="methods">
+      <h2 data-toc="POST ва усулҳои дигар"><span class="num">05</span> POST, PUT, DELETE: маълумот мефиристем</h2>
+
+      <p>Барои <b>сохтан</b> ё <b>тағйир додани</b> сабт, аргументи дуюми <code>fetch</code> — объекти танзимот аст. Дар он се калиди асосӣ ҳаст: <code>method</code>, <code>headers</code> ва <code>body</code>.</p>
+
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="усул">method: "POST"</span><span class="part p2" data-label="сарлавҳаҳо">headers: { "Content-Type": "application/json" }</span><span class="part p3" data-label="бадан">body: JSON.stringify(data)</span>
+        </div>
+        <figcaption>Се калиди танзимот: чӣ мекунем, баданро чӣ тавр тавсиф мекунем ва худи бадан (ҳамеша сатр)</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Дар бораи сервери таълимии мо</b>
+        <p>jsonplaceholder — сервери «ҳамчун гӯӣ»: вай POST, PUT ва DELETE-ро қабул мекунад, мисли воқеӣ ҷавоб медиҳад, аммо <b>ҳеҷ чизро нигоҳ намедорад</b>. Пост сохтед — аммо дар дархости оянда он нест. Барои омӯзиш ин беҳтарин аст: ҳеҷ чизро вайрон кардан мумкин нест. Серверҳои воқеӣ, албатта, маълумотро ба ёд мегиранд.</p>
+      </div>
+
+<pre class="code" data-run data-title="POST: пост месозем">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/posts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "Мой первый пост", body: "Салом, мир!", userId: 1 }),
+  });
+
+  const created = await response.json();
+
+  console.log("статус:", response.status);   // 201 — Created
+  console.log("id:", created.id);            // сервер рақам дод
+  console.log("заголовок:", created.title);  // ва он чиро, ки фиристодем, баргардонд
+}
+
+main();
+</pre>
+
+      <ol class="steps">
+        <li><code>method: "POST"</code> — ба сервер хабар медиҳем, ки мехоҳем сабт <b>созем</b>.</li>
+        <li><code>Content-Type: application/json</code> — огоҳ мекунем: «дар бадан JSON ҳаст». Бе ин сервер баданро нафаҳмидан метавонад.</li>
+        <li><code>JSON.stringify(...)</code> — бадани дархост бояд <b>сатр</b> бошад, объектро бевосита фиристодан мумкин нест.</li>
+        <li>Дар ҷавоб сервер <code>201 Created</code> ва сабти сохташударо — бо <code>id</code>-и нав — бармегардонад.</li>
+      </ol>
+
+      <h3>PUT, PATCH ва DELETE</h3>
+      <p>Ҳамон танзимот, усули дигар. Суроға акнун ба <b>сабти мушаххас</b> ишора мекунад: <code>/posts/1</code>.</p>
+
+<pre class="code" data-run data-title="PUT, PATCH ва DELETE">
+const API = "https://jsonplaceholder.typicode.com";
+const json = { "Content-Type": "application/json" };
+
+async function main() {
+  // PUT — сабтро пурра иваз кардан
+  let response = await fetch(API + "/posts/1", {
+    method: "PUT",
+    headers: json,
+    body: JSON.stringify({ title: "Новый заголовок", body: "новый текст", userId: 1 }),
+  });
+  console.log("PUT:", response.status, (await response.json()).title);
+
+  // PATCH — танҳо як майдонро тағйир додан
+  response = await fetch(API + "/posts/1", {
+    method: "PATCH",
+    headers: json,
+    body: JSON.stringify({ title: "Только заголовок" }),
+  });
+  console.log("PATCH:", response.status, (await response.json()).title);
+
+  // DELETE — нест кардан, бадан лозим нест
+  response = await fetch(API + "/posts/1", { method: "DELETE" });
+  console.log("DELETE:", response.status);
+}
+
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Хатои маъмул</b>
+        <p>Объектро бе <code>JSON.stringify</code> ва бе <code>Content-Type</code> фиристодан. Браузер объектро ба сатри <code>"[object Object]"</code> табдил медиҳад ва маълумот дар роҳ гум мешавад. Сервер ҳангоми ин метавонад «бомуваффақият» (<code>201</code>) ҷавоб диҳад — фақат бо сабти холӣ. Ҳамеша санҷед, ки <b>сервер чӣ баргардонд</b>, на танҳо статусро.</p>
+      </div>
+<pre class="code" data-run data-title="Дар асл ба body чӣ меравад">
+const data = { title: "Салом" };
+
+console.log("без stringify:", String(data));         // ✖ маълумотро гум кардем
+console.log("со stringify:", JSON.stringify(data));  // ✔ JSON-и дуруст
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch: дархостҳои POST</a> · <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/Methods" target="_blank" rel="noopener">MDN — Усулҳои HTTP</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Сабти нав дар блог</h4><span class="level easy">осон</span></header>
+          <p>POST-ро ба <code>https://jsonplaceholder.typicode.com/posts</code> бо маълумоти <code>{ title: "Салом", body: "Первый пост", userId: 1 }</code> фиристед. Рамзи статус ва рақамеро, ки сервер дод, чоп кунед.</p>
+<pre class="code" data-run>
+async function main() {
+  // fetch бо method, headers ва body
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Статус: 201
+id: 101</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аргументи дуюми <code>fetch</code>: <code>{ method: "POST", headers: { "Content-Type": "application/json" }, body: … }</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ба <code>body</code> <code>JSON.stringify({ title: "Салом", body: "Первый пост", userId: 1 })</code>-ро гузоред. Рақам — дар майдони <code>id</code>-и ҷавоб.</p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Фабрикаи танзимот</h4><span class="level mid">миёна</span></header>
+          <p>Барои он ки дар ҳар дархост як чизро такрор нанависем, функсияи <code>makeOptions(method, data)</code>-ро нависед. Вай объекти танзимотро бо усул, сарлавҳаи <code>Content-Type</code> ва бадани JSON бармегардонад. Интернет лозим нест — мо оддӣ мебинем, ки чӣ шуд.</p>
+<pre class="code" data-run>
+function makeOptions(method, data) {
+  // коди шумо
+}
+
+console.log(JSON.stringify(makeOptions("POST", { title: "Салом" })));
+console.log(JSON.stringify(makeOptions("PUT", { id: 7 })));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>{"method":"POST","headers":{"Content-Type":"application/json"},"body":"{\"title\":\"Салом\"}"}
+{"method":"PUT","headers":{"Content-Type":"application/json"},"body":"{\"id\":7}"}</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Тартиби калидҳо барои санҷиш муҳим аст: аввал <code>method</code>, баъд <code>headers</code>, баъд <code>body</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) };</code></p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ВАЗИФАИ 5.3</span><h4>Постро иваз мекунем</h4><span class="level mid">миёна</span></header>
+          <p>Дархости PUT-ро ба <code>https://jsonplaceholder.typicode.com/posts/1</code> бо маълумоти <code>{ title: "Новый заголовок", body: "текст", userId: 1 }</code> фиристед. Статусро, баъд <code>title</code> ва <code>id</code>-ро аз ҷавоб чоп кунед.</p>
+<pre class="code" data-run>
+async function main() {
+  // дархости PUT
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>200
+Новый заголовок
+1</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Фарқ аз POST танҳо дар <code>method: "PUT"</code> ва дар суроға аст: акнун вай ба сабти <code>/posts/1</code> ишора мекунад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Сервер он чиро, ки фиристодед, плюс <code>id</code>-ро бармегардонад: <code>console.log(response.status); console.log(data.title); console.log(data.id);</code></p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ВАЗИФАИ 5.4</span><h4>Постро нест мекунем</h4><span class="level easy">осон</span></header>
+          <p>DELETE-ро ба <code>https://jsonplaceholder.typicode.com/posts/1</code> фиристед ва статуси ҷавоб ва холӣ будани онро (<code>Object.keys(data).length === 0</code>) чоп кунед.</p>
+<pre class="code" data-run>
+async function main() {
+  // дархости DELETE
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>200
+true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Барои DELETE <code>{ method: "DELETE" }</code> кифоя аст — бадан ва сарлавҳаҳо лозим нестанд.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҷавобро хонед: <code>const data = await response.json();</code> — сервер объекти холии <code>{}</code>-ро бармегардонад.</p></details>
+        </article>
+
+        <article class="task" id="t5-5">
+          <header><span class="task-num">ВАЗИФАИ 5.5</span><h4>Хаторо ёб: маълумот гум шуд</h4><span class="level mid">миёна</span></header>
+          <p>Дархост <code>201</code> бармегардонад, аммо дар ҷавоб сарлавҳаи пост нест: <code>created.title</code> ба <code>undefined</code> баробар аст. Ёбед, ки дар танзимот чӣ намерасад ва ислоҳ кунед.</p>
+<pre class="code" data-run>
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/posts", {
+    method: "POST",
+    body: { title: "Салом", body: "Первый пост", userId: 1 },
+  });
+
+  const created = await response.json();
+  console.log(response.status);
+  console.log(created.title);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>201
+Салом</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Бадани дархост бояд сатри JSON бошад, объект бошад ба <code>"[object Object]"</code> табдил меёбад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>headers: { "Content-Type": "application/json" }</code>-ро илова кунед ва объектро ба <code>JSON.stringify(…)</code> печонед.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="wrapper">
+      <h2 data-toc="Печонандаи api.js"><span class="num">06</span> Печонандаи худии api.js-ро месозем</h2>
+
+      <p>Бинед, мо аллакай чанд кодҳои такроршаванда навиштем: суроғаи сервер, санҷиши <code>ok</code>, сарлавҳаҳо, <code>JSON.stringify</code>, <code>response.json()</code>. Дар лоиҳаи калон дархостҳо даҳҳо мебошанд. Роҳи ҳал — <b>як функсияи печонанда</b>, ки ҳамаи инро ба ҷои шумо иҷро мекунад. Ин аст артефакти дарси шумо: файли <code>api.js</code>. Онро қадам ба қадам месозем ва дар ҳар қадам код кор мекунад.</p>
+
+      <h3>Қадами 1. Як функсия ба ҷои нусхабардорӣ</h3>
+      <p>Суроғаи серверро ба константа мебарем ва ҷамъ кардани суроғаи пурраро аз роҳ меомӯзем.</p>
+<pre class="code" data-run data-title="api.js · қадами 1">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path) {
+  const response = await fetch(BASE_URL + path);
+  return response.json();
+}
+
+async function main() {
+  const todo = await request("/todos/1");
+  console.log(todo.title);
+}
+
+main();
+</pre>
+
+      <h3>Қадами 2. Санҷиши ok ва хато бо статус</h3>
+      <p>Асосиро илова мекунем: статуси бад ба хато табдил меёбад. Ҳамзамон рамзи статусро рост ба хато мегузорем — барои коди даъваткунанда он судманд аст (масалан, ба ҷои «Хато» «Ёфт нашуд»-ро нишон додан).</p>
+<pre class="code" data-run data-title="api.js · қадами 2">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path) {
+  const response = await fetch(BASE_URL + path);
+
+  if (!response.ok) {
+    const error = new Error("HTTP " + response.status);
+    error.status = response.status;      // рамзро ба хато ба ёд мемонем
+    throw error;
+  }
+  return response.json();
+}
+
+async function main() {
+  try {
+    await request("/todos/99999");
+  } catch (error) {
+    console.log(error.message, "| статус в ошибке:", error.status);
+  }
+}
+
+main();
+</pre>
+
+      <h3>Қадами 3. Дастгирии POST ва усулҳои дигар</h3>
+      <p>Аргументи дуюми <code>options</code>-ро қабул мекунем. Агар <code>body</code> дода шавад — худамон <code>JSON.stringify</code> мекунем ва сарлавҳаро мегузорем. Акнун бадан ҳамеша дуруст фиристода мешавад.</p>
+<pre class="code" data-run data-title="api.js · қадами 3">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { method = "GET", body } = {}) {
+  const options = { method, headers: {} };
+
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(BASE_URL + path, options);
+
+  if (!response.ok) {
+    const error = new Error("HTTP " + response.status);
+    error.status = response.status;
+    throw error;
+  }
+  return response.json();
+}
+
+async function main() {
+  const post = await request("/posts", { method: "POST", body: { title: "Салом", userId: 1 } });
+  console.log("создан пост номер", post.id);
+}
+
+main();
+</pre>
+      <p>Навишти <code>{ method = "GET", body } = {}</code> — ин деструктуризатсияи параметр бо қиматҳои пешфарз аст (дарси 7). Ба шарофати <code>= {}</code> функсияро бе аргументи дуюм ҳам даъват кардан мумкин аст.</p>
+
+      <h3>Қадами 4. Таймаут: абадӣ интизор намешавем</h3>
+      <p>Агар сервер овезон шавад, корбар то беохир ба «Боркунӣ…» менигарад. Барои ҳамин маҳдудияти вақтро илова мекунем. Барои ин <code>fetch</code> «тугмаи бекор кардан» дорад — <code>AbortController</code>: <code>controller.abort()</code>-ро даъват мекунем ва дархост бо хатои <code>AbortError</code> қатъ мешавад.</p>
+<pre class="code" data-run data-title="api.js · қадами 4">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { method = "GET", body, timeout = 8000 } = {}) {
+  const options = { method, headers: {} };
+
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  const controller = new AbortController();
+  options.signal = controller.signal;
+  const timer = setTimeout(() =&gt; controller.abort(), timeout);   // баъд аз timeout мс — бекор кардан
+
+  try {
+    const response = await fetch(BASE_URL + path, options);
+
+    if (!response.ok) {
+      const error = new Error("HTTP " + response.status);
+      error.status = response.status;
+      throw error;
+    }
+    return await response.json();
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("сервер не ответил за " + timeout + " мс");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);               // таймер акнун лозим нест
+  }
+}
+
+async function main() {
+  try {
+    await request("/todos/1", { timeout: 1 });     // 1 мс — хеле кам
+  } catch (error) {
+    console.log("Ошибка:", error.message);
+  }
+}
+
+main();
+</pre>
+
+      <h3>Қадами 5. Кӯтоҳнависиҳои қулай ва api.js-и ниҳоӣ</h3>
+      <p>Боқӣ мемонад даъвати <code>request</code>-ро паси номҳои кӯтоҳ пинҳон кунем. Объекти <code>api</code> бо усулҳои <code>get</code>, <code>post</code>, <code>put</code>, <code>del</code> (калимаи <code>delete</code> дар JS банд аст) — ва код дар лоиҳа мисли ҷумла хонда мешавад. Параметрҳои дархостро бо объект қабул мекунем ва тавассути <code>URLSearchParams</code> ҷамъ мекунем.</p>
+<pre class="code" data-run data-title="api.js · печонандаи тайёр">
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { method = "GET", body, timeout = 8000 } = {}) {
+  const options = { method, headers: {} };
+
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+
+  const controller = new AbortController();
+  options.signal = controller.signal;
+  const timer = setTimeout(() =&gt; controller.abort(), timeout);
+
+  try {
+    const response = await fetch(BASE_URL + path, options);
+
+    if (!response.ok) {
+      const error = new Error("HTTP " + response.status);
+      error.status = response.status;
+      throw error;
+    }
+    return await response.json();
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("сервер не ответил за " + timeout + " мс");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const api = {
+  get(path, params) {
+    const query = params ? "?" + new URLSearchParams(params) : "";
+    return request(path + query);
+  },
+  post: (path, body) =&gt; request(path, { method: "POST", body }),
+  put: (path, body) =&gt; request(path, { method: "PUT", body }),
+  del: (path) =&gt; request(path, { method: "DELETE" }),
+};
+
+async function main() {
+  const todos = await api.get("/todos", { userId: 2, _limit: 3 });
+  console.log("задач:", todos.length);
+
+  const post = await api.post("/posts", { title: "Салом", userId: 1 });
+  console.log("создан пост:", post.id);
+
+  try {
+    await api.get("/todos/99999");
+  } catch (error) {
+    console.log("ошибка:", error.message, error.status);
+  }
+}
+
+main();
+</pre>
+
+      <div class="callout tip">
+        <b>Ин ҳама барои чӣ</b>
+        <p>Акнун ҳар хато — шабака, 404, 500, таймаут — ба <b>як</b> <code>catch</code> дар намуди хатои оддӣ бо паёми фаҳмо мерасад. Дар дарсҳои оянда мо танҳо <code>api.get(…)</code>-ро даъват мекунем ва натиҷаро мекашем. Файли тайёрро ҳамчун <code>api.js</code> нигоҳ доред: он артефакти дарси шумо мешавад ва дар лоиҳа ба кор меояд.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/fetch-abort" target="_blank" rel="noopener">learn.javascript.ru — Fetch: қатъи дархост</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN — AbortController</a></p>
+
+      <div class="practice">
+        <h3>Амал: печонандаро анҷом медиҳем</h3>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Санҷиши ok-ро илова кун</h4><span class="level easy">осон</span></header>
+          <p>Дар печонанда санҷиши статус нест: дархости вазифаи вуҷуднадошта «бомуваффақият» объекти холӣ бармегардонад. Санҷишро илова кунед: хатои <code>"HTTP " + status</code>-ро бипартоед ва рамзро дар <code>error.status</code> нигоҳ доред. Коди даъваткунанда аллакай навишта шудааст.</p>
+<pre class="code" data-run>
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path) {
+  const response = await fetch(BASE_URL + path);
+  // санҷиши ok — дар ин ҷо
+  return response.json();
+}
+
+async function main() {
+  const todo = await request("/todos/1");
+  console.log(todo.title);
+
+  try {
+    await request("/todos/99999");
+    console.log("ошибки не было");
+  } catch (error) {
+    console.log(error.message + ", код " + error.status);
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>delectus aut autem
+HTTP 404, код 404</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Хато созед, ба он хусусият илова кунед ва бипартоед: <code>const error = new Error(…); error.status = response.status; throw error;</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҳамаи инро дар дохили <code>if (!response.ok) { … }</code> — пеш аз <code>return response.json()</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ВАЗИФАИ 6.2</span><h4>get ва post-и кӯтоҳ</h4><span class="level mid">миёна</span></header>
+          <p>Функсияи <code>request(path, options)</code> аллакай ҳаст. Объекти <code>api</code>-ро бо усулҳои <code>get(path)</code> ва <code>post(path, body)</code> анҷом диҳед, ки <code>request</code>-ро даъват мекунанд. Бадан дар <code>request</code> аллакай худаш ба JSON табдил меёбад.</p>
+<pre class="code" data-run>
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { method = "GET", body } = {}) {
+  const options = { method, headers: {} };
+  if (body !== undefined) {
+    options.headers["Content-Type"] = "application/json";
+    options.body = JSON.stringify(body);
+  }
+  const response = await fetch(BASE_URL + path, options);
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+  return response.json();
+}
+
+// const api = { get..., post... };
+
+async function main() {
+  const todo = await api.get("/todos/1");
+  console.log(todo.title);
+
+  const post = await api.post("/posts", { title: "Салом", userId: 1 });
+  console.log("id нового поста:", post.id);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>delectus aut autem
+id нового поста: 101</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>get</code> <code>request(path)</code>-ро даъват мекунад, <code>post</code> бошад усул ва баданро мегузаронад: <code>request(path, { method: "POST", body })</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>const api = { get: (path) =&gt; request(path), post: (path, body) =&gt; request(path, { method: "POST", body }) };</code></p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ВАЗИФАИ 6.3</span><h4>Параметрҳои дархост дар get</h4><span class="level mid">миёна</span></header>
+          <p><code>get</code>-ро омӯзонед, ки аргументи дуюмро — объекти параметрҳоро, ки ба сатри дархост табдил меёбад — қабул кунад. Агар параметрҳо набошанд, суроға чун пештара мемонад. Баъд 5 вазифаи корбари дуюмро гиред ва санҷед, ки ҳамаи онҳо аз они ӯянд.</p>
+<pre class="code" data-run>
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path) {
+  const response = await fetch(BASE_URL + path);
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+  return response.json();
+}
+
+function get(path, params) {
+  // суроғаро бо параметрҳо ҷамъ кунед ва request-ро даъват намоед
+}
+
+async function main() {
+  const todos = await get("/todos", { userId: 2, _limit: 5 });
+  console.log("задач:", todos.length);
+  console.log("все от пользователя 2:", todos.every((t) =&gt; t.userId === 2));
+
+  const one = await get("/todos/1");
+  console.log(one.id);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>задач: 5
+все от пользователя 2: true
+1</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Сатри дархост: <code>new URLSearchParams(params).toString()</code>. Вай танҳо дар сурате лозим аст, ки <code>params</code> дода шуда бошад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>const query = params ? "?" + new URLSearchParams(params) : ""; return request(path + query);</code></p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ВАЗИФАИ 6.4</span><h4>Таймаути дархост</h4><span class="level hard">душвор</span></header>
+          <p>Ба <code>request</code> таймаутро тавассути <code>AbortController</code> илова кунед: баъд аз гузаштани <code>timeout</code> мс дархост бекор мешавад, ба берун бошад хато бо матни <code>"Таймаут"</code> меравад. Таймерро дар <code>finally</code> бояд тоза кард. Даъват бо <code>timeout: 1</code> бояд афтад, даъвати оддӣ бошад — кор кунад.</p>
+<pre class="code" data-run>
+const BASE_URL = "https://jsonplaceholder.typicode.com";
+
+async function request(path, { timeout = 8000 } = {}) {
+  // AbortController, таймер созед ва signal-ро ба fetch диҳед
+  const response = await fetch(BASE_URL + path);
+  return response.json();
+}
+
+async function main() {
+  try {
+    await request("/todos/1", { timeout: 1 });
+    console.log("успели?!");
+  } catch (error) {
+    console.log(error.message);
+  }
+
+  const todo = await request("/todos/1");
+  console.log(todo.title);
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Таймаут
+delectus aut autem</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Лозиманд: <code>const controller = new AbortController();</code>, <code>setTimeout(() =&gt; controller.abort(), timeout)</code> ва <code>fetch(url, { signal: controller.signal })</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дархостро ба <code>try / catch / finally</code> печонед. Дар <code>catch</code>: агар <code>error.name === "AbortError"</code> бошад — <code>throw new Error("Таймаут")</code>, вагарна хаторо минбаъд гузаронед. Дар <code>finally</code>: <code>clearTimeout(timer)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="Блоки ЗС"><span class="num">07</span> Блоки ЗС: печонандаи fetch аз ЗС ва санҷиши он</h2>
+
+      <p>Печонандаи <code>fetch</code>-ро ЗС тез ва зебо менависад. Аммо маҳз дар ин ҷо вай «роҳро кӯтоҳ кардан»-ро дӯст медорад: санҷиши <code>response.ok</code>-ро фаромӯш мекунад, ҷавоби бе JSON-ро дастгир намекунад ё фарқ намекунад, ки дар асл чӣ вайрон шуд. Барои ҳамин малакаи имрӯза — на «гирифтани код», балки <b>санҷидани он дар ҷавобҳои бад</b>: 404, 500, на-JSON ва шабакаи гумшуда.</p>
+
+      <div class="callout ai">
+        <b>Қоидаҳои курс, ки дар ин ҷо махсусан муҳиманд</b>
+        <p><b>1.</b> Аввал 15 дақиқа худатон кӯшиш мекунед: қолабро аз қисми 04 ва қадамҳои печонандаро аз қисми 06 ба ёд оред. <b>2.</b> Танҳо баъд ба сӯи ЗС мераванд. <b>3.</b> Ба лоиҳа коде гузоред, ки онро сатр ба сатр шарҳ дода наметавонед — барои печонанда ин маънои онро дорад: шумо медонед, ки ҳар санҷиш барои чӣ аст. <b>4.</b> На дар «роҳи хушбахтӣ» (200 OK), балки дар <b>ҷавобҳои хатоӣ</b> санҷед: ЗС қариб ҳамеша бо сенарияи хуб мефаромӯшад ва дар бадҳо хато мекунад.</p>
+      </div>
+
+      <h3>Чӣ тавр пурсидан: бад ва хуб</h3>
+      <p>Формулаи промпти курс: <b>контекст → вазифа → маҳдудиятҳо → формати ҷавоб → санҷиш</b>.</p>
+
+      <div class="prompt bad-prompt">функсия барои fetch нависед</div>
+      <div class="prompt good-prompt">Ман JavaScript меомӯзам, сатҳ — навомӯз, промисҳо, async/await ва try/catch-ро медонам. Печонандаи fetch нависед: URL-и асосӣ, таймаут тавассути AbortController, санҷиши response.ok, хатоҳои фаҳмо. JS-и пок, бе китобхонаҳо, дар як файл, на зиёда аз 40 сатр, бо шарҳҳо ба забони тоҷикӣ барои ҳар блок. Формати ҷавоб: код, баъд рӯйхати «ҳар санҷиш чӣ мекунад» дар 5 банд. Дар охир бигӯед, кадом сенарияҳои хатоиро ман бояд дастӣ санҷам.</div>
+
+      <p>Баъд аз ҷавоби ЗС кодро аз рӯи чек-лист гузаронед. Агар ақаллан як банд «не» бошад — шумо хато ёфтед:</p>
+
+      <div class="callout tip">
+        <b>Чек-листи санҷиши печонанда</b>
+        <p>1) Дар ҷавоби <b>404</b> хато бо рамзи статус мепарад? 2) Дар ҷавоби <b>500</b> — ҳамин тавр? 3) Агар <b>на JSON</b> омад, хато фаҳмост, на «Unexpected token <code>&lt;</code>»? 4) Ҳангоми <b>хомӯш будани шабака</b> (Wi-Fi-ро хомӯш кунед) корбар матни шуморо мебинад, на стеки даҳшатнокро? 5) <b>Таймаут</b> ҳаст ва таймер дар <code>finally</code> тоза мешавад? 6) Бадан <b>ду бор хонда намешавад</b>? 7) Шумо метавонед ҳар сатрро шарҳ диҳед?</p>
+      </div>
+
+      <p>Дар сервери воқеӣ санҷидан нобароҳат аст: jsonplaceholder-ро аз рӯи фармоиш «афтондан» мумкин нест. Барои ҳамин касбиён серверро бо <b>пойгоҳи озмоишӣ</b> иваз мекунанд — функсияе, ки ҷавобҳои пешакӣ омодашударо медиҳад. Дар вазифаи поён маҳз чунин пойгоҳ ҳаст ва шумо бояд «печонандаи аз ЗС»-ро санҷед ва ислоҳ кунед.</p>
+
+      <div class="practice">
+        <h3>Амал: хатоҳои ЗС-ро медарёбем</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Печонандаи аз ЗС-ро санҷ ва ислоҳ кун</h4><span class="level hard">душвор</span></header>
+          <p>ЗС функсияи <code>aiRequest</code>-ро дод. Пойгоҳро иҷро кунед — мебинед, ки дар ҷавобҳои бад вай нодуруст рафтор мекунад. <b>Танҳо</b> <code>aiRequest</code>-ро чунон бознависед, ки сенарияҳо аз рӯи ҷадвал рафтор кунанд: <code>ok</code> → маълумот, <code>notfound</code> → хатои <code>HTTP 404</code>, <code>server</code> → <code>HTTP 500</code>, <code>html</code> (статус 200, аммо бадан на JSON) → <code>ответ не JSON</code>, <code>network</code> (дархост нарасид) → <code>сеть недоступна</code>.</p>
+<pre class="code" data-run>
+// --- пойгоҳи озмоишӣ, тағйир надиҳед ---
+function fakeFetch(scenario) {
+  switch (scenario) {
+    case "ok":       return Promise.resolve(new Response(JSON.stringify({ name: "Мадина" })));
+    case "notfound": return Promise.resolve(new Response("{}", { status: 404 }));
+    case "server":   return Promise.resolve(new Response("Internal Server Error", { status: 500 }));
+    case "html":     return Promise.resolve(new Response("&lt;html&gt;Привет&lt;/html&gt;"));
+    case "network":  return Promise.reject(new TypeError("Failed to fetch"));
+  }
+}
+
+// --- коди ЗС: ислоҳ кунед ---
+async function aiRequest(scenario) {
+  const response = await fakeFetch(scenario);
+  const data = await response.json();
+  return data;
+}
+
+// --- санҷиш, тағйир надиҳед ---
+async function main() {
+  for (const scenario of ["ok", "notfound", "server", "html", "network"]) {
+    try {
+      const data = await aiRequest(scenario);
+      console.log(scenario + ": данные получены: " + data.name);
+    } catch (error) {
+      console.log(scenario + ": Ошибка: " + error.message);
+    }
+  }
+}
+
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>ok: данные получены: Мадина
+notfound: Ошибка: HTTP 404
+server: Ошибка: HTTP 500
+html: Ошибка: ответ не JSON
+network: Ошибка: сеть недоступна</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Се ҷо ҳимоя металабанд: худи <code>fakeFetch</code> (шабака), санҷиши <code>response.ok</code> (404 ва 500) ва <code>response.json()</code> (на JSON). Ҳар якро дар <code>try / catch</code> ё <code>if</code>-и худаш.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Печонед: <code>let response; try { response = await fakeFetch(scenario); } catch { throw new Error("сеть недоступна"); }</code>. Баъд <code>if (!response.ok) throw new Error("HTTP " + response.status);</code>. Баъд <code>try { return await response.json(); } catch { throw new Error("ответ не JSON"); }</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Промпт ва санҷиши худӣ</h4><span class="level easy">осон</span></header>
+          <p>Промптеро барои ЗС аз рӯи формулаи курс (контекст → вазифа → маҳдудиятҳо → формат → санҷиш) тартиб диҳед: бигзор ЗС печонандаи <code>api.js</code>-ро барои сенарияи <b>шумо</b> нависад — масалан, барои дархостҳо ба <code>dummyjson.com</code>. Онро фиристед, код гиред ва аз рӯи чек-листи ин қисм гузаронед. Дар шарҳ болои код нависед, ки кадоме аз 7 банд нагузашт ва шумо онро чӣ тавр ислоҳ кардед. Санҷиши худкор нест — вазифаро вақте омода шуд, дастӣ қайд кунед.</p>
+<pre class="code" data-run>
+// Промпти ман:
+// ...
+
+// Чӣ аз чек-лист нагузашт ва чӣ тавр ислоҳ кардам:
+// ...
+</pre>
+          <details class="hint"><summary>Ишора 1</summary><p>Агар ЗС лозимаро надод, ҳамаро аз нав набиворед: ба ӯ нокомии мушаххасро нависед — «дар ҷавоби 404 функсия объекти холӣ баргардонд, на хато партофт».</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Коди ЗС-ро бо коди худии худ аз қисми 06 муқоиса кунед. Чӣ фарқ мекунад? Агар фарқ ба шумо фаҳмо набошад — ин худи боиси пурсидан аст, на нусха бардоштан.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Амал дар дарс"><span class="num">08</span> Амал дар дарс: дархости аввалин ба API ва чоп дар саҳифа</h2>
+
+      <p>Акнун ҳамаро якҷоя ҷамъ мекунем: маълумотро аз API-и оммавӣ мегирем, ба консол мебарорем, баъд дар саҳифа мекашем. Қадам ба қадам меравем — баъд аз ҳар қадам код кор мекунад.</p>
+
+      <h3>Қадами 1. Маълумот дар консол</h3>
+      <p>Ҳамеша аз консол оғоз кунед: аввал боварӣ ҳосил кунед, ки маълумот меояд ва шакли онро мефаҳмед, ва танҳо баъд интерфейсро кашед.</p>
+<pre class="code" data-run data-title="Қадами 1. Аз сервер чӣ меояд">
+async function main() {
+  const response = await fetch("https://jsonplaceholder.typicode.com/users?_limit=3");
+  const users = await response.json();
+
+  console.log("Получили:", users.length);
+  users.forEach((user) =&gt; {
+    console.log(user.name + " — " + user.address.city);
+  });
+}
+
+main();
+</pre>
+
+      <h3>Қадами 2. Дар саҳифа мекашем</h3>
+      <p>Маълумот аз <code>fetch</code> — ҳамон массивҳои объектҳост, ки дар дарсҳои 6–8. Пас онҳоро ба унсурҳо бо ҳамон усул табдил медиҳем: <code>createElement</code> ва <code>append</code>. «▶ Иҷро кардан»-ро пахш кунед ва ба рӯйхати тарафи рост нигаред.</p>
+
+      <div class="playground" data-mode="dom" data-title="Рӯйхати корбарон аз API">
+<pre class="code" data-lang="html">
+&lt;h3&gt;Участники&lt;/h3&gt;
+&lt;p id="status"&gt;Загрузка...&lt;/p&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; padding: 12px; }
+h3 { margin: 0 0 8px; }
+ul { padding-left: 20px; }
+li { margin: 4px 0; }
+.error { color: #c0392b; }
+</pre>
+<pre class="code" data-lang="js">
+const status = document.querySelector("#status");
+const list = document.querySelector("#list");
+
+async function main() {
+  try {
+    const response = await fetch("https://jsonplaceholder.typicode.com/users?_limit=5");
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+    const users = await response.json();
+
+    users.forEach((user) =&gt; {
+      const li = document.createElement("li");
+      li.textContent = user.name + " (" + user.address.city + ")";
+      list.append(li);
+    });
+    status.textContent = "Загружено: " + users.length;
+  } catch (error) {
+    status.className = "error";
+    status.textContent = "Не получилось загрузить: " + error.message;
+  }
+  console.log(status.textContent);
+}
+
+main();
+</pre>
+      </div>
+
+      <p>Ба сохтор диққат диҳед: <b>«Боркунӣ…» → маълумот ё паёми хато</b>. Корбар набояд ба саҳифаи холӣ нигариста, тахмин занад, ки чӣ мегузарад. Дар бораи чунин ҳолатҳо дар дарси 17 муфассал сӯҳбат мекунем.</p>
+
+      <div class="practice">
+        <h3>Амал: дархости худӣ дар саҳифа</h3>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Рӯйхати вазифаҳо дар саҳифа</h4><span class="level mid">миёна</span></header>
+          <p>5 вазифаи аввалро (<code>/todos?_limit=5</code>) бор кунед ва онҳоро ба рӯйхат бароред: пеш аз номи вазифаи иҷрошуда «✔ », пеш аз иҷрошуда нашуда — «○ » меистад. Вақте ҳама кашида шуд, ба консол <code>Показано: 5</code>-ро чоп кунед (шумораи унсурҳои <code>li</code> дар рӯйхат).</p>
+
+          <div class="playground" data-mode="dom" data-title="Вазифаҳои ман">
+<pre class="code" data-lang="html">
+&lt;h3&gt;Мои задачи&lt;/h3&gt;
+&lt;ul id="todos"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; padding: 12px; }
+li { list-style: none; margin: 4px 0; }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#todos");
+
+async function main() {
+  // 1) fetch https://jsonplaceholder.typicode.com/todos?_limit=5
+  // 2) барои ҳар вазифа li созед: "✔ название" ё "○ название"
+  // 3) console.log("Показано: " + list.children.length)-ро чоп кунед
+}
+
+main();
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Показано: 5</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дархост ва таҷзия ҳамон тавр, ки дар қадами 2. Дар дохили давра нишонро интихоб кунед: <code>const mark = todo.completed ? "✔ " : "○ ";</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>li.textContent = mark + todo.title; list.append(li);</code> — <code>console.log</code>-ро бошад баъд аз давра гузоред, вақте унсурҳо аллакай илова шудаанд.</p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Ду API дар як саҳифа</h4><span class="level hard">душвор</span></header>
+          <p><b>Якбора</b> (<code>Promise.all</code>) маълумотро аз ду сервери гуногун бор кунед: корбарон <code>https://jsonplaceholder.typicode.com/users?_limit=3</code> ва мол <code>https://dummyjson.com/products?limit=3&amp;select=title,price</code> (дар ҷавоб мол дар майдони <code>products</code> ҷойгир аст). Ду рӯйхат чоп кунед: номҳои корбарон ва «ном — нарх $». Ба консол <code>Пользователей: 3, товаров: 3</code>-ро чоп кунед. Агар ягон дархост афтад — хаторо дар блоки <code>#status</code> нишон диҳед.</p>
+
+          <div class="playground" data-mode="dom" data-title="Корбарон ва мол">
+<pre class="code" data-lang="html">
+&lt;p id="status"&gt;Загрузка...&lt;/p&gt;
+&lt;h3&gt;Пользователи&lt;/h3&gt;
+&lt;ul id="users"&gt;&lt;/ul&gt;
+&lt;h3&gt;Товары&lt;/h3&gt;
+&lt;ul id="products"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font-family: system-ui, sans-serif; padding: 12px; }
+h3 { margin: 12px 0 4px; }
+.error { color: #c0392b; }
+</pre>
+<pre class="code" data-lang="js">
+const status = document.querySelector("#status");
+const usersList = document.querySelector("#users");
+const productsList = document.querySelector("#products");
+
+async function load(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("HTTP " + response.status);
+  }
+  return response.json();
+}
+
+async function main() {
+  try {
+    // const [users, productsData] = await Promise.all([ ... ]);
+    // ҳарду рӯйхатро кашед: li "Имя" ва li "Название — 9.99 $"
+    // status.textContent = "";
+    // console.log(`Пользователей: ${...}, товаров: ${...}`);
+  } catch (error) {
+    status.className = "error";
+    status.textContent = "Ошибка: " + error.message;
+  }
+}
+
+main();
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Пользователей: 3, товаров: 3</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>const [users, productsData] = await Promise.all([load(URL1), load(URL2)]);</code> — ҳарду дархост якбора оғоз мешаванд. Рӯйхати мол: <code>productsData.products</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Барои ҳар рӯйхат давраи <code>forEach</code>-и худӣ бо <code>createElement("li")</code>. Нарх дар матн: <code>product.title + " — " + product.price + " $"</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">09</span> Вазифаи хонагӣ</h2>
+
+      <p>Маълумотро аз <b>ду API-и гуногун</b> гирифтан ва дар саҳифа кашидан. Артефакт — файли <code>api.js</code>: печонандаи худии шумо болои <code>fetch</code>, ки <b>ҳарду</b> API тавассути он мераванд.</p>
+
+      <h3>Чӣ кор кардан лозим</h3>
+      <ol>
+        <li><b>Ду API-и оммавиро</b> бе калид ва бо CORS интихоб кунед (дар браузер санҷед, ки ҷавоб меояд): <code>jsonplaceholder.typicode.com</code>, <code>dummyjson.com</code>, <code>api.open-meteo.com</code> (обу ҳаво — координатаҳои Душанберо диҳед: <code>latitude=38.56&amp;longitude=68.77&amp;current=temperature_2m</code>), <code>rickandmortyapi.com</code>. Муҳим: серверҳо бояд <b>гуногун</b> бошанд.</li>
+        <li><b><code>api.js</code>-ро нависед.</b> Функсияи <code>request</code> бо санҷиши <code>response.ok</code>, хато бо <code>status</code>, таймаут ва кӯтоҳнависиҳои <code>get</code> / <code>post</code>. Суроғаи асосиро параметр кунед (як <code>request</code> барои ду сервер).</li>
+        <li><b>Маълумоти API-и аввалро бикашед</b> — рӯйхат ё кортҳо (ақалан 5 унсур, ақалан 2 майдон дар ҳар кадом).</li>
+        <li><b>Маълумоти API-и дуюмро бикашед</b> — формати дигар (масалан, ҷадвал, як блоки калон ё кортҳо бо расм).</li>
+        <li><b>Се ҳолат</b> барои ҳар блок: «Боркунӣ…», маълумот, хатои фаҳмо. Хаторо санҷед: суроғаро ба нодуруст иваз кунед ва боварӣ ҳосил кунед, ки корбар паём мебинад, на холигӣ.</li>
+        <li><b>Як амали POST.</b> Ягон шакл ё бо тугма маълумотро ба <code>jsonplaceholder.typicode.com/posts</code> фиристед ва ҷавоби серверро (<code>id</code>-и додашударо) дар саҳифа нишон диҳед.</li>
+        <li><b>Санҷиши ЗС.</b> Агар ЗС-ро истифода бурда бошед — промпти худ ва рӯйхати сенарияҳои хатоиро, ки санҷидед (404, шабака, на JSON), замима кунед.</li>
+      </ol>
+
+      <h3>Чӣ супоридан лозим</h3>
+      <ul>
+        <li>Истинод ба репозиторий дар GitHub: <code>index.html</code>, <code>api.js</code>, <code>app.js</code>, <code>style.css</code>.</li>
+        <li>Ду скриншот: саҳифа бо маълумот ва саҳифа бо ҳолати хато.</li>
+        <li><code>README</code>-и кӯтоҳ: кадом ду API-ро интихоб кардед ва онҳо чӣ тавр фарқ мекунанд.</li>
+      </ul>
+
+      <h3>Чӣ тавр баҳо медиҳем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Чӣ</th><th>Холҳо</th></tr></thead>
+          <tbody>
+            <tr><td><code>api.js</code>: санҷиши <code>ok</code>, хатоҳои фаҳмо, <code>get</code> / <code>post</code></td><td>3</td></tr>
+            <tr><td>Маълумоти ду API-и гуногун ба саҳифа бароварда шудааст</td><td>2</td></tr>
+            <tr><td>Ҳолатҳои «Боркунӣ…» ва «Хато» дар ҳарду блок кор мекунанд</td><td>2</td></tr>
+            <tr><td>Дархости POST бо нишон додани ҷавоби сервер</td><td>1</td></tr>
+            <tr><td>Таймаут ва тоза кардани таймер дар <code>finally</code></td><td>1</td></tr>
+            <tr><td>Коди тоза: дархост такрор намешавад, номҳо фаҳмо, коди ЗС-ро шумо шарҳ дода метавонед</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Пеш аз супоридан</b>
+        <p>Интернетро хомӯш кунед (ё дар DevTools дар ҷадвали Network ҳолати Offline-ро гузоред) ва саҳифаро аз нав бор кунед. Агар ба ҷои хатои фаҳмо экрани холӣ ё сурхиро дар консол бинед — коркарди хатоҳоро такмил диҳед.</p>
+      </div>
+    </section>
+
+    <!-- ============ ХУЛОСА ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Лавҳаи ёддошт"><span class="num">✓</span> Лавҳаи ёддошти дарс</h2>
+      <ul>
+        <li><b>HTTP:</b> клиент дархост мефиристад (усул + URL + сарлавҳаҳо + бадан), сервер ҷавоб медиҳад (статус + сарлавҳаҳо + бадан). Маълумот аксаран дар формати JSON.</li>
+        <li><b>Усулҳо:</b> <code>GET</code> — гирифтан, <code>POST</code> — сохтан, <code>PUT</code> — иваз кардан, <code>PATCH</code> — як қисмро тағйир додан, <code>DELETE</code> — нест кардан.</li>
+        <li><b>Статусҳо:</b> <code>2xx</code> муваффақият (<code>200</code>, <code>201</code>), <code>3xx</code> равонакунӣ, <code>4xx</code> хатои клиент (<code>404</code>, <code>401</code>, <code>403</code>), <code>5xx</code> хатои сервер (<code>500</code>).</li>
+        <li><b>fetch</b> промис бо <code>response</code> (статус ва сарлавҳаҳо) бармегардонад. Баданро ҷудо ва <b>як маротиба</b> мехонем: <code>await response.json()</code> ё <code>text()</code>.</li>
+        <li><b>404 ва 500 — хатои fetch нестанд.</b> <code>response.ok</code>-ро санҷед ва хаторо худатон бипартоед. Хатои шабакавӣ (шабака нест, сервери нодуруст) — промиси радшуда, <code>TypeError</code>.</li>
+        <li><b>Қолаб:</b> <code>try { const r = await fetch(url); if (!r.ok) throw new Error("HTTP " + r.status); const data = await r.json(); … } catch (e) { … } finally { … }</code></li>
+        <li><b>POST:</b> <code>fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })</code>. Бадан — ҳамеша сатр.</li>
+        <li><b>URL ва параметрҳо:</b> <code>new URL(…)</code> суроғаро таҷзия мекунад, <code>new URLSearchParams(объект)</code> сатри дархостро ҷамъ мекунад.</li>
+        <li><b>api.js:</b> як функсияи <code>request</code> — суроғаи асосӣ, сарлавҳаҳо, JSON, санҷиши <code>ok</code>, таймаут тавассути <code>AbortController</code>; дар боло — <code>get</code> / <code>post</code>.</li>
+        <li><b>Бо ЗС:</b> аввал худатон, баъд промпт аз рӯи формула. Печонандаи аз ЗС-ро дар ҷавобҳои бад месанҷем: 404, 500, на-JSON, шабака нест, таймаут.</li>
+      </ul>
+    </section>

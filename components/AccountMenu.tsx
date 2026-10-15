@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LOCALE_COOKIE, locales, type Locale } from '@/lib/i18n';
+import { LOCALE_COOKIE, locales, toUrlLocale, type Locale } from '@/lib/i18n';
 import { isTheme, readTheme, resolveTheme, THEME_KEY, type Theme } from '@/lib/theme';
 import { useT } from './I18nProvider';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
@@ -12,16 +12,17 @@ import { isSupabaseConfigured } from '@/lib/supabase/config';
 import type { SyncStatus } from '@/lib/sync';
 
 
-type Profile = { display_name: string; avatar_url: string | null };
+type Profile = { display_name: string; avatar_url: string | null; show_on_leaderboard: boolean };
 type Libs = { sb: SupabaseClient; sync: typeof import('@/lib/sync') };
 
-// Control chars + invisible/bidi-override chars (same set as the profiles CHECK in 0001_init.sql).
+// Control chars + invisible/bidi/filler chars (same set as the profiles CHECK in 0001_init.sql).
 const cleanName = (s: string) =>
   s
-    .replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff]/g, '')
+    .replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u115f\u1160\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2069\u3164\ufeff\uffa0]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
-const validName = (s: string) => s.length >= 2 && s.length <= 32;
+// The CHECK also requires at least one letter or digit.
+const validName = (s: string) => s.length >= 2 && s.length <= 32 && /[\p{L}\p{N}]/u.test(s);
 
 function currentPath() {
   const url = new URL(window.location.href);
@@ -38,7 +39,7 @@ export default function AccountMenu() {
 
 const YEAR = 60 * 60 * 24 * 365;
 const setLocaleCookie = (l: Locale) => {
-  document.cookie = `${LOCALE_COOKIE}=${l}; path=/; max-age=${YEAR}; samesite=lax`;
+  document.cookie = `${LOCALE_COOKIE}=${toUrlLocale(l)}; path=/; max-age=${YEAR}; samesite=lax`;
 };
 
 const applyTheme = (theme: Theme) => {
@@ -118,7 +119,7 @@ function AuthAccount() {
             sync.startSync(sb, u.id);
             void sb
               .from('profiles')
-              .select('display_name, avatar_url')
+              .select('display_name, avatar_url, show_on_leaderboard')
               .eq('id', u.id)
               .maybeSingle()
               .then(({ data: p }) => alive && setProfile((p as Profile | null) ?? null));
@@ -298,10 +299,7 @@ function MenuView({ auth }: { auth?: AuthProps }) {
   const libs = auth?.libs ?? null;
   const profile = auth?.profile ?? null;
   const signedIn = !!user && !!libs;
-  const meta = user?.user_metadata ?? {};
-  const name = signedIn
-    ? (profile?.display_name ?? cleanName(String(meta.full_name ?? meta.name ?? user.email?.split('@')[0] ?? '')))
-    : '';
+  const name = signedIn ? (profile?.display_name ?? '') : '';
   const avatar = isSafeAvatar(profile?.avatar_url) ? profile.avatar_url : null;
   const initial = (name || '?').charAt(0).toUpperCase();
 
@@ -346,8 +344,21 @@ function MenuView({ auth }: { auth?: AuthProps }) {
       setErr(T.errGeneric);
       return;
     }
-    auth?.setProfile({ display_name: next, avatar_url: avatar });
+    if (profile) auth?.setProfile({ ...profile, display_name: next });
     setEditing(false);
+    setErr(null);
+  }
+
+  async function toggleBoard(next: boolean) {
+    if (!signedIn || !profile) return;
+    setBusy(true);
+    const { error } = await libs.sb.from('profiles').update({ show_on_leaderboard: next }).eq('id', user.id);
+    setBusy(false);
+    if (error) {
+      setErr(T.errGeneric);
+      return;
+    }
+    auth?.setProfile({ ...profile, show_on_leaderboard: next });
     setErr(null);
   }
 
@@ -445,6 +456,19 @@ function MenuView({ auth }: { auth?: AuthProps }) {
                 {user.email && <small>{user.email}</small>}
               </div>
             ))}
+          {signedIn && profile && (
+            <label className="auth-toggle">
+              <input
+                type="checkbox"
+                checked={profile.show_on_leaderboard}
+                disabled={busy}
+                onChange={(e) => void toggleBoard(e.target.checked)}
+                aria-describedby={`${panelId}-board-hint`}
+              />
+              <span>{T.showOnBoard}</span>
+              <small id={`${panelId}-board-hint`}>{T.showOnBoardHint}</small>
+            </label>
+          )}
           {signedIn && (
             <p className="auth-status err" role="status" aria-live="polite">
               {err}
@@ -464,7 +488,7 @@ function MenuView({ auth }: { auth?: AuthProps }) {
             </div>
           )}
           <div className={hasAuthBlock || signedIn ? 'auth-sec' : undefined}>
-            <Link className="auth-item" href={`/${locale}/leaderboard`} onClick={close}>
+            <Link className="auth-item" href={`/${toUrlLocale(locale)}/leaderboard`} onClick={close}>
               <span aria-hidden="true">🏆</span>
               {T.leaderboard}
             </Link>
@@ -477,7 +501,7 @@ function MenuView({ auth }: { auth?: AuthProps }) {
               {locales.map((l) => (
                 <Link
                   key={l}
-                  href={`/${l}${rest}`}
+                  href={`/${toUrlLocale(l)}${rest}`}
                   hrefLang={l}
                   lang={l}
                   aria-current={l === locale ? 'true' : undefined}

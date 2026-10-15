@@ -6,7 +6,9 @@ import { availableCourse } from '@/content/course';
 import { lessonCounts } from '@/lib/course-status';
 import { useProgress } from '@/lib/progress';
 import AccountMenu from './AccountMenu';
+import { toUrlLocale } from '@/lib/i18n';
 import { useT } from './I18nProvider';
+import Logo from './Logo';
 import LessonSwitcher from './LessonSwitcher';
 import XpBadge from './XpBadge';
 
@@ -14,20 +16,25 @@ export default function Header() {
   const pathname = usePathname();
   const progress = useProgress();
   const { t, locale } = useT();
-  const current = availableCourse().find((l) => pathname === `/${locale}/lessons/${l.slug}`);
+  const current = availableCourse().find((l) => pathname === `/${toUrlLocale(locale)}/lessons/${l.slug}`);
   const { solved, total } = current ? lessonCounts(current.slug, progress.solved) : { solved: 0, total: 0 };
   const pct = total ? (solved / total) * 100 : 0;
 
   return (
     <header className="topbar">
-      <Link className="brand" href={`/${locale}`} aria-label={`Ilmhona — ${t.roadmap.nav}`}>
-        <span className="brand-mark">I</span>
+      <Link className="brand" href={`/${toUrlLocale(locale)}`} aria-label={`MakeFirstStep — ${t.roadmap.nav}`}>
+        <Logo />
         <span className="brand-name">
-          Ilmhona <small>{t.header.brandSub}</small>
+          <span className="brand-word">
+            <span>Make</span>
+            <span>First</span>
+            <span>Step</span>
+          </span>
+          <small>{t.header.brandSub}</small>
         </span>
       </Link>
       <nav className="topnav" aria-label={t.header.lessonsNav}>
-        <Link className="map-link" href={`/${locale}`} aria-current={pathname === `/${locale}` ? 'page' : undefined}>
+        <Link className="map-link" href={`/${toUrlLocale(locale)}`} aria-current={pathname === `/${toUrlLocale(locale)}` ? 'page' : undefined}>
           {t.roadmap.nav}
         </Link>
         <LessonSwitcher currentSlug={current?.slug ?? null} solved={solved} total={total} />

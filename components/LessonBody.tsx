@@ -5,6 +5,7 @@ import type { CourseEntry } from '@/content/course';
 import { getMessages, type Locale } from '@/lib/i18n';
 import { neighbours, readFragment } from '@/lib/lessons.server';
 import { hasClass, makeReplaceOptions } from '@/lib/contentReplace';
+import MentorChat from './MentorChat';
 import Pager from './Pager';
 import Toc, { type TocItem } from './Toc';
 
@@ -35,6 +36,7 @@ export default function LessonBody({ lesson, locale }: { lesson: CourseEntry; lo
           {parse(html, options)}
           <Pager {...neighbours(lesson.slug)} locale={locale} />
         </main>
+        <MentorChat key={lesson.slug} lessonSlug={lesson.slug} />
       </div>
     </>
   );

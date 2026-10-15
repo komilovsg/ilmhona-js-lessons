@@ -8,7 +8,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { destination, isAvailable, modules } from '@/content/course';
 import { courseItems, type CourseItem, type CourseStatus } from '@/lib/course-status';
 import { levelInfo, totalXp } from '@/lib/game';
-import { fmt } from '@/lib/i18n';
+import { fmt, toUrlLocale } from '@/lib/i18n';
 import { useProgress } from '@/lib/progress';
 import { useT } from '../I18nProvider';
 import { BoltIcon, CheckIcon, ClockIcon, DotIcon, FlagIcon, LockIcon, PinIcon, TrophyIcon } from './icons';
@@ -226,7 +226,7 @@ export default function RoadmapView() {
         </ul>
         <div className="rm-in rm-cta-row">
           {ctaLesson ? (
-            <Link className="rm-cta" href={`/${locale}/lessons/${ctaLesson.slug}`}>
+            <Link className="rm-cta" href={`/${toUrlLocale(locale)}/lessons/${ctaLesson.slug}`}>
               {fmt(anyStarted ? r.ctaContinue : r.ctaStart, { num: ctaLesson.num, title: ctaLesson.title[locale] })}
               <span aria-hidden="true"> →</span>
             </Link>
@@ -307,7 +307,7 @@ export default function RoadmapView() {
                         </div>
                         <h3 className="rm-title">
                           {isAvailable(i) ? (
-                            <Link className="rm-link" href={`/${locale}/lessons/${i.slug}`}>
+                            <Link className="rm-link" href={`/${toUrlLocale(locale)}/lessons/${i.slug}`}>
                               {i.title[locale]}
                             </Link>
                           ) : (
@@ -334,7 +334,7 @@ export default function RoadmapView() {
                             ))}
                           </dl>
                           {isAvailable(i) && (
-                            <Link className="rm-open" href={`/${locale}/lessons/${i.slug}`}>
+                            <Link className="rm-open" href={`/${toUrlLocale(locale)}/lessons/${i.slug}`}>
                               {r.open} →
                             </Link>
                           )}

@@ -1,0 +1,2119 @@
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 15 · Async ва API</p>
+      <h1>Кор бо API-и воқеӣ</h1>
+      <p class="lead">Дӯкони интернетӣ ҳазорон молро дар HTML нигоҳ намедорад — вай онҳоро аз сервер мепурсад: «шаш молро нишон деҳ, дувоздаҳи аввалро гузарон, танҳо аз категорияи «телефонҳо»». Имрӯз шумо меомӯзед, ки чунин саволҳоро тавассути параметрҳои дархост диҳед ва ҷавобро ба рӯйхати зинда бо ҷустуҷӯ, филтрҳо ва саҳифаҳо табдил диҳед — каталогҳо, лентаҳо ва ҷустуҷӯ дар сайтҳои воқеӣ маҳз ҳамин тавр сохта шудаанд.</p>
+      <ul class="goals">
+        <li>Суроғаи дархостро тавассути <code>URLSearchParams</code> ҷамъ кардан, бе андеша дар бораи фосилаҳо ва кириллитса</li>
+        <li>Ҳуҷҷатгузории API-ро хондан ва дар ҷавоб майдонҳои лозимаро ёфтан</li>
+        <li>Аз ҷавоби сервер рӯйхат кашидан, бе такрори кортҳо</li>
+        <li>Ҷустуҷӯро бе дархостҳои зиёдатӣ анҷом додан: <code>debounce</code> ва ҳимоя аз «мусобиқаи» дархостҳо</li>
+        <li>Филтр ва мураттаб кардан — дар сервер ва дар клиент</li>
+        <li>Саҳифаҳоро аз рӯи <code>limit</code> / <code>skip</code> ҳисоб кардан ва тугмаҳои «Ба қафо» / «Ба пеш»-ро идора кардан</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Бо ин саҳифа чӣ тавр кор кардан лозим</b>
+      <p>Коди дар заминаи торик бо тугмаи <b>▶ Иҷро кардан</b> зинда аст: тағйир диҳед ва иҷро кунед. Мисолҳо бо <code>fetch</code> ба API-ҳои оммавии воқеӣ мераванд, барои ҳамин интернет лозим аст. Блокҳо бо ҷадвалҳои <b>index.html / style.css / script.js</b> — ин саҳифаи хурд аст: дар тарафи чап код, дар зери он пешнамоиш ва консол. Вазифаҳо худашон аз рӯи он ки шумо ба консол чоп мекунед, санҷида мешаванд. Агар ба сервер «бад» бошад (ҳолати нодир), хатои шабакаро мебинед — оддӣ боз як бор иҷро кунед. Ишораҳо зери қулфак 🔒: аввал худатон, баъд ишора.</p>
+      <p>Дар дарс се API-и оммавӣ бе калид ҳаст: <b>DummyJSON</b> (мол), <b>Rick and Morty API</b> (персонажҳо) ва андаке <b>Open-Meteo</b> (обу ҳаво) дар вазифаи хонагӣ.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="query">
+      <h2 data-toc="Параметрҳои дархост · URLSearchParams"><span class="num">01</span> Параметрҳои дархост: URL ва URLSearchParams</h2>
+
+      <p>Ҳар дархост ба API — ин суроға аст. Аммо суроға на танҳо «ба куҷо рафтан»-ро, балки «чиро дақиқан овардан»-ро ҳам медонад. Барои ин баъд аз аломати <code>?</code> <b>параметрҳои дархост</b> (query string) дар намуди ҷуфтҳои <code>калид=қимат</code>, ки бо <code>&amp;</code> ҷудо шудаанд, илова мекунанд.</p>
+
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="сервер">https://dummyjson.com</span><span class="part p2" data-label="роҳ (чиро металабем)">/products/search</span><span class="part p3" data-label="оғози параметрҳо">?</span><span class="part p4" data-label="параметрҳо">q=phone&amp;limit=5&amp;skip=10</span>
+        </div>
+        <figcaption>Роҳ ба саволи «чӣ?» ҷавоб медиҳад, параметрҳо — «чандто, кадомҳо, бо кадом тартиб?»</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Фармоиш дар чойхона. «Курутоб» — ин <b>роҳ</b> аст: шумо чиро фармоиш медиҳед. «Бе piyoz, ҳиссаи калонтар, ду коса чой» — ин <b>параметрҳо</b> аст: возеҳкунӣ ба ҳамон хӯрок. Хӯрок як аст, фармоишҳо гуногунанд. Бо API ҳам чунин аст: роҳи <code>/products</code> як аст, параметрҳои <code>limit</code>, <code>skip</code>, <code>q</code> бошанд тағйир медиҳанд, ки ба шумо дақиқан чӣ меоранд.</p>
+      </div>
+
+      <h3>Чаро сатрҳоро бо даст часпондан мумкин нест</h3>
+      <p>Навомӯзон суроғаро ҳамин тавр ҷамъ мекунанд: <code>"…?q=" + text + "&amp;limit=" + limit</code>. То даме ки дар <code>text</code> як калима бо лотинӣ бошад, ҳама чиз кор мекунад. Аммо ҳамин ки корбар фосила, <code>&amp;</code>, <code>#</code> ё ҳарфи русӣ ворид кунад — суроға вайрон мешавад. URL қоидаҳои сахт дорад: чунин аломатҳоро бояд <b>рамзгузорӣ кард</b> (<code>фосила → +</code> ё <code>%20</code>, <code>&amp; → %26</code>, кириллитса → <code>%D0…</code>).</p>
+      <p>Худамон рамзгузорӣ кардан — мушкил аст ва хато кардан осон. Барои ин дар браузер (ва дар Node.js) синфи тайёри <code>URLSearchParams</code> ҳаст.</p>
+
+<pre class="code" data-run data-title="URLSearchParams ҷамъ ва рамзгузорӣ мекунад">
+const params = new URLSearchParams();
+params.set("q", "плов &amp; чай");   // фосилаҳо, &amp;, кириллитса — ташвиши мо нест
+params.set("limit", 5);          // рақам худаш ба сатр табдил меёбад
+params.set("skip", 10);
+
+console.log(params.toString());
+// q=%D0%BF%D0%BB%D0%BE%D0%B2+%26+%D1%87%D0%B0%D0%B9&amp;limit=5&amp;skip=10
+
+const url = "https://dummyjson.com/products/search?" + params;
+console.log(url);   // объект худкор ба сатр табдил меёбад
+</pre>
+
+      <p><code>URLSearchParams</code>-ро фавран аз объект ё аз сатри тайёр сохтан мумкин аст — барои таҷзияи суроғаи бегона қулай аст:</p>
+
+<pre class="code" data-run data-title="Аз объект ва аз сатр">
+const fromObject = new URLSearchParams({ q: "phone", limit: 5 });
+console.log(fromObject.toString());
+
+const fromString = new URLSearchParams("q=plov&amp;limit=10&amp;page=3");
+console.log(fromString.get("q"));        // plov
+console.log(fromString.get("limit"));    // "10" — сатр аст, на рақам!
+console.log(fromString.get("sort"));     // null — чунин параметр нест
+console.log(fromString.has("page"));     // true
+</pre>
+
+      <dl class="terms">
+        <dt>set(калид, қимат)</dt><dd>Параметрро муқаррар кардан. Агар чунин аллакай буд — бознависӣ кардан.</dd>
+        <dt>append(калид, қимат)</dt><dd>Боз як ҷуфт илова кардан, ҳатто агар калид аллакай бошад (чунин мешавад: <code>?tag=a&amp;tag=b</code>).</dd>
+        <dt>get(калид) / getAll(калид)</dt><dd>Қиматро хондан. Ҳамеша <b>сатр</b> ё <code>null</code>.</dd>
+        <dt>has(калид) / delete(калид)</dt><dd>Мавҷуд будан санҷидан / параметрро нест кардан.</dd>
+        <dt>toString()</dt><dd>Сатри тайёри параметрҳо бе аломати <code>?</code>.</dd>
+      </dl>
+
+      <h3>Суроғаи пурра: URL</h3>
+      <p>Барои таҷзияи суроғаи пурра синфи <code>URL</code> ҳаст: он <code>searchParams</code> дорад — ҳамон <code>URLSearchParams</code>, ки аллакай ба суроға пайваст шудааст.</p>
+<pre class="code" data-run>
+const url = new URL("https://dummyjson.com/products/search?q=phone&amp;limit=5");
+
+console.log(url.hostname);                  // dummyjson.com
+console.log(url.pathname);                  // /products/search
+console.log(url.searchParams.get("q"));     // phone
+
+url.searchParams.set("skip", 10);           // суроғаро тавассути параметрҳо тағйир додем
+console.log(url.href);
+</pre>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>params.get("limit") + 1</code> <code>"101"</code> медиҳад, на 11: қиматҳо сатранд. <code>Number(...)</code> лозим аст. <b>2.</b> Часпондани сатрҳо дар фосилаҳо ва <code>&amp;</code> вайрон мешавад. <b>3.</b> Санҷиши <code>if (value)</code> ҳангоми ҷамъ кардани суроға <code>skip=0</code>-ро мепартояд — нул «дурӯғин» аст, аммо барои сервер ин қимати муҳим аст. <code>=== undefined</code>-ро санҷед, на «ростнамоӣ»-ро.</p>
+      </div>
+
+<pre class="code" data-run data-title="Часпондани сатрҳо суроғаро вайрон мекунад">
+const text = "rock &amp; roll";
+const bad = "https://dummyjson.com/products/search?q=" + text + "&amp;limit=5";
+
+console.log(bad);
+// сервер мебинад: q="rock ", параметри " roll" бе қимат ва limit=5 — ҷустуҷӯ чизи дигарро мекунад
+console.log(new URL(bad).searchParams.get("q"));
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/url" target="_blank" rel="noopener">learn.javascript.ru — Объекти URL</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/URLSearchParams" target="_blank" rel="noopener">MDN — URLSearchParams</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Суроғаҳоро ҷамъ ва таҷзия мекунем. Ҳамаи вазифаҳо бо чопи консол санҷида мешаванд.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Се параметр барои ҷустуҷӯ</h4><span class="level easy">осон</span></header>
+          <p><code>URLSearchParams</code> созед ва тавассути <code>set</code> се параметр муқаррар кунед: <code>q</code> = <code>samsa</code>, <code>limit</code> = <code>5</code>, <code>skip</code> = <code>10</code>. Сатри ниҳоии параметрҳоро чоп кунед.</p>
+<pre class="code" data-run>
+const params = new URLSearchParams();
+
+// q, limit ва skip-ро муқаррар кунед
+
+// params.toString()-ро чоп кунед
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>q=samsa&amp;limit=5&amp;skip=10</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>params.set("q", "samsa");</code> — барои ҳар параметр як сатр, бо ҳамон тартибе, ки дар ҷавоб аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Рақамҳоро чунон ки ҳастанд додан мумкин: <code>params.set("limit", 5)</code> — синф худаш онҳоро ба сатр табдил медиҳад.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Чопро пешгӯӣ кун: сатрҳо ва рақамҳо</h4><span class="level easy">осон</span></header>
+          <p><b>Аввал, бе иҷро кардан,</b> пешгӯиро барои панҷ сатри аввал нависед. Иҷро кунед ва муқоиса намоед. Баъд дар поён анҷом диҳед: тавассути <code>append</code> қимати дуюми <code>limit = 20</code>-ро илова кунед ва <code>getAll("limit")</code>-ро бо вергул чоп кунед (<code>.join(",")</code>).</p>
+<pre class="code" data-run>
+const params = new URLSearchParams("q=plov&amp;limit=10&amp;page=3");
+
+console.log(params.get("limit") + 1);
+console.log(Number(params.get("limit")) + 1);
+console.log(params.get("sort"));
+console.log(params.has("page"));
+console.log(params.get("page") * 2);
+
+// қисми шумо: append + getAll
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>101
+11
+null
+true
+6
+10,20</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Плюс бо сатр — часпонидан аст: <code>"10" + 1</code> ин <code>"101"</code> аст. Аммо зарб худаш сатрро ба рақам табдил медиҳад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>params.append("limit", 20);</code> ва <code>console.log(params.getAll("limit").join(","));</code></p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Функсияи buildUrl</h4><span class="level mid">миёна</span></header>
+          <p><code>buildUrl(base, params)</code>-ро нависед: вай суроға ва объекти параметрҳоро мегирад ва суроғаи тайёрро бармегардонад. Параметрҳо бо қимати <code>undefined</code>, <code>null</code> ё сатри холӣ гузаронда мешаванд; <code>0</code> — гузаронда <b>намешавад</b>. Агар параметрҳо намонанд, аломати <code>?</code> илова намешавад.</p>
+<pre class="code" data-run>
+function buildUrl(base, params) {
+  // коди шумо
+}
+
+console.log(buildUrl("https://dummyjson.com/products/search", { q: "phone", limit: 5, skip: 0 }));
+console.log(buildUrl("https://dummyjson.com/products", { limit: 10, skip: undefined, q: "" }));
+console.log(buildUrl("https://dummyjson.com/products", {}));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>https://dummyjson.com/products/search?q=phone&amp;limit=5&amp;skip=0
+https://dummyjson.com/products?limit=10
+https://dummyjson.com/products</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>Object.entries(params)</code>-ро бо давраи <code>for…of</code> тай кунед, қиматҳои баддро бо <code>continue</code> гузаронед, хубҳоро ба <code>URLSearchParams</code> гузоред.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Шарти гузаронидан: <code>value === undefined || value === null || value === ""</code>. Дар охир: <code>const text = query.toString(); return text ? `${base}?${text}` : base;</code></p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ВАЗИФАИ 1.4</span><h4>Хаторо ёб: ҷустуҷӯи «rock &amp; roll»</h4><span class="level easy">осон</span></header>
+          <p>Корбар <code>rock &amp; roll</code>-ро ҷустуҷӯ кард, аммо сервер чизи аҷибе гирифт. Ҷамъкунии суроғаро тавассути <code>URLSearchParams</code> бознависед (параметрҳои <code>q</code> ва <code>limit=5</code>). Суроғаро чоп кунед ва дар сатри дуюм — он чиро, ки <code>new URL(url).searchParams.get("q")</code> бармегардонад: ин ҳамон чизест, ки сервер мебинад.</p>
+<pre class="code" data-run>
+const query = "rock &amp; roll";
+const url = "https://dummyjson.com/products/search?q=" + query + "&amp;limit=5";
+
+console.log(url);
+console.log(new URL(url).searchParams.get("q"));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>https://dummyjson.com/products/search?q=rock+%26+roll&amp;limit=5
+rock &amp; roll</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>new URLSearchParams({ q: query, limit: 5 })</code>-ро созед.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>const url = "https://dummyjson.com/products/search?" + params;</code> — объект худаш ба сатр табдил меёбад.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="read-api">
+      <h2 data-toc="Ҳуҷҷатгузорӣ ва ҷавоби API"><span class="num">02</span> Ҳуҷҷатгузорӣ ва ҷавоби API-ро мехонем</h2>
+
+      <p>Ҳар API қоидаҳои худро дорад: параметрҳо чӣ ном доранд, ҷавоб чӣ тавр сохта шудааст, агар ҳеҷ чиз ёфт нашавад чӣ мешавад. Инро танҳо аз <b>ҳуҷҷатгузорӣ</b> ва аз <b>худи ҷавоб</b> фаҳмидан мумкин аст. Одати №1-и барномасоз: аввал бубинед, ки воқеан чӣ меояд ва танҳо баъд код нависед.</p>
+
+      <p>Аз дарси 14 шумо печонандаи болои <code>fetch</code>-ро дар хотир доред. Вай дар ҳар мисол лозим мешавад, барои ҳамин версияи кӯтоҳи вай инҷост — дар дарс вай дар аввали ҳар блок меистад:</p>
+
+<pre class="code" data-run data-title="Ҷавоби DummyJSON чӣ гуна менамояд">
+async function getJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("HTTP " + response.status);
+  return response.json();
+}
+
+async function main() {
+  const data = await getJson("https://dummyjson.com/products?limit=2&amp;select=title,price");
+  console.log(Object.keys(data));
+  console.log(data.products);
+  console.log("всего товаров на сервере больше, чем пришло:", data.total &gt; data.products.length);
+}
+main();
+</pre>
+
+      <p>Мебинед: ҷавоб — на оддӣ массиви мол, балки <b>объект-лифофа</b> аст. Худи мол дар <code>products</code> ҷойгир аст, дар паҳлӯи он — майдонҳои хидматии <code>total</code> (ҳамагӣ чандто), <code>skip</code> ва <code>limit</code> (кадом қисмро баргардонданд). Онҳо барои пагинатсия лозим мешаванд.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>DummyJSON</th><th>Rick and Morty API</th><th>JSONPlaceholder</th></tr></thead>
+          <tbody>
+            <tr><td><b>Рӯйхат дар куҷост</b></td><td><code>data.products</code></td><td><code>data.results</code></td><td>худи ҷавоб — массив аст</td></tr>
+            <tr><td><b>Ҷустуҷӯ</b></td><td><code>/products/search?q=</code></td><td><code>?name=</code></td><td>не, танҳо филтрҳо аз рӯи майдонҳо: <code>?userId=1</code></td></tr>
+            <tr><td><b>Саҳифаҳо</b></td><td><code>limit</code> + <code>skip</code></td><td><code>page</code> (20 тоӣ)</td><td><code>_page</code> + <code>_limit</code></td></tr>
+            <tr><td><b>Ҳамагӣ чандто</b></td><td><code>data.total</code></td><td><code>data.info.count</code>, <code>info.pages</code></td><td>сарлавҳаи <code>x-total-count</code></td></tr>
+            <tr><td><b>Чизе ёфт нашуд</b></td><td>200 ва <code>products</code>-и холӣ</td><td><b>404</b> ва <code>{ error }</code></td><td>200 ва массиви холӣ</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Сатри охирин — аз ҳама маккор: «чизе ёфт нашуд» дар як API ин рӯйхати холӣ аст, дар дигар — <b>хатои 404</b>. Агар инро надонед, ҷустуҷӯ аз рӯи Рик ва Морти дар ҳар хатои имлоӣ «меафтад».</p>
+
+<pre class="code" data-run data-title="404 — на ҳамеша вайроншавӣ аст">
+async function main() {
+  const found = await fetch("https://rickandmortyapi.com/api/character?name=rick");
+  console.log("rick →", found.status);
+
+  const none = await fetch("https://rickandmortyapi.com/api/character?name=zzzzqq");
+  console.log("zzzzqq →", none.status, none.ok);
+  console.log(await none.json());
+}
+main();
+</pre>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Ҳуҷҷатгузории API — ин <b>менюи чойхона</b> аст. Шумо тахмин намекунед, ки дар ошхона чӣ ҳаст: менюро мекушоед ва хӯроку (эндпойнтҳо), ҳиссаҳо ва иловаҳоро (параметрҳо) мебинед. Ҷавоби сервер бошад — худи хӯрок дар табақ: пеш аз хӯрдан бояд бингаред, ки дар он чӣ ҳаст.</p>
+      </div>
+
+      <h3>Ҳуҷҷатгузориро дар 2 дақиқа чӣ тавр хондан</h3>
+      <ol class="steps">
+        <li><b>Эндпойнти лозимаро ёбед.</b> «Ба ман ҷустуҷӯи мол лозим» → <code>GET /products/search</code>.</li>
+        <li><b>Параметрҳоро нависед:</b> кадомаш ҳатмӣ, кадомаш не, кадом қиматҳо иҷозат дода мешаванд (<code>limit</code>, <code>skip</code>, <code>select</code>, <code>sortBy</code>, <code>order</code>).</li>
+        <li><b>Намунаи ҷавобро кушоед</b> ва ёбед, ки рӯйхат дар куҷо ва майдонҳои хидматӣ дар куҷо ҳастанд.</li>
+        <li><b>Бо даст санҷед:</b> суроғаро ба браузер ё ба <code>console.log</code> гузоред ва боварӣ ҳосил кунед, ки ҷавоб чунон аст, ки дар ҳуҷҷатгузорӣ.</li>
+        <li><b>Дар бораи «холӣ» ва «хато» бидонед:</b> агар ҳеҷ чиз набошад, кадом статус ва кадом бадан меояд.</li>
+      </ol>
+
+      <p>Як усули дигар: параметри <code>select</code> дар DummyJSON дар ҷавоб танҳо майдонҳои лозимаро мегузорад. Дархост сабуктар ва тезтар мешавад — барои чӣ тавсиф ва шарҳҳоро зеркашӣ кардан, агар ном ва нарх лозим бошад?</p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Се вазифа, ки дар онҳо шумо ҷавоби API-ро мехонед ва хусусиятҳои онро ба назар мегиред.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Дар дохили лифофа чӣ ҳаст</h4><span class="level easy">осон</span></header>
+          <p>Се молро дархост кунед (<code>limit=3</code>, <code>select=title,price</code>). Калидҳои ҷавобро бо вергул чоп кунед (<code>Object.keys(data).join(", ")</code>), дар сатри дуюм — дар <code>data.products</code> чанд мол ҳаст.</p>
+<pre class="code" data-run>
+async function main() {
+  const url = "https://dummyjson.com/products?limit=3&amp;select=title,price";
+  // fetch → response.json() → ду console.log
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>products, total, skip, limit
+3</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ду <code>await</code> пай дар пай: <code>const response = await fetch(url); const data = await response.json();</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Рӯйхат — <code>data.products</code>, массив <code>.length</code> дорад.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Хаторо ёб: «data.map is not a function»</h4><span class="level easy">осон</span></header>
+          <p>Функсия бояд <code>Загружено: 4</code>-ро чоп кунад, аммо бо хато меафтад. Иҷро кунед, хаторо бихонед, ислоҳ намоед.</p>
+<pre class="code" data-run data-title="Ин код хато медиҳад">
+async function loadTitles() {
+  const response = await fetch("https://dummyjson.com/products?limit=4&amp;select=title");
+  const data = await response.json();
+  const titles = data.map((p) =&gt; p.title);
+  console.log("Загружено:", titles.length);
+}
+loadTitles();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Загружено: 4</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>data</code> — на массив, балки объект-лифофа аст. Кадом майдони он массиви молро дорад?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>data.map(...)</code>-ро бо <code>data.products.map(...)</code> иваз кунед.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Ҷустуҷӯи персонажҳо бе афтодан</h4><span class="level mid">миёна</span></header>
+          <p><code>searchCharacters(name)</code>-ро анҷом диҳед: вай <code>https://rickandmortyapi.com/api/character?name=…</code>-ро дархост мекунад (параметрро тавассути <code>URLSearchParams</code> ҷамъ кунед) ва массиви <code>data.results</code>-ро бармегардонад. Агар сервер бо <b>404</b> ҷавоб дод — ин «чизе ёфт нашуд» аст, массиви холии <code>[]</code>-ро баргардонед. Ҳар нокомии дигарро (<code>!response.ok</code>) хато ҳисоб кунед ва <code>Error</code> бипартоед.</p>
+<pre class="code" data-run>
+async function searchCharacters(name) {
+  // коди шумо
+}
+
+async function main() {
+  const found = await searchCharacters("rick");
+  console.log(found.length &gt; 0);
+  const none = await searchCharacters("zzzzqq");
+  console.log(none.length);
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>true
+0</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Аввал <code>const response = await fetch(...)</code>, баъд санҷишҳои статус — ва танҳо баъд аз онҳо <code>response.json()</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>if (response.status === 404) return [];</code> баъд <code>if (!response.ok) throw new Error("HTTP " + response.status);</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="render">
+      <h2 data-toc="Рендери рӯйхат аз API"><span class="num">03</span> Рендери рӯйхат аз API</h2>
+
+      <p>Маълумот омад — акнун онро дар саҳифа нишон медиҳем. Схема ҳамеша як аст: <b>fetch → массив → барои ҳар унсур гиреҳ сохтан → ба саҳифа гузоштан</b>. Ин ҳамон чизест, ки шумо дар дарсҳои 8 ва 11 мекардед, фақат массив акнун на аз тағйирёбанда, балки аз интернет меояд.</p>
+
+      <ol class="steps">
+        <li>Маълумотро <b>дархост кардем</b>: <code>await fetch(url)</code>, <code>await response.json()</code>.</li>
+        <li><b>Рӯйхатро гирифтем</b> аз лифофа: <code>data.products</code>.</li>
+        <li><b>Контейнерро тоза кардем</b>: <code>list.replaceChildren()</code>.</li>
+        <li><b>Барои ҳар мол</b> <code>&lt;li&gt;</code> / корт сохтем, <code>textContent</code>-ро пур кардем ва ба контейнер илова намудем.</li>
+      </ol>
+
+      <div class="playground" data-mode="dom" data-title="Рӯйхати мол аз API">
+<pre class="code" data-lang="html">
+&lt;h3&gt;Первые 5 товаров&lt;/h3&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+async function loadProducts() {
+  const response = await fetch("https://dummyjson.com/products?limit=5&amp;select=title,price");
+  const data = await response.json();
+
+  list.replaceChildren();                    // 3. тоза кардем
+  for (const product of data.products) {     // 4. барои ҳар мол як гиреҳ
+    const li = document.createElement("li");
+    li.textContent = `${product.title} — ${product.price} $`;
+    list.append(li);
+  }
+}
+
+loadProducts();
+</pre>
+      </div>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Рендер — ин <b>витринаи</b> бозор аст. Ҳар субҳ фурӯшанда молро болои дирӯза илова намекунад, балки <b>витринаро аз нав мегузорад</b>: кӯҳнаро бардошт — навро гузошт. Функсияи <code>render</code> бояд ҳамин тавр кор кунад: аввал тоза кунад, баъд созад. Он гоҳ вайро ҳар қадар бор даъват кардан мумкин аст (ҳангоми ҷустуҷӯ, ҳангоми иваз шудани саҳифа) ва ҳеҷ чиз дучанд намешавад.</p>
+      </div>
+
+      <h3>Қоида: render рӯйхатро пурра аз нав месозад</h3>
+      <p>Хатои маъмултарини навомӯзон — тоза карданро фаромӯш кардан. Даъвати аввал кор мекунад, дар дуюм (саҳифаи нав, ҷустуҷӯи нав) кортҳо <b>ба кӯҳнаҳо</b> илова мешаванд. Барои ҳамин ҳар чизе, ки рӯйхатро мекашад, бо <code>replaceChildren()</code> (ё <code>innerHTML = ""</code>) оғоз мешавад.</p>
+
+      <div class="callout warn">
+        <b>Маълумоти сервер — ба он бовар накунед</b>
+        <p>Агар ҷавобро тавассути <code>innerHTML</code> гузорем, ҳар «мол» бо номи <code>&lt;b&gt;…&lt;/b&gt;</code> ба тамға табдил меёбад, ҳамлагар бошад скриптро ҳам андохта метавонад. Барои матн аз API <code>textContent</code>-ро истифода баред: вай сатрро чунон ки ҳаст, бе таҷзияи тегҳо мегузорад.</p>
+      </div>
+
+<pre class="code" data-run data-title="textContent дар муқобили innerHTML">
+const title = "&lt;b&gt;СКИДКА!&lt;/b&gt; Самбуса";   // гӯё аз сервер омадааст
+
+const safe = document.createElement("p");
+safe.textContent = title;
+const risky = document.createElement("p");
+risky.innerHTML = title;
+
+console.log(safe.innerHTML);     // тегҳо ба матни бехатар табдил дода шуданд
+console.log(risky.children.length);  // 1 — дар дохил &lt;b&gt;-и ҳақиқӣ пайдо шуд
+</pre>
+
+      <h3>Кортҳо бо расм</h3>
+      <p>Каталоги ҳақиқӣ — ин на рӯйхати сатрҳо, балки кортҳо аст. Принсип ҳамон, гиреҳҳо фақат зиёдтаранд. Расмро аз майдони <code>thumbnail</code> мегирем ва ҳатман <code>alt</code>-ро муқаррар мекунем — барои дастрасӣ ва дар сурате, ки расм бор нашавад.</p>
+
+      <div class="playground" data-mode="dom" data-title="Кортҳо">
+<pre class="code" data-lang="html">
+&lt;div id="grid" class="grid"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.card { border: 1px solid #ccc; border-radius: 10px; padding: 8px; text-align: center; font: 14px system-ui; }
+.card img { width: 100%; height: 90px; object-fit: contain; }
+.card h3 { font-size: 14px; margin: 6px 0 2px; }
+.card p { margin: 0; color: #0a7c5a; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const grid = document.querySelector("#grid");
+
+async function loadCards() {
+  const response = await fetch("https://dummyjson.com/products?limit=6&amp;select=title,price,thumbnail");
+  const data = await response.json();
+
+  grid.replaceChildren();
+  for (const product of data.products) {
+    const card = document.createElement("article");
+    card.className = "card";
+
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+
+    const title = document.createElement("h3");
+    title.textContent = product.title;
+
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+
+    card.append(img, title, price);
+    grid.append(card);
+  }
+}
+
+loadCards();
+</pre>
+      </div>
+
+      <div class="callout tip">
+        <b>Рӯйхати холӣ — ҳам ҳолат аст</b>
+        <p>Агар сервер сифр мол баргардонад, корбар бояд «Ничего не найдено»-ро бинад, на ҷои холиро. Дар бораи ҳолатҳои боркунӣ ва хатоҳо дар дарси оянда муфассал сӯҳбат мекунем, ҳоло бошад ҳадди ақалро мегузорем: <code>render</code> натиҷаи холиро нишон дода метавонад.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren" target="_blank" rel="noopener">MDN — Element.replaceChildren</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Чор вазифа дар мавзӯи рендер. Натиҷа — дар пешнамоиш ва дар консоли зери майдони озмоиш.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Панҷ мол ба рӯйхат</h4><span class="level easy">осон</span></header>
+          <p><code>loadProducts</code>-ро анҷом диҳед: барои ҳар мол <code>&lt;li&gt;</code> бо матни <code>название — цена $</code> (хатча бо фосилаҳо дар гирду атроф) созед ва ба <code>list</code> илова кунед. Консол санҷишро аллакай чоп мекунад: дар рӯйхат чанд унсур ҳаст ва оё дар аввалӣ хатча ҳаст.</p>
+          <div class="playground" data-mode="dom" data-title="Рӯйхати мол">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+async function loadProducts() {
+  const response = await fetch("https://dummyjson.com/products?limit=5&amp;select=title,price");
+  const data = await response.json();
+  // барои ҳар мол: li созед, матнро нависед, ба list илова кунед
+}
+
+// --- санҷиш, тағйир надиҳед ---
+loadProducts().then(() =&gt; {
+  console.log(list.children.length);
+  console.log(list.firstElementChild.textContent.includes(" — "));
+});
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>5
+true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>for (const product of data.products) { ... }</code> — дар дохили давра як <code>li</code> месозем.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>const li = document.createElement("li"); li.textContent = `${product.title} — ${product.price} $`; list.append(li);</code></p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Кортҳо бо расмҳо</h4><span class="level mid">миёна</span></header>
+          <p>Шаш молро бо кортҳо бароред: <code>&lt;article class="card"&gt;</code> бо <code>&lt;img&gt;</code> (<code>src</code> = <code>thumbnail</code>, <code>alt</code> = ном), сарлавҳаи <code>&lt;h3&gt;</code> ва нархи <code>&lt;p&gt;</code>. Ҳама тавассути <code>createElement</code> ва <code>textContent</code>.</p>
+          <div class="playground" data-mode="dom" data-title="Кортҳои мол">
+<pre class="code" data-lang="html">
+&lt;div id="grid" class="grid"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 10px; padding: 8px; text-align: center; font: 13px system-ui; }
+.card img { width: 100%; height: 70px; object-fit: contain; }
+.card h3 { font-size: 13px; margin: 4px 0 2px; }
+.card p { margin: 0; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const grid = document.querySelector("#grid");
+
+async function loadCards() {
+  const response = await fetch("https://dummyjson.com/products?limit=6&amp;select=title,price,thumbnail");
+  const data = await response.json();
+  // коди шумо: корт = article.card + img + h3 + p
+}
+
+// --- санҷиш, тағйир надиҳед ---
+loadCards().then(() =&gt; {
+  console.log(grid.querySelectorAll(".card").length);
+  console.log([...grid.querySelectorAll("img")].filter((img) =&gt; img.alt !== "").length);
+});
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>6
+6</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Чор гиреҳ созед: <code>article</code>, <code>img</code>, <code>h3</code>, <code>p</code>. Ба синфи <code>card</code> <code>card.className = "card"</code> мувофиқ аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Кортро бо як сатр ҷамъ кунед: <code>card.append(img, title, price);</code> ва ба <code>grid</code> гузоред.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Хаторо ёб: рӯйхати дучандшуда</h4><span class="level easy">осон</span></header>
+          <p>Рӯйхатро ду бор навсозӣ мекунанд (гӯё корбар «навсозӣ»-ро пахш кард). Бояд 3 унсур монад, аммо 6 то аст. <code>loadProducts</code>-ро ислоҳ кунед, санҷишро ламс накарда.</p>
+          <div class="playground" data-mode="dom" data-title="Навсозии дучанда">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+async function loadProducts() {
+  const response = await fetch("https://dummyjson.com/products?limit=3&amp;select=title");
+  const data = await response.json();
+  data.products.forEach((product) =&gt; {
+    const li = document.createElement("li");
+    li.textContent = product.title;
+    list.append(li);
+  });
+}
+
+// --- санҷиш, тағйир надиҳед ---
+loadProducts()
+  .then(() =&gt; loadProducts())
+  .then(() =&gt; console.log(list.children.length));
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>3</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Ҳар даъват <code>li</code>-ҳои навро ба онҳое, ки аллакай ҳастанд, илова мекунад. Пеш аз давра чӣ намерасад?</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>list.replaceChildren();</code>-ро баъд аз гирифтани маълумот, пеш аз давра илова кунед.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ВАЗИФАИ 3.4</span><h4>renderList бо ҳолати холӣ</h4><span class="level hard">душвор</span></header>
+          <p><code>renderList(items)</code>-ро нависед (<code>items</code> — массиви сатрҳо). Вай ҳамеша аввал <code>list</code>-ро тоза мекунад. Барои массиви холӣ як <code>&lt;li class="empty"&gt;Ничего не найдено&lt;/li&gt;</code> илова мекунад, барои холинабуда — барои ҳар сатр як <code>&lt;li&gt;</code>. Шабака лозим нест.</p>
+          <div class="playground" data-mode="dom" data-title="renderList">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+function renderList(items) {
+  // коди шумо
+}
+
+// --- санҷиш, тағйир надиҳед ---
+renderList(["Самбуса", "Курутоб"]);
+console.log(list.children.length);
+renderList([]);
+console.log(`${list.children.length} ${list.textContent}`);
+renderList(["Чой"]);
+console.log(list.textContent);
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>2
+1 Ничего не найдено
+Чой</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Сатри аввал — <code>list.replaceChildren();</code>. Баъд шохаи <code>if (items.length === 0) { ...; return; }</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар шохаи холӣ <code>li</code> созед, <code>className = "empty"</code> ва матнро муқаррар кунед, ба рӯйхат илова намоед ва <code>return</code> нависед. Поёнтар, барои холинабуда, давраи оддии <code>for (const item of items)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="search">
+      <h2 data-toc="Ҷустуҷӯ · debounce · мусобиқа"><span class="num">04</span> Ҷустуҷӯ: input, debounce ва «мусобиқаи» дархостҳо</h2>
+
+      <p>Ҷустуҷӯ дар API — ин ҳамон дархост бо параметри <code>q</code> аст. Мушкилӣ на дар дархост, балки дар он аст, ки <b>кай фиристодани он</b>. Агар ҳодисаи <code>input</code>-ро «рӯирост» гӯш кунем, барои калимаи «phone» панҷ дархост мефиристем — барои «p», «ph», «pho», «phon», «phone». Ин сарбории зиёдатӣ ба сервер ва интерфейси милликунанда аст.</p>
+
+<pre class="code" data-run data-title="Ҷустуҷӯи мол: параметри q">
+async function search(q) {
+  const params = new URLSearchParams({ q, limit: 5, select: "title" });
+  const response = await fetch("https://dummyjson.com/products/search?" + params);
+  const data = await response.json();
+  return data.products;
+}
+
+async function main() {
+  const found = await search("phone");
+  console.log("нашли:", found.length &gt; 0);
+  found.forEach((p) =&gt; console.log("•", p.title));
+
+  const none = await search("zzzzqq");
+  console.log("по чепухе:", none.length);   // 0 — оддӣ рӯйхати холӣ
+}
+main();
+</pre>
+
+      <h3>Debounce: интизор мешавем, то одам гапашро тамом кунад</h3>
+      <p><b>Debounce</b> («зидди ларзиш») амалро ба таъхир мегузорад ва ҳар даъвати нав интизориро аз сар оғоз мекунад. Амал танҳо дар сурате кор мекунад, ки корбар барои вақти додашуда хомӯш шуд — одатан 300–500 мс. Ин ҳамон <code>setTimeout</code> ва <code>clearTimeout</code> аз дарси 13 аст.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Пешхизмат дар чойхона баъд аз ҳар калимаи меҳмон ба ошхона намедавад. Вай интизор мешавад, то меҳмон гапашро тамом кунад: «курутоб… ва самбуса… ва чой… тамом». Танҳо баъд аз танаффус назди ошпаз меравад. Debounce — ин пешхизмати сабур аст: як танаффус дар сӯҳбат — як рафтан ба ошхона.</p>
+      </div>
+
+<pre class="code" data-run data-title="debounce дар шаш сатр">
+function debounce(fn, ms) {
+  let timer;                       // таймер байни даъватҳо зинда мемонад
+  return (...args) =&gt; {
+    clearTimeout(timer);           // даъвати нав қаблиро бекор мекунад
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+const find = debounce((text) =&gt; console.log("ищем:", text), 300);
+
+find("п");
+find("пл");
+find("пло");
+find("плов");      // танҳо даъвати охирин кор мекунад — баъд аз 300 мс
+</pre>
+
+      <p>Функсия <b>функсияи нав</b> бармегардонад, ки дар дохили он таймер «пинҳон» аст (closure — шумо онро дар дарси 5 дидаед). Обуна дар барнома чунин менамояд:</p>
+<pre class="code" data-title="Обуна ба input тавассути debounce">
+input.addEventListener("input", debounce(() =&gt; {
+  state.q = input.value.trim();
+  state.page = 1;          // ҷустуҷӯи нав — ҳамеша аз саҳифаи аввал!
+  load();
+}, 400));
+</pre>
+
+      <h3>«Мусобиқа»-и дархостҳо: вақте ҷавоби кӯҳна баъд аз нав меояд</h3>
+      <p>Ҳатто бо debounce чунин мешавад: шумо дархостро барои «ph» фиристодед, фикратон гашт ва «phone»-ро фиристодед. Сервер ба дархости дуюм тезтар, ба якум — дертар ҷавоб дод. Агар ҷавобҳоро ҳангоми омадан нишон диҳем, <b>кӯҳна навро бознависӣ мекунад</b> ва дар майдон «phone», дар рӯйхат — натиҷаҳо барои «ph» мешавад. Ин <b>мусобиқаи дархостҳо</b> (race condition) номида мешавад.</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Шумо палав фармоиш додед, баъд аз як дақиқа фикратон гашт ва самбуса фармоиш додед. Агар ошпазон хӯрокҳоро аз рӯи омодагӣ биёранд, самбуса аввал меояд, баъд палави нолозимро «мерасонанд» — ва шумо чизи нодурустро мехӯред. Дуруст: ба ҳар фармоиш рақам додан ва танҳо хӯроки бо рақами <b>охирин</b>-ро қабул кардан.</p>
+      </div>
+
+<pre class="code" data-run data-title="Хато: ҷавоби кӯҳна нави навро бознависӣ мекунад">
+const delays = { ph: 300, phone: 100 };   // ба «ph» сервер дертар ҷавоб медиҳад
+const fakeFetch = (q) =&gt; new Promise((resolve) =&gt;
+  setTimeout(() =&gt; resolve("результаты для " + q), delays[q]));
+
+async function search(q) {
+  const result = await fakeFetch(q);
+  console.log("показано:", result);
+}
+
+search("ph");
+setTimeout(() =&gt; search("phone"), 50);
+// дар экран «ph»-и кӯҳна мемонад — корбар на он чиро, ки ҷустуҷӯ кард, мебинад
+</pre>
+
+      <p>Дору оддӣ аст: ҳар дархост рақами худро дорад, танҳо ҷавобро ба дархости <b>аз ҳама наве</b> нишон медиҳем:</p>
+<pre class="code" data-run data-title="Ислоҳ: рақами дархост">
+const delays = { ph: 300, phone: 100 };
+const fakeFetch = (q) =&gt; new Promise((resolve) =&gt;
+  setTimeout(() =&gt; resolve("результаты для " + q), delays[q]));
+
+let lastRequest = 0;                    // рақами дархости охирин
+
+async function search(q) {
+  const id = ++lastRequest;             // рақами худро мегирем
+  const result = await fakeFetch(q);
+  if (id !== lastRequest) return;       // дар ин миён дархости нав рафт — партофта мешавад
+  console.log("показано:", result);
+}
+
+search("ph");
+setTimeout(() =&gt; search("phone"), 50);
+</pre>
+
+      <p>«Калонсолона» роҳ ҳам ҳаст — дархости кӯҳнаро тавассути <code>AbortController</code> бекор кардан: браузер интизориро қатъ мекунад, <code>fetch</code> бошад хатоеро бо номи <code>AbortError</code> мепартояд, ки онро бояд оромона фурӯ бурд.</p>
+<pre class="code" data-run data-title="Бекор кардани дархост: AbortController">
+const controller = new AbortController();
+
+fetch("https://dummyjson.com/products?limit=3", { signal: controller.signal })
+  .then(() =&gt; console.log("ответ пришёл"))
+  .catch((error) =&gt; console.log("отменён:", error.name));
+
+controller.abort();    // «ҷавобро интизор нестам»
+</pre>
+
+      <div class="callout tip">
+        <b>Кадомро интихоб кардан</b>
+        <p>Барои оғоз — ҳисобкунаки <code>lastRequest</code>: вай дар ҳама ҷо кор мекунад ва аз назари аввал фаҳмо аст. <code>AbortController</code> трафикро сарфа мекунад, аммо коркарди эҳтиётонаи <code>AbortError</code>-ро металабад. Дар барномаи мо ҳисобкунак мешавад.</p>
+      </div>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/settimeout-setinterval" target="_blank" rel="noopener">learn.javascript.ru — setTimeout ва setInterval</a> · <a href="https://learn.javascript.ru/fetch-abort" target="_blank" rel="noopener">Fetch: қатъи дархост</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Ҷустуҷӯ, debounce ва ҳимоя аз мусобиқа.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Функсияи search</h4><span class="level easy">осон</span></header>
+          <p><code>search(q)</code>-ро нависед: вай <code>https://dummyjson.com/products/search</code>-ро бо параметрҳои <code>q</code>, <code>limit=5</code>, <code>select=title</code> (тавассути <code>URLSearchParams</code>) дархост мекунад ва массиви <code>products</code>-ро бармегардонад. Санҷиш аллакай навишта шудааст.</p>
+<pre class="code" data-run>
+async function search(q) {
+  // коди шумо
+}
+
+async function main() {
+  console.log((await search("phone")).length &gt; 0);
+  console.log((await search("zzzzqq")).length);
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>true
+0</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Параметрҳо: <code>new URLSearchParams({ q, limit: 5, select: "title" })</code>. Суроға: <code>"https://dummyjson.com/products/search?" + params</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Минбаъд мисли маъмул: <code>await fetch</code>, <code>await response.json()</code>, <code>return data.products</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Пешгӯӣ кун: ҷустуҷӯ чанд бор кор мекунад</h4><span class="level mid">миёна</span></header>
+          <p><code>debounce(fn, ms)</code>-ро анҷом диҳед. Баъд <b>пеш аз иҷро</b> нависед, ки кадом сатрҳо пайдо мешаванд: се даъвати тез дар лаҳзаи 0 мс, боз як дар миллисонияи 100-ум ва охирин — дар 600-ум. Танаффуси <code>debounce</code> — 200 мс.</p>
+<pre class="code" data-run>
+function debounce(fn, ms) {
+  // коди шумо
+}
+
+const log = debounce((text) =&gt; console.log("ищем:", text), 200);
+
+log("п");
+log("пл");
+log("пло");
+setTimeout(() =&gt; log("плов"), 100);
+setTimeout(() =&gt; log("плов!"), 600);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>ищем: плов
+ищем: плов!</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Тағйирёбандаи <code>timer</code> дар берун аз функсияи баргардонидашаванда лозим аст, то вай таймери қаблиро «ба ёд дошта бошад».</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>return (...args) =&gt; { clearTimeout(timer); timer = setTimeout(() =&gt; fn(...args), ms); };</code></p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Майдони ҷустуҷӯ бо debounce</h4><span class="level mid">миёна</span></header>
+          <p>Дар майдони озмоиш <code>debounce</code> ва ҷустуҷӯи «қалбакӣ»-и <code>fakeSearch</code> аллакай ҳаст. Ба ҳодисаи <code>input</code> обуна шавед: тавассути <code>debounce</code> бо танаффуси 300 мс <code>fakeSearch(input.value.trim())</code>-ро даъват кунед. Дар поён код тақлиди навиштани калимаи «phone»-ро бо танаффуси 50 мс байни ҳарфҳо мекунад.</p>
+          <div class="playground" data-mode="dom" data-title="Ҷустуҷӯ бо debounce">
+<pre class="code" data-lang="html">
+&lt;input id="q" type="search" placeholder="Поиск"&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const input = document.querySelector("#q");
+let requests = 0;
+
+function fakeSearch(text) {
+  requests++;
+  console.log(`запрос: ${text}`);
+}
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) =&gt; {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+// коди шумо: обуна ба input тавассути debounce
+
+
+// --- тақлиди навиштан, тағйир надиҳед ---
+[..."phone"].forEach((char, i) =&gt; {
+  setTimeout(() =&gt; {
+    input.value += char;
+    input.dispatchEvent(new Event("input"));
+  }, i * 50);
+});
+setTimeout(() =&gt; console.log(`всего запросов: ${requests}`), 1000);
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>запрос: phone
+всего запросов: 1</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Коркардкунандаи ҳодиса — ин натиҷаи даъвати <code>debounce(...)</code> аст: <code>input.addEventListener("input", debounce(…, 300));</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар дохил функсияи тирдор диҳед: <code>() =&gt; fakeSearch(input.value.trim())</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ВАЗИФАИ 4.4</span><h4>Хаторо ёб: мусобиқаи дархостҳо</h4><span class="level hard">душвор</span></header>
+          <p>Ду ҷустуҷӯ оғоз мешавад: «ph» (сервер дар 300 мс ҷавоб медиҳад) ва баъд аз 50 мс «phone» (дар 100 мс). Ҳоло <b>ҳарду</b> натиҷа нишон дода мешавад, ва кӯҳнашуда охир меояд. <code>search</code>-ро чунон ислоҳ кунед, ки танҳо натиҷаи дархости аз ҳама нав нишон дода шавад.</p>
+<pre class="code" data-run>
+const delays = { ph: 300, phone: 100 };
+const fakeFetch = (q) =&gt; new Promise((resolve) =&gt;
+  setTimeout(() =&gt; resolve("результаты для " + q), delays[q]));
+function show(text) { console.log("показано:", text); }
+
+async function search(q) {
+  const result = await fakeFetch(q);
+  show(result);
+}
+
+search("ph");
+setTimeout(() =&gt; search("phone"), 50);
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>показано: результаты для phone</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Дар берун аз функсия ҳисобкунаки <code>let lastRequest = 0;</code>-ро созед ва дар аввали <code>search</code> рақам гиред: <code>const id = ++lastRequest;</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Баъд аз <code>await</code> муқоиса кунед: <code>if (id !== lastRequest) return;</code> — агар рақам охирин набошад, ҷавоб кӯҳна шудааст.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="filter">
+      <h2 data-toc="Филтркунӣ ва мураттабкунӣ"><span class="num">05</span> Филтркунӣ ва мураттабкунӣ</h2>
+
+      <p>Филтр кардан дар ду ҷой мумкин аст — ва аз интихоб суръат ва қулайӣ вобаста аст:</p>
+
+      <div class="cols">
+        <div class="col good">
+          <b>Филтр дар сервер</b>
+          <p>Шумо аз API танҳо лозимаро металабед: <code>/products/category/smartphones</code>. Маълумоти камтар меояд, дар каталогҳои калон (ҳазорон сабт) кор мекунад, бо пагинатсия мувофиқ аст. Аммо ҳар филтри нав — дархости нав.</p>
+        </div>
+        <div class="col good">
+          <b>Филтр дар клиент</b>
+          <p>Маълумот аллакай бор шудааст, шумо оддӣ болои массив <code>filter</code> мекунед. Фавран, бе шабака. Аммо танҳо дар сурате кор мекунад, ки маҷмӯи пурра дар даст бошад — барои каталогҳои азим ва боркунии саҳифавӣ мувофиқ нест.</p>
+        </div>
+      </div>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Сервер — ин анбор дар «Корвон»: шумо занг мезанед ва мегӯед «танҳо қолинҳои сурхро фиристед» — лозимаро меоранд. Клиент — ин пештахтаи шумо: қолинҳо аллакай оварда шудаанд, шумо оддӣ сурхҳоро ба чап, боқиро ба рост мемонед. Анбор роҳро сарфа мекунад, пештахта — вақти интизориро.</p>
+      </div>
+
+      <h3>Филтр аз рӯи категория — дар тарафи сервер</h3>
+<pre class="code" data-run data-title="Категорияҳо ва моли категория">
+async function getJson(url) {
+  const response = await fetch(url);
+  return response.json();
+}
+
+async function main() {
+  const categories = await getJson("https://dummyjson.com/products/category-list");
+  console.log("категорий больше десяти:", categories.length &gt; 10);
+  console.log(categories.slice(0, 3));
+
+  const data = await getJson("https://dummyjson.com/products/category/smartphones?limit=3&amp;select=title,category");
+  data.products.forEach((p) =&gt; console.log(p.category, "—", p.title));
+}
+main();
+</pre>
+
+      <h3>Мураттабкунӣ дар сервер</h3>
+      <p>DummyJSON худаш мураттаб карда метавонад: параметрҳои <code>sortBy</code> (аз рӯи кадом майдон) ва <code>order</code> (<code>asc</code> — афзоянда, <code>desc</code> — коҳанда).</p>
+<pre class="code" data-run data-title="Арзонтарин мол">
+async function main() {
+  const params = new URLSearchParams({ sortBy: "price", order: "asc", limit: 5, select: "title,price" });
+  const response = await fetch("https://dummyjson.com/products?" + params);
+  const data = await response.json();
+  data.products.forEach((p) =&gt; console.log(p.price, p.title));
+}
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Маҳдудиятҳои API — ҳуҷҷатгузориро бихонед</b>
+        <p>Дар DummyJSON эндпойнти <code>/products/search</code> бо категория <b>омехта намешавад</b>: шумо ё аз рӯи калимаҳо ҷустуҷӯ мекунед, ё моли категорияро мегиред. Ихтироъ кардани <code>?q=phone&amp;category=smartphones</code> бефоида аст — сервер категорияро нодида мегирад. API-ҳои воқеӣ аз чунин маҳдудиятҳо пуранд. Дар барномаи мо қоида оддӣ мешавад: <b>агар ҷустуҷӯ ворид шуда бошад — ҷустуҷӯ кор мекунад; агар категория интихоб шуда бошад — категория кор мекунад; яктояшро интихоб карда, дигарашро барқарор мекунем.</b></p>
+      </div>
+
+      <h3>Филтр дар клиент: filter + includes</h3>
+      <p>Вақте шартҳоро омехта кардан лозим аст ва маълумот кам аст, массивро дар ҷояш филтр мекунем. Як шарт — як «элак»:</p>
+<pre class="code" data-run data-title="Якчанд шарт дар як filter">
+const menu = [
+  { title: "Самбуса", category: "выпечка", price: 6 },
+  { title: "Курутоб", category: "горячее", price: 35 },
+  { title: "Шакароб", category: "салаты", price: 15 },
+  { title: "Оши палав", category: "горячее", price: 40 },
+];
+
+function applyFilters(items, { q = "", category = "", maxPrice = Infinity }) {
+  const text = q.trim().toLowerCase();
+  return items.filter((item) =&gt; {
+    if (text &amp;&amp; !item.title.toLowerCase().includes(text)) return false;  // ҷустуҷӯ бе назардошти ҳарфи калон/хурд
+    if (category &amp;&amp; item.category !== category) return false;
+    return item.price &lt;= maxPrice;
+  });
+}
+
+console.log(applyFilters(menu, { category: "горячее" }).map((i) =&gt; i.title));
+console.log(applyFilters(menu, { q: "ША", maxPrice: 20 }).map((i) =&gt; i.title));
+</pre>
+      <p>Ба усул диққат диҳед: филтрҳо бо қиматҳои пешфарз «хомӯш» мешаванд (<code>q = ""</code>, <code>category = ""</code>, <code>maxPrice = Infinity</code>) — шарти холӣ ҳамаро мегузаронад.</p>
+
+      <h3>Рӯйхати афтанда аз маълумот</h3>
+      <p>Категорияҳоро бо даст навиштан лозим нест: онҳоро аз маълумот ҷамъ кардан мумкин аст. <code>new Set(...)</code> танҳо қиматҳои беназирро мегузорад — ҳамон чизе ки барои <code>&lt;select&gt;</code> лозим аст:</p>
+<pre class="code" data-run>
+const menu = ["выпечка", "горячее", "горячее", "салаты", "выпечка"];
+const unique = [...new Set(menu)];
+console.log(unique);   // ["выпечка", "горячее", "салаты"]
+</pre>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://learn.javascript.ru/array-methods" target="_blank" rel="noopener">learn.javascript.ru — Усулҳои массивҳо</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Array/filter" target="_blank" rel="noopener">MDN — Array.prototype.filter</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Филтрҳо ва мураттабкунӣ — дар сервер ва дар клиент.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Моли як категория</h4><span class="level easy">осон</span></header>
+          <p>Се сатр чоп кунед: оё <code>"smartphones"</code> дар <code>category-list</code> ҳаст; оё ҳамаи моли аз ҷавоби <code>/products/category/smartphones?limit=3&amp;select=category</code> категорияи <code>smartphones</code> доранд (<code>every</code>); чанд мол омад.</p>
+<pre class="code" data-run>
+async function getJson(url) {
+  const response = await fetch(url);
+  return response.json();
+}
+
+async function main() {
+  // се console.log
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>true
+true
+3</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>const categories = await getJson(".../products/category-list");</code> — ин массиви оддии сатрҳо аст, <code>includes</code> дорад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>data.products.every((p) =&gt; p.category === "smartphones")</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Аз ҳама гарон: мураттабкунӣ ва санҷиш</h4><span class="level mid">миёна</span></header>
+          <p>5 молро дархост кунед, ки аз рӯи нарх <b>коҳанда</b> мураттаб шудаанд (<code>sortBy=price</code>, <code>order=desc</code>, <code>select=price</code>, <code>limit=5</code> — тавассути <code>URLSearchParams</code> ҷамъ кунед). Санҷед, ки нархҳо воқеан коҳиш меёбанд ва натиҷа ва миқдорро чоп кунед.</p>
+<pre class="code" data-run>
+async function main() {
+  // дархост → массиви нархҳо → санҷиш тавассути every
+  // console.log("по убыванию:", ...);
+  // console.log("количество:", ...);
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>по убыванию: true
+количество: 5</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Нархҳо: <code>data.products.map((p) =&gt; p.price)</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Ҳар нарх аз қаблӣ зиёд нест: <code>prices.every((price, i) =&gt; i === 0 || prices[i - 1] &gt;= price)</code></p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ВАЗИФАИ 5.3</span><h4>Меню: филтр аз рӯи се шарт</h4><span class="level mid">миёна</span></header>
+          <p><code>applyFilters(items, { q, category, maxPrice })</code>-ро нависед. Ҷустуҷӯ — аз рӯи ном, бе назардошти ҳарфи калон/хурд; категория — мувофиқати дақиқ; <code>maxPrice</code> — «на гаронтар». Ҳар шартро надодан мумкин аст. Функсияи <code>show</code> аллакай навишта шудааст.</p>
+<pre class="code" data-run>
+const menu = [
+  { title: "Самбуса с мясом", category: "выпечка", price: 6 },
+  { title: "Самбуса с тыквой", category: "выпечка", price: 5 },
+  { title: "Курутоб", category: "горячее", price: 35 },
+  { title: "Шакароб", category: "салаты", price: 15 },
+  { title: "Оши палав", category: "горячее", price: 40 },
+  { title: "Манту", category: "горячее", price: 30 },
+];
+
+function applyFilters(items, { q = "", category = "", maxPrice = Infinity }) {
+  // коди шумо
+}
+
+function show(items) {
+  console.log(items.map((item) =&gt; item.title).join(", ") || "ничего не найдено");
+}
+
+show(applyFilters(menu, { q: "самбуса" }));
+show(applyFilters(menu, { category: "горячее", maxPrice: 35 }));
+show(applyFilters(menu, { q: "ШАК" }));
+show(applyFilters(menu, { category: "супы" }));
+show(applyFilters(menu, { q: "а", category: "горячее", maxPrice: 30 }));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Самбуса с мясом, Самбуса с тыквой
+Курутоб, Манту
+Шакароб
+ничего не найдено
+Манту</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Матни ҷустуҷӯшаванда ва номро ба ҳарфи хурд оред: <code>toLowerCase()</code>. Санҷиши дохил будан — <code>includes</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар дохили <code>items.filter(...)</code> ба навбат элак кунед: <code>if (text &amp;&amp; !… ) return false;</code>, <code>if (category &amp;&amp; … !== category) return false;</code> ва дар охир <code>return item.price &lt;= maxPrice;</code></p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ВАЗИФАИ 5.4</span><h4>Select бо категорияҳо аз маълумот</h4><span class="level hard">душвор</span></header>
+          <p>Майдони озмоишро пурра кунед: <b>1)</b> <code>select</code>-ро пур кунед: опсияи аввал «Все» бо қимати <code>""</code>, баъд барои ҳар категорияи беназир як опсия (<code>new Set</code> ва <code>addOption</code>-и тайёр кӯмак мекунанд); <b>2)</b> ҳангоми ҳодисаи <code>change</code> танҳо моли категорияи интихобшударо нишон диҳед (ё ҳамаро, агар «Все» интихоб шуда бошад), <code>renderList</code>-и тайёрро истифода бурда. Дар поён код худаш категорияҳоро «интихоб мекунад» ва санҷишро чоп менамояд.</p>
+          <div class="playground" data-mode="dom" data-title="Филтр аз рӯи категория">
+<pre class="code" data-lang="html">
+&lt;select id="category"&gt;&lt;/select&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const menu = [
+  { title: "Самбуса с мясом", category: "выпечка" },
+  { title: "Самбуса с тыквой", category: "выпечка" },
+  { title: "Курутоб", category: "горячее" },
+  { title: "Оши палав", category: "горячее" },
+  { title: "Манту", category: "горячее" },
+  { title: "Шакароб", category: "салаты" },
+];
+const select = document.querySelector("#category");
+const list = document.querySelector("#list");
+
+function addOption(value, text) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = text;
+  select.append(option);
+}
+
+function renderList(items) {
+  list.replaceChildren();
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.textContent = item.title;
+    list.append(li);
+  }
+}
+
+// 1) select-ро пур кунед: «Все» + категорияҳои беназир
+// 2) тамоми менюро нишон диҳед, баъд ба change обуна шавед
+
+
+// --- санҷиш, тағйир надиҳед ---
+console.log(`опций: ${select.options.length}`);
+select.value = "горячее";
+select.dispatchEvent(new Event("change"));
+console.log(`горячее: ${list.children.length}`);
+select.value = "";
+select.dispatchEvent(new Event("change"));
+console.log(`все: ${list.children.length}`);
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>опций: 4
+горячее: 3
+все: 6</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>addOption("", "Все");</code>, баъд давраи <code>for (const category of new Set(menu.map((item) =&gt; item.category)))</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар коркардкунанда: <code>const value = select.value; renderList(value ? menu.filter((item) =&gt; item.category === value) : menu);</code> Як даъвати <code>renderList(menu)</code>-ро пеш аз обуна фаромӯш накунед.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="pagination">
+      <h2 data-toc="Пагинатсия"><span class="num">06</span> Пагинатсия: саҳифаҳо аз рӯи limit ва skip</h2>
+
+      <p>Дар каталог 194 мол ҳаст — ҳамаро якбора бор кардан нодонист: дароз, вазнин ва касе он қадар намегардонад. Барои ҳамин сервер маълумотро <b>ҳисса-ҳисса</b> медиҳад, шумо бошед ҳиссаи лозимаро металабед. Ин аст <b>пагинатсия</b> (боркунии саҳифавӣ).</p>
+
+      <div class="callout analogy">
+        <b>Қиёс аз ҳаёт</b>
+        <p>Палавро дар тӯй на бо тамоми дег, балки <b>бо ҳисса дар лаганҳо</b> медиҳанд: дар ҳар кадом — даҳ ҳисса. Иловаи дигар мехоҳед — лагани навбатӣ металабед. Параметри <code>limit</code> — дар як лаган чанд ҳисса, <code>skip</code> — чанд ҳиссаро шумо аллакай хӯрдед ва мегузаронед.</p>
+      </div>
+
+      <h3>Ду усули маъмул</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Усул</th><th>Параметрҳо</th><th>Кӣ истифода мебарад</th></tr></thead>
+          <tbody>
+            <tr><td><b>limit + skip</b> (offset)</td><td>«<code>limit</code> дона деҳ, <code>skip</code>-и аввалро гузаронда»</td><td>DummyJSON, PokeAPI (<code>limit</code> + <code>offset</code>)</td></tr>
+            <tr><td><b>page</b></td><td>«саҳифаи № <code>page</code>-ро деҳ», андозаи саҳифа аз ҷониби сервер муайян шудааст</td><td>Rick and Morty (20 дар саҳифа), CoinGecko (<code>page</code> + <code>per_page</code>)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Корбар бо <b>рақамҳои саҳифа</b> фикр мекунад: «саҳифаи 3». Ба сервери DummyJSON <code>skip</code> лозим аст. Бо формула табдил медиҳем:</p>
+
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="гузарондан">skip</span><span class="part p2" data-label="=">=</span><span class="part p3" data-label="рақами саҳифа минус 1">(page − 1)</span><span class="part p4" data-label="×">×</span><span class="part p5" data-label="андозаи саҳифа">limit</span>
+        </div>
+        <figcaption>Саҳифаи 1 — 0 сабтро мегузаронад, саҳифаи 2 — <code>limit</code> сабт, саҳифаи 3 — <code>2 × limit</code></figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Саҳифа</th><th>skip ҳангоми limit = 10</th><th>Кадом сабтҳо</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><code>0</code></td><td>1–10</td></tr>
+            <tr><td>2</td><td><code>10</code></td><td>11–20</td></tr>
+            <tr><td>3</td><td><code>20</code></td><td>21–30</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Ва ҳамагӣ чанд саҳифа аст? Шумораи умумии сабтҳоро (<code>total</code> аз ҷавоб) ба андозаи саҳифа тақсим мекунем ва <b>ба боло мудаввар мекунем</b> — саҳифаи охирини нопурра ҳам саҳифа аст:</p>
+<pre class="code" data-run data-title="Формулаҳои пагинатсия">
+const pagesCount = (total, limit) =&gt; Math.ceil(total / limit);
+const pageToSkip = (page, limit) =&gt; (page - 1) * limit;
+
+console.log(pagesCount(100, 10));   // 10
+console.log(pagesCount(101, 10));   // 11 — як сабт ба саҳифаи нав «рехт»
+console.log(pageToSkip(3, 10));     // 20
+</pre>
+
+<pre class="code" data-run data-title="Саҳифаи зинда аз API">
+async function loadPage(page, limit) {
+  const params = new URLSearchParams({ limit, skip: (page - 1) * limit, select: "title" });
+  const response = await fetch("https://dummyjson.com/products?" + params);
+  return response.json();
+}
+
+async function main() {
+  const data = await loadPage(2, 5);
+  console.log(`skip=${data.skip}, limit=${data.limit}`);
+  console.log("страниц всего больше одной:", Math.ceil(data.total / data.limit) &gt; 1);
+  data.products.forEach((p) =&gt; console.log(p.id, p.title));
+}
+main();
+</pre>
+
+      <h3>Тугмаҳои «Ба қафо» ва «Ба пеш»</h3>
+      <p>Ҳолати пагинатсия — ҳамагӣ ду рақам аст: саҳифаи ҷорӣ ва шумораи умумии саҳифаҳо. Ҳама чизи дигар аз онҳо кашида мешавад:</p>
+      <ul>
+        <li>«Ба қафо» дар саҳифаи аввал хомӯш мешавад: <code>prev.disabled = page === 1</code>.</li>
+        <li>«Ба пеш» дар охирин хомӯш мешавад: <code>next.disabled = page === pages</code>.</li>
+        <li>Ёддошти «Саҳифаи 3 аз 5» аз ҳамин рақамҳо ҷамъ мешавад.</li>
+        <li>Баъд аз <b>ҷустуҷӯи нав</b> ё иваз шудани категория саҳифа ба <b>аввал</b> барқарор мешавад — вагарна дар саҳифаи 7-уми натиҷаҳо мондан мумкин аст, ки ҳамагӣ се то аст.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>skip = page * limit</code> бе «−1» — як саҳифаи пурра гузаронда мешавад, ҳиссаи аввали мол ҳеҷ гоҳ намоён нест. <b>2.</b> Саҳифаҳоро тавассути <code>Math.floor</code> ё <code>Math.round</code> ҳисоб мекунанд — саҳифаи охирин гум мешавад. <b>3.</b> <code>page = 1</code>-ро ҳангоми ҷустуҷӯи нав барқарор карданро фаромӯш мекунанд. <b>4.</b> Ҷустуҷӯи холӣ дар DummyJSON <code>total: 0</code> бармегардонад — ба нул тақсим кардан тарсовар нест, аммо «саҳифаи 1 аз 0» аҷиб менамояд: ҳадди ақал як саҳифаро нишон диҳед (<code>Math.max(1, …)</code>).</p>
+      </div>
+
+      <h3>Rick and Morty: саҳифаҳо бе skip</h3>
+      <p>Дар он ҷо ҳама чиз осонтар: <code>?page=2</code>. Ва чанд саҳифа будани онро худи сервер дар <code>info.pages</code> мегӯяд ва ҳатто <code>info.next</code>-ро медиҳад — суроғаи саҳифаи оянда ё <code>null</code>, агар саҳифа охирин бошад. Ин барои тугмаи «Боз нишон деҳ» қулай аст.</p>
+
+<pre class="code" data-run data-title="Боз нишон деҳ: саҳифаҳоро ҷамъ мекунем">
+let page = 0;
+let items = [];
+
+async function loadMore(name) {
+  page++;
+  const params = new URLSearchParams({ name, page });
+  const response = await fetch("https://rickandmortyapi.com/api/character?" + params);
+  const data = await response.json();
+  items = items.concat(data.results);       // иваз намекунем, балки илова мекунем
+  return data.info.next !== null;           // оё саҳифаҳои дигар ҳаст
+}
+
+async function main() {
+  let hasMore = await loadMore("rick");
+  console.log("после 1-й загрузки:", items.length, hasMore);
+  hasMore = await loadMore("rick");
+  console.log("после 2-й загрузки:", items.length, hasMore);
+}
+main();
+</pre>
+
+      <p>Ду интерфейс ҳаст: <b>саҳифаҳо</b> (тугмаҳо, бо рақамҳо варақ мезанем; <code>render</code> рӯйхатро иваз мекунад) ва <b>«Боз нишон деҳ» / лентаи беохир</b> (кортҳо илова мешаванд; <code>render</code> илова мекунад, на тоза). Интихоб — кори дизайн аст, дархостҳо бошанд якхела.</p>
+
+      <p class="muted">Муфассалтар хонед: <a href="https://dummyjson.com/docs/products" target="_blank" rel="noopener">DummyJSON — Products</a> · <a href="https://rickandmortyapi.com/documentation/#character" target="_blank" rel="noopener">Rick and Morty API — Character</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Math/ceil" target="_blank" rel="noopener">MDN — Math.ceil</a></p>
+
+      <div class="practice">
+        <h3>Амал: мустаҳкам мекунем</h3>
+        <p>Формулаҳо, саҳифаҳои зинда ва тугмаҳо.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Чанд саҳифа</h4><span class="level easy">осон</span></header>
+          <p><code>pagesCount(total, limit)</code>-ро нависед — шумораи саҳифаҳо бо назардошти охирини нопурра.</p>
+<pre class="code" data-run>
+function pagesCount(total, limit) {
+  // коди шумо
+}
+
+console.log(pagesCount(100, 10));
+console.log(pagesCount(101, 10));
+console.log(pagesCount(0, 10));
+console.log(pagesCount(5, 10));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>10
+11
+0
+1</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Тақсимкунӣ барои саҳифаи нопурра каср медиҳад: 101 / 10 = 10.1. <b>Ба боло</b> мудаввар кардан лозим аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>return Math.ceil(total / limit);</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ВАЗИФАИ 6.2</span><h4>Суроғаи саҳифа</h4><span class="level easy">осон</span></header>
+          <p><code>pageToSkip(page, limit)</code> ва <code>productsUrl(page, limit)</code>-ро нависед: суроғаи намуди <code>https://dummyjson.com/products?limit=10&amp;skip=20</code> (аввал <code>limit</code>, баъд <code>skip</code>).</p>
+<pre class="code" data-run>
+function pageToSkip(page, limit) {
+  // коди шумо
+}
+
+function productsUrl(page, limit) {
+  // коди шумо
+}
+
+console.log(productsUrl(1, 10));
+console.log(productsUrl(3, 10));
+console.log(productsUrl(2, 5));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>https://dummyjson.com/products?limit=10&amp;skip=0
+https://dummyjson.com/products?limit=10&amp;skip=20
+https://dummyjson.com/products?limit=5&amp;skip=5</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Саҳифаи аввал 0 сабтро мегузаронад: <code>(page - 1) * limit</code>.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Сатри қолабӣ: <code>`https://dummyjson.com/products?limit=${limit}&amp;skip=${pageToSkip(page, limit)}`</code></p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ВАЗИФАИ 6.3</span><h4>Ду саҳифа бе такрор</h4><span class="level mid">миёна</span></header>
+          <p><code>loadPage(page, limit)</code>-ро нависед (дархост ба <code>/products</code> бо <code>limit</code>, <code>skip</code> ва <code>select=title</code>, тамоми объекти ҷавобро бармегардонад). Саҳифаҳои 1 ва 2-ро 5-тоӣ бор кунед ва чоп намоед: <code>skip</code> ва <code>limit</code>-и саҳифаи дуюм, оё дар он моли саҳифаи аввал нест (аз рӯи <code>id</code>) ва оё саҳифаҳо аз як зиёданд.</p>
+<pre class="code" data-run>
+async function loadPage(page, limit) {
+  // коди шумо
+}
+
+async function main() {
+  const first = await loadPage(1, 5);
+  const second = await loadPage(2, 5);
+  console.log(`skip=${second.skip}, limit=${second.limit}`);
+  // бе такрор: Set-и id-ҳои саҳифаи аввалро истифода баред
+  // саҳифаҳо аз як зиёд: Math.ceil(second.total / second.limit) &gt; 1
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>skip=5, limit=5
+без повторов: true
+страниц больше одной: true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>const ids = new Set(first.products.map((p) =&gt; p.id));</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>second.products.every((p) =&gt; !ids.has(p.id))</code> — ҳеҷ <code>id</code>-и саҳифаи дуюм дар <code>ids</code> нест.</p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ВАЗИФАИ 6.4</span><h4>Тугмаҳои пагинатсия</h4><span class="level mid">миёна</span></header>
+          <p>Дар майдони озмоиш 47 сабт ҳаст, дар ҳар саҳифа 10 — 5 саҳифа. <code>render</code>-ро нависед (ёддошти «Страница N из M», хомӯш кардани тугмаҳо) ва тугмаҳоро ба <code>click</code> обуна кунед (<code>page--</code> / <code>page++</code> ва <code>render()</code>). Фаромӯш накунед, ки <code>render</code>-ро як маротиба дар оғоз даъват кунед. Коди зер ба тугмаҳо «клик мекунад», аз ҷумла ба хомӯшшудаҳо.</p>
+          <div class="playground" data-mode="dom" data-title="Пагинатсия">
+<pre class="code" data-lang="html">
+&lt;button id="prev"&gt;← Назад&lt;/button&gt;
+&lt;span id="label"&gt;&lt;/span&gt;
+&lt;button id="next"&gt;Вперёд →&lt;/button&gt;
+</pre>
+<pre class="code" data-lang="js">
+const total = 47;
+const limit = 10;
+const pages = Math.ceil(total / limit);
+let page = 1;
+
+const prev = document.querySelector("#prev");
+const next = document.querySelector("#next");
+const label = document.querySelector("#label");
+
+function render() {
+  // ёддошт ва disabled барои ҳарду тугма
+}
+
+// обунаҳо ба click ва даъвати аввалини render()
+
+
+// --- тақлиди кликҳо, тағйир надиҳед ---
+const state = (b) =&gt; (b.disabled ? "выкл" : "вкл");
+const report = () =&gt; console.log(`${label.textContent} | назад: ${state(prev)} | вперёд: ${state(next)}`);
+report();
+next.click(); next.click();
+report();
+next.click(); next.click(); next.click();
+report();
+prev.click();
+report();
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Страница 1 из 5 | назад: выкл | вперёд: вкл
+Страница 3 из 5 | назад: вкл | вперёд: вкл
+Страница 5 из 5 | назад: вкл | вперёд: выкл
+Страница 4 из 5 | назад: вкл | вперёд: вкл</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>label.textContent = `Страница ${page} из ${pages}`;</code> ва <code>prev.disabled = page === 1;</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Клик ба тугмаи аллакай хомӯшшуда коре намекунад, барои ҳамин аз саҳифаи панҷум дуртар «варақ задан» намешавад: фақат аз паси он назар кунед, ки <code>render()</code> баъд аз ҳар тағйири <code>page</code> даъват шавад.</p></details>
+        </article>
+
+        <article class="task" id="t6-5">
+          <header><span class="task-num">ВАЗИФАИ 6.5</span><h4>«Боз нишон деҳ» дар Рик ва Морти</h4><span class="level hard">душвор</span></header>
+          <p><code>loadMore(name)</code>-ро нависед: вай ҳисобкунаки <code>page</code>-ро меафзояд, <code>https://rickandmortyapi.com/api/character?name=…&amp;page=…</code>-ро дархост мекунад, <code>data.results</code>-ро ба массиви <code>items</code> <b>илова мекунад</b> ва <code>true</code> бармегардонад, агар саҳифаи оянда бошад (<code>data.info.next !== null</code>). Онро барои «rick» ду бор пай дар пай даъват кунед ва баъд аз ҳар даъват чоп намоед: чандто ҷамъ шуд ва оё боз ҳаст.</p>
+<pre class="code" data-run>
+let page = 0;
+let items = [];
+
+async function loadMore(name) {
+  // коди шумо
+}
+
+async function main() {
+  // ду даъвати loadMore, баъд аз ҳар кадом console.log(items.length, hasMore)
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>20 true
+40 true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Саҳифаи андозааш 20 — аз ҷониби сервер муайян шудааст. Ҷамъшавӣ: <code>items = items.concat(data.results);</code> (на <code>items = data.results</code>).</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Дар <code>main</code>: <code>let hasMore = await loadMore("rick"); console.log(items.length, hasMore);</code> — ва боз як бор ҳамин.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="Блоки ЗС"><span class="num">07</span> Блоки ЗС: ҳуҷҷатгузории API-ро бо ЗС якҷоя мехонем</h2>
+
+      <p>Ҳуҷҷатгузориҳо дароз, бо забони англисӣ ва чунон навишта шудаанд, ки параметри лозимаро ёфтан душвор аст. ЗС аъло кумак мекунад, ки <b>зуд эндпойнт ва параметрҳоро ёбед</b> — агар худи матни ҳуҷҷатгузориро ба он диҳед. Аммо вай нуқсон дорад: вақте ҳуҷҷатгузорӣ дар даст нест, вай параметрҳоеро <b>ихтироъ мекунад</b>, ки ба ҳақиқат монанданд, аммо дар API-и шумо вуҷуд надоранд.</p>
+
+      <div class="callout ai">
+        <b>Қоидаҳои курс, ки дар ин ҷо махсусан муҳиманд</b>
+        <p><b>1.</b> Аввал 15 дақиқа худатон кӯшиш мекунед: ҳуҷҷатгузориро мекушоед, эндпойнтро меҷӯед, суроғаро дастӣ менависед. <b>2.</b> Баъд назди ЗС меравед. <b>3.</b> Ба лоиҳа коде гузоред, ки онро сатр ба сатр шарҳ дода наметавонед. <b>4.</b> Ҳар чизе, ки ЗС дар бораи параметрҳои API гуфт, <b>бо ҷавоби воқеии сервер муқоиса кунед</b> — бо дархост дар консол.</p>
+      </div>
+
+      <h3>Чӣ тавр пурсидан: бад ва хуб</h3>
+      <p>Формулаи промпти курс: <b>контекст → вазифа → маҳдудиятҳо → формати ҷавоб → санҷиш</b>. Барои ҳуҷҷатгузорӣ муҳимтаринаш — <b>матни онро гузоштан</b> (ё порчаи лозимаро), на хоҳиш кардани «ба ёд овардан».</p>
+
+      <div class="prompt bad-prompt">дар dummyjson молро аз рӯи категория ва ном якбора чӣ тавр ҷустуҷӯ кунам</div>
+      <div class="prompt good-prompt">Ман JavaScript меомӯзам, каталоги молро бо JS-и пок бе китобхонаҳо менависам. Инак порчаи ҳуҷҷатгузории DummyJSON: [матнро аз саҳифаи https://dummyjson.com/docs/products гузоред]. Ба ман лозим: саҳифаи 6 молро нишон додан, аз рӯи ном ҷустуҷӯ кардан ва аз рӯи категория филтр кардан. Бигӯ: кадом эндпойнт барои ҷустуҷӯ, кадом барои категория, онҳо кадом параметрҳо доранд (limit, skip, select, sortBy, order) ва оё онҳоро омехта кардан мумкин аст. Бо ҷадвали «вазифа → эндпойнт → параметрҳо» ва як мисоли дархост бо fetch ва URLSearchParams ҷавоб деҳ. Агар дар ҳуҷҷатгузорӣ чизе набошад, ҳамин тавр бигӯ, чизеро ихтироъ накун. Дар охир бинвис, ки ман дар консол чиро дастӣ санҷам.</div>
+
+      <p>Промпти хубро нусха кунед, матни воқеии ҳуҷҷатгузориро гузоред — ва ҷавоб гиред. Ва акнун доми асосиро месанҷем: агар ба параметри ихтироъшуда бовар кунем чӣ мешавад. Фарз кунем, ЗС бо боварӣ <code>?category=smartphones</code>-ро ба ҷустуҷӯ маслиҳат дод:</p>
+
+<pre class="code" data-run data-title="Маслиҳати ЗС-ро бо дархост месанҷем">
+async function main() {
+  const params = new URLSearchParams({ q: "phone", category: "smartphones", limit: 10, select: "title,category" });
+  const response = await fetch("https://dummyjson.com/products/search?" + params);
+  const data = await response.json();
+
+  const works = data.products.every((p) =&gt; p.category === "smartphones");
+  console.log("параметр category сработал:", works);
+  console.log(data.products.map((p) =&gt; p.category));
+}
+main();
+// false — сервер параметри ихтироъшударо хомӯшона нодида гирифт. Хато нест, аммо филтр ҳам нест!
+</pre>
+
+      <div class="callout tip">
+        <b>Дар ҷавоби ЗС дар бораи API чиро санҷидан лозим</b>
+        <p>1) Чунин параметр дар ҳуҷҷатгузорӣ ҳаст? 2) Рӯйхат дар ҷое ҳаст, ки ЗС гуфт (<code>data.products</code> ё оддӣ массив)? 3) Ҳангоми «чизе ёфт нашуд» чӣ бармегардад — рӯйхати холӣ ё 404? 4) Калиди API лозим аст (дар курси мо — не)? 5) Оё мисол бо ҷавоби воқеӣ дар консол мувофиқат мекунад?</p>
+      </div>
+
+      <p>Порчаи ҳуҷҷатгузорӣ чунин менамояд. Хондани онро бе тарҷума омӯзед — аз рӯи номҳои параметрҳо ва мисолҳо:</p>
+<pre class="code" data-title="Порчаи ҳуҷҷатгузорӣ (мухтасар)">
+GET https://dummyjson.com/products/category/{category}
+
+Query-параметры:
+  limit    сколько записей вернуть
+  skip     сколько записей пропустить
+  select   поля через запятую (title,price)
+  sortBy   поле для сортировки
+  order    asc | desc
+
+Ответ: { products: [...], total, skip, limit }
+</pre>
+
+      <div class="practice">
+        <h3>Амал: ЗС-ро месанҷем ва ҳуҷҷатгузориро мехонем</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>ЗС ҷамъкунии суроғаро навишт — се хаторо ёбед</h4><span class="level mid">миёна</span></header>
+          <p>ЗС функсияро барои суроғаи рӯйхати мол навишт. Вай хуб менамояд, аммо дар он <b>се</b> хато ҳаст: <code>skip</code>-и нодуруст, ҷустуҷӯ ба эндпойнти нодуруст меравад ва қимати <code>q</code> рамзгузорӣ намешавад. Ислоҳ кунед (параметрҳо дар суроға — бо тартиби <code>limit</code>, <code>skip</code>, <code>q</code>).</p>
+<pre class="code" data-run>
+// ЗС навишт — бовар намекунем, месанҷем
+function buildProductsUrl(page, limit, q) {
+  const skip = page * limit;
+  let url = "https://dummyjson.com/products?limit=" + limit + "&amp;skip=" + skip;
+  if (q) url += "&amp;q=" + q;
+  return url;
+}
+
+console.log(buildProductsUrl(1, 10, ""));
+console.log(buildProductsUrl(3, 10, "iphone case"));
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>https://dummyjson.com/products?limit=10&amp;skip=0
+https://dummyjson.com/products/search?limit=10&amp;skip=20&amp;q=iphone+case</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Саҳифаи 1 бояд 0 сабтро гузаронад: <code>(page - 1) * limit</code>. Барои <code>q</code>-и холинабуда роҳи <code>/products/search</code> лозим аст.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>new URLSearchParams({ limit, skip })</code>-ро ҷамъ кунед, ҳангоми <code>q</code>-и холинабуда <code>params.set("q", q)</code>-ро илова кунед ва суроғаро бо <code>/search</code> баргардонед; вагарна — бе он.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Суроға аз рӯи ҳуҷҷатгузорӣ</h4><span class="level mid">миёна</span></header>
+          <p>Аз рӯи порчаи боло: се ноутбуки аз ҳама арзон — категорияи <code>laptops</code>, <code>limit=3</code>, мураттабкунӣ аз рӯи нарх афзоянда, майдонҳои <code>title,price</code> (параметрҳо бо ин тартиб: <code>limit</code>, <code>sortBy</code>, <code>order</code>, <code>select</code>). Суроғаро чоп кунед, баъд миқдори моли гирифташуда ва инро, ки нархҳо воқеан афзоянда мераванд. (Вергул дар суроға ба <code>%2C</code> табдил меёбад — ин муқаррарӣ аст, сервер мефаҳмад.)</p>
+<pre class="code" data-run>
+async function main() {
+  // 1) суроғаро тавассути URLSearchParams ҷамъ кунед ва чоп намоед
+  // 2) дархост кунед, миқдор ва санҷиши мураттабкуниро чоп кунед
+}
+main();
+</pre>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>https://dummyjson.com/products/category/laptops?limit=3&amp;sortBy=price&amp;order=asc&amp;select=title%2Cprice
+3
+true</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>new URLSearchParams({ limit: 3, sortBy: "price", order: "asc", select: "title,price" })</code> — тартиби калидҳо дар объект тартибро дар суроға муайян мекунад.</p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Санҷиши мураттабкунӣ: <code>prices.every((price, i) =&gt; i === 0 || prices[i - 1] &lt;= price)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Амал дар дарс"><span class="num">08</span> Амал дар дарс: каталог бо ҷустуҷӯ, категорияҳо ва саҳифаҳо</h2>
+
+      <p>Барномаро аз ҳамаи порчаҳои дарс ҷамъ мекунем. Ин ҳамон «каталоги корӣ» аст: ҷустуҷӯ, филтр аз рӯи категория, боркунии саҳифавӣ ва маълумот аз сервери воқеӣ. Қадам ба қадам месозем — баъд аз ҳар қадам иҷро кунед ва бинед.</p>
+
+      <h3>Қадами 1. Ҳолат ва суроғаи дархост</h3>
+      <p>Тамоми мантиқи барнома дар як объекти <code>state</code> (дарси 11) меистад: чиро меҷӯем, кадом категория, кадом саҳифа. Функсияи <code>buildUrl</code> бошад ҳолатро ба суроға табдил медиҳад. Иҷро кунед — ҳоло бе шабака:</p>
+
+<pre class="code" data-run data-title="Қадами 1. state → суроға">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1 };
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {                                  // ҷустуҷӯ аз категория муҳимтар аст
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+console.log(buildUrl());
+
+state.page = 3;
+console.log(buildUrl());
+
+state.category = "laptops";
+state.page = 1;
+console.log(buildUrl());
+
+state.q = "mac";
+console.log(buildUrl());
+</pre>
+
+      <h3>Қадами 2. Боркунӣ ва рендер</h3>
+      <p><code>fetch</code> ва <code>render</code>-ро пайваст мекунем: дархост аз рӯи <code>buildUrl()</code>, тоза кардани рӯйхат, кортҳо ва барои натиҷаи холӣ — паём. Ҳолати «Боркунӣ…»-ро ҳангоми интизорӣ нишон медиҳем.</p>
+
+      <div class="playground" data-mode="dom" data-title="Қадами 2. Рӯйхат аз API">
+<pre class="code" data-lang="html">
+&lt;p id="status"&gt;&lt;/p&gt;
+&lt;ul id="list" class="grid"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font: 14px system-ui; margin: 8px; }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 8px; padding: 6px; text-align: center; }
+.card img { width: 100%; height: 60px; object-fit: contain; }
+.card h3 { font-size: 12px; margin: 4px 0 0; }
+.card p { margin: 2px 0 0; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1 };
+
+const list = document.querySelector("#list");
+const statusEl = document.querySelector("#status");
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+function render(products) {
+  list.replaceChildren();
+  if (products.length === 0) {
+    statusEl.textContent = "Ничего не найдено";
+    return;
+  }
+  statusEl.textContent = "";
+  for (const product of products) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+    const name = document.createElement("h3");
+    name.textContent = product.title;
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+    li.append(img, name, price);
+    list.append(li);
+  }
+}
+
+async function load() {
+  statusEl.textContent = "Загрузка…";
+  const response = await fetch(buildUrl());
+  const data = await response.json();
+  render(data.products);
+}
+
+load();
+</pre>
+      </div>
+
+      <h3>Қадами 3. Саҳифаҳо</h3>
+      <p>Ба <code>state</code> <code>pages</code>-ро (чанд саҳифа) илова мекунем — онро аз <code>data.total</code> баъд аз ҳар ҷавоб ҳисоб мекунем. Функсияи <code>go(page)</code> сарҳадҳоро месанҷад, саҳифаро иваз мекунад ва бор мекунад. <code>updatePager</code> ёддоштро мекашад ва тугмаҳои зиёдатиро хомӯш мекунад.</p>
+
+<pre class="code" data-title="Қадами 3. Ба қадами 2 чӣ илова мекунем" data-lang="js">
+const state = { q: "", category: "", page: 1, pages: 1 };
+
+function updatePager() {
+  info.textContent = `Страница ${state.page} из ${state.pages}`;
+  prev.disabled = state.page &lt;= 1;
+  next.disabled = state.page &gt;= state.pages;
+}
+
+async function load() {
+  statusEl.textContent = "Загрузка…";
+  const response = await fetch(buildUrl());
+  const data = await response.json();
+  state.pages = Math.max(1, Math.ceil(data.total / LIMIT));   // ҳадди ақал як саҳифа
+  render(data.products);
+  updatePager();
+}
+
+async function go(page) {
+  if (page &lt; 1 || page &gt; state.pages) return;   // аз сарҳад намегузарем
+  state.page = page;
+  await load();
+}
+
+prev.addEventListener("click", () =&gt; go(state.page - 1));
+next.addEventListener("click", () =&gt; go(state.page + 1));
+</pre>
+
+      <h3>Қадами 4. Ҷустуҷӯ ва категорияҳо</h3>
+      <p>Ҷустуҷӯ — ин <code>debounce</code> + функсияи <code>search</code> аст, ки <code>state.q</code>-ро муқаррар мекунад, <b>категория ва саҳифаро барқарор мекунад</b> ва бор мекунад. Категория — ба ҳамин монанд. Ба <code>load</code> ҳимоя аз мусобиқа (<code>lastRequest</code>) ва коркарди ҳадди ақали хатоҳоро илова мекунем. Инак барномаи тайёр пурра — «phone»-ро ҷустуҷӯ кунед, категорияро интихоб кунед, саҳифаҳоро варақ занед:</p>
+
+      <div class="playground" data-mode="dom" data-title="Каталог: барномаи тайёр">
+<pre class="code" data-lang="html">
+&lt;div class="app"&gt;
+  &lt;div class="bar"&gt;
+    &lt;input id="q" type="search" placeholder="Поиск товара…"&gt;
+    &lt;select id="category"&gt;&lt;option value=""&gt;Все категории&lt;/option&gt;&lt;/select&gt;
+  &lt;/div&gt;
+  &lt;p id="status" class="status"&gt;&lt;/p&gt;
+  &lt;ul id="list" class="grid"&gt;&lt;/ul&gt;
+  &lt;div class="pager"&gt;
+    &lt;button id="prev"&gt;← Назад&lt;/button&gt;
+    &lt;span id="info"&gt;&lt;/span&gt;
+    &lt;button id="next"&gt;Вперёд →&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font: 14px system-ui; margin: 8px; }
+.bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.bar input { flex: 1; padding: 6px 8px; }
+.status { color: #666; min-height: 1.2em; margin: 4px 0; }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 8px; padding: 6px; text-align: center; }
+.card img { width: 100%; height: 60px; object-fit: contain; }
+.card h3 { font-size: 12px; margin: 4px 0 0; }
+.card p { margin: 2px 0 0; font-weight: 700; }
+.pager { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1, pages: 1 };
+
+const list = document.querySelector("#list");
+const statusEl = document.querySelector("#status");
+const info = document.querySelector("#info");
+const prev = document.querySelector("#prev");
+const next = document.querySelector("#next");
+const qInput = document.querySelector("#q");
+const catSelect = document.querySelector("#category");
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) =&gt; {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+function render(products) {
+  list.replaceChildren();
+  if (products.length === 0) {
+    statusEl.textContent = "Ничего не найдено";
+    return;
+  }
+  statusEl.textContent = "";
+  for (const product of products) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+    const name = document.createElement("h3");
+    name.textContent = product.title;
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+    li.append(img, name, price);
+    list.append(li);
+  }
+}
+
+function updatePager() {
+  info.textContent = `Страница ${state.page} из ${state.pages}`;
+  prev.disabled = state.page &lt;= 1;
+  next.disabled = state.page &gt;= state.pages;
+}
+
+let lastRequest = 0;
+async function load() {
+  const id = ++lastRequest;
+  statusEl.textContent = "Загрузка…";
+  try {
+    const response = await fetch(buildUrl());
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const data = await response.json();
+    if (id !== lastRequest) return;
+    state.pages = Math.max(1, Math.ceil(data.total / LIMIT));
+    render(data.products);
+    updatePager();
+  } catch (error) {
+    if (id !== lastRequest) return;
+    list.replaceChildren();
+    statusEl.textContent = "Не удалось загрузить: " + error.message;
+  }
+}
+
+async function go(page) {
+  if (page &lt; 1 || page &gt; state.pages) return;
+  state.page = page;
+  await load();
+}
+
+async function search(text) {
+  state.q = text.trim();
+  state.category = "";
+  catSelect.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function pickCategory(value) {
+  state.category = value;
+  state.q = "";
+  qInput.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function loadCategories() {
+  const response = await fetch(`${API}/category-list`);
+  const names = await response.json();
+  for (const name of names) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    catSelect.append(option);
+  }
+}
+
+prev.addEventListener("click", () =&gt; go(state.page - 1));
+next.addEventListener("click", () =&gt; go(state.page + 1));
+catSelect.addEventListener("change", () =&gt; pickCategory(catSelect.value));
+qInput.addEventListener("input", debounce(() =&gt; search(qInput.value), 400));
+
+loadCategories();
+load();
+</pre>
+      </div>
+
+      <div class="callout tip">
+        <b>Дар ин ҷо чиро қайд кардан муҳим аст</b>
+        <p><b>Як сарчашмаи ҳақиқат:</b> <code>state</code>. Тугмаҳо, ҷустуҷӯ ва select рӯйхатро худашон намекашанд, онҳо ҳолатро тағйир медиҳанд ва <code>load()</code>-ро садо мекунанд. <b>Як «рассом»:</b> <code>render</code> ҳамеша рӯйхатро пурра аз нав месозад. <b>Як «мизи суроға»:</b> <code>buildUrl</code>. Филтри нав илова кардан — маънои илова кардани майдон ба <code>state</code>, як сатр ба <code>buildUrl</code> ва коркардкунандаи ҳодисаро дорад. Боқиро ламс намекунем.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Амал: барномаро анҷом медиҳем</h3>
+        <p>Дар ду вазифа — ҳамон барнома, аммо аз он як порча гирифта шудааст. Онро анҷом диҳед: майдони озмоиш худаш сенарияро мегузаронад ва санҷишро чоп мекунад (интернет лозим аст, санҷиш чанд сония мегирад).</p>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Пагинатсия: go ва updatePager</h4><span class="level mid">миёна</span></header>
+          <p>Дар барнома функсияҳои <code>updatePager</code> (ёддошти «Страница N из M» ва <code>disabled</code> барои тугмаҳо) ва <code>go(page)</code> (санҷиши сарҳадҳо, иваз кардани саҳифа, боркунӣ) холӣ мебошанд. Онҳоро анҷом диҳед.</p>
+          <div class="playground" data-mode="dom" data-title="Каталог: пагинатсияро анҷом диҳед">
+<pre class="code" data-lang="html">
+&lt;div class="app"&gt;
+  &lt;div class="bar"&gt;
+    &lt;input id="q" type="search" placeholder="Поиск товара…"&gt;
+    &lt;select id="category"&gt;&lt;option value=""&gt;Все категории&lt;/option&gt;&lt;/select&gt;
+  &lt;/div&gt;
+  &lt;p id="status" class="status"&gt;&lt;/p&gt;
+  &lt;ul id="list" class="grid"&gt;&lt;/ul&gt;
+  &lt;div class="pager"&gt;
+    &lt;button id="prev"&gt;← Назад&lt;/button&gt;
+    &lt;span id="info"&gt;&lt;/span&gt;
+    &lt;button id="next"&gt;Вперёд →&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font: 14px system-ui; margin: 8px; }
+.bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.bar input { flex: 1; padding: 6px 8px; }
+.status { color: #666; min-height: 1.2em; margin: 4px 0; }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 8px; padding: 6px; text-align: center; }
+.card img { width: 100%; height: 60px; object-fit: contain; }
+.card h3 { font-size: 12px; margin: 4px 0 0; }
+.card p { margin: 2px 0 0; font-weight: 700; }
+.pager { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1, pages: 1 };
+
+const list = document.querySelector("#list");
+const statusEl = document.querySelector("#status");
+const info = document.querySelector("#info");
+const prev = document.querySelector("#prev");
+const next = document.querySelector("#next");
+const qInput = document.querySelector("#q");
+const catSelect = document.querySelector("#category");
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) =&gt; {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+function render(products) {
+  list.replaceChildren();
+  if (products.length === 0) {
+    statusEl.textContent = "Ничего не найдено";
+    return;
+  }
+  statusEl.textContent = "";
+  for (const product of products) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+    const name = document.createElement("h3");
+    name.textContent = product.title;
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+    li.append(img, name, price);
+    list.append(li);
+  }
+}
+
+function updatePager() {
+  // TODO: ёддошти «Страница N из M» ва disabled барои prev / next
+}
+
+let lastRequest = 0;
+async function load() {
+  const id = ++lastRequest;
+  statusEl.textContent = "Загрузка…";
+  try {
+    const response = await fetch(buildUrl());
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const data = await response.json();
+    if (id !== lastRequest) return;
+    state.pages = Math.max(1, Math.ceil(data.total / LIMIT));
+    render(data.products);
+    updatePager();
+  } catch (error) {
+    if (id !== lastRequest) return;
+    list.replaceChildren();
+    statusEl.textContent = "Не удалось загрузить: " + error.message;
+  }
+}
+
+async function go(page) {
+  // TODO: сарҳадҳоро санҷед, саҳифаро иваз кунед, бор кунед
+}
+
+async function search(text) {
+  state.q = text.trim();
+  state.category = "";
+  catSelect.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function pickCategory(value) {
+  state.category = value;
+  state.q = "";
+  qInput.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function loadCategories() {
+  const response = await fetch(`${API}/category-list`);
+  const names = await response.json();
+  for (const name of names) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    catSelect.append(option);
+  }
+}
+
+prev.addEventListener("click", () =&gt; go(state.page - 1));
+next.addEventListener("click", () =&gt; go(state.page + 1));
+catSelect.addEventListener("change", () =&gt; pickCategory(catSelect.value));
+qInput.addEventListener("input", debounce(() =&gt; search(qInput.value), 400));
+
+// --- санҷиш, тағйир надиҳед ---
+async function check() {
+  await loadCategories();
+  await load();
+  console.log(`карточек: ${list.children.length}`);
+  console.log(`страниц больше одной: ${state.pages &gt; 1}`);
+  console.log(`на первой странице «Назад» ${prev.disabled ? "выкл" : "вкл"}`);
+  await go(2);
+  console.log(`страница ${state.page}, карточек: ${list.children.length}`);
+  await go(0);
+  console.log(`go(0) оставила страницу ${state.page}`);
+  console.log(`назад ${prev.disabled ? "выкл" : "вкл"}, вперёд ${next.disabled ? "выкл" : "вкл"}`);
+}
+check();
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>карточек: 6
+страниц больше одной: true
+на первой странице «Назад» выкл
+страница 2, карточек: 6
+go(0) оставила страницу 2
+назад вкл, вперёд вкл</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p><code>updatePager</code>: <code>info.textContent = `Страница ${state.page} из ${state.pages}`;</code> баъд <code>prev.disabled = state.page &lt;= 1;</code> ва <code>next.disabled = state.page &gt;= state.pages;</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p><code>go</code>: агар <code>page &lt; 1 || page &gt; state.pages</code> бошад — оддӣ <code>return</code>; вагарна <code>state.page = page; await load();</code></p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Ҷустуҷӯ: search бо барқарор кардани саҳифа</h4><span class="level hard">душвор</span></header>
+          <p>Функсияи <code>search(text)</code> ҳоло холӣ аст. Вай бояд: фосилаҳои канорро бардорад ва ба <code>state.q</code> нависад, <b>категорияро барқарор кунад</b> (<code>state.category</code> ва қимати <code>catSelect</code>), <b>саҳифаро ба аввал баргардонад</b> ва маълумотро бор кунад. Он гоҳ баъд аз ҷустуҷӯи «zzzzqq» барнома «Ничего не найдено»-ро нишон медиҳад, ҷустуҷӯи холӣ бошад рӯйхати оддиро бармегардонад.</p>
+          <div class="playground" data-mode="dom" data-title="Каталог: ҷустуҷӯро анҷом диҳед">
+<pre class="code" data-lang="html">
+&lt;div class="app"&gt;
+  &lt;div class="bar"&gt;
+    &lt;input id="q" type="search" placeholder="Поиск товара…"&gt;
+    &lt;select id="category"&gt;&lt;option value=""&gt;Все категории&lt;/option&gt;&lt;/select&gt;
+  &lt;/div&gt;
+  &lt;p id="status" class="status"&gt;&lt;/p&gt;
+  &lt;ul id="list" class="grid"&gt;&lt;/ul&gt;
+  &lt;div class="pager"&gt;
+    &lt;button id="prev"&gt;← Назад&lt;/button&gt;
+    &lt;span id="info"&gt;&lt;/span&gt;
+    &lt;button id="next"&gt;Вперёд →&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font: 14px system-ui; margin: 8px; }
+.bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.bar input { flex: 1; padding: 6px 8px; }
+.status { color: #666; min-height: 1.2em; margin: 4px 0; }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 8px; padding: 6px; text-align: center; }
+.card img { width: 100%; height: 60px; object-fit: contain; }
+.card h3 { font-size: 12px; margin: 4px 0 0; }
+.card p { margin: 2px 0 0; font-weight: 700; }
+.pager { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1, pages: 1 };
+
+const list = document.querySelector("#list");
+const statusEl = document.querySelector("#status");
+const info = document.querySelector("#info");
+const prev = document.querySelector("#prev");
+const next = document.querySelector("#next");
+const qInput = document.querySelector("#q");
+const catSelect = document.querySelector("#category");
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) =&gt; {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+function render(products) {
+  list.replaceChildren();
+  if (products.length === 0) {
+    statusEl.textContent = "Ничего не найдено";
+    return;
+  }
+  statusEl.textContent = "";
+  for (const product of products) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+    const name = document.createElement("h3");
+    name.textContent = product.title;
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+    li.append(img, name, price);
+    list.append(li);
+  }
+}
+
+function updatePager() {
+  info.textContent = `Страница ${state.page} из ${state.pages}`;
+  prev.disabled = state.page &lt;= 1;
+  next.disabled = state.page &gt;= state.pages;
+}
+
+let lastRequest = 0;
+async function load() {
+  const id = ++lastRequest;
+  statusEl.textContent = "Загрузка…";
+  try {
+    const response = await fetch(buildUrl());
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const data = await response.json();
+    if (id !== lastRequest) return;
+    state.pages = Math.max(1, Math.ceil(data.total / LIMIT));
+    render(data.products);
+    updatePager();
+  } catch (error) {
+    if (id !== lastRequest) return;
+    list.replaceChildren();
+    statusEl.textContent = "Не удалось загрузить: " + error.message;
+  }
+}
+
+async function go(page) {
+  if (page &lt; 1 || page &gt; state.pages) return;
+  state.page = page;
+  await load();
+}
+
+async function search(text) {
+  // TODO: матнро нависед, категория ва саҳифаро барқарор кунед, бор кунед
+}
+
+async function pickCategory(value) {
+  state.category = value;
+  state.q = "";
+  qInput.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function loadCategories() {
+  const response = await fetch(`${API}/category-list`);
+  const names = await response.json();
+  for (const name of names) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    catSelect.append(option);
+  }
+}
+
+prev.addEventListener("click", () =&gt; go(state.page - 1));
+next.addEventListener("click", () =&gt; go(state.page + 1));
+catSelect.addEventListener("change", () =&gt; pickCategory(catSelect.value));
+qInput.addEventListener("input", debounce(() =&gt; search(qInput.value), 400));
+
+// --- санҷиш, тағйир надиҳед ---
+async function check() {
+  await load();
+  await go(3);
+  console.log(`страница: ${state.page}`);
+  await search("phone");
+  console.log(`поиск: карточек больше нуля: ${list.children.length &gt; 0}`);
+  console.log(`страница после поиска: ${state.page}`);
+  await search("zzzzqq");
+  console.log(`пусто: ${list.children.length === 0}, сообщение: ${statusEl.textContent}`);
+  await search("");
+  console.log(`сброс поиска, карточек: ${list.children.length}`);
+}
+check();
+</pre>
+          </div>
+          <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>страница: 3
+поиск: карточек больше нуля: true
+страница после поиска: 1
+пусто: true, сообщение: Ничего не найдено
+сброс поиска, карточек: 6</pre></div>
+          <details class="hint"><summary>Ишора 1</summary><p>Чор сатр пеш аз боркунӣ: <code>state.q = text.trim();</code>, <code>state.category = "";</code>, <code>catSelect.value = "";</code>, <code>state.page = 1;</code></p></details>
+          <details class="hint"><summary>Ишора 2</summary><p>Сатри охиринро фаромӯш накунед — <code>await load();</code>. Бе он ҳолат тағйир меёбад, рӯйхат бошад не.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">09</span> Вазифаи хонагӣ</h2>
+
+      <p>Ба барномаи худии бо API <b>ҷустуҷӯ ва пагинатсия</b> илова кунед. Асос — барномаи дарси 14 (ду API), каталоги амали имрӯза ё ҳар кадом аз мавзӯъҳои поён. Ҳамаи API-ҳо — оммавӣ ва <b>бе калид</b>: санҷида шудааст, аз браузер ҷавоб медиҳанд.</p>
+
+      <h3>Мавзӯъро интихоб кунед</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Мавзӯъ</th><th>API ва ҳуҷҷатгузорӣ</th><th>Ҷустуҷӯ</th><th>Пагинатсия / филтр</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>A. Филмҳо ва сериалҳо</b></td>
+              <td><a href="https://www.tvmaze.com/api" target="_blank" rel="noopener">TVmaze</a> — бе калид (TMDB ва OMDb калид металабанд, дар курс онҳоро истифода намебарем)</td>
+              <td><code>https://api.tvmaze.com/search/shows?q=…</code>: массиви <code>{ score, show }</code>; холӣ — <code>[]</code></td>
+              <td>Каталоги <code>https://api.tvmaze.com/shows?page=0</code> (тақрибан 250 то, саҳифаҳо аз 0; берун аз ҳудуд — <b>404</b>). Филтр аз рӯи жанр — дар клиент (<code>show.genres</code>). Постери <code>show.image</code> метавонад <code>null</code> бошад!</td>
+            </tr>
+            <tr>
+              <td><b>B. Обу ҳаво</b></td>
+              <td><a href="https://open-meteo.com/en/docs/geocoding-api" target="_blank" rel="noopener">Open-Meteo Geocoding</a> ва <a href="https://open-meteo.com/en/docs" target="_blank" rel="noopener">Forecast</a></td>
+              <td>Ҷустуҷӯи шаҳр: <code>geocoding-api.open-meteo.com/v1/search?name=…&amp;count=10&amp;language=ru</code>. Агар чизе ёфт нашавад, дар ҷавоб <b>майдони <code>results</code> нест</b> — <code>data.results ?? []</code>-ро истифода баред</td>
+              <td>Шаҳри интихобшуда → <code>api.open-meteo.com/v1/forecast?latitude=…&amp;longitude=…&amp;daily=temperature_2m_max,temperature_2m_min&amp;timezone=auto</code>. Саҳифаҳо — «рӯзҳои бештар нишон деҳ» ё варақ задани шаҳрҳои ёфтшуда (<code>count</code> то 100)</td>
+            </tr>
+            <tr>
+              <td><b>C. Криптоарзҳо</b></td>
+              <td><a href="https://docs.coingecko.com/v3.0.1/reference/introduction" target="_blank" rel="noopener">CoinGecko</a> (endpoint-и оммавӣ)</td>
+              <td><code>https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&amp;per_page=10&amp;page=1</code>; ҷустуҷӯ — дар клиент аз рӯи <code>name</code> ва <code>symbol</code></td>
+              <td>Саҳифаҳо: <code>per_page</code> + <code>page</code>. Филтр: меафзояд / меафтад (<code>price_change_percentage_24h</code>). Маҳдудияти дархостҳо хурд аст: ҳангоми <b>429</b> паёми фаҳмо нишон диҳед ва бо дархостҳо спам накунед</td>
+            </tr>
+            <tr>
+              <td><b>D. Рик ва Морти</b></td>
+              <td><a href="https://rickandmortyapi.com/documentation/#character" target="_blank" rel="noopener">Rick and Morty API</a></td>
+              <td><code>…/api/character?name=…</code>; чизе нест — <b>404</b></td>
+              <td><code>page</code>, <code>info.pages</code>; филтрҳои серверии <code>status</code> (alive / dead / unknown) ва <code>gender</code>. Ҳама дар сервер — варианти аз ҳама осон</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>API-и оммавии худиро бе калид ҳам гирифтан мумкин аст — аммо пешакӣ бо муаллим мувофиқа кунед ва санҷед: оё аз браузер ҷавоб медиҳад (CORS) ва оё ҷустуҷӯ ва саҳифаҳо дорад.</p>
+
+      <h3>Дар барнома чӣ бояд бошад</h3>
+      <ol>
+        <li><b>Маълумот аз API.</b> Функсияи <code>getJson</code> (аз дарси 14): санҷиши <code>response.ok</code>, <code>try / catch</code>, паёми фаҳмои хато.</li>
+        <li><b>Суроға — тавассути <code>URLSearchParams</code>.</b> Ягон часпонидани параметрҳо бо сатрҳо не. Функсияи <code>buildUrl</code> ё монанди он.</li>
+        <li><b>Рендери рӯйхат.</b> Як функсияи <code>render</code>, ки аввал тоза мекунад; матн тавассути <code>textContent</code> гузошта мешавад; ҳолати «Ничего не найдено» ҳаст.</li>
+        <li><b>Ҷустуҷӯ бо <code>debounce</code></b> 300–500 мс ва ҳимоя аз мусобиқа (<code>lastRequest</code> ё <code>AbortController</code>).</li>
+        <li><b>Филтр ё мураттабкунӣ</b> — ҳадди ақал яке, дар сервер ё дар клиент (бошуурона интихоб кунед ва дар README нависед, чаро).</li>
+        <li><b>Пагинатсия:</b> саҳифаҳо (тугмаҳои «Ба қафо» / «Ба пеш» бо <code>disabled</code> дар канорҳо ва ёддошти «Саҳифаи N аз M») <b>ё</b> «Боз нишон деҳ». Ҳангоми ҷустуҷӯи нав саҳифа барқарор мешавад.</li>
+        <li><b>Ҳолатҳои ҳадди ақал:</b> «Боркунӣ…», «Ничего не найдено», «Хато» (муфассал — дар дарси оянда).</li>
+        <li><b>README:</b> кадом API гирифта шуд, истинод ба ҳуҷҷатгузорӣ, параметрҳои ҷустуҷӯ ва саҳифаҳо чӣ тавр сохта шудаанд, кадом дархостро дастӣ санҷидед.</li>
+        <li><b>ЗС:</b> ҳуҷҷатгузориро бо ЗС аз рӯи промпти дарс хонед ва ба README илова кунед: промпт, ЗС чӣ пешниҳод кард, <b>чӣ нодуруст ё ғайридақиқ баромад</b> ва шумо инро бо дархост чӣ тавр санҷидед.</li>
+      </ol>
+
+      <h3>Чӣ супоридан лозим</h3>
+      <ul>
+        <li>Истинод ба репозиторийи GitHub (ҷузвдон бо <code>index.html</code>, <code>style.css</code>, <code>script.js</code> ва README).</li>
+        <li>Ду-се ҷумла дар README: чӣ анҷом ёфт ва чӣ аз ҳама душвор баромад.</li>
+        <li>Скриншоти барнома (бо натиҷаҳои ҷустуҷӯ) — ихтиёрӣ, ҳамчун замима ба README.</li>
+      </ul>
+
+      <h3>Чӣ тавр баҳо медиҳем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Чӣ</th><th>Холҳо</th></tr></thead>
+          <tbody>
+            <tr><td>Маълумот аз API бор мешавад, суроғаҳо тавассути <code>URLSearchParams</code>, хатоҳои шабака коркард шудаанд</td><td>2</td></tr>
+            <tr><td>Рендер: тозакунӣ, <code>textContent</code>, «Ничего не найдено»</td><td>2</td></tr>
+            <tr><td>Ҷустуҷӯ бо <code>debounce</code> ва ҳимоя аз мусобиқа, барқароркунии саҳифа ҳангоми ҷустуҷӯи нав</td><td>2</td></tr>
+            <tr><td>Пагинатсия дар ҳамаи саҳифаҳо кор мекунад, тугмаҳо дар канорҳо маҳкам мешаванд</td><td>2</td></tr>
+            <tr><td>Филтр ё мураттабкунӣ + README ва таҳлили ҷавоби ЗС</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Пеш аз супоридан</b>
+        <p>Сенарияро дастӣ гузаронед: чизеро ёбед, ба саҳифаи 2 варақ занед, ҷустуҷӯи нав ворид кунед (ба саҳифаи 1 баргаштед?), чизи бемаъное ворид кунед («Ничего не найдено» ҳаст?), интернетро хомӯш кунед (паёми хато ҳаст?). Ҳар сатреро, ки ЗС маслиҳат дод, шумо бояд дар ҳимоя шарҳ дода тавонед.</p>
+      </div>
+    </section>
+
+    <!-- ============ ХУЛОСА ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Лавҳаи ёддошт"><span class="num">✓</span> Лавҳаи ёддошти дарс</h2>
+      <ul>
+        <li><b>Параметрҳои дархост</b> баъд аз <code>?</code> меоянд: <code>калид=қимат</code> тавассути <code>&amp;</code>. Ҷамъ мекунем <b>танҳо</b> тавассути <code>new URLSearchParams({…})</code> — вай фосилаҳо, <code>&amp;</code> ва кириллитсаро рамзгузорӣ мекунад. <code>params.get()</code> ҳамеша сатр ё <code>null</code> медиҳад.</li>
+        <li><b>API-ро мехонем:</b> ҳуҷҷатгузорӣ + ҷавоби воқеӣ дар консол. Рӯйхат дар куҷост (<code>data.products</code> / <code>data.results</code> / худи массив), <code>total</code> дар куҷост, ҳангоми «холӣ» чӣ мешавад (200 ва <code>[]</code> ё <b>404</b>).</li>
+        <li><b>Рендер:</b> <code>render(items)</code> ҳамеша аввал тоза мекунад (<code>replaceChildren()</code>), баъд гиреҳҳо месозад; маълумоти сервер — тавассути <code>textContent</code>; натиҷаи холӣ — паёми ҷудогона.</li>
+        <li><b>Ҷустуҷӯ:</b> <code>input</code> + <code>debounce</code> (300–500 мс) + <code>trim()</code> + барқарор кардан ба саҳифаи аввал. Аз «мусобиқа» — рақами дархости <code>lastRequest</code> ё <code>AbortController</code>.</li>
+        <li><b>Филтр ва мураттабкунӣ:</b> дар сервер (<code>/category/…</code>, <code>sortBy</code>, <code>order</code>) — барои маълумоти калон; дар клиент (<code>filter</code>, <code>includes</code>) — барои аллакай боршуда. На ҳамаи параметрҳои API бо ҳам мувофиқанд — ҳуҷҷатгузориро бихонед.</li>
+        <li><b>Пагинатсия:</b> <code>skip = (page − 1) × limit</code>; саҳифаҳо <code>Math.ceil(total / limit)</code>; «Ба қафо» дар саҳифаи 1 хомӯш аст, «Ба пеш» — дар охирин; дар Rick and Morty — <code>page</code> ва <code>info.pages / info.next</code>.</li>
+        <li><b>Сохтори барнома:</b> <code>state</code> → <code>buildUrl()</code> → <code>load()</code> → <code>render()</code> + <code>updatePager()</code>. Ҳодисаҳо танҳо ҳолатро тағйир медиҳанд ва <code>load()</code>-ро даъват мекунанд.</li>
+        <li><b>Бо ЗС:</b> ҳуҷҷатгузории API-ро ба ӯ бо матн диҳед; параметрҳои ихтироъшударо бо дархост дар консол мегирем; дар README менависем, ки ЗС чӣ пешниҳод кард ва мо чиро ислоҳ кардем.</li>
+      </ul>
+    </section>
