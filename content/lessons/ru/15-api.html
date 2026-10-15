@@ -1,0 +1,2119 @@
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 15 · Async и API</p>
+      <h1>Работа с реальным API</h1>
+      <p class="lead">Интернет-магазин не хранит тысячи товаров в HTML — он спрашивает их у сервера: «покажи шесть товаров, пропусти первые двенадцать, только из категории „телефоны“». Сегодня вы научитесь задавать такие вопросы через параметры запроса и превращать ответ в живой список с поиском, фильтрами и страницами — ровно так устроены каталоги, ленты и поиск на настоящих сайтах.</p>
+      <ul class="goals">
+        <li>Собирать адрес запроса через <code>URLSearchParams</code>, не думая про пробелы и кириллицу</li>
+        <li>Читать документацию API и находить в ответе нужные поля</li>
+        <li>Рисовать список из ответа сервера, не дублируя карточки</li>
+        <li>Делать поиск без лишних запросов: <code>debounce</code> и защита от «гонки»</li>
+        <li>Фильтровать и сортировать — на сервере и на клиенте</li>
+        <li>Считать страницы по <code>limit</code> / <code>skip</code> и управлять кнопками «Назад» / «Вперёд»</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Код на тёмном фоне с кнопкой <b>▶ Запустить</b> — живой: меняйте и запускайте. Примеры с <code>fetch</code> ходят в настоящие публичные API, поэтому нужен интернет. Блоки с вкладками <b>index.html / style.css / script.js</b> — это мини-страница: слева код, под ним предпросмотр и консоль. Задачи сами проверяются по тому, что вы выводите в консоль. Если серверу «плохо» (редкий случай), вы увидите ошибку сети — просто запустите ещё раз. Подсказки под замочком 🔒: сначала сами, потом подсказка.</p>
+      <p>В уроке три публичных API без ключей: <b>DummyJSON</b> (товары), <b>Rick and Morty API</b> (персонажи) и немного <b>Open-Meteo</b> (погода) в домашнем задании.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="query">
+      <h2 data-toc="Параметры запроса · URLSearchParams"><span class="num">01</span> Параметры запроса: URL и URLSearchParams</h2>
+
+      <p>Любой запрос к API — это адрес. Но адрес умеет не только «куда пойти», а ещё и «что именно принести». Для этого после знака <code>?</code> дописывают <b>параметры запроса</b> (query string) в виде пар <code>ключ=значение</code>, разделённых <code>&amp;</code>.</p>
+
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="сервер">https://dummyjson.com</span><span class="part p2" data-label="путь (что просим)">/products/search</span><span class="part p3" data-label="начало параметров">?</span><span class="part p4" data-label="параметры">q=phone&amp;limit=5&amp;skip=10</span>
+        </div>
+        <figcaption>Путь отвечает на вопрос «что?», параметры — «сколько, какие, в каком порядке?»</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Заказ в чайхоне. «Курутоб» — это <b>путь</b>: что вы заказываете. А «без лука, порцию побольше, две пиалы чая» — это <b>параметры</b>: уточнения к тому же блюду. Блюдо одно, а заказы разные. Так и с API: путь <code>/products</code> один, а параметры <code>limit</code>, <code>skip</code>, <code>q</code> меняют, что именно вам принесут.</p>
+      </div>
+
+      <h3>Почему нельзя склеивать строки руками</h3>
+      <p>Новички собирают адрес так: <code>"…?q=" + text + "&amp;limit=" + limit</code>. Пока в <code>text</code> одно слово латиницей, всё работает. Но стоит пользователю ввести пробел, <code>&amp;</code>, <code>#</code> или русскую букву — адрес ломается. У URL строгие правила: такие символы нужно <b>кодировать</b> (<code>пробел → +</code> или <code>%20</code>, <code>&amp; → %26</code>, кириллица → <code>%D0…</code>).</p>
+      <p>Кодировать самим — муторно и легко ошибиться. Для этого в браузере (и в Node.js) есть готовый класс <code>URLSearchParams</code>.</p>
+
+<pre class="code" data-run data-title="URLSearchParams собирает и кодирует">
+const params = new URLSearchParams();
+params.set("q", "плов &amp; чай");   // пробелы, &amp;, кириллица — не наша забота
+params.set("limit", 5);          // число станет строкой само
+params.set("skip", 10);
+
+console.log(params.toString());
+// q=%D0%BF%D0%BB%D0%BE%D0%B2+%26+%D1%87%D0%B0%D0%B9&amp;limit=5&amp;skip=10
+
+const url = "https://dummyjson.com/products/search?" + params;
+console.log(url);   // в строку объект превращается автоматически
+</pre>
+
+      <p>Создать <code>URLSearchParams</code> можно сразу из объекта или из готовой строки — удобно, чтобы разобрать чужой адрес:</p>
+
+<pre class="code" data-run data-title="Из объекта и из строки">
+const fromObject = new URLSearchParams({ q: "phone", limit: 5 });
+console.log(fromObject.toString());
+
+const fromString = new URLSearchParams("q=plov&amp;limit=10&amp;page=3");
+console.log(fromString.get("q"));        // plov
+console.log(fromString.get("limit"));    // "10" — строка, не число!
+console.log(fromString.get("sort"));     // null — такого параметра нет
+console.log(fromString.has("page"));     // true
+</pre>
+
+      <dl class="terms">
+        <dt>set(ключ, значение)</dt><dd>Задать параметр. Если такой уже был — перезаписать.</dd>
+        <dt>append(ключ, значение)</dt><dd>Добавить ещё одну пару, даже если ключ уже есть (так бывает: <code>?tag=a&amp;tag=b</code>).</dd>
+        <dt>get(ключ) / getAll(ключ)</dt><dd>Прочитать значение. Всегда <b>строка</b> или <code>null</code>.</dd>
+        <dt>has(ключ) / delete(ключ)</dt><dd>Проверить наличие / убрать параметр.</dd>
+        <dt>toString()</dt><dd>Готовая строка параметров без знака <code>?</code>.</dd>
+      </dl>
+
+      <h3>Целый адрес: URL</h3>
+      <p>Для разбора полного адреса есть класс <code>URL</code>: у него есть <code>searchParams</code> — тот же <code>URLSearchParams</code>, уже подключённый к адресу.</p>
+<pre class="code" data-run>
+const url = new URL("https://dummyjson.com/products/search?q=phone&amp;limit=5");
+
+console.log(url.hostname);                  // dummyjson.com
+console.log(url.pathname);                  // /products/search
+console.log(url.searchParams.get("q"));     // phone
+
+url.searchParams.set("skip", 10);           // поменяли адрес через параметры
+console.log(url.href);
+</pre>
+
+      <div class="callout warn">
+        <b>Частые ошибки</b>
+        <p><b>1.</b> <code>params.get("limit") + 1</code> даст <code>"101"</code>, а не 11: значения — строки. Нужен <code>Number(...)</code>. <b>2.</b> Склейка строк ломается на пробелах и <code>&amp;</code>. <b>3.</b> Проверка <code>if (value)</code> при сборке адреса выбросит <code>skip=0</code> — ноль «ложный», но для сервера это важное значение. Проверяйте <code>=== undefined</code>, а не «правдивость».</p>
+      </div>
+
+<pre class="code" data-run data-title="Склейка строк ломает адрес">
+const text = "rock &amp; roll";
+const bad = "https://dummyjson.com/products/search?q=" + text + "&amp;limit=5";
+
+console.log(bad);
+// сервер увидит: q="rock ", параметр " roll" без значения и limit=5 — искать будет не то
+console.log(new URL(bad).searchParams.get("q"));
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/url" target="_blank" rel="noopener">learn.javascript.ru — Объект URL</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/URLSearchParams" target="_blank" rel="noopener">MDN — URLSearchParams</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Собираем и разбираем адреса. Все задачи проверяются выводом в консоль.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Три параметра для поиска</h4><span class="level easy">лёгкая</span></header>
+          <p>Создайте <code>URLSearchParams</code> и задайте через <code>set</code> три параметра: <code>q</code> = <code>samsa</code>, <code>limit</code> = <code>5</code>, <code>skip</code> = <code>10</code>. Выведите итоговую строку параметров.</p>
+<pre class="code" data-run>
+const params = new URLSearchParams();
+
+// задайте q, limit и skip
+
+// выведите params.toString()
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>q=samsa&amp;limit=5&amp;skip=10</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>params.set("q", "samsa");</code> — по одной строке на каждый параметр, в том порядке, в котором они в ответе.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Числа можно передавать как есть: <code>params.set("limit", 5)</code> — класс сам превратит их в строки.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Предскажи вывод: строки и числа</h4><span class="level easy">лёгкая</span></header>
+          <p><b>Сначала, не запуская,</b> запишите прогноз для первых пяти строк. Запустите и сверьтесь. Потом допишите внизу: добавьте через <code>append</code> второе значение <code>limit = 20</code> и выведите <code>getAll("limit")</code> через запятую (<code>.join(",")</code>).</p>
+<pre class="code" data-run>
+const params = new URLSearchParams("q=plov&amp;limit=10&amp;page=3");
+
+console.log(params.get("limit") + 1);
+console.log(Number(params.get("limit")) + 1);
+console.log(params.get("sort"));
+console.log(params.has("page"));
+console.log(params.get("page") * 2);
+
+// ваша часть: append + getAll
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>101
+11
+null
+true
+6
+10,20</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Плюс со строкой — склейка: <code>"10" + 1</code> это <code>"101"</code>. А вот умножение само превращает строку в число.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>params.append("limit", 20);</code> и <code>console.log(params.getAll("limit").join(","));</code></p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Функция buildUrl</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>buildUrl(base, params)</code>: она принимает адрес и объект параметров и возвращает готовый адрес. Параметры со значением <code>undefined</code>, <code>null</code> или пустой строкой пропускаются; <code>0</code> — <b>не</b> пропускается. Если параметров не осталось, знак <code>?</code> не добавляется.</p>
+<pre class="code" data-run>
+function buildUrl(base, params) {
+  // ваш код
+}
+
+console.log(buildUrl("https://dummyjson.com/products/search", { q: "phone", limit: 5, skip: 0 }));
+console.log(buildUrl("https://dummyjson.com/products", { limit: 10, skip: undefined, q: "" }));
+console.log(buildUrl("https://dummyjson.com/products", {}));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>https://dummyjson.com/products/search?q=phone&amp;limit=5&amp;skip=0
+https://dummyjson.com/products?limit=10
+https://dummyjson.com/products</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Пройдите по <code>Object.entries(params)</code> циклом <code>for…of</code>, пропускайте плохие значения через <code>continue</code>, а хорошие кладите в <code>URLSearchParams</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Условие пропуска: <code>value === undefined || value === null || value === ""</code>. В конце: <code>const text = query.toString(); return text ? `${base}?${text}` : base;</code></p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ЗАДАЧА 1.4</span><h4>Найди баг: поиск «rock &amp; roll»</h4><span class="level easy">лёгкая</span></header>
+          <p>Пользователь искал <code>rock &amp; roll</code>, а сервер получил что-то странное. Перепишите сборку адреса через <code>URLSearchParams</code> (параметры <code>q</code> и <code>limit=5</code>). Выведите адрес, а второй строкой — что вернёт <code>new URL(url).searchParams.get("q")</code>: это то, что увидит сервер.</p>
+<pre class="code" data-run>
+const query = "rock &amp; roll";
+const url = "https://dummyjson.com/products/search?q=" + query + "&amp;limit=5";
+
+console.log(url);
+console.log(new URL(url).searchParams.get("q"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>https://dummyjson.com/products/search?q=rock+%26+roll&amp;limit=5
+rock &amp; roll</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Создайте <code>new URLSearchParams({ q: query, limit: 5 })</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const url = "https://dummyjson.com/products/search?" + params;</code> — объект сам превратится в строку.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="read-api">
+      <h2 data-toc="Документация и ответ API"><span class="num">02</span> Читаем документацию и ответ API</h2>
+
+      <p>У каждого API свои правила: как называются параметры, как устроен ответ, что будет, если ничего не найдено. Узнать это можно только из <b>документации</b> и из <b>самого ответа</b>. Привычка №1 разработчика: сначала посмотреть, что реально приходит, и только потом писать код.</p>
+
+      <p>Из урока 14 вы помните обёртку над <code>fetch</code>. Она нам понадобится в каждом примере, поэтому вот её короткая версия — в уроке она будет лежать в начале каждого блока:</p>
+
+<pre class="code" data-run data-title="Как выглядит ответ DummyJSON">
+async function getJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("HTTP " + response.status);
+  return response.json();
+}
+
+async function main() {
+  const data = await getJson("https://dummyjson.com/products?limit=2&amp;select=title,price");
+  console.log(Object.keys(data));
+  console.log(data.products);
+  console.log("всего товаров на сервере больше, чем пришло:", data.total &gt; data.products.length);
+}
+main();
+</pre>
+
+      <p>Видите: ответ — не просто массив товаров, а <b>объект-конверт</b>. Сами товары лежат в <code>products</code>, а рядом — служебные поля <code>total</code> (сколько всего), <code>skip</code> и <code>limit</code> (какой кусок вернули). Они нам понадобятся для пагинации.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>DummyJSON</th><th>Rick and Morty API</th><th>JSONPlaceholder</th></tr></thead>
+          <tbody>
+            <tr><td><b>Где список</b></td><td><code>data.products</code></td><td><code>data.results</code></td><td>сам ответ — массив</td></tr>
+            <tr><td><b>Поиск</b></td><td><code>/products/search?q=</code></td><td><code>?name=</code></td><td>нет, только фильтры по полям: <code>?userId=1</code></td></tr>
+            <tr><td><b>Страницы</b></td><td><code>limit</code> + <code>skip</code></td><td><code>page</code> (по 20 штук)</td><td><code>_page</code> + <code>_limit</code></td></tr>
+            <tr><td><b>Сколько всего</b></td><td><code>data.total</code></td><td><code>data.info.count</code>, <code>info.pages</code></td><td>заголовок <code>x-total-count</code></td></tr>
+            <tr><td><b>Ничего не нашли</b></td><td>200 и пустой <code>products</code></td><td><b>404</b> и <code>{ error }</code></td><td>200 и пустой массив</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Последняя строка — самая коварная: «ничего не найдено» в одном API это пустой список, а в другом — <b>ошибка 404</b>. Если не знать, поиск по Рику и Морти будет «падать» на любой опечатке.</p>
+
+<pre class="code" data-run data-title="404 — это не всегда поломка">
+async function main() {
+  const found = await fetch("https://rickandmortyapi.com/api/character?name=rick");
+  console.log("rick →", found.status);
+
+  const none = await fetch("https://rickandmortyapi.com/api/character?name=zzzzqq");
+  console.log("zzzzqq →", none.status, none.ok);
+  console.log(await none.json());
+}
+main();
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Документация API — это <b>меню чайханы</b>. Вы не угадываете, что есть на кухне: открываете меню и видите блюда (эндпоинты), порции и добавки (параметры). А ответ сервера — само блюдо на тарелке: нужно посмотреть, что в нём лежит, прежде чем начать есть.</p>
+      </div>
+
+      <h3>Как читать документацию за 2 минуты</h3>
+      <ol class="steps">
+        <li><b>Найдите нужный эндпоинт.</b> «Мне нужен поиск товаров» → <code>GET /products/search</code>.</li>
+        <li><b>Выпишите параметры:</b> какие обязательные, какие нет, какие значения допустимы (<code>limit</code>, <code>skip</code>, <code>select</code>, <code>sortBy</code>, <code>order</code>).</li>
+        <li><b>Откройте пример ответа</b> и найдите, где лежит список и где служебные поля.</li>
+        <li><b>Проверьте руками:</b> вставьте адрес в браузер или в <code>console.log</code> и убедитесь, что ответ такой, как в документации.</li>
+        <li><b>Узнайте про «пусто» и «ошибка»:</b> какой статус и какое тело придёт, если ничего нет.</li>
+      </ol>
+
+      <p>Ещё один приём: параметр <code>select</code> у DummyJSON оставляет в ответе только нужные поля. Запрос становится легче и быстрее — зачем качать описание и отзывы, если нужны название и цена?</p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Три задачи, в которых вы читаете ответ API и учитываете его особенности.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Что внутри конверта</h4><span class="level easy">лёгкая</span></header>
+          <p>Запросите три товара (<code>limit=3</code>, <code>select=title,price</code>). Выведите ключи ответа через запятую (<code>Object.keys(data).join(", ")</code>), а второй строкой — сколько товаров в <code>data.products</code>.</p>
+<pre class="code" data-run>
+async function main() {
+  const url = "https://dummyjson.com/products?limit=3&amp;select=title,price";
+  // fetch → response.json() → два console.log
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>products, total, skip, limit
+3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Два <code>await</code> подряд: <code>const response = await fetch(url); const data = await response.json();</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Список — <code>data.products</code>, у массива есть <code>.length</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Найди баг: «data.map is not a function»</h4><span class="level easy">лёгкая</span></header>
+          <p>Функция должна вывести <code>Загружено: 4</code>, но падает с ошибкой. Запустите, прочитайте ошибку, исправьте.</p>
+<pre class="code" data-run data-title="Этот код выдаст ошибку">
+async function loadTitles() {
+  const response = await fetch("https://dummyjson.com/products?limit=4&amp;select=title");
+  const data = await response.json();
+  const titles = data.map((p) =&gt; p.title);
+  console.log("Загружено:", titles.length);
+}
+loadTitles();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Загружено: 4</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>data</code> — не массив, а объект-конверт. Какое его поле содержит массив товаров?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замените <code>data.map(...)</code> на <code>data.products.map(...)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Поиск персонажей без падений</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>searchCharacters(name)</code>: она запрашивает <code>https://rickandmortyapi.com/api/character?name=…</code> (параметр собирайте через <code>URLSearchParams</code>) и возвращает массив <code>data.results</code>. Если сервер ответил <b>404</b> — это «ничего не найдено», верните пустой массив <code>[]</code>. Любую другую неудачу (<code>!response.ok</code>) считайте ошибкой и бросайте <code>Error</code>.</p>
+<pre class="code" data-run>
+async function searchCharacters(name) {
+  // ваш код
+}
+
+async function main() {
+  const found = await searchCharacters("rick");
+  console.log(found.length &gt; 0);
+  const none = await searchCharacters("zzzzqq");
+  console.log(none.length);
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>true
+0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала <code>const response = await fetch(...)</code>, потом проверки статуса — и только после них <code>response.json()</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>if (response.status === 404) return [];</code> затем <code>if (!response.ok) throw new Error("HTTP " + response.status);</code></p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="render">
+      <h2 data-toc="Рендер списка из API"><span class="num">03</span> Рендер списка из API</h2>
+
+      <p>Данные пришли — теперь покажем их на странице. Схема всегда одна: <b>fetch → массив → для каждого элемента создать узел → вставить в страницу</b>. Это то, что вы делали в уроках 8 и 11, только массив теперь приходит не из переменной, а из интернета.</p>
+
+      <ol class="steps">
+        <li><b>Запросили</b> данные: <code>await fetch(url)</code>, <code>await response.json()</code>.</li>
+        <li><b>Достали список</b> из конверта: <code>data.products</code>.</li>
+        <li><b>Очистили контейнер</b>: <code>list.replaceChildren()</code>.</li>
+        <li><b>Для каждого товара</b> создали <code>&lt;li&gt;</code> / карточку, заполнили <code>textContent</code> и добавили в контейнер.</li>
+      </ol>
+
+      <div class="playground" data-mode="dom" data-title="Список товаров из API">
+<pre class="code" data-lang="html">
+&lt;h3&gt;Первые 5 товаров&lt;/h3&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+async function loadProducts() {
+  const response = await fetch("https://dummyjson.com/products?limit=5&amp;select=title,price");
+  const data = await response.json();
+
+  list.replaceChildren();                    // 3. очистили
+  for (const product of data.products) {     // 4. по узлу на товар
+    const li = document.createElement("li");
+    li.textContent = `${product.title} — ${product.price} $`;
+    list.append(li);
+  }
+}
+
+loadProducts();
+</pre>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Рендер — это <b>витрина</b> на бозоре. Каждое утро продавец не дописывает товары поверх вчерашних, а <b>выкладывает витрину заново</b>: убрал старое — выставил актуальное. Функция <code>render</code> должна работать так же: сначала очистить, потом построить. Тогда её можно вызывать сколько угодно раз (при поиске, при смене страницы), и ничего не задвоится.</p>
+      </div>
+
+      <h3>Правило: render полностью перестраивает список</h3>
+      <p>Самая частая ошибка новичков — забыть очистку. Первый вызов работает, а при втором (новая страница, новый поиск) карточки добавляются <b>к старым</b>. Поэтому всё, что рисует список, начинается с <code>replaceChildren()</code> (или <code>innerHTML = ""</code>).</p>
+
+      <div class="callout warn">
+        <b>Данные с сервера — не доверяйте им</b>
+        <p>Если вставлять ответ через <code>innerHTML</code>, то любой «товар» с названием <code>&lt;b&gt;…&lt;/b&gt;</code> превратится в разметку, а злоумышленник сможет подсунуть и скрипт. Для текста из API используйте <code>textContent</code>: он вставляет строку как есть, без разбора тегов.</p>
+      </div>
+
+<pre class="code" data-run data-title="textContent против innerHTML">
+const title = "&lt;b&gt;СКИДКА!&lt;/b&gt; Самбуса";   // как будто пришло с сервера
+
+const safe = document.createElement("p");
+safe.textContent = title;
+const risky = document.createElement("p");
+risky.innerHTML = title;
+
+console.log(safe.innerHTML);     // теги превращены в безопасный текст
+console.log(risky.children.length);  // 1 — внутри появился настоящий &lt;b&gt;
+</pre>
+
+      <h3>Карточки с картинкой</h3>
+      <p>Настоящий каталог — это не список строк, а карточки. Принцип тот же, узлов просто больше. Картинку берём из поля <code>thumbnail</code> и обязательно задаём <code>alt</code> — для доступности и на случай, если картинка не загрузится.</p>
+
+      <div class="playground" data-mode="dom" data-title="Карточки">
+<pre class="code" data-lang="html">
+&lt;div id="grid" class="grid"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.card { border: 1px solid #ccc; border-radius: 10px; padding: 8px; text-align: center; font: 14px system-ui; }
+.card img { width: 100%; height: 90px; object-fit: contain; }
+.card h3 { font-size: 14px; margin: 6px 0 2px; }
+.card p { margin: 0; color: #0a7c5a; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const grid = document.querySelector("#grid");
+
+async function loadCards() {
+  const response = await fetch("https://dummyjson.com/products?limit=6&amp;select=title,price,thumbnail");
+  const data = await response.json();
+
+  grid.replaceChildren();
+  for (const product of data.products) {
+    const card = document.createElement("article");
+    card.className = "card";
+
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+
+    const title = document.createElement("h3");
+    title.textContent = product.title;
+
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+
+    card.append(img, title, price);
+    grid.append(card);
+  }
+}
+
+loadCards();
+</pre>
+      </div>
+
+      <div class="callout tip">
+        <b>Пустой список — тоже состояние</b>
+        <p>Если сервер вернул ноль товаров, пользователь должен увидеть «Ничего не найдено», а не пустое место. Про состояния загрузки и ошибок мы подробно поговорим на следующем уроке, а пока заложим минимум: <code>render</code> умеет показывать пустой результат.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru — Fetch</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Element/replaceChildren" target="_blank" rel="noopener">MDN — Element.replaceChildren</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Четыре задачи на рендер. Результат — в предпросмотре и в консоли под песочницей.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Пять товаров в список</h4><span class="level easy">лёгкая</span></header>
+          <p>Допишите <code>loadProducts</code>: для каждого товара создайте <code>&lt;li&gt;</code> с текстом <code>название — цена $</code> (тире с пробелами вокруг) и добавьте в <code>list</code>. Консоль уже выведет проверку: сколько элементов в списке и есть ли в первом тире.</p>
+          <div class="playground" data-mode="dom" data-title="Список товаров">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+async function loadProducts() {
+  const response = await fetch("https://dummyjson.com/products?limit=5&amp;select=title,price");
+  const data = await response.json();
+  // для каждого товара: создать li, записать текст, добавить в list
+}
+
+// --- проверка, не меняйте ---
+loadProducts().then(() =&gt; {
+  console.log(list.children.length);
+  console.log(list.firstElementChild.textContent.includes(" — "));
+});
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>5
+true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>for (const product of data.products) { ... }</code> — внутри цикла создаём один <code>li</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>const li = document.createElement("li"); li.textContent = `${product.title} — ${product.price} $`; list.append(li);</code></p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Карточки с картинками</h4><span class="level mid">средняя</span></header>
+          <p>Выведите шесть товаров карточками: <code>&lt;article class="card"&gt;</code> с <code>&lt;img&gt;</code> (<code>src</code> = <code>thumbnail</code>, <code>alt</code> = название), заголовком <code>&lt;h3&gt;</code> и ценой <code>&lt;p&gt;</code>. Всё через <code>createElement</code> и <code>textContent</code>.</p>
+          <div class="playground" data-mode="dom" data-title="Карточки товаров">
+<pre class="code" data-lang="html">
+&lt;div id="grid" class="grid"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 10px; padding: 8px; text-align: center; font: 13px system-ui; }
+.card img { width: 100%; height: 70px; object-fit: contain; }
+.card h3 { font-size: 13px; margin: 4px 0 2px; }
+.card p { margin: 0; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const grid = document.querySelector("#grid");
+
+async function loadCards() {
+  const response = await fetch("https://dummyjson.com/products?limit=6&amp;select=title,price,thumbnail");
+  const data = await response.json();
+  // ваш код: карточка = article.card + img + h3 + p
+}
+
+// --- проверка, не меняйте ---
+loadCards().then(() =&gt; {
+  console.log(grid.querySelectorAll(".card").length);
+  console.log([...grid.querySelectorAll("img")].filter((img) =&gt; img.alt !== "").length);
+});
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>6
+6</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Создайте четыре узла: <code>article</code>, <code>img</code>, <code>h3</code>, <code>p</code>. Классу <code>card</code> соответствует <code>card.className = "card"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Соберите карточку одной строкой: <code>card.append(img, title, price);</code> и вставьте в <code>grid</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Найди баг: задвоенный список</h4><span class="level easy">лёгкая</span></header>
+          <p>Список обновляют дважды (как будто пользователь нажал «обновить»). Должно остаться 3 элемента, а их 6. Исправьте <code>loadProducts</code>, не трогая проверку.</p>
+          <div class="playground" data-mode="dom" data-title="Двойное обновление">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+async function loadProducts() {
+  const response = await fetch("https://dummyjson.com/products?limit=3&amp;select=title");
+  const data = await response.json();
+  data.products.forEach((product) =&gt; {
+    const li = document.createElement("li");
+    li.textContent = product.title;
+    list.append(li);
+  });
+}
+
+// --- проверка, не меняйте ---
+loadProducts()
+  .then(() =&gt; loadProducts())
+  .then(() =&gt; console.log(list.children.length));
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Каждый вызов добавляет новые <code>li</code> к тем, что уже есть. Чего не хватает перед циклом?</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Добавьте <code>list.replaceChildren();</code> после получения данных, до цикла.</p></details>
+        </article>
+
+        <article class="task" id="t3-4">
+          <header><span class="task-num">ЗАДАЧА 3.4</span><h4>renderList с пустым состоянием</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>renderList(items)</code> (<code>items</code> — массив строк). Она всегда сначала очищает <code>list</code>. Для пустого массива добавляет один <code>&lt;li class="empty"&gt;Ничего не найдено&lt;/li&gt;</code>, для непустого — по <code>&lt;li&gt;</code> на строку. Сеть не нужна.</p>
+          <div class="playground" data-mode="dom" data-title="renderList">
+<pre class="code" data-lang="html">
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+function renderList(items) {
+  // ваш код
+}
+
+// --- проверка, не меняйте ---
+renderList(["Самбуса", "Курутоб"]);
+console.log(list.children.length);
+renderList([]);
+console.log(`${list.children.length} ${list.textContent}`);
+renderList(["Чой"]);
+console.log(list.textContent);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>2
+1 Ничего не найдено
+Чой</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первой строкой — <code>list.replaceChildren();</code>. Затем ветка <code>if (items.length === 0) { ...; return; }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В пустой ветке создайте <code>li</code>, задайте <code>className = "empty"</code> и текст, добавьте в список и сделайте <code>return</code>. Ниже, для непустого, обычный цикл <code>for (const item of items)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="search">
+      <h2 data-toc="Поиск · debounce · гонка"><span class="num">04</span> Поиск: input, debounce и «гонка» запросов</h2>
+
+      <p>Поиск по API — это тот же запрос с параметром <code>q</code>. Сложность не в запросе, а в <b>том, когда его отправлять</b>. Если слушать событие <code>input</code> «в лоб», то на слово «phone» мы отправим пять запросов — на «p», «ph», «pho», «phon», «phone». Это лишняя нагрузка на сервер и мигающий интерфейс.</p>
+
+<pre class="code" data-run data-title="Поиск товаров: параметр q">
+async function search(q) {
+  const params = new URLSearchParams({ q, limit: 5, select: "title" });
+  const response = await fetch("https://dummyjson.com/products/search?" + params);
+  const data = await response.json();
+  return data.products;
+}
+
+async function main() {
+  const found = await search("phone");
+  console.log("нашли:", found.length &gt; 0);
+  found.forEach((p) =&gt; console.log("•", p.title));
+
+  const none = await search("zzzzqq");
+  console.log("по чепухе:", none.length);   // 0 — просто пустой список
+}
+main();
+</pre>
+
+      <h3>Debounce: ждём, пока человек договорит</h3>
+      <p><b>Debounce</b> («антидребезг») откладывает действие и каждый новый вызов сбрасывает ожидание. Действие сработает только тогда, когда пользователь замолчал на заданное время — обычно 300–500 мс. Это те самые <code>setTimeout</code> и <code>clearTimeout</code> из урока 13.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Официант в чайхоне не бежит на кухню после каждого слова гостя. Он ждёт, пока гость договорит: «курутоб… и самбусу… и чай… всё». Только после паузы идёт к повару. Debounce — это терпеливый официант: одна пауза в разговоре — один поход на кухню.</p>
+      </div>
+
+<pre class="code" data-run data-title="debounce в шесть строк">
+function debounce(fn, ms) {
+  let timer;                       // таймер живёт между вызовами
+  return (...args) =&gt; {
+    clearTimeout(timer);           // новый вызов отменяет прошлый
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+const find = debounce((text) =&gt; console.log("ищем:", text), 300);
+
+find("п");
+find("пл");
+find("пло");
+find("плов");      // сработает только последний вызов — через 300 мс
+</pre>
+
+      <p>Функция возвращает <b>новую функцию</b>, внутри которой «спрятан» таймер (замыкание — вы встречали его в уроке 5). Подписка в приложении выглядит так:</p>
+<pre class="code" data-title="Подписка на input через debounce">
+input.addEventListener("input", debounce(() =&gt; {
+  state.q = input.value.trim();
+  state.page = 1;          // новый поиск — всегда с первой страницы!
+  load();
+}, 400));
+</pre>
+
+      <h3>«Гонка» запросов: когда старый ответ приходит позже нового</h3>
+      <p>Даже с debounce бывает так: вы отправили запрос на «ph», передумали и отправили «phone». Сервер ответил на второй запрос быстрее, а на первый — позже. Если просто показывать ответы по мере прихода, <b>старый перезапишет новый</b>, и в поле «phone», а в списке — результаты для «ph». Это называется <b>гонка запросов</b> (race condition).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы заказали плов, а через минуту передумали и заказали самбусу. Если повара приносят блюда в порядке готовности, самбуса приедет первой, а потом вам «довезут» ненужный плов — и вы съедите не то. Правильно: каждому заказу выдать номер и принимать только блюдо с <b>последним</b> номером.</p>
+      </div>
+
+<pre class="code" data-run data-title="Баг: старый ответ перезаписывает новый">
+const delays = { ph: 300, phone: 100 };   // на «ph» сервер отвечает дольше
+const fakeFetch = (q) =&gt; new Promise((resolve) =&gt;
+  setTimeout(() =&gt; resolve("результаты для " + q), delays[q]));
+
+async function search(q) {
+  const result = await fakeFetch(q);
+  console.log("показано:", result);
+}
+
+search("ph");
+setTimeout(() =&gt; search("phone"), 50);
+// на экране остаётся устаревшее «ph» — пользователь видит не то, что искал
+</pre>
+
+      <p>Лекарство простое: у каждого запроса — свой номер, показываем только ответ на <b>самый свежий</b>:</p>
+<pre class="code" data-run data-title="Фикс: номер запроса">
+const delays = { ph: 300, phone: 100 };
+const fakeFetch = (q) =&gt; new Promise((resolve) =&gt;
+  setTimeout(() =&gt; resolve("результаты для " + q), delays[q]));
+
+let lastRequest = 0;                    // номер последнего запроса
+
+async function search(q) {
+  const id = ++lastRequest;             // берём свой номер
+  const result = await fakeFetch(q);
+  if (id !== lastRequest) return;       // за это время ушёл более новый — выбрасываем
+  console.log("показано:", result);
+}
+
+search("ph");
+setTimeout(() =&gt; search("phone"), 50);
+</pre>
+
+      <p>Есть и «взрослый» способ — отменять устаревший запрос через <code>AbortController</code>: браузер прекращает ждать, а <code>fetch</code> выбрасывает ошибку с именем <code>AbortError</code>, которую нужно спокойно проглотить.</p>
+<pre class="code" data-run data-title="Отмена запроса: AbortController">
+const controller = new AbortController();
+
+fetch("https://dummyjson.com/products?limit=3", { signal: controller.signal })
+  .then(() =&gt; console.log("ответ пришёл"))
+  .catch((error) =&gt; console.log("отменён:", error.name));
+
+controller.abort();    // «не жду ответа»
+</pre>
+
+      <div class="callout tip">
+        <b>Что выбрать</b>
+        <p>Для начала — счётчик <code>lastRequest</code>: он работает везде и понятен с первого взгляда. <code>AbortController</code> экономит трафик, но требует аккуратной обработки <code>AbortError</code>. В нашем приложении будет счётчик.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/settimeout-setinterval" target="_blank" rel="noopener">learn.javascript.ru — setTimeout и setInterval</a> · <a href="https://learn.javascript.ru/fetch-abort" target="_blank" rel="noopener">Fetch: прерывание запроса</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Поиск, debounce и защита от гонки.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Функция search</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите <code>search(q)</code>: она запрашивает <code>https://dummyjson.com/products/search</code> с параметрами <code>q</code>, <code>limit=5</code>, <code>select=title</code> (через <code>URLSearchParams</code>) и возвращает массив <code>products</code>. Проверка уже написана.</p>
+<pre class="code" data-run>
+async function search(q) {
+  // ваш код
+}
+
+async function main() {
+  console.log((await search("phone")).length &gt; 0);
+  console.log((await search("zzzzqq")).length);
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>true
+0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Параметры: <code>new URLSearchParams({ q, limit: 5, select: "title" })</code>. Адрес: <code>"https://dummyjson.com/products/search?" + params</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Дальше как обычно: <code>await fetch</code>, <code>await response.json()</code>, <code>return data.products</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Предскажи: сколько раз сработает поиск</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>debounce(fn, ms)</code>. Затем <b>до запуска</b> выпишите, какие строки появятся: три быстрых вызова в момент 0 мс, ещё один на 100-й миллисекунде и последний — на 600-й. Пауза <code>debounce</code> — 200 мс.</p>
+<pre class="code" data-run>
+function debounce(fn, ms) {
+  // ваш код
+}
+
+const log = debounce((text) =&gt; console.log("ищем:", text), 200);
+
+log("п");
+log("пл");
+log("пло");
+setTimeout(() =&gt; log("плов"), 100);
+setTimeout(() =&gt; log("плов!"), 600);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ищем: плов
+ищем: плов!</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужна переменная <code>timer</code> снаружи возвращаемой функции, чтобы она «помнила» прошлый таймер.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return (...args) =&gt; { clearTimeout(timer); timer = setTimeout(() =&gt; fn(...args), ms); };</code></p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Поле поиска с debounce</h4><span class="level mid">средняя</span></header>
+          <p>В песочнице уже есть <code>debounce</code> и «поддельный» поиск <code>fakeSearch</code>. Подпишитесь на событие <code>input</code>: через <code>debounce</code> с паузой 300 мс вызывайте <code>fakeSearch(input.value.trim())</code>. Ниже код имитирует набор слова «phone» с паузой 50 мс между буквами.</p>
+          <div class="playground" data-mode="dom" data-title="Поиск с debounce">
+<pre class="code" data-lang="html">
+&lt;input id="q" type="search" placeholder="Поиск"&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const input = document.querySelector("#q");
+let requests = 0;
+
+function fakeSearch(text) {
+  requests++;
+  console.log(`запрос: ${text}`);
+}
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) =&gt; {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+// ваш код: подписка на input через debounce
+
+
+// --- имитация набора, не меняйте ---
+[..."phone"].forEach((char, i) =&gt; {
+  setTimeout(() =&gt; {
+    input.value += char;
+    input.dispatchEvent(new Event("input"));
+  }, i * 50);
+});
+setTimeout(() =&gt; console.log(`всего запросов: ${requests}`), 1000);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>запрос: phone
+всего запросов: 1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Обработчик события — это результат вызова <code>debounce(...)</code>: <code>input.addEventListener("input", debounce(…, 300));</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри передайте стрелочную функцию: <code>() =&gt; fakeSearch(input.value.trim())</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ЗАДАЧА 4.4</span><h4>Найди баг: гонка запросов</h4><span class="level hard">сложная</span></header>
+          <p>Запускаются два поиска: «ph» (сервер отвечает за 300 мс) и через 50 мс «phone» (за 100 мс). Сейчас показываются <b>оба</b> результата, причём устаревший приходит последним. Исправьте <code>search</code> так, чтобы показывался только результат самого свежего запроса.</p>
+<pre class="code" data-run>
+const delays = { ph: 300, phone: 100 };
+const fakeFetch = (q) =&gt; new Promise((resolve) =&gt;
+  setTimeout(() =&gt; resolve("результаты для " + q), delays[q]));
+function show(text) { console.log("показано:", text); }
+
+async function search(q) {
+  const result = await fakeFetch(q);
+  show(result);
+}
+
+search("ph");
+setTimeout(() =&gt; search("phone"), 50);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>показано: результаты для phone</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Заведите снаружи функции счётчик <code>let lastRequest = 0;</code> и в начале <code>search</code> берите номер: <code>const id = ++lastRequest;</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>После <code>await</code> сравните: <code>if (id !== lastRequest) return;</code> — если номер не последний, ответ устарел.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="filter">
+      <h2 data-toc="Фильтрация и сортировка"><span class="num">05</span> Фильтрация и сортировка</h2>
+
+      <p>Фильтровать можно в двух местах — и от выбора зависит скорость и удобство:</p>
+
+      <div class="cols">
+        <div class="col good">
+          <b>Фильтр на сервере</b>
+          <p>Вы просите у API только нужное: <code>/products/category/smartphones</code>. Приходит меньше данных, работает на больших каталогах (тысячи записей), совместимо с пагинацией. Но каждый новый фильтр — новый запрос.</p>
+        </div>
+        <div class="col good">
+          <b>Фильтр на клиенте</b>
+          <p>Данные уже загружены, а вы просто делаете <code>filter</code> по массиву. Мгновенно, без сети. Но работает, только если на руках весь набор — для огромных каталогов и страничной загрузки не подходит.</p>
+        </div>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Сервер — это склад на «Корвоне»: вы звоните и просите «пришлите только красные ковры» — вам везут нужное. Клиент — это ваш прилавок: ковры уже привезли, вы просто раскладываете красные влево, остальные вправо. Склад экономит дорогу, прилавок — время ожидания.</p>
+      </div>
+
+      <h3>Фильтр по категории — на стороне сервера</h3>
+<pre class="code" data-run data-title="Категории и товары категории">
+async function getJson(url) {
+  const response = await fetch(url);
+  return response.json();
+}
+
+async function main() {
+  const categories = await getJson("https://dummyjson.com/products/category-list");
+  console.log("категорий больше десяти:", categories.length &gt; 10);
+  console.log(categories.slice(0, 3));
+
+  const data = await getJson("https://dummyjson.com/products/category/smartphones?limit=3&amp;select=title,category");
+  data.products.forEach((p) =&gt; console.log(p.category, "—", p.title));
+}
+main();
+</pre>
+
+      <h3>Сортировка на сервере</h3>
+      <p>DummyJSON умеет сортировать сам: параметры <code>sortBy</code> (по какому полю) и <code>order</code> (<code>asc</code> — по возрастанию, <code>desc</code> — по убыванию).</p>
+<pre class="code" data-run data-title="Самые дешёвые товары">
+async function main() {
+  const params = new URLSearchParams({ sortBy: "price", order: "asc", limit: 5, select: "title,price" });
+  const response = await fetch("https://dummyjson.com/products?" + params);
+  const data = await response.json();
+  data.products.forEach((p) =&gt; console.log(p.price, p.title));
+}
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Ограничения API — читайте документацию</b>
+        <p>У DummyJSON эндпоинт <code>/products/search</code> <b>не комбинируется</b> с категорией: вы либо ищете по словам, либо берёте товары категории. Придумывать <code>?q=phone&amp;category=smartphones</code> бесполезно — сервер проигнорирует категорию. Реальные API полны таких ограничений. В нашем приложении правило будет простым: <b>если введён поиск — работает поиск; если выбрана категория — работает категория; выбирая одно, сбрасываем другое.</b></p>
+      </div>
+
+      <h3>Фильтр на клиенте: filter + includes</h3>
+      <p>Когда нужно скомбинировать условия, а данных мало, фильтруем массив на месте. Одно условие — один «отсев»:</p>
+<pre class="code" data-run data-title="Несколько условий в одном filter">
+const menu = [
+  { title: "Самбуса", category: "выпечка", price: 6 },
+  { title: "Курутоб", category: "горячее", price: 35 },
+  { title: "Шакароб", category: "салаты", price: 15 },
+  { title: "Оши палав", category: "горячее", price: 40 },
+];
+
+function applyFilters(items, { q = "", category = "", maxPrice = Infinity }) {
+  const text = q.trim().toLowerCase();
+  return items.filter((item) =&gt; {
+    if (text &amp;&amp; !item.title.toLowerCase().includes(text)) return false;  // поиск без учёта регистра
+    if (category &amp;&amp; item.category !== category) return false;
+    return item.price &lt;= maxPrice;
+  });
+}
+
+console.log(applyFilters(menu, { category: "горячее" }).map((i) =&gt; i.title));
+console.log(applyFilters(menu, { q: "ША", maxPrice: 20 }).map((i) =&gt; i.title));
+</pre>
+      <p>Обратите внимание на приём: фильтры «выключаются» значениями по умолчанию (<code>q = ""</code>, <code>category = ""</code>, <code>maxPrice = Infinity</code>) — пустое условие пропускает всё.</p>
+
+      <h3>Выпадающий список из данных</h3>
+      <p>Категории не нужно вписывать руками: их можно собрать из данных. <code>new Set(...)</code> оставляет только уникальные значения — то, что нужно для <code>&lt;select&gt;</code>:</p>
+<pre class="code" data-run>
+const menu = ["выпечка", "горячее", "горячее", "салаты", "выпечка"];
+const unique = [...new Set(menu)];
+console.log(unique);   // ["выпечка", "горячее", "салаты"]
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/array-methods" target="_blank" rel="noopener">learn.javascript.ru — Методы массивов</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Array/filter" target="_blank" rel="noopener">MDN — Array.prototype.filter</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Фильтры и сортировка — на сервере и на клиенте.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Товары одной категории</h4><span class="level easy">лёгкая</span></header>
+          <p>Выведите три строки: есть ли <code>"smartphones"</code> в <code>category-list</code>; все ли товары из ответа <code>/products/category/smartphones?limit=3&amp;select=category</code> имеют категорию <code>smartphones</code> (<code>every</code>); сколько товаров пришло.</p>
+<pre class="code" data-run>
+async function getJson(url) {
+  const response = await fetch(url);
+  return response.json();
+}
+
+async function main() {
+  // три console.log
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>true
+true
+3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>const categories = await getJson(".../products/category-list");</code> — это обычный массив строк, у него есть <code>includes</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>data.products.every((p) =&gt; p.category === "smartphones")</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Самые дорогие: сортировка и проверка</h4><span class="level mid">средняя</span></header>
+          <p>Запросите 5 товаров, отсортированных по цене <b>по убыванию</b> (<code>sortBy=price</code>, <code>order=desc</code>, <code>select=price</code>, <code>limit=5</code> — соберите через <code>URLSearchParams</code>). Проверьте, что цены действительно убывают, и выведите результат и количество.</p>
+<pre class="code" data-run>
+async function main() {
+  // запрос → массив цен → проверка через every
+  // console.log("по убыванию:", ...);
+  // console.log("количество:", ...);
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>по убыванию: true
+количество: 5</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Цены: <code>data.products.map((p) =&gt; p.price)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Каждая цена не больше предыдущей: <code>prices.every((price, i) =&gt; i === 0 || prices[i - 1] &gt;= price)</code></p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Меню: фильтр по трём условиям</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>applyFilters(items, { q, category, maxPrice })</code>. Поиск — по названию, без учёта регистра; категория — точное совпадение; <code>maxPrice</code> — «не дороже». Любое условие можно не передавать. Функция <code>show</code> уже написана.</p>
+<pre class="code" data-run>
+const menu = [
+  { title: "Самбуса с мясом", category: "выпечка", price: 6 },
+  { title: "Самбуса с тыквой", category: "выпечка", price: 5 },
+  { title: "Курутоб", category: "горячее", price: 35 },
+  { title: "Шакароб", category: "салаты", price: 15 },
+  { title: "Оши палав", category: "горячее", price: 40 },
+  { title: "Манту", category: "горячее", price: 30 },
+];
+
+function applyFilters(items, { q = "", category = "", maxPrice = Infinity }) {
+  // ваш код
+}
+
+function show(items) {
+  console.log(items.map((item) =&gt; item.title).join(", ") || "ничего не найдено");
+}
+
+show(applyFilters(menu, { q: "самбуса" }));
+show(applyFilters(menu, { category: "горячее", maxPrice: 35 }));
+show(applyFilters(menu, { q: "ШАК" }));
+show(applyFilters(menu, { category: "супы" }));
+show(applyFilters(menu, { q: "а", category: "горячее", maxPrice: 30 }));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Самбуса с мясом, Самбуса с тыквой
+Курутоб, Манту
+Шакароб
+ничего не найдено
+Манту</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Приведите искомый текст и название к нижнему регистру: <code>toLowerCase()</code>. Проверка вхождения — <code>includes</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри <code>items.filter(...)</code> по очереди отсеивайте: <code>if (text &amp;&amp; !… ) return false;</code>, <code>if (category &amp;&amp; … !== category) return false;</code> и в конце <code>return item.price &lt;= maxPrice;</code></p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>Select с категориями из данных</h4><span class="level hard">сложная</span></header>
+          <p>Дополните песочницу: <b>1)</b> заполните <code>select</code>: первая опция «Все» со значением <code>""</code>, потом по одной опции на каждую уникальную категорию (помогут <code>new Set</code> и готовая <code>addOption</code>); <b>2)</b> при событии <code>change</code> показывайте только товары выбранной категории (или все, если выбрано «Все»), используя готовую <code>renderList</code>. Ниже код сам «выбирает» категории и печатает проверку.</p>
+          <div class="playground" data-mode="dom" data-title="Фильтр по категории">
+<pre class="code" data-lang="html">
+&lt;select id="category"&gt;&lt;/select&gt;
+&lt;ul id="list"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="js">
+const menu = [
+  { title: "Самбуса с мясом", category: "выпечка" },
+  { title: "Самбуса с тыквой", category: "выпечка" },
+  { title: "Курутоб", category: "горячее" },
+  { title: "Оши палав", category: "горячее" },
+  { title: "Манту", category: "горячее" },
+  { title: "Шакароб", category: "салаты" },
+];
+const select = document.querySelector("#category");
+const list = document.querySelector("#list");
+
+function addOption(value, text) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = text;
+  select.append(option);
+}
+
+function renderList(items) {
+  list.replaceChildren();
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.textContent = item.title;
+    list.append(li);
+  }
+}
+
+// 1) заполните select: «Все» + уникальные категории
+// 2) покажите всё меню, затем подпишитесь на change
+
+
+// --- проверка, не меняйте ---
+console.log(`опций: ${select.options.length}`);
+select.value = "горячее";
+select.dispatchEvent(new Event("change"));
+console.log(`горячее: ${list.children.length}`);
+select.value = "";
+select.dispatchEvent(new Event("change"));
+console.log(`все: ${list.children.length}`);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>опций: 4
+горячее: 3
+все: 6</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>addOption("", "Все");</code>, затем цикл <code>for (const category of new Set(menu.map((item) =&gt; item.category)))</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В обработчике: <code>const value = select.value; renderList(value ? menu.filter((item) =&gt; item.category === value) : menu);</code> Не забудьте один вызов <code>renderList(menu)</code> до подписки.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="pagination">
+      <h2 data-toc="Пагинация"><span class="num">06</span> Пагинация: страницы по limit и skip</h2>
+
+      <p>В каталоге 194 товара — грузить их все сразу глупо: долго, тяжело и никто столько не пролистает. Поэтому сервер отдаёт данные <b>порциями</b>, а вы просите нужную порцию. Это и есть <b>пагинация</b> (постраничная загрузка).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Плов на свадьбе подают не всем котлом, а <b>порциями на ляганах</b>: на каждый — десять порций. Хотите добавки — просите следующий ляган. Параметр <code>limit</code> — сколько порций на ляган, <code>skip</code> — сколько порций вы уже съели и пропускаете.</p>
+      </div>
+
+      <h3>Два популярных способа</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Способ</th><th>Параметры</th><th>Кто использует</th></tr></thead>
+          <tbody>
+            <tr><td><b>limit + skip</b> (offset)</td><td>«дай <code>limit</code> штук, пропустив первые <code>skip</code>»</td><td>DummyJSON, PokeAPI (<code>limit</code> + <code>offset</code>)</td></tr>
+            <tr><td><b>page</b></td><td>«дай страницу № <code>page</code>», размер страницы задан сервером</td><td>Rick and Morty (20 на странице), CoinGecko (<code>page</code> + <code>per_page</code>)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Пользователь мыслит <b>номерами страниц</b>: «страница 3». Серверу DummyJSON нужен <code>skip</code>. Переводим формулой:</p>
+
+      <figure class="diagram">
+        <div class="anatomy">
+          <span class="part p1" data-label="пропустить">skip</span><span class="part p2" data-label="=">=</span><span class="part p3" data-label="номер страницы минус 1">(page − 1)</span><span class="part p4" data-label="×">×</span><span class="part p5" data-label="размер страницы">limit</span>
+        </div>
+        <figcaption>Страница 1 пропускает 0 записей, страница 2 — <code>limit</code> записей, страница 3 — <code>2 × limit</code></figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Страница</th><th>skip при limit = 10</th><th>Какие записи</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><code>0</code></td><td>1–10</td></tr>
+            <tr><td>2</td><td><code>10</code></td><td>11–20</td></tr>
+            <tr><td>3</td><td><code>20</code></td><td>21–30</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>А сколько всего страниц? Делим общее число записей (<code>total</code> из ответа) на размер страницы и <b>округляем вверх</b> — неполная последняя страница тоже страница:</p>
+<pre class="code" data-run data-title="Формулы пагинации">
+const pagesCount = (total, limit) =&gt; Math.ceil(total / limit);
+const pageToSkip = (page, limit) =&gt; (page - 1) * limit;
+
+console.log(pagesCount(100, 10));   // 10
+console.log(pagesCount(101, 10));   // 11 — одна запись «спилась» на новую страницу
+console.log(pageToSkip(3, 10));     // 20
+</pre>
+
+<pre class="code" data-run data-title="Живая страница из API">
+async function loadPage(page, limit) {
+  const params = new URLSearchParams({ limit, skip: (page - 1) * limit, select: "title" });
+  const response = await fetch("https://dummyjson.com/products?" + params);
+  return response.json();
+}
+
+async function main() {
+  const data = await loadPage(2, 5);
+  console.log(`skip=${data.skip}, limit=${data.limit}`);
+  console.log("страниц всего больше одной:", Math.ceil(data.total / data.limit) &gt; 1);
+  data.products.forEach((p) =&gt; console.log(p.id, p.title));
+}
+main();
+</pre>
+
+      <h3>Кнопки «Назад» и «Вперёд»</h3>
+      <p>Состояние пагинации — это всего два числа: текущая страница и общее число страниц. Всё остальное рисуется от них:</p>
+      <ul>
+        <li>«Назад» выключена на первой странице: <code>prev.disabled = page === 1</code>.</li>
+        <li>«Вперёд» выключена на последней: <code>next.disabled = page === pages</code>.</li>
+        <li>Подпись «Страница 3 из 5» собирается из тех же чисел.</li>
+        <li>После <b>нового поиска</b> или смены категории страница сбрасывается на <b>первую</b> — иначе можно оказаться на 7-й странице результатов, которых всего три.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Частые ошибки</b>
+        <p><b>1.</b> <code>skip = page * limit</code> без «−1» — пропускается целая страница, первая порция товаров не видна никогда. <b>2.</b> Страницы считают через <code>Math.floor</code> или <code>Math.round</code> — теряется последняя страница. <b>3.</b> Забывают сбросить <code>page = 1</code> при новом поиске. <b>4.</b> Пустой поиск у DummyJSON вернёт <code>total: 0</code> — делить на ноль не страшно, но «страница 1 из 0» выглядит странно: показывайте минимум одну страницу (<code>Math.max(1, …)</code>).</p>
+      </div>
+
+      <h3>Rick and Morty: страницы без skip</h3>
+      <p>Там всё проще: <code>?page=2</code>. А сколько страниц — подсказывает сам сервер в <code>info.pages</code>, и даже даёт <code>info.next</code> — адрес следующей страницы или <code>null</code>, если страница последняя. Это удобно для кнопки «Показать ещё».</p>
+
+<pre class="code" data-run data-title="Показать ещё: накапливаем страницы">
+let page = 0;
+let items = [];
+
+async function loadMore(name) {
+  page++;
+  const params = new URLSearchParams({ name, page });
+  const response = await fetch("https://rickandmortyapi.com/api/character?" + params);
+  const data = await response.json();
+  items = items.concat(data.results);       // не заменяем, а дописываем
+  return data.info.next !== null;           // есть ли ещё страницы
+}
+
+async function main() {
+  let hasMore = await loadMore("rick");
+  console.log("после 1-й загрузки:", items.length, hasMore);
+  hasMore = await loadMore("rick");
+  console.log("после 2-й загрузки:", items.length, hasMore);
+}
+main();
+</pre>
+
+      <p>Есть два интерфейса: <b>страницы</b> (кнопки, пролистываем номерами; <code>render</code> заменяет список) и <b>«Показать ещё» / бесконечная лента</b> (карточки дописываются; <code>render</code> добавляет, а не очищает). Выбор — дело дизайна, а запросы одинаковые.</p>
+
+      <p class="muted">Читать подробнее: <a href="https://dummyjson.com/docs/products" target="_blank" rel="noopener">DummyJSON — Products</a> · <a href="https://rickandmortyapi.com/documentation/#character" target="_blank" rel="noopener">Rick and Morty API — Character</a> · <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Global_Objects/Math/ceil" target="_blank" rel="noopener">MDN — Math.ceil</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Формулы, живые страницы и кнопки.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Сколько страниц</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите <code>pagesCount(total, limit)</code> — количество страниц с учётом неполной последней.</p>
+<pre class="code" data-run>
+function pagesCount(total, limit) {
+  // ваш код
+}
+
+console.log(pagesCount(100, 10));
+console.log(pagesCount(101, 10));
+console.log(pagesCount(0, 10));
+console.log(pagesCount(5, 10));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>10
+11
+0
+1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Деление даёт дробь для неполной страницы: 101 / 10 = 10.1. Нужно округлить <b>вверх</b>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return Math.ceil(total / limit);</code></p></details>
+        </article>
+
+        <article class="task" id="t6-2">
+          <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Адрес страницы</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите <code>pageToSkip(page, limit)</code> и <code>productsUrl(page, limit)</code>: адрес вида <code>https://dummyjson.com/products?limit=10&amp;skip=20</code> (сначала <code>limit</code>, потом <code>skip</code>).</p>
+<pre class="code" data-run>
+function pageToSkip(page, limit) {
+  // ваш код
+}
+
+function productsUrl(page, limit) {
+  // ваш код
+}
+
+console.log(productsUrl(1, 10));
+console.log(productsUrl(3, 10));
+console.log(productsUrl(2, 5));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>https://dummyjson.com/products?limit=10&amp;skip=0
+https://dummyjson.com/products?limit=10&amp;skip=20
+https://dummyjson.com/products?limit=5&amp;skip=5</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Первая страница пропускает 0 записей: <code>(page - 1) * limit</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Шаблонная строка: <code>`https://dummyjson.com/products?limit=${limit}&amp;skip=${pageToSkip(page, limit)}`</code></p></details>
+        </article>
+
+        <article class="task" id="t6-3">
+          <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Две страницы без повторов</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>loadPage(page, limit)</code> (запрос к <code>/products</code> с <code>limit</code>, <code>skip</code> и <code>select=title</code>, возвращает весь объект ответа). Загрузите страницы 1 и 2 по 5 штук и выведите: <code>skip</code> и <code>limit</code> второй страницы, нет ли в ней товаров первой (по <code>id</code>), и больше ли страниц одной.</p>
+<pre class="code" data-run>
+async function loadPage(page, limit) {
+  // ваш код
+}
+
+async function main() {
+  const first = await loadPage(1, 5);
+  const second = await loadPage(2, 5);
+  console.log(`skip=${second.skip}, limit=${second.limit}`);
+  // без повторов: используйте Set из id первой страницы
+  // страниц больше одной: Math.ceil(second.total / second.limit) &gt; 1
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>skip=5, limit=5
+без повторов: true
+страниц больше одной: true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>const ids = new Set(first.products.map((p) =&gt; p.id));</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>second.products.every((p) =&gt; !ids.has(p.id))</code> — ни один <code>id</code> второй страницы не лежит в <code>ids</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-4">
+          <header><span class="task-num">ЗАДАЧА 6.4</span><h4>Кнопки пагинации</h4><span class="level mid">средняя</span></header>
+          <p>В песочнице 47 записей по 10 на странице — 5 страниц. Напишите <code>render</code> (подпись «Страница N из M», выключение кнопок) и подпишите кнопки на <code>click</code> (<code>page--</code> / <code>page++</code> и <code>render()</code>). Не забудьте вызвать <code>render</code> один раз при старте. Код ниже «кликает» по кнопкам, в том числе по выключенным.</p>
+          <div class="playground" data-mode="dom" data-title="Пагинация">
+<pre class="code" data-lang="html">
+&lt;button id="prev"&gt;← Назад&lt;/button&gt;
+&lt;span id="label"&gt;&lt;/span&gt;
+&lt;button id="next"&gt;Вперёд →&lt;/button&gt;
+</pre>
+<pre class="code" data-lang="js">
+const total = 47;
+const limit = 10;
+const pages = Math.ceil(total / limit);
+let page = 1;
+
+const prev = document.querySelector("#prev");
+const next = document.querySelector("#next");
+const label = document.querySelector("#label");
+
+function render() {
+  // подпись и disabled для обеих кнопок
+}
+
+// подписки на click и первый вызов render()
+
+
+// --- имитация кликов, не меняйте ---
+const state = (b) =&gt; (b.disabled ? "выкл" : "вкл");
+const report = () =&gt; console.log(`${label.textContent} | назад: ${state(prev)} | вперёд: ${state(next)}`);
+report();
+next.click(); next.click();
+report();
+next.click(); next.click(); next.click();
+report();
+prev.click();
+report();
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Страница 1 из 5 | назад: выкл | вперёд: вкл
+Страница 3 из 5 | назад: вкл | вперёд: вкл
+Страница 5 из 5 | назад: вкл | вперёд: выкл
+Страница 4 из 5 | назад: вкл | вперёд: вкл</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>label.textContent = `Страница ${page} из ${pages}`;</code> и <code>prev.disabled = page === 1;</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Клик по уже выключенной кнопке ничего не делает, поэтому «перелистать» дальше пятой страницы не получится: следите лишь за тем, чтобы <code>render()</code> вызывался после каждого изменения <code>page</code>.</p></details>
+        </article>
+
+        <article class="task" id="t6-5">
+          <header><span class="task-num">ЗАДАЧА 6.5</span><h4>«Показать ещё» на Рике и Морти</h4><span class="level hard">сложная</span></header>
+          <p>Напишите <code>loadMore(name)</code>: она увеличивает счётчик <code>page</code>, запрашивает <code>https://rickandmortyapi.com/api/character?name=…&amp;page=…</code>, <b>дописывает</b> <code>data.results</code> в массив <code>items</code> и возвращает <code>true</code>, если есть следующая страница (<code>data.info.next !== null</code>). Вызовите её дважды подряд для «rick» и выведите после каждого вызова: сколько накопилось и есть ли ещё.</p>
+<pre class="code" data-run>
+let page = 0;
+let items = [];
+
+async function loadMore(name) {
+  // ваш код
+}
+
+async function main() {
+  // два вызова loadMore, после каждого console.log(items.length, hasMore)
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>20 true
+40 true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Страница размером 20 — задана сервером. Накопление: <code>items = items.concat(data.results);</code> (а не <code>items = data.results</code>).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>main</code>: <code>let hasMore = await loadMore("rick"); console.log(items.length, hasMore);</code> — и ещё раз то же самое.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ-блок"><span class="num">07</span> ИИ-блок: читаем документацию API вместе с ИИ</h2>
+
+      <p>Документации бывают длинные, на английском и написаны так, что нужный параметр найти сложно. ИИ отлично помогает <b>быстро найти эндпоинт и параметры</b> — если дать ему сам текст документации. Но у него есть слабость: когда документации под рукой нет, он <b>выдумывает</b> параметры, которые звучат правдоподобно, но у вашего API не существуют.</p>
+
+      <div class="callout ai">
+        <b>Правила курса, которые здесь особенно важны</b>
+        <p><b>1.</b> Сначала 15 минут пробуете сами: открываете документацию, ищете эндпоинт, пишете адрес вручную. <b>2.</b> Потом идёте к ИИ. <b>3.</b> Не вставляйте в проект код, который не можете объяснить строчка за строчкой. <b>4.</b> Всё, что сказал ИИ про параметры API, <b>сверяйте с настоящим ответом сервера</b> — запросом в консоли.</p>
+      </div>
+
+      <h3>Как просить: плохо и хорошо</h3>
+      <p>Формула промпта курса: <b>контекст → задача → ограничения → формат ответа → проверка</b>. Главное для документации — <b>вставить её текст</b> (или нужный кусок), а не просить «вспомнить».</p>
+
+      <div class="prompt bad-prompt">как в dummyjson искать товары по категории и по названию одновременно</div>
+      <div class="prompt good-prompt">Я учу JavaScript, пишу каталог товаров на чистом JS без библиотек. Вот фрагмент документации DummyJSON: [вставьте текст со страницы https://dummyjson.com/docs/products]. Мне нужно: показать страницу из 6 товаров, искать по названию и фильтровать по категории. Скажи: какой эндпоинт для поиска, какой для категории, какие у них параметры (limit, skip, select, sortBy, order) и можно ли их комбинировать. Ответь таблицей «задача → эндпоинт → параметры» и одним примером запроса на fetch с URLSearchParams. Если в документации чего-то нет, так и скажи, ничего не выдумывай. В конце напиши, что мне проверить руками в консоли.</div>
+
+      <p>Скопируйте хороший промпт, подставьте настоящий текст документации — и получите ответ. А теперь проверим главную ловушку: что будет, если поверить выдуманному параметру. Допустим, ИИ уверенно посоветовал <code>?category=smartphones</code> к поиску:</p>
+
+<pre class="code" data-run data-title="Проверяем совет ИИ запросом">
+async function main() {
+  const params = new URLSearchParams({ q: "phone", category: "smartphones", limit: 10, select: "title,category" });
+  const response = await fetch("https://dummyjson.com/products/search?" + params);
+  const data = await response.json();
+
+  const works = data.products.every((p) =&gt; p.category === "smartphones");
+  console.log("параметр category сработал:", works);
+  console.log(data.products.map((p) =&gt; p.category));
+}
+main();
+// false — сервер молча проигнорировал выдуманный параметр. Ошибки нет, но и фильтра нет!
+</pre>
+
+      <div class="callout tip">
+        <b>Что проверять в ответе ИИ по API</b>
+        <p>1) Такой параметр есть в документации? 2) Список лежит там, где ИИ сказал (<code>data.products</code> или просто массив)? 3) Что вернётся при «ничего не найдено» — пустой список или 404? 4) Нужен ли ключ API (в нашем курсе — нет)? 5) Совпадает ли пример с реальным ответом в консоли?</p>
+      </div>
+
+      <p>Так выглядит кусок документации. Научитесь читать его без перевода — по названиям параметров и примерам:</p>
+<pre class="code" data-title="Фрагмент документации (сокращённо)">
+GET https://dummyjson.com/products/category/{category}
+
+Query-параметры:
+  limit    сколько записей вернуть
+  skip     сколько записей пропустить
+  select   поля через запятую (title,price)
+  sortBy   поле для сортировки
+  order    asc | desc
+
+Ответ: { products: [...], total, skip, limit }
+</pre>
+
+      <div class="practice">
+        <h3>Практика: проверяем ИИ и читаем документацию</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>ИИ написал сборку адреса — найдите три бага</h4><span class="level mid">средняя</span></header>
+          <p>ИИ написал функцию для адреса списка товаров. Она выглядит нормально, но в ней <b>три</b> ошибки: неверный <code>skip</code>, поиск идёт не на тот эндпоинт и значение <code>q</code> не кодируется. Исправьте (параметры в адресе — в порядке <code>limit</code>, <code>skip</code>, <code>q</code>).</p>
+<pre class="code" data-run>
+// написано ИИ — не доверяем, проверяем
+function buildProductsUrl(page, limit, q) {
+  const skip = page * limit;
+  let url = "https://dummyjson.com/products?limit=" + limit + "&amp;skip=" + skip;
+  if (q) url += "&amp;q=" + q;
+  return url;
+}
+
+console.log(buildProductsUrl(1, 10, ""));
+console.log(buildProductsUrl(3, 10, "iphone case"));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>https://dummyjson.com/products?limit=10&amp;skip=0
+https://dummyjson.com/products/search?limit=10&amp;skip=20&amp;q=iphone+case</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Страница 1 должна пропускать 0 записей: <code>(page - 1) * limit</code>. А для непустого <code>q</code> нужен путь <code>/products/search</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Соберите <code>new URLSearchParams({ limit, skip })</code>, при непустом <code>q</code> добавьте <code>params.set("q", q)</code> и верните адрес с <code>/search</code>; иначе — без него.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Адрес по документации</h4><span class="level mid">средняя</span></header>
+          <p>По фрагменту выше: три самых дешёвых ноутбука — категория <code>laptops</code>, <code>limit=3</code>, сортировка по цене по возрастанию, поля <code>title,price</code> (параметры в таком порядке: <code>limit</code>, <code>sortBy</code>, <code>order</code>, <code>select</code>). Выведите адрес, затем количество полученных товаров и то, что цены действительно идут по возрастанию. (Запятая в адресе превратится в <code>%2C</code> — это нормально, сервер понимает.)</p>
+<pre class="code" data-run>
+async function main() {
+  // 1) соберите адрес через URLSearchParams и выведите его
+  // 2) запросите, выведите количество и проверку сортировки
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>https://dummyjson.com/products/category/laptops?limit=3&amp;sortBy=price&amp;order=asc&amp;select=title%2Cprice
+3
+true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>new URLSearchParams({ limit: 3, sortBy: "price", order: "asc", select: "title,price" })</code> — порядок ключей в объекте задаёт порядок в адресе.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Проверка сортировки: <code>prices.every((price, i) =&gt; i === 0 || prices[i - 1] &lt;= price)</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">08</span> Практика на уроке: каталог с поиском, категориями и страницами</h2>
+
+      <p>Соберём приложение из всех кусочков урока. Это тот самый «рабочий каталог»: поиск, фильтр по категории, постраничная загрузка и данные с настоящего сервера. Строим шаг за шагом — после каждого шага запускайте и смотрите.</p>
+
+      <h3>Шаг 1. Состояние и адрес запроса</h3>
+      <p>Вся логика приложения держится на одном объекте <code>state</code> (урок 11): что ищем, какая категория, какая страница. А функция <code>buildUrl</code> превращает состояние в адрес. Запустите — пока без сети:</p>
+
+<pre class="code" data-run data-title="Шаг 1. state → адрес">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1 };
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {                                  // поиск главнее категории
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+console.log(buildUrl());
+
+state.page = 3;
+console.log(buildUrl());
+
+state.category = "laptops";
+state.page = 1;
+console.log(buildUrl());
+
+state.q = "mac";
+console.log(buildUrl());
+</pre>
+
+      <h3>Шаг 2. Загрузка и рендер</h3>
+      <p>Подключаем <code>fetch</code> и <code>render</code>: запрос по <code>buildUrl()</code>, очистка списка, карточки, а для пустого результата — сообщение. Состояние «Загрузка…» показываем пока ждём.</p>
+
+      <div class="playground" data-mode="dom" data-title="Шаг 2. Список из API">
+<pre class="code" data-lang="html">
+&lt;p id="status"&gt;&lt;/p&gt;
+&lt;ul id="list" class="grid"&gt;&lt;/ul&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font: 14px system-ui; margin: 8px; }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 8px; padding: 6px; text-align: center; }
+.card img { width: 100%; height: 60px; object-fit: contain; }
+.card h3 { font-size: 12px; margin: 4px 0 0; }
+.card p { margin: 2px 0 0; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1 };
+
+const list = document.querySelector("#list");
+const statusEl = document.querySelector("#status");
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+function render(products) {
+  list.replaceChildren();
+  if (products.length === 0) {
+    statusEl.textContent = "Ничего не найдено";
+    return;
+  }
+  statusEl.textContent = "";
+  for (const product of products) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+    const name = document.createElement("h3");
+    name.textContent = product.title;
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+    li.append(img, name, price);
+    list.append(li);
+  }
+}
+
+async function load() {
+  statusEl.textContent = "Загрузка…";
+  const response = await fetch(buildUrl());
+  const data = await response.json();
+  render(data.products);
+}
+
+load();
+</pre>
+      </div>
+
+      <h3>Шаг 3. Страницы</h3>
+      <p>К <code>state</code> добавляем <code>pages</code> (сколько страниц) — его считаем из <code>data.total</code> после каждого ответа. Функция <code>go(page)</code> проверяет границы, меняет страницу и загружает. <code>updatePager</code> рисует подпись и выключает лишние кнопки.</p>
+
+<pre class="code" data-title="Шаг 3. Что добавляем к шагу 2" data-lang="js">
+const state = { q: "", category: "", page: 1, pages: 1 };
+
+function updatePager() {
+  info.textContent = `Страница ${state.page} из ${state.pages}`;
+  prev.disabled = state.page &lt;= 1;
+  next.disabled = state.page &gt;= state.pages;
+}
+
+async function load() {
+  statusEl.textContent = "Загрузка…";
+  const response = await fetch(buildUrl());
+  const data = await response.json();
+  state.pages = Math.max(1, Math.ceil(data.total / LIMIT));   // минимум одна страница
+  render(data.products);
+  updatePager();
+}
+
+async function go(page) {
+  if (page &lt; 1 || page &gt; state.pages) return;   // за границы не ходим
+  state.page = page;
+  await load();
+}
+
+prev.addEventListener("click", () =&gt; go(state.page - 1));
+next.addEventListener("click", () =&gt; go(state.page + 1));
+</pre>
+
+      <h3>Шаг 4. Поиск и категории</h3>
+      <p>Поиск — это <code>debounce</code> + функция <code>search</code>, которая задаёт <code>state.q</code>, <b>сбрасывает категорию и страницу</b> и загружает. Категория — симметрично. В <code>load</code> добавляем защиту от гонки (<code>lastRequest</code>) и минимальную обработку ошибок. Вот готовое приложение целиком — поищите «phone», выберите категорию, полистайте страницы:</p>
+
+      <div class="playground" data-mode="dom" data-title="Каталог: готовое приложение">
+<pre class="code" data-lang="html">
+&lt;div class="app"&gt;
+  &lt;div class="bar"&gt;
+    &lt;input id="q" type="search" placeholder="Поиск товара…"&gt;
+    &lt;select id="category"&gt;&lt;option value=""&gt;Все категории&lt;/option&gt;&lt;/select&gt;
+  &lt;/div&gt;
+  &lt;p id="status" class="status"&gt;&lt;/p&gt;
+  &lt;ul id="list" class="grid"&gt;&lt;/ul&gt;
+  &lt;div class="pager"&gt;
+    &lt;button id="prev"&gt;← Назад&lt;/button&gt;
+    &lt;span id="info"&gt;&lt;/span&gt;
+    &lt;button id="next"&gt;Вперёд →&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font: 14px system-ui; margin: 8px; }
+.bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.bar input { flex: 1; padding: 6px 8px; }
+.status { color: #666; min-height: 1.2em; margin: 4px 0; }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 8px; padding: 6px; text-align: center; }
+.card img { width: 100%; height: 60px; object-fit: contain; }
+.card h3 { font-size: 12px; margin: 4px 0 0; }
+.card p { margin: 2px 0 0; font-weight: 700; }
+.pager { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1, pages: 1 };
+
+const list = document.querySelector("#list");
+const statusEl = document.querySelector("#status");
+const info = document.querySelector("#info");
+const prev = document.querySelector("#prev");
+const next = document.querySelector("#next");
+const qInput = document.querySelector("#q");
+const catSelect = document.querySelector("#category");
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) =&gt; {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+function render(products) {
+  list.replaceChildren();
+  if (products.length === 0) {
+    statusEl.textContent = "Ничего не найдено";
+    return;
+  }
+  statusEl.textContent = "";
+  for (const product of products) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+    const name = document.createElement("h3");
+    name.textContent = product.title;
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+    li.append(img, name, price);
+    list.append(li);
+  }
+}
+
+function updatePager() {
+  info.textContent = `Страница ${state.page} из ${state.pages}`;
+  prev.disabled = state.page &lt;= 1;
+  next.disabled = state.page &gt;= state.pages;
+}
+
+let lastRequest = 0;
+async function load() {
+  const id = ++lastRequest;
+  statusEl.textContent = "Загрузка…";
+  try {
+    const response = await fetch(buildUrl());
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const data = await response.json();
+    if (id !== lastRequest) return;
+    state.pages = Math.max(1, Math.ceil(data.total / LIMIT));
+    render(data.products);
+    updatePager();
+  } catch (error) {
+    if (id !== lastRequest) return;
+    list.replaceChildren();
+    statusEl.textContent = "Не удалось загрузить: " + error.message;
+  }
+}
+
+async function go(page) {
+  if (page &lt; 1 || page &gt; state.pages) return;
+  state.page = page;
+  await load();
+}
+
+async function search(text) {
+  state.q = text.trim();
+  state.category = "";
+  catSelect.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function pickCategory(value) {
+  state.category = value;
+  state.q = "";
+  qInput.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function loadCategories() {
+  const response = await fetch(`${API}/category-list`);
+  const names = await response.json();
+  for (const name of names) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    catSelect.append(option);
+  }
+}
+
+prev.addEventListener("click", () =&gt; go(state.page - 1));
+next.addEventListener("click", () =&gt; go(state.page + 1));
+catSelect.addEventListener("change", () =&gt; pickCategory(catSelect.value));
+qInput.addEventListener("input", debounce(() =&gt; search(qInput.value), 400));
+
+loadCategories();
+load();
+</pre>
+      </div>
+
+      <div class="callout tip">
+        <b>Что здесь важно заметить</b>
+        <p><b>Один источник правды:</b> <code>state</code>. Кнопки, поиск и select не рисуют список сами, они меняют состояние и зовут <code>load()</code>. <b>Один «рисовальщик»:</b> <code>render</code> всегда перестраивает список целиком. <b>Один «адресный стол»:</b> <code>buildUrl</code>. Добавить новый фильтр — значит добавить поле в <code>state</code>, строчку в <code>buildUrl</code> и обработчик события. Остальное не трогаем.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: достраиваем приложение</h3>
+        <p>В двух задачах — то же приложение, но из него вынуто по одному куску. Допишите его: песочница сама прогонит сценарий и напечатает проверку (нужен интернет, проверка занимает несколько секунд).</p>
+
+        <article class="task" id="t8-1">
+          <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Пагинация: go и updatePager</h4><span class="level mid">средняя</span></header>
+          <p>В приложении пусты функции <code>updatePager</code> (подпись «Страница N из M» и <code>disabled</code> для кнопок) и <code>go(page)</code> (проверка границ, смена страницы, загрузка). Допишите их.</p>
+          <div class="playground" data-mode="dom" data-title="Каталог: допишите пагинацию">
+<pre class="code" data-lang="html">
+&lt;div class="app"&gt;
+  &lt;div class="bar"&gt;
+    &lt;input id="q" type="search" placeholder="Поиск товара…"&gt;
+    &lt;select id="category"&gt;&lt;option value=""&gt;Все категории&lt;/option&gt;&lt;/select&gt;
+  &lt;/div&gt;
+  &lt;p id="status" class="status"&gt;&lt;/p&gt;
+  &lt;ul id="list" class="grid"&gt;&lt;/ul&gt;
+  &lt;div class="pager"&gt;
+    &lt;button id="prev"&gt;← Назад&lt;/button&gt;
+    &lt;span id="info"&gt;&lt;/span&gt;
+    &lt;button id="next"&gt;Вперёд →&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font: 14px system-ui; margin: 8px; }
+.bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.bar input { flex: 1; padding: 6px 8px; }
+.status { color: #666; min-height: 1.2em; margin: 4px 0; }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 8px; padding: 6px; text-align: center; }
+.card img { width: 100%; height: 60px; object-fit: contain; }
+.card h3 { font-size: 12px; margin: 4px 0 0; }
+.card p { margin: 2px 0 0; font-weight: 700; }
+.pager { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1, pages: 1 };
+
+const list = document.querySelector("#list");
+const statusEl = document.querySelector("#status");
+const info = document.querySelector("#info");
+const prev = document.querySelector("#prev");
+const next = document.querySelector("#next");
+const qInput = document.querySelector("#q");
+const catSelect = document.querySelector("#category");
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) =&gt; {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+function render(products) {
+  list.replaceChildren();
+  if (products.length === 0) {
+    statusEl.textContent = "Ничего не найдено";
+    return;
+  }
+  statusEl.textContent = "";
+  for (const product of products) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+    const name = document.createElement("h3");
+    name.textContent = product.title;
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+    li.append(img, name, price);
+    list.append(li);
+  }
+}
+
+function updatePager() {
+  // TODO: подпись «Страница N из M» и disabled для prev / next
+}
+
+let lastRequest = 0;
+async function load() {
+  const id = ++lastRequest;
+  statusEl.textContent = "Загрузка…";
+  try {
+    const response = await fetch(buildUrl());
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const data = await response.json();
+    if (id !== lastRequest) return;
+    state.pages = Math.max(1, Math.ceil(data.total / LIMIT));
+    render(data.products);
+    updatePager();
+  } catch (error) {
+    if (id !== lastRequest) return;
+    list.replaceChildren();
+    statusEl.textContent = "Не удалось загрузить: " + error.message;
+  }
+}
+
+async function go(page) {
+  // TODO: проверить границы, сменить страницу, загрузить
+}
+
+async function search(text) {
+  state.q = text.trim();
+  state.category = "";
+  catSelect.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function pickCategory(value) {
+  state.category = value;
+  state.q = "";
+  qInput.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function loadCategories() {
+  const response = await fetch(`${API}/category-list`);
+  const names = await response.json();
+  for (const name of names) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    catSelect.append(option);
+  }
+}
+
+prev.addEventListener("click", () =&gt; go(state.page - 1));
+next.addEventListener("click", () =&gt; go(state.page + 1));
+catSelect.addEventListener("change", () =&gt; pickCategory(catSelect.value));
+qInput.addEventListener("input", debounce(() =&gt; search(qInput.value), 400));
+
+// --- проверка, не меняйте ---
+async function check() {
+  await loadCategories();
+  await load();
+  console.log(`карточек: ${list.children.length}`);
+  console.log(`страниц больше одной: ${state.pages &gt; 1}`);
+  console.log(`на первой странице «Назад» ${prev.disabled ? "выкл" : "вкл"}`);
+  await go(2);
+  console.log(`страница ${state.page}, карточек: ${list.children.length}`);
+  await go(0);
+  console.log(`go(0) оставила страницу ${state.page}`);
+  console.log(`назад ${prev.disabled ? "выкл" : "вкл"}, вперёд ${next.disabled ? "выкл" : "вкл"}`);
+}
+check();
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>карточек: 6
+страниц больше одной: true
+на первой странице «Назад» выкл
+страница 2, карточек: 6
+go(0) оставила страницу 2
+назад вкл, вперёд вкл</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>updatePager</code>: <code>info.textContent = `Страница ${state.page} из ${state.pages}`;</code> затем <code>prev.disabled = state.page &lt;= 1;</code> и <code>next.disabled = state.page &gt;= state.pages;</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>go</code>: если <code>page &lt; 1 || page &gt; state.pages</code> — просто <code>return</code>; иначе <code>state.page = page; await load();</code></p></details>
+        </article>
+
+        <article class="task" id="t8-2">
+          <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Поиск: search со сбросом страницы</h4><span class="level hard">сложная</span></header>
+          <p>Функция <code>search(text)</code> пока пустая. Она должна: убрать пробелы по краям и записать в <code>state.q</code>, <b>сбросить категорию</b> (<code>state.category</code> и значение <code>catSelect</code>), <b>вернуть страницу на первую</b> и загрузить данные. Тогда после поиска «zzzzqq» приложение покажет «Ничего не найдено», а пустой поиск вернёт обычный список.</p>
+          <div class="playground" data-mode="dom" data-title="Каталог: допишите поиск">
+<pre class="code" data-lang="html">
+&lt;div class="app"&gt;
+  &lt;div class="bar"&gt;
+    &lt;input id="q" type="search" placeholder="Поиск товара…"&gt;
+    &lt;select id="category"&gt;&lt;option value=""&gt;Все категории&lt;/option&gt;&lt;/select&gt;
+  &lt;/div&gt;
+  &lt;p id="status" class="status"&gt;&lt;/p&gt;
+  &lt;ul id="list" class="grid"&gt;&lt;/ul&gt;
+  &lt;div class="pager"&gt;
+    &lt;button id="prev"&gt;← Назад&lt;/button&gt;
+    &lt;span id="info"&gt;&lt;/span&gt;
+    &lt;button id="next"&gt;Вперёд →&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+body { font: 14px system-ui; margin: 8px; }
+.bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.bar input { flex: 1; padding: 6px 8px; }
+.status { color: #666; min-height: 1.2em; margin: 4px 0; }
+.grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.card { border: 1px solid #ccc; border-radius: 8px; padding: 6px; text-align: center; }
+.card img { width: 100%; height: 60px; object-fit: contain; }
+.card h3 { font-size: 12px; margin: 4px 0 0; }
+.card p { margin: 2px 0 0; font-weight: 700; }
+.pager { display: flex; gap: 12px; align-items: center; justify-content: center; margin-top: 10px; }
+</pre>
+<pre class="code" data-lang="js">
+const API = "https://dummyjson.com/products";
+const LIMIT = 6;
+const state = { q: "", category: "", page: 1, pages: 1 };
+
+const list = document.querySelector("#list");
+const statusEl = document.querySelector("#status");
+const info = document.querySelector("#info");
+const prev = document.querySelector("#prev");
+const next = document.querySelector("#next");
+const qInput = document.querySelector("#q");
+const catSelect = document.querySelector("#category");
+
+function debounce(fn, ms) {
+  let timer;
+  return (...args) =&gt; {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), ms);
+  };
+}
+
+function buildUrl() {
+  const params = new URLSearchParams({
+    limit: LIMIT,
+    skip: (state.page - 1) * LIMIT,
+    select: "title,price,thumbnail",
+  });
+  if (state.q) {
+    params.set("q", state.q);
+    return `${API}/search?${params}`;
+  }
+  if (state.category) return `${API}/category/${state.category}?${params}`;
+  return `${API}?${params}`;
+}
+
+function render(products) {
+  list.replaceChildren();
+  if (products.length === 0) {
+    statusEl.textContent = "Ничего не найдено";
+    return;
+  }
+  statusEl.textContent = "";
+  for (const product of products) {
+    const li = document.createElement("li");
+    li.className = "card";
+    const img = document.createElement("img");
+    img.src = product.thumbnail;
+    img.alt = product.title;
+    const name = document.createElement("h3");
+    name.textContent = product.title;
+    const price = document.createElement("p");
+    price.textContent = `${product.price} $`;
+    li.append(img, name, price);
+    list.append(li);
+  }
+}
+
+function updatePager() {
+  info.textContent = `Страница ${state.page} из ${state.pages}`;
+  prev.disabled = state.page &lt;= 1;
+  next.disabled = state.page &gt;= state.pages;
+}
+
+let lastRequest = 0;
+async function load() {
+  const id = ++lastRequest;
+  statusEl.textContent = "Загрузка…";
+  try {
+    const response = await fetch(buildUrl());
+    if (!response.ok) throw new Error("HTTP " + response.status);
+    const data = await response.json();
+    if (id !== lastRequest) return;
+    state.pages = Math.max(1, Math.ceil(data.total / LIMIT));
+    render(data.products);
+    updatePager();
+  } catch (error) {
+    if (id !== lastRequest) return;
+    list.replaceChildren();
+    statusEl.textContent = "Не удалось загрузить: " + error.message;
+  }
+}
+
+async function go(page) {
+  if (page &lt; 1 || page &gt; state.pages) return;
+  state.page = page;
+  await load();
+}
+
+async function search(text) {
+  // TODO: записать текст, сбросить категорию и страницу, загрузить
+}
+
+async function pickCategory(value) {
+  state.category = value;
+  state.q = "";
+  qInput.value = "";
+  state.page = 1;
+  await load();
+}
+
+async function loadCategories() {
+  const response = await fetch(`${API}/category-list`);
+  const names = await response.json();
+  for (const name of names) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    catSelect.append(option);
+  }
+}
+
+prev.addEventListener("click", () =&gt; go(state.page - 1));
+next.addEventListener("click", () =&gt; go(state.page + 1));
+catSelect.addEventListener("change", () =&gt; pickCategory(catSelect.value));
+qInput.addEventListener("input", debounce(() =&gt; search(qInput.value), 400));
+
+// --- проверка, не меняйте ---
+async function check() {
+  await load();
+  await go(3);
+  console.log(`страница: ${state.page}`);
+  await search("phone");
+  console.log(`поиск: карточек больше нуля: ${list.children.length &gt; 0}`);
+  console.log(`страница после поиска: ${state.page}`);
+  await search("zzzzqq");
+  console.log(`пусто: ${list.children.length === 0}, сообщение: ${statusEl.textContent}`);
+  await search("");
+  console.log(`сброс поиска, карточек: ${list.children.length}`);
+}
+check();
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>страница: 3
+поиск: карточек больше нуля: true
+страница после поиска: 1
+пусто: true, сообщение: Ничего не найдено
+сброс поиска, карточек: 6</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Четыре строки перед загрузкой: <code>state.q = text.trim();</code>, <code>state.category = "";</code>, <code>catSelect.value = "";</code>, <code>state.page = 1;</code></p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Не забудьте последнюю строку — <code>await load();</code>. Без неё состояние поменяется, а список — нет.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 09 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание</h2>
+
+      <p>Добавьте <b>поиск и пагинацию</b> в своё приложение с API. Основа — приложение из урока 14 (два API), каталог из практики сегодня или любая из тем ниже. Все API — публичные и <b>без ключей</b>: проверено, отвечают из браузера.</p>
+
+      <h3>Выберите тему</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Тема</th><th>API и документация</th><th>Поиск</th><th>Пагинация / фильтр</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><b>A. Фильмы и сериалы</b></td>
+              <td><a href="https://www.tvmaze.com/api" target="_blank" rel="noopener">TVmaze</a> — без ключа (TMDB и OMDb требуют ключ, в курсе их не используем)</td>
+              <td><code>https://api.tvmaze.com/search/shows?q=…</code>: массив <code>{ score, show }</code>; пусто — <code>[]</code></td>
+              <td>Каталог <code>https://api.tvmaze.com/shows?page=0</code> (по ~250, страницы с 0; за пределами — <b>404</b>). Фильтр по жанру — на клиенте (<code>show.genres</code>). Постер <code>show.image</code> может быть <code>null</code>!</td>
+            </tr>
+            <tr>
+              <td><b>B. Погода</b></td>
+              <td><a href="https://open-meteo.com/en/docs/geocoding-api" target="_blank" rel="noopener">Open-Meteo Geocoding</a> и <a href="https://open-meteo.com/en/docs" target="_blank" rel="noopener">Forecast</a></td>
+              <td>Поиск города: <code>geocoding-api.open-meteo.com/v1/search?name=…&amp;count=10&amp;language=ru</code>. Если ничего не нашли, в ответе <b>нет поля <code>results</code></b> — используйте <code>data.results ?? []</code></td>
+              <td>Выбранный город → <code>api.open-meteo.com/v1/forecast?latitude=…&amp;longitude=…&amp;daily=temperature_2m_max,temperature_2m_min&amp;timezone=auto</code>. Страницы — «показать ещё дни» или листание найденных городов (<code>count</code> до 100)</td>
+            </tr>
+            <tr>
+              <td><b>C. Криптовалюты</b></td>
+              <td><a href="https://docs.coingecko.com/v3.0.1/reference/introduction" target="_blank" rel="noopener">CoinGecko</a> (публичный endpoint)</td>
+              <td><code>https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&amp;per_page=10&amp;page=1</code>; поиск — клиентский по <code>name</code> и <code>symbol</code></td>
+              <td>Страницы: <code>per_page</code> + <code>page</code>. Фильтр: растёт / падает (<code>price_change_percentage_24h</code>). Лимит запросов небольшой: при <b>429</b> покажите понятное сообщение и не спамьте запросами</td>
+            </tr>
+            <tr>
+              <td><b>D. Рик и Морти</b></td>
+              <td><a href="https://rickandmortyapi.com/documentation/#character" target="_blank" rel="noopener">Rick and Morty API</a></td>
+              <td><code>…/api/character?name=…</code>; ничего нет — <b>404</b></td>
+              <td><code>page</code>, <code>info.pages</code>; серверные фильтры <code>status</code> (alive / dead / unknown) и <code>gender</code>. Всё на сервере — самый простой вариант</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Своё публичное API без ключа тоже можно — но заранее согласуйте с преподавателем и проверьте: отвечает ли оно из браузера (CORS) и есть ли поиск и страницы.</p>
+
+      <h3>Что должно быть в приложении</h3>
+      <ol>
+        <li><b>Данные с API.</b> Функция <code>getJson</code> (из урока 14): проверка <code>response.ok</code>, <code>try / catch</code>, понятное сообщение об ошибке.</li>
+        <li><b>Адрес — через <code>URLSearchParams</code>.</b> Ни одной склейки параметров строками. Функция <code>buildUrl</code> или аналог.</li>
+        <li><b>Рендер списка.</b> Одна функция <code>render</code>, которая сначала очищает; текст вставляется через <code>textContent</code>; есть состояние «Ничего не найдено».</li>
+        <li><b>Поиск с <code>debounce</code></b> 300–500 мс и защитой от гонки (<code>lastRequest</code> или <code>AbortController</code>).</li>
+        <li><b>Фильтр или сортировка</b> — минимум одно, на сервере или на клиенте (осознанно выберите и напишите в README почему).</li>
+        <li><b>Пагинация:</b> страницы (кнопки «Назад» / «Вперёд» с <code>disabled</code> на краях и подпись «Страница N из M») <b>или</b> «Показать ещё». При новом поиске страница сбрасывается.</li>
+        <li><b>Минимальные состояния:</b> «Загрузка…», «Ничего не найдено», «Ошибка» (подробно — на следующем уроке).</li>
+        <li><b>README:</b> какой API взят, ссылка на документацию, как устроены параметры поиска и страниц, какой запрос вы проверяли руками.</li>
+        <li><b>ИИ:</b> прочитайте документацию вместе с ИИ по промпту из урока и добавьте в README: промпт, что ИИ предложил, <b>что оказалось неверным или неточным</b> и как вы это проверили запросом.</li>
+      </ol>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Ссылку на репозиторий GitHub (папка с <code>index.html</code>, <code>style.css</code>, <code>script.js</code> и README).</li>
+        <li>Две-три фразы в README: что сделано и что оказалось самым сложным.</li>
+        <li>Скриншот приложения (с результатами поиска) — по желанию, как приложение к README.</li>
+      </ul>
+
+      <h3>Как оцениваем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Данные грузятся с API, адреса через <code>URLSearchParams</code>, ошибки сети обработаны</td><td>2</td></tr>
+            <tr><td>Рендер: очистка, <code>textContent</code>, «Ничего не найдено»</td><td>2</td></tr>
+            <tr><td>Поиск с <code>debounce</code> и защитой от гонки, сброс страницы при новом поиске</td><td>2</td></tr>
+            <tr><td>Пагинация работает на всех страницах, кнопки блокируются на краях</td><td>2</td></tr>
+            <tr><td>Фильтр или сортировка + README и разбор ответа ИИ</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Перед сдачей</b>
+        <p>Пройдите сценарий руками: найдите что-нибудь, листните на 2-ю страницу, введите новый поиск (вернулись на 1-ю?), введите чепуху (есть «Ничего не найдено»?), отключите интернет (есть сообщение об ошибке?). Каждую строку, которую подсказал ИИ, вы должны уметь объяснить на защите.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Параметры запроса</b> идут после <code>?</code>: <code>ключ=значение</code> через <code>&amp;</code>. Собираем <b>только</b> через <code>new URLSearchParams({…})</code> — он кодирует пробелы, <code>&amp;</code> и кириллицу. <code>params.get()</code> всегда даёт строку или <code>null</code>.</li>
+        <li><b>Читаем API:</b> документация + реальный ответ в консоли. Где список (<code>data.products</code> / <code>data.results</code> / сам массив), где <code>total</code>, что при «пусто» (200 и <code>[]</code> или <b>404</b>).</li>
+        <li><b>Рендер:</b> <code>render(items)</code> всегда сначала очищает (<code>replaceChildren()</code>), потом строит узлы; данные с сервера — через <code>textContent</code>; пустой результат — отдельное сообщение.</li>
+        <li><b>Поиск:</b> <code>input</code> + <code>debounce</code> (300–500 мс) + <code>trim()</code> + сброс на первую страницу. От «гонки» — номер запроса <code>lastRequest</code> или <code>AbortController</code>.</li>
+        <li><b>Фильтр и сортировка:</b> на сервере (<code>/category/…</code>, <code>sortBy</code>, <code>order</code>) — для больших данных; на клиенте (<code>filter</code>, <code>includes</code>) — для уже загруженных. Не все параметры API сочетаются — читайте документацию.</li>
+        <li><b>Пагинация:</b> <code>skip = (page − 1) × limit</code>; страниц <code>Math.ceil(total / limit)</code>; «Назад» выключена на 1-й, «Вперёд» — на последней; у Rick and Morty — <code>page</code> и <code>info.pages / info.next</code>.</li>
+        <li><b>Структура приложения:</b> <code>state</code> → <code>buildUrl()</code> → <code>load()</code> → <code>render()</code> + <code>updatePager()</code>. События лишь меняют состояние и вызывают <code>load()</code>.</li>
+        <li><b>С ИИ:</b> документацию API давайте ему текстом; выдуманные параметры ловим запросом в консоли; в README записываем, что ИИ предложил и что мы исправили.</li>
+      </ul>
+    </section>
