@@ -1,0 +1,1883 @@
+<style>
+  /* схема четырёх состояний и таймлайн debounce (только для этого урока) */
+  .states4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; text-align: left; }
+  .states4 .st { border: 2px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--paper); }
+  .states4 .st > .ttl { display: block; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; }
+  .states4 .st > .sub { display: block; font-size: 14px; color: var(--ink-3); margin-bottom: 8px; }
+  .states4 .st > code { display: block; margin: 2px 0; white-space: normal; }
+  .states4 .loading { border-color: var(--blue); }  .states4 .loading > .ttl { color: var(--blue); }
+  .states4 .empty   { border-color: var(--gold); }  .states4 .empty > .ttl { color: var(--gold); }
+  .states4 .error   { border-color: var(--red); }   .states4 .error > .ttl { color: var(--red); }
+  .states4 .success { border-color: var(--accent); } .states4 .success > .ttl { color: var(--accent); }
+  .tline { display: grid; gap: 6px; font: 600 14px var(--mono); }
+  .tline .row { display: grid; grid-template-columns: 110px 1fr; gap: 10px; align-items: center; }
+  .tline .row > span:first-child { color: var(--ink-3); }
+  .tline .bar { position: relative; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--ink) 6%, transparent); border: 1px solid var(--line); }
+  .tline .tick { position: absolute; top: 3px; bottom: 3px; width: 4px; border-radius: 2px; background: var(--ink-3); }
+  .tline .fire { position: absolute; top: 2px; bottom: 2px; width: 6px; border-radius: 3px; background: var(--accent); }
+  .tline .gap { position: absolute; top: 11px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--gold) 70%, transparent); }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 16 · Async и API</p>
+      <h1>Состояния загрузки, ошибки, debounce</h1>
+      <p class="lead">Вы уже умеете получать данные с настоящего сервера. Но на реальном сайте интернет бывает медленным, сервер — недоступным, а пользователь — нетерпеливым: он печатает в строке поиска быстрее, чем приходят ответы. Сегодня мы научим приложение вести себя достойно в любой из этих ситуаций: показывать загрузку, объяснять ошибку, не заваливать сервер запросами и отменять ненужное.</p>
+      <ul class="goals">
+        <li>Различать четыре состояния экрана: загрузка, ошибка, пусто, данные — и рисовать каждое</li>
+        <li>Проверять <code>response.ok</code> и не путать «сервер ответил ошибкой» с «сети нет»</li>
+        <li>Делать skeleton — серые заглушки на месте будущего контента — на чистом CSS</li>
+        <li>Писать <code>debounce</code> с нуля и объяснять, как он работает через замыкание и таймер</li>
+        <li>Отменять запрос через <code>AbortController</code> и не показывать устаревшие ответы</li>
+        <li>Читать и проверять правки, которые ИИ-агент (Cursor) вносит сразу в несколько файлов</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как работать с этой страницей</b>
+      <p>Код на тёмном фоне с кнопкой <b>▶ Запустить</b> — живой: меняйте его и смотрите на результат в консоли. В этом уроке «сервер» в примерах <b>нарочно медленный</b> и сделан прямо в коде (через <code>Promise</code> и <code>setTimeout</code>), поэтому результат всегда одинаковый и не зависит от вашего интернета; после запуска подождите секунду — строки в консоли появляются по очереди. Примеры с настоящим API тоже есть, но проверяемые задачи работают без сети. Где есть окошко с превью — это мини-страница: слева код, справа результат. Подсказки спрятаны под замочком 🔒: сначала попробуйте сами.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="states">
+      <h2 data-toc="Четыре состояния"><span class="num">01</span> Четыре состояния экрана</h2>
+
+      <p>Представьте, что вы открыли приложение такси и нажали «Заказать». Что вы видите? Крутилку «ищем машину». Если машин рядом нет — сообщение «Свободных машин нет, попробуйте позже». Если пропал интернет — «Нет соединения» и кнопка «Повторить». И только если всё хорошо — карточку водителя. <b>Один и тот же экран, четыре разных картинки</b> — в зависимости от того, что сейчас происходит с данными.</p>
+
+      <p>Новички обычно рисуют только последнюю картинку — «данные пришли». А остальные три забывают. В итоге при медленном интернете пользователь смотрит на пустую страницу и думает, что сайт сломан. Профессионал всегда продумывает все четыре:</p>
+
+      <figure class="diagram">
+        <div class="states4">
+          <div class="st loading"><span class="ttl">loading</span><span class="sub">запрос ушёл, ответа ещё нет</span><code>крутилка или skeleton</code></div>
+          <div class="st error"><span class="ttl">error</span><span class="sub">что-то пошло не так</span><code>понятный текст + «Повторить»</code></div>
+          <div class="st empty"><span class="ttl">empty</span><span class="sub">ответ пришёл, но он пустой</span><code>«Ничего не найдено»</code></div>
+          <div class="st success"><span class="ttl">success</span><span class="sub">ответ пришёл, данные есть</span><code>список, карточки, таблица</code></div>
+        </div>
+        <figcaption>Четыре состояния экрана, который показывает данные с сервера. Плюс «idle» — самое начало, когда ещё ничего не запрашивали</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы пришли в чойхону и заказали курутоб. Хороший официант не стоит молча: «Готовим, минут десять» (loading); «Курутоб закончился» (error — заказать нельзя); «К сожалению, в меню такого блюда нет» (empty — искали, но не нашли); и наконец — приносит тарелку (success). Плохой официант просто исчезает, и вы сидите и гадаете: заказ принят или нет?</p>
+      </div>
+
+      <h3>Где хранить состояние</h3>
+      <p>Из урока про состояние (урок 11) вы знаете главное правило: <b>есть данные — есть функция, которая по ним рисует экран</b>. Здесь так же. Заводим один объект <code>state</code> с тремя полями и одну функцию <code>view</code> (или <code>render</code>), которая решает, что показывать.</p>
+
+<pre class="code" data-run data-title="Состояние и функция, которая по нему рисует (текстом)">
+// status: "idle" | "loading" | "success" | "error"
+function view(state) {
+  if (state.status === "idle") return "Введите название блюда";
+  if (state.status === "loading") return "Загрузка…";
+  if (state.status === "error") return `Ошибка: ${state.error}`;
+  // дальше status === "success"
+  if (state.data.length === 0) return "Ничего не найдено";
+  return `Нашли: ${state.data.join(", ")}`;
+}
+
+console.log(view({ status: "idle", data: [], error: null }));
+console.log(view({ status: "loading", data: [], error: null }));
+console.log(view({ status: "error", data: [], error: "Нет сети" }));
+console.log(view({ status: "success", data: [], error: null }));
+console.log(view({ status: "success", data: ["Курутоб"], error: null }));
+</pre>
+
+      <p>Обратите внимание: «empty» — это <b>не</b> отдельный статус сервера, а частный случай успеха: запрос прошёл, но список оказался пустым. Хотите — выделяйте его отдельным статусом <code>"empty"</code> (так будет удобнее в разметке), хотите — проверяйте <code>data.length</code>. Главное, чтобы пользователь увидел разный текст.</p>
+
+      <h3>Порядок проверок важен</h3>
+      <p>Самая частая ошибка — проверять «пусто?» первой. Пока данные грузятся, список тоже пустой, и пользователь видит «Ничего не найдено» вместо «Загрузка…». Сначала спрашиваем <b>«что случилось с запросом?»</b> (loading, error), и только потом — <b>«что внутри ответа?»</b> (пусто или нет).</p>
+
+      <div class="cols">
+        <div class="col bad">
+          <b>Пустой список первым</b>
+          <p>Во время загрузки — «Ничего не найдено». Пользователь думает, что блюда нет.</p>
+<pre class="code" data-run>
+function view(state) {
+  if (state.data.length === 0) return "Ничего не найдено";
+  if (state.status === "loading") return "Загрузка…";
+  return state.data.join(", ");
+}
+console.log(view({ status: "loading", data: [] }));
+// → Ничего не найдено 😕
+</pre>
+        </div>
+        <div class="col good">
+          <b>Сначала статус</b>
+          <p>Сначала loading и error, потом разбираемся с содержимым.</p>
+<pre class="code" data-run>
+function view(state) {
+  if (state.status === "loading") return "Загрузка…";
+  if (state.data.length === 0) return "Ничего не найдено";
+  return state.data.join(", ");
+}
+console.log(view({ status: "loading", data: [] }));
+// → Загрузка… ✓
+</pre>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Вместо четырёх состояний — одно булево <code>isLoading</code> и «потом посмотрим». Тогда легко получить невозможные комбинации: <code>isLoading: true</code> и одновременно <code>error: "Нет сети"</code>. Один <code>status</code> с понятными значениями такого не допускает: в любой момент он равен ровно одному из них.</p>
+      </div>
+
+      <h3>Переходы между состояниями</h3>
+      <p>Состояния сменяют друг друга по простому сценарию. Запомните его — он будет в каждом приложении, которое вы напишете:</p>
+      <ol class="steps">
+        <li><b>Пользователь что-то сделал</b> (открыл страницу, нажал «Найти») → ставим <code>status: "loading"</code> и перерисовываем экран.</li>
+        <li><b>Сервер ответил</b> → ставим <code>status: "success"</code> (или <code>"empty"</code>) и кладём данные.</li>
+        <li><b>Что-то сломалось</b> → ставим <code>status: "error"</code> и кладём <b>понятный</b> текст ошибки.</li>
+        <li><b>Пользователь нажал «Повторить»</b> → снова шаг 1.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Совет</b>
+        <p>При новом запросе полезно <b>не стирать</b> старые данные, пока идёт загрузка, а при ошибке — не терять уже показанный список. Тогда можно рисовать «Не удалось обновить» над прежним списком, а не оставлять пользователя с пустым экраном. Сегодня мы будем так делать там, где это удобно.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/ru/docs/Web/Accessibility/ARIA/Attributes/aria-busy" target="_blank" rel="noopener">MDN: aria-busy — как сообщить о загрузке вспомогательным технологиям</a> · <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru: Fetch</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Пока без сети и без таймеров: учимся мыслить состояниями.</p>
+
+        <article class="task" id="t1-1">
+          <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Что покажет экран</h4><span class="level easy">лёгкая</span></header>
+          <p><b>Предскажите вывод</b>, не запуская код: что напечатает каждая из четырёх строк? Запишите прогноз, затем нажмите «Запустить» и сверьтесь. Обратите внимание на второе состояние: статус «success», но данных нет.</p>
+<pre class="code" data-run>
+const states = [
+  { status: "loading" },
+  { status: "success", data: [] },
+  { status: "success", data: ["Курутоб", "Нон"] },
+  { status: "error", error: "Нет сети" },
+];
+
+function label(s) {
+  if (s.status === "loading") return "Загрузка…";
+  if (s.status === "error") return `Ошибка: ${s.error}`;
+  if (s.data.length === 0) return "Ничего не найдено";
+  return `Найдено: ${s.data.length}`;
+}
+
+states.forEach((s) => console.log(label(s)));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Загрузка…
+Ничего не найдено
+Найдено: 2
+Ошибка: Нет сети</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Идите по состояниям сверху вниз и для каждого находите первую сработавшую проверку в <code>label</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>У первого состояния нет поля <code>data</code>, но до проверки <code>s.data.length</code> дело не доходит: функция уже вышла на первом <code>return</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-2">
+          <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Текст для каждого состояния</h4><span class="level easy">лёгкая</span></header>
+          <p>Напишите функцию <code>view(state)</code>, которая возвращает текст для экрана поиска блюд: для <code>idle</code> — <code>Введите запрос</code>; для <code>loading</code> — <code>Загрузка…</code>; для <code>error</code> — <code>Ошибка: </code> и текст ошибки; если данных нет — <code>Ничего не найдено по запросу «…»</code> (с запросом из <code>state.query</code>); иначе — <code>Блюда: </code> и названия через запятую.</p>
+<pre class="code" data-run>
+// function view(state) { ... }
+
+console.log(view({ status: "idle", query: "", data: [], error: null }));
+console.log(view({ status: "loading", query: "нон", data: [], error: null }));
+console.log(view({ status: "error", query: "нон", data: [], error: "Сервер не отвечает" }));
+console.log(view({ status: "success", query: "борщ", data: [], error: null }));
+console.log(view({ status: "success", query: "н", data: ["Курутоб", "Нон"], error: null }));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Введите запрос
+Загрузка…
+Ошибка: Сервер не отвечает
+Ничего не найдено по запросу «борщ»
+Блюда: Курутоб, Нон</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Цепочка <code>if</code> с ранним <code>return</code> (урок 5): сначала <code>idle</code>, <code>loading</code>, <code>error</code>, и только потом проверка длины <code>state.data</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Названия через запятую с пробелом: <code>state.data.join(", ")</code>. Запрос в кавычках-ёлочках вставляется шаблонной строкой: <code>`... «${state.query}»`</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-3">
+          <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Найди баг: «Ничего не найдено» вместо загрузки</h4><span class="level mid">средняя</span></header>
+          <p>Пользователи жалуются: пока идёт загрузка, они видят «Ничего не найдено», а при ошибке — тоже. Найдите причину в порядке проверок и исправьте функцию так, чтобы вывод совпал с ожидаемым.</p>
+<pre class="code" data-run>
+function view(state) {
+  if (state.data.length === 0) return "Ничего не найдено";
+  if (state.status === "loading") return "Загрузка…";
+  if (state.status === "error") return `Ошибка: ${state.error}`;
+  return state.data.join(", ");
+}
+
+console.log(view({ status: "loading", data: [], error: null }));
+console.log(view({ status: "error", data: [], error: "Нет сети" }));
+console.log(view({ status: "success", data: [], error: null }));
+console.log(view({ status: "success", data: ["Нон"], error: null }));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Загрузка…
+Ошибка: Нет сети
+Ничего не найдено
+Нон</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Какая проверка срабатывает для <code>loading</code>, если список пуст? Первая же — и функция выходит.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Перенесите строку с <code>data.length === 0</code> на третье место: после <code>loading</code> и <code>error</code>.</p></details>
+        </article>
+
+        <article class="task" id="t1-4">
+          <header><span class="task-num">ЗАДАЧА 1.4</span><h4>Переходы между состояниями</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>next(state, event)</code>: она получает текущее состояние и событие и <b>возвращает новое состояние</b> (старый объект не меняем). События: <code>start</code> → <code>status: "loading"</code>, <code>error: null</code>, прежние данные остаются; <code>done</code> → <code>status: "success"</code>, в <code>data</code> — <code>event.data</code>, ошибки нет; <code>fail</code> → <code>status: "error"</code>, в <code>error</code> — <code>event.error</code>, прежние данные остаются.</p>
+<pre class="code" data-run>
+// function next(state, event) { ... }
+
+let s = { status: "idle", data: [], error: null };
+const events = [
+  { type: "start" },
+  { type: "done", data: ["Нон", "Курутоб"] },
+  { type: "start" },
+  { type: "fail", error: "Нет сети" },
+];
+for (const e of events) {
+  s = next(s, e);
+  console.log(e.type, "→", s.status, s.data.length, s.error);
+}
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>start → loading 0 null
+done → success 2 null
+start → loading 2 null
+fail → error 2 Нет сети</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три <code>if</code> по <code>event.type</code>, в каждом — <code>return</code> нового объекта. Чтобы сохранить прежние данные, скопируйте старое состояние: <code>{ ...state, status: "loading" }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Для <code>done</code> копировать старое состояние не нужно — все три поля задаются заново: <code>{ status: "success", data: event.data, error: null }</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="errors">
+      <h2 data-toc="Загрузка и ошибки"><span class="num">02</span> Запрос, ошибки и «медленный сервер»</h2>
+
+      <p>Теперь подключаем реальную загрузку. Из прошлых уроков вы знаете схему: <code>async</code>-функция, <code>await fetch(...)</code>, <code>try / catch</code>. Добавим к ней состояния: <b>до</b> запроса ставим <code>loading</code>, <b>после</b> — <code>success</code> или <code>error</code>, а <code>finally</code> нам тут почти не нужен: каждое состояние ставится явно.</p>
+
+<pre class="code" data-run data-title="Настоящий API: dummyjson.com (нужен интернет)">
+async function searchProducts(query) {
+  console.log("loading");
+  try {
+    const res = await fetch(`https://dummyjson.com/products/search?q=${query}&amp;limit=3`);
+    const data = await res.json();
+    console.log(`success: ${data.products.length} из ${data.total}`);
+  } catch (err) {
+    console.log(`error: ${err.message}`);
+  }
+}
+
+searchProducts("phone");
+</pre>
+
+      <h3>Две разные ошибки — и fetch различает их не так, как вы думаете</h3>
+      <p>Это ловушка, в которую попадает почти каждый новичок. У запроса бывает <b>два разных вида неудачи</b>:</p>
+      <dl class="terms">
+        <dt>Сети нет</dt><dd>Интернет пропал, сервер не найден, запрос не дошёл. Тогда <code>fetch</code> <b>отклоняет промис</b> — управление уходит в <code>catch</code>.</dd>
+        <dt>Сервер ответил «нет»</dt><dd>Запрос дошёл, но сервер вернул код <code>404</code> («не найдено») или <code>500</code> («у нас всё сломалось»). Для <code>fetch</code> это <b>успех</b>: ответ получен! Промис выполняется, в <code>catch</code> мы не попадаем.</dd>
+      </dl>
+      <p>Поэтому после <code>fetch</code> всегда проверяйте свойство <code>res.ok</code> — оно равно <code>true</code> для кодов 200–299. А если нет — бросайте ошибку сами:</p>
+
+<pre class="code" data-run data-title="Настоящий API: товара 999999 нет → код 404 (нужен интернет)">
+async function loadProduct(id) {
+  try {
+    const res = await fetch(`https://dummyjson.com/products/${id}`);
+    console.log("status:", res.status, "ok:", res.ok);
+    if (!res.ok) throw new Error(`Сервер ответил кодом ${res.status}`);
+    const product = await res.json();
+    console.log("success:", product.title);
+  } catch (err) {
+    console.log("error:", err.message);
+  }
+}
+
+loadProduct(999999);
+</pre>
+      <p>Попробуйте заменить <code>999999</code> на <code>1</code>: код станет 200, и вы увидите название товара.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы отправили курьера в магазин на Зелёном базаре. Если дорогу перекрыли и курьер не дошёл — это «сети нет» (<code>catch</code>). А если курьер дошёл и вернулся со словами «этого товара нет в продаже» — он вернулся <b>успешно</b>, но результат плохой. Именно так <code>fetch</code> и думает: курьер вернулся — значит, успех. Проверять, что именно он принёс, должны вы.</p>
+      </div>
+
+      <h3>«Медленный сервер» в нашем коде</h3>
+      <p>Настоящий API отвечает то быстро, то медленно, то не отвечает вовсе. Чтобы <b>уроки и задачи были честными и одинаковыми у всех</b>, мы сделаем себе «ненастоящий» сервер — функцию <code>fakeSearch</code>. Она ищет блюдо в небольшом массиве, отвечает через заданное время и умеет ломаться по запросу «ошибка». Так делают и профессионалы: пока настоящего сервера нет (или он нестабилен), интерфейс проверяют на заглушке.</p>
+
+      <div class="callout tip">
+        <b>Разберём заглушку</b>
+        <p>Читать её целиком не обязательно, но есть три важных места. <code>setTimeout</code> имитирует задержку сети (<code>ms</code> миллисекунд). Если запрос пустили с названием <code>"ошибка"</code> — промис отклоняется, как при обрыве сети. Параметр <code>signal</code> нужен для отмены — о нём в разделе 5; пока его можно не замечать. Во всех примерах ниже блок «сервер» один и тот же — просто копируйте его целиком.</p>
+      </div>
+
+<pre class="code" data-run data-title="Наш медленный «сервер»">
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+fakeSearch("самбуса").then((dishes) => console.log("Нашли:", dishes.join(", ")));
+fakeSearch("борщ").then((dishes) => console.log("Нашли по «борщ»:", dishes.length));
+fakeSearch("ошибка").catch((err) => console.log("Сбой:", err.message));
+</pre>
+
+      <h3>Полный цикл: loading → success / empty / error</h3>
+      <p>Склеим всё в одну функцию. Каждая строка состояния — это одна «картинка» экрана. Следите за порядком в консоли:</p>
+
+<pre class="code" data-run data-title="Три исхода одного запроса">
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+async function load(query) {
+  console.log("loading…");
+  try {
+    const items = await fakeSearch(query);
+    if (items.length === 0) {
+      console.log("empty: ничего не найдено");
+    } else {
+      console.log(`success: ${items.length} шт.`);
+    }
+  } catch (err) {
+    console.log(`error: ${err.message}`);
+  }
+}
+
+async function main() {
+  await load("курутоб");
+  await load("борщ");
+  await load("ошибка");
+}
+main();
+</pre>
+
+      <div class="callout warn">
+        <b>Ловушка</b>
+        <p>Бросить всё в один <code>catch</code> и написать пользователю <code>err.message</code> как есть — плохая идея. Тексты вроде <code>Failed to fetch</code> или <code>Unexpected token &lt; in JSON</code> пугают и ничего не объясняют. Показывайте человеческую фразу («Не удалось загрузить меню. Проверьте интернет и повторите»), а «технический» текст оставьте для <code>console.error</code> — он нужен вам, а не пользователю.</p>
+      </div>
+
+      <h3>Повтор при сбое</h3>
+      <p>Раз ошибка — частое дело, пользователю нужна кнопка «Повторить». В коде это просто ещё один вызов той же <code>load</code>. А иногда повтор делают автоматически — например, до трёх попыток подряд. Мы потренируем это в задаче 2.4.</p>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/fetch" target="_blank" rel="noopener">learn.javascript.ru: Fetch</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Response/ok" target="_blank" rel="noopener">MDN: Response.ok</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Во всех задачах ниже блок «сервер» уже вставлен — не меняйте его.</p>
+
+        <article class="task" id="t2-1">
+          <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Первый запрос к заглушке</h4><span class="level easy">лёгкая</span></header>
+          <p>Допишите <code>async</code>-функцию <code>main</code>: дождитесь ответа <code>fakeSearch("самбуса")</code> и выведите названия найденных блюд через запятую с пробелом.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+async function main() {
+  // await fakeSearch(...) и console.log
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Самбуса с мясом, Самбуса с тыквой</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>const dishes = await fakeSearch("самбуса");</code> — <code>await</code> разрешён внутри <code>async</code>-функции.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>dishes</code> — массив строк. Склеить его в одну строку через запятую поможет <code>join(", ")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-2">
+          <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Функция load с тремя исходами</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>async function load(query)</code>. Она сначала выводит <code>loading</code>; затем запрашивает блюда; если нашлось хотя бы одно — выводит <code>success: N</code> (N — сколько нашли); если список пуст — <code>empty</code>; если запрос упал — <code>error: </code> и текст ошибки. Вызовы в <code>main</code> уже готовы.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+// async function load(query) { ... }
+
+async function main() {
+  await load("курутоб");
+  await load("ошибка");
+  await load("борщ");
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>loading
+success: 1
+loading
+error: Нет соединения с сервером
+loading
+empty</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Каркас: <code>console.log("loading"); try { const items = await fakeSearch(query); ... } catch (err) { ... }</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Внутри <code>try</code> проверьте <code>items.length === 0</code> — это <code>empty</code>, иначе <code>success</code>. Текст ошибки лежит в <code>err.message</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-3">
+          <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Сервер ответил ошибкой: проверяем ok</h4><span class="level mid">средняя</span></header>
+          <p>Функция <code>fakeHttp(status)</code> ведёт себя как настоящий <code>fetch</code>: <b>всегда</b> возвращает ответ с полями <code>ok</code> и <code>status</code>, даже если статус 404 или 500. Напишите <code>async function getJson(status)</code>: получите ответ; если <code>res.ok</code> ложно — бросьте <code>Error</code> с текстом <code>HTTP 404</code> (с настоящим кодом); иначе верните результат <code>res.json()</code>. В <code>main</code> результат каждого вызова оформляется в консоли.</p>
+<pre class="code" data-run>
+const fakeHttp = (status) =>
+  Promise.resolve({
+    ok: status &gt;= 200 &amp;&amp; status &lt; 300,
+    status,
+    json: () =&gt; Promise.resolve({ dishes: 3 }),
+  });
+
+// async function getJson(status) { ... }
+
+async function main() {
+  for (const status of [200, 404, 500]) {
+    try {
+      const data = await getJson(status);
+      console.log(`${status} → ${data.dishes} блюда`);
+    } catch (err) {
+      console.log(`${status} → ошибка: ${err.message}`);
+    }
+  }
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>200 → 3 блюда
+404 → ошибка: HTTP 404
+500 → ошибка: HTTP 500</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Без проверки <code>ok</code> строки с 404 и 500 покажут «3 блюда»: для «fetch» это успех.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>if (!res.ok) throw new Error(`HTTP ${res.status}`);</code> — и после этой проверки можно спокойно возвращать <code>res.json()</code>.</p></details>
+        </article>
+
+        <article class="task" id="t2-4">
+          <header><span class="task-num">ЗАДАЧА 2.4</span><h4>Три попытки</h4><span class="level hard">сложная</span></header>
+          <p>Сеть в маршрутке нестабильна. <code>flakySearch</code> первые два раза падает с ошибкой <code>Нет сети</code>, а на третий раз работает. Напишите <code>async function searchWithRetry(maxAttempts)</code>: она пробует запрос в цикле; при ошибке выводит <code>попытка N: ошибка (текст)</code> и идёт на следующий круг; при успехе выводит <code>попытка N: успех, найдено K</code> и возвращает результат. Если все попытки исчерпаны — выводит <code>сдаёмся</code> и возвращает <code>null</code>.</p>
+<pre class="code" data-run>
+let calls = 0;
+function flakySearch() {
+  calls++;
+  return new Promise((resolve, reject) =&gt;
+    setTimeout(() =&gt; (calls &lt; 3 ? reject(new Error("Нет сети")) : resolve(["Курутоб"])), 100)
+  );
+}
+
+// async function searchWithRetry(maxAttempts) { ... }
+
+searchWithRetry(4);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>попытка 1: ошибка (Нет сети)
+попытка 2: ошибка (Нет сети)
+попытка 3: успех, найдено 1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Цикл <code>for (let attempt = 1; attempt &lt;= maxAttempts; attempt++)</code>, внутри него — <code>try / catch</code>. Успех — <code>return</code> прямо из <code>try</code>, он сразу завершает функцию и цикл.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>catch</code> только выводим строку и ничего не возвращаем — цикл сам перейдёт к следующей попытке. Строка «сдаёмся» и <code>return null</code> стоят после цикла: сюда доходим, только если ни одна попытка не удалась.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="skeleton">
+      <h2 data-toc="Skeleton"><span class="num">03</span> Skeleton: серые заглушки вместо пустоты</h2>
+
+      <p>Самое простое состояние загрузки — надпись «Загрузка…» или крутилка. Но у неё есть недостаток: страница «прыгает». Сначала на экране маленькая надпись, потом вдруг появляется длинный список, и всё содержимое съезжает вниз. Решение — <b>skeleton</b> («скелет»): на месте будущих карточек показываем серые прямоугольники такого же размера. Пользователь заранее видит, <b>как будет выглядеть</b> страница, а когда приходят данные — заглушки просто заменяются настоящими карточками на тех же местах.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы пришли в чойхону на свадьбу, а стол ещё не накрыт. Но скатерть уже расстелена, а на ней расставлены пустые тарелки — по числу гостей. Вы сразу видите, где будете сидеть и сколько мест. Потом официанты просто кладут еду на готовые тарелки — стол не переставляют. Skeleton — это те самые пустые тарелки.</p>
+      </div>
+
+      <h3>Skeleton на чистом CSS</h3>
+      <p>JavaScript здесь нужен только для одного: поставить на страницу нужное число блоков. Весь «вид» делает CSS. Секрет мерцания — <b>градиент</b>, который «ползёт» слева направо при помощи анимации:</p>
+
+<pre class="code" data-lang="css" data-title="CSS для skeleton">
+.skeleton {
+  /* светло-серый фон с более светлой полосой посередине */
+  background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%);
+  background-size: 400% 100%;      /* градиент в 4 раза шире блока */
+  animation: shimmer 1.2s ease infinite;
+  border-radius: 8px;
+  color: transparent;              /* на случай, если внутри окажется текст */
+}
+
+@keyframes shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+/* уважаем пользователей, которым неприятна анимация */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+</pre>
+
+      <ol class="steps">
+        <li><b>Градиент шире блока.</b> <code>background-size: 400%</code> делает фон в четыре раза шире самого блока — виден только его кусочек.</li>
+        <li><b>Анимация двигает фон.</b> <code>@keyframes shimmer</code> меняет <code>background-position</code> — «светлая полоса» медленно проезжает по блоку.</li>
+        <li><b>Размеры задаёт карточка.</b> Заглушка должна быть той же высоты и ширины, что и настоящая карточка, — иначе страница всё равно «подпрыгнет».</li>
+        <li><b>Не забудьте про доступность.</b> На контейнер ставим <code>aria-busy="true"</code> пока идёт загрузка и <code>"false"</code> — когда закончилась: читалки с экрана поймут, что содержимое обновляется.</li>
+      </ol>
+
+      <p>Посмотрите на готовый пример. Нажмите «Запустить» — сначала вы увидите мерцающие серые карточки, а через 0,8 секунды — настоящие блюда.</p>
+
+<div class="playground" data-mode="dom" data-title="Skeleton → карточки">
+<pre class="code" data-lang="html">
+&lt;div id="list" class="list" aria-busy="true"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.list { display: grid; gap: 10px; }
+.card { height: 54px; padding: 14px 16px; border: 2px solid #ccd3df; border-radius: 12px; background: #fff; font-weight: 700; box-sizing: border-box; }
+.skeleton {
+  border-color: transparent;
+  color: transparent;
+  background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.2s ease infinite;
+}
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+// 1. загрузка: три заглушки
+for (let i = 0; i &lt; 3; i++) {
+  const stub = document.createElement("div");
+  stub.className = "card skeleton";
+  list.append(stub);
+}
+
+// 2. через 0,8 секунды «приходят» данные
+setTimeout(() =&gt; {
+  const cards = ["Курутоб", "Самбуса", "Шакароб"].map((name) =&gt; {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.textContent = name;
+    return card;
+  });
+  list.replaceChildren(...cards);
+  list.setAttribute("aria-busy", "false");
+}, 800);
+</pre>
+</div>
+
+      <div class="callout tip">
+        <b>Когда skeleton, а когда крутилка</b>
+        <p><b>Skeleton</b> хорош, когда вы знаете, как будет выглядеть результат: список карточек, таблица, профиль. <b>Крутилка</b> (спиннер) или короткое «Загрузка…» — когда результат неопределённый или маленький (например, кнопка «Сохранить»). Пользуясь skeleton, показывайте столько заглушек, сколько карточек обычно помещается на экране, — не больше.</p>
+      </div>
+
+      <h3>Skeleton — это не единственное «красивое» состояние</h3>
+      <p>Остальные состояния тоже стоит оформить, а не оставлять «голый» текст:</p>
+      <ul>
+        <li><b>Пусто (empty):</b> короткая фраза и подсказка, что делать: «Ничего не найдено. Попробуйте другое название».</li>
+        <li><b>Ошибка (error):</b> понятная причина и <b>кнопка «Повторить»</b>. Красный цвет — не обязательно, главное — чтобы было ясно, что можно сделать дальше.</li>
+        <li><b>Начало (idle):</b> приглашение к действию: «Введите название блюда».</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Забыть <b>убрать</b> заглушки. Если при ответе сервера вы добавляете карточки через <code>append</code>, а не заменяете содержимое через <code>replaceChildren</code>, серые блоки остаются на странице, а настоящие карточки появляются под ними. Всегда заменяйте контент целиком.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/ru/docs/Web/CSS/CSS_animations/Using_CSS_animations" target="_blank" rel="noopener">MDN: использование CSS-анимаций</a> · <a href="https://developer.mozilla.org/ru/docs/Web/CSS/@media/prefers-reduced-motion" target="_blank" rel="noopener">MDN: prefers-reduced-motion</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>В каждой задаче работает мини-страница: код слева (вкладки <code>index.html</code>, <code>style.css</code>, <code>script.js</code>), результат справа, проверочные строки — в консоли. CSS для skeleton уже готов.</p>
+
+        <article class="task" id="t3-1">
+          <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Три заглушки</h4><span class="level easy">лёгкая</span></header>
+          <p>Допишите функцию <code>showSkeleton(count)</code>: она заменяет содержимое <code>#list</code> на <code>count</code> блоков <code>&lt;div class="card skeleton"&gt;&lt;/div&gt;</code> и ставит на <code>#list</code> атрибут <code>aria-busy="true"</code>. Проверочные строки внизу выведут число блоков, число заглушек и значение атрибута.</p>
+<div class="playground" data-mode="dom" data-title="showSkeleton">
+<pre class="code" data-lang="html">
+&lt;div id="list" class="list"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.list { display: grid; gap: 10px; }
+.card { height: 54px; border: 2px solid #ccd3df; border-radius: 12px; background: #fff; box-sizing: border-box; padding: 14px 16px; font-weight: 700; }
+.skeleton {
+  border-color: transparent;
+  background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.2s ease infinite;
+}
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+</pre>
+<pre class="code" data-lang="js">
+const list = document.querySelector("#list");
+
+function showSkeleton(count) {
+  // очистите list, добавьте count блоков div.card.skeleton
+  // и поставьте aria-busy="true"
+}
+
+showSkeleton(3);
+
+// --- проверка (не удаляйте) ---
+console.log(list.children.length);
+console.log(list.querySelectorAll(".skeleton").length);
+console.log(list.getAttribute("aria-busy"));
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>3
+3
+true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Обычный цикл <code>for</code> на <code>count</code> шагов: на каждом — <code>document.createElement("div")</code>, затем <code>className = "card skeleton"</code> и <code>list.append(...)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Чтобы в начале убрать старое, вызовите <code>list.replaceChildren()</code>. Атрибут ставится так: <code>list.setAttribute("aria-busy", "true")</code>.</p></details>
+        </article>
+
+        <article class="task" id="t3-2">
+          <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Заглушки заменяются карточками</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>showCards(items)</code>: она полностью заменяет содержимое <code>#list</code> карточками <code>div.card</code> (по одной на блюдо, название — в <code>textContent</code>) и ставит <code>aria-busy="false"</code>. После вызова <code>fakeSearch</code> вы должны увидеть, что заглушек не осталось.</p>
+<div class="playground" data-mode="dom" data-title="Skeleton → cards">
+<pre class="code" data-lang="html">
+&lt;div id="list" class="list"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.list { display: grid; gap: 10px; }
+.card { height: 54px; border: 2px solid #ccd3df; border-radius: 12px; background: #fff; box-sizing: border-box; padding: 14px 16px; font-weight: 700; }
+.skeleton {
+  border-color: transparent;
+  background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.2s ease infinite;
+}
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+</pre>
+<pre class="code" data-lang="js">
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const list = document.querySelector("#list");
+const count = (selector) =&gt; list.querySelectorAll(selector).length;
+
+function showSkeleton(n) {
+  const stubs = Array.from({ length: n }, () =&gt; {
+    const stub = document.createElement("div");
+    stub.className = "card skeleton";
+    return stub;
+  });
+  list.replaceChildren(...stubs);
+  list.setAttribute("aria-busy", "true");
+}
+
+function showCards(items) {
+  // замените содержимое list карточками div.card и поставьте aria-busy="false"
+}
+
+showSkeleton(3);
+console.log(`скелетонов: ${count(".skeleton")}`);
+
+fakeSearch("самбуса").then((items) =&gt; {
+  showCards(items);
+  console.log(`скелетонов: ${count(".skeleton")}, карточек: ${count(".card")}`);
+  console.log(list.getAttribute("aria-busy"));
+});
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>скелетонов: 3
+скелетонов: 0, карточек: 2
+false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Внутри <code>showCards</code> превратите массив названий в массив карточек через <code>items.map(...)</code> — так же, как <code>showSkeleton</code> делает со своими блоками.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замена содержимого целиком — <code>list.replaceChildren(...cards)</code>. Тогда заглушки исчезают сами, и вручную их удалять не нужно.</p></details>
+        </article>
+
+        <article class="task" id="t3-3">
+          <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Четыре состояния в разметке</h4><span class="level hard">сложная</span></header>
+          <p>Допишите функцию <code>render(state)</code>, которая рисует содержимое <code>#box</code> для любого состояния. Сначала она очищает <code>#box</code> и ставит <code>box.dataset.state</code>: это <code>"loading"</code>, <code>"error"</code> или <code>"success"</code> — но если статус <code>success</code>, а данных нет, то <code>"empty"</code>. Затем рисует: для loading — три блока <code>div.skeleton</code>; для error — <code>&lt;p class="error"&gt;Не удалось загрузить&lt;/p&gt;</code> и кнопку <code>&lt;button id="retry"&gt;Повторить&lt;/button&gt;</code>; для empty — <code>&lt;p class="empty"&gt;Ничего не найдено&lt;/p&gt;</code>; для success — по одному <code>div.dish</code> на каждый элемент <code>data</code>.</p>
+<div class="playground" data-mode="dom" data-title="render(state)">
+<pre class="code" data-lang="html">
+&lt;div id="box" class="box"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.box { display: grid; gap: 8px; }
+.skeleton { height: 40px; border-radius: 10px; background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%); background-size: 400% 100%; animation: shimmer 1.2s ease infinite; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.dish { padding: 10px 14px; border: 2px solid #ccd3df; border-radius: 10px; background: #fff; font-weight: 700; }
+.error { color: #c0392b; font-weight: 700; margin: 0; }
+.empty { color: #6b7488; margin: 0; }
+#retry { justify-self: start; border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const box = document.querySelector("#box");
+
+function render(state) {
+  // 1. очистить box и поставить box.dataset.state
+  // 2. в зависимости от состояния нарисовать нужное
+}
+
+// --- проверка (не удаляйте) ---
+const states = [
+  { status: "loading", data: [] },
+  { status: "error", data: [], error: "Нет сети" },
+  { status: "success", data: [] },
+  { status: "success", data: ["Курутоб", "Нон", "Шакароб"] },
+];
+for (const s of states) {
+  render(s);
+  console.log(box.dataset.state, box.children.length, !!box.querySelector("#retry"));
+}
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>loading 3 false
+error 2 true
+empty 1 false
+success 3 false</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала вычислите «вид» состояния: <code>const kind = state.status === "success" &amp;&amp; state.data.length === 0 ? "empty" : state.status;</code> — и положите его в <code>box.dataset.state</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Дальше — цепочка <code>if</code> / <code>else if</code> по <code>kind</code>. В каждой ветке создавайте элементы через <code>createElement</code>, задавайте <code>className</code> и <code>textContent</code>, а в конце — <code>box.append(...)</code>. Кнопке нужен <code>id = "retry"</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="debounce">
+      <h2 data-toc="Debounce"><span class="num">04</span> Debounce: не запускать функцию на каждый чих</h2>
+
+      <p>Строка поиска «на лету»: пользователь печатает «плов», а результаты меняются уже в процессе. Самое простое решение — слушать событие <code>input</code> и на каждую букву отправлять запрос. Но человек печатает быстро: «п», «пл», «пло», «плов» — это <b>четыре запроса за секунду</b>, из которых нужен только последний. Сервер нагружается, трафик тратится, а ответы приходят вперемешку (об этом — в разделе 5).</p>
+
+      <p>Решение называется <b>debounce</b> — «подавление дребезга»: <b>запускаем функцию только тогда, когда пользователь перестал её дёргать на заданное время</b>. Каждый новый вызов сбрасывает ожидание. Пока человек печатает — ничего не происходит; остановился на 300 мс — запрос уходит.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Маршрутка на остановке. Водитель не едет сразу, как только зашёл первый пассажир. Он ждёт: зашёл второй — ждёт ещё, зашёл третий — снова ждёт. И только когда несколько секунд никто не заходит, трогается. Каждый новый пассажир <b>сбрасывает таймер</b> ожидания. Debounce — это водитель, который тронется лишь после паузы.</p>
+      </div>
+
+      <figure class="diagram">
+        <div class="tline">
+          <div class="row"><span>ввод</span><div class="bar"><span class="tick" style="left:3%"></span><span class="tick" style="left:11%"></span><span class="tick" style="left:19%"></span><span class="tick" style="left:60%"></span></div></div>
+          <div class="row"><span>ожидание</span><div class="bar"><span class="gap" style="left:3%; width:8%"></span><span class="gap" style="left:11%; width:8%"></span><span class="gap" style="left:19%; width:21%"></span><span class="gap" style="left:60%; width:21%"></span></div></div>
+          <div class="row"><span>запрос</span><div class="bar"><span class="fire" style="left:40%"></span><span class="fire" style="left:81%"></span></div></div>
+        </div>
+        <figcaption>Серые метки — нажатия клавиш (п, пл, пло, плов). Жёлтая полоса — ожидание паузы. Зелёные метки — запросы: только после тишины и только с последним значением</figcaption>
+      </figure>
+
+      <h3>Пишем debounce с нуля</h3>
+      <p>Внутри всего три идеи, которые вы уже знаете: <b>функция возвращает функцию</b>, <b>замыкание</b> хранит таймер между вызовами, а <code>clearTimeout</code> отменяет предыдущее ожидание.</p>
+
+<pre class="code" data-lang="js" data-title="debounce целиком">
+function debounce(fn, wait) {
+  let timer;                         // один таймер на все вызовы — живёт в замыкании
+  return function (...args) {
+    clearTimeout(timer);             // новый вызов: отменяем прошлое ожидание
+    timer = setTimeout(() => {
+      fn(...args);                   // пауза выдержана — запускаем настоящую функцию
+    }, wait);
+  };
+}
+</pre>
+
+      <ol class="steps">
+        <li><b>Мы получаем функцию <code>fn</code> и паузу <code>wait</code></b> и возвращаем <b>новую</b> функцию — её и будем вешать на событие.</li>
+        <li><b>Переменная <code>timer</code> объявлена снаружи</b> возвращаемой функции. Поэтому все вызовы видят одну и ту же переменную (замыкание, урок 5).</li>
+        <li><b>При каждом вызове</b> сначала <code>clearTimeout(timer)</code> убирает ожидание от прошлого вызова, потом <code>setTimeout</code> заводит новое.</li>
+        <li><b>Сработает только последнее ожидание</b> — то, которое никто не сбросил за <code>wait</code> миллисекунд.</li>
+        <li><b><code>...args</code></b> собирает все аргументы в массив, а <code>fn(...args)</code> раскладывает обратно — так debounce подходит к функции с любым числом параметров.</li>
+      </ol>
+
+      <h3>Проверяем на «печатающем» человеке</h3>
+      <p>Чтобы результат не зависел от вашей скорости печати, мы <b>запланируем нажатия по расписанию</b> через <code>setTimeout</code>. Расписание: «п» в 0 мс, «пл» в 40 мс, «пло» в 80 мс (быстро печатает), потом пауза и «плов» в 300 мс. Пауза debounce — 100 мс. В консоли видно, что реально сработало.</p>
+
+<pre class="code" data-run data-title="Debounce в действии">
+function debounce(fn, wait) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
+const search = debounce((q) => console.log(`поиск: ${q}`), 100);
+
+[[0, "п"], [40, "пл"], [80, "пло"], [300, "плов"]].forEach(([at, q]) => {
+  setTimeout(() => {
+    console.log(`ввод: ${q}`);
+    search(q);
+  }, at);
+});
+</pre>
+      <p>Разберите вывод. Четыре «нажатия» — но всего <b>два запроса</b>. Первые три нажатия шли с промежутками по 40 мс (меньше 100), поэтому каждое сбрасывало таймер; после третьего прошло 100 мс тишины — и сработал поиск «пло». Потом пауза до 300 мс — и «плов» ушёл отдельным запросом.</p>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Объявить <code>let timer</code> <b>внутри</b> возвращаемой функции. Тогда каждый вызов получает свой собственный <code>timer</code>, а <code>clearTimeout</code> отменяет пустоту — ничего не сбрасывается, и сработают <b>все</b> вызовы, просто с задержкой. Переменная для таймера должна жить снаружи, в замыкании.</p>
+      </div>
+
+      <h3>Какую паузу выбрать</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Пауза</th><th>Как ощущается</th></tr></thead>
+          <tbody>
+            <tr><td><b>100–200 мс</b></td><td>Почти мгновенно, но при быстрой печати запросы всё равно уходят часто</td></tr>
+            <tr><td><b>300–500 мс</b></td><td>Золотая середина для поиска: обычно столько и берут</td></tr>
+            <tr><td><b>1000 мс и больше</b></td><td>Интерфейс кажется «зависшим» — пользователь не понимает, работает ли поиск</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <b>Debounce и throttle — не одно и то же</b>
+        <p><b>Debounce</b> ждёт паузы и срабатывает <b>один раз после</b> серии вызовов (поиск, автосохранение). <b>Throttle</b> («дроссель») срабатывает <b>не чаще раза в N мс</b> во время серии (прокрутка страницы, изменение размера окна). В поиске нам нужен именно debounce.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Когда debounce не нужен</b>
+        <p>Для действий по кнопке («Найти», «Отправить») пауза не нужна: человек нажимает осознанно и один раз. Debounce — лекарство от <b>потока</b> событий: <code>input</code>, <code>scroll</code>, <code>resize</code>, <code>mousemove</code>.</p>
+      </div>
+
+      <h3>Отменить отложенный вызов: cancel</h3>
+      <p>Бывает, что нужно не просто отложить, а <b>отменить</b> ждущий вызов: пользователь очистил поле или ушёл со страницы. Функции в JavaScript — тоже объекты, им можно «приклеить» свойство. Добавим метод <code>cancel</code>:</p>
+<pre class="code" data-lang="js">
+function debounce(fn, wait) {
+  let timer;
+  function debounced(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  }
+  debounced.cancel = () => clearTimeout(timer);   // метод у функции
+  return debounced;
+}
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/call-apply-decorators" target="_blank" rel="noopener">learn.javascript.ru: декораторы и переадресация вызова</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/Window/clearTimeout" target="_blank" rel="noopener">MDN: clearTimeout</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>Расписание «нажатий» в каждой задаче уже написано — вам нужен только <code>debounce</code>. Каждый запуск занимает меньше секунды.</p>
+
+        <article class="task" id="t4-1">
+          <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Поиск срабатывает на каждую букву</h4><span class="level easy">лёгкая</span></header>
+          <p>Программист написал debounce, но поиск срабатывает на <b>каждое</b> нажатие — просто с задержкой. Найдите, чем эта версия отличается от правильной, и исправьте так, чтобы поиск выполнился один раз — по последнему значению.</p>
+<pre class="code" data-run>
+function debounce(fn, wait) {
+  return function (arg) {
+    let timer;
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(arg), wait);
+  };
+}
+
+const search = debounce((q) =&gt; console.log(`поиск: ${q}`), 100);
+
+[[0, "п"], [40, "пл"], [80, "пло"]].forEach(([at, q]) =&gt; {
+  setTimeout(() =&gt; {
+    console.log(`ввод: ${q}`);
+    search(q);
+  }, at);
+});
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ввод: п
+ввод: пл
+ввод: пло
+поиск: пло</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Запустите как есть: поиск сработает три раза. Значит, <code>clearTimeout</code> ничего не отменяет. Почему? Посмотрите, где объявлена переменная <code>timer</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Каждый вызов создаёт свою новую <code>timer</code>. Перенесите строку <code>let timer;</code> наверх — в функцию <code>debounce</code>, но <b>перед</b> <code>return function</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-2">
+          <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Пишем debounce сами</h4><span class="level mid">средняя</span></header>
+          <p>Напишите функцию <code>debounce(fn, wait)</code> с нуля — без подглядывания в текст урока, если получится. Возвращаемая функция принимает один аргумент <code>arg</code> и передаёт его в <code>fn</code> после паузы <code>wait</code>. Расписание ниже: быстрая серия нажатий, пауза, потом ещё одно нажатие.</p>
+<pre class="code" data-run>
+// function debounce(fn, wait) { ... }
+
+const search = debounce((q) =&gt; console.log(`поиск: ${q}`), 100);
+
+[[0, "п"], [40, "пл"], [80, "пло"], [300, "плов"]].forEach(([at, q]) =&gt; {
+  setTimeout(() =&gt; {
+    console.log(`ввод: ${q}`);
+    search(q);
+  }, at);
+});
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>ввод: п
+ввод: пл
+ввод: пло
+поиск: пло
+ввод: плов
+поиск: плов</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три шага: объявить переменную <code>timer</code> снаружи, вернуть функцию, а внутри неё сначала отменить прошлый таймер, затем завести новый.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>return function (arg) { clearTimeout(timer); timer = setTimeout(() =&gt; fn(arg), wait); };</code> — переменная <code>timer</code> объявлена строкой выше, вне <code>return</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-3">
+          <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Слишком короткая пауза</h4><span class="level easy">лёгкая</span></header>
+          <p>Человек печатает медленно: один символ раз в 150 мс. <b>Сначала предскажите</b>, сколько поисков сработает при паузе 200 мс. Запустите и проверьте. Затем поменяйте паузу так, чтобы поиск срабатывал <b>после каждой буквы</b> — то есть чтобы debounce фактически «не работал».</p>
+<pre class="code" data-run>
+function debounce(fn, wait) {
+  let timer;
+  return function (arg) {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(arg), wait);
+  };
+}
+
+const search = debounce((q) =&gt; console.log(`поиск: ${q}`), 200);
+
+[[0, "п"], [150, "пл"], [300, "пло"]].forEach(([at, q]) =&gt; {
+  setTimeout(() =&gt; {
+    console.log(`ввод: ${q}`);
+    search(q);
+  }, at);
+});
+</pre>
+          <div class="expected"><b>Ожидаемый результат после правки</b><pre>ввод: п
+поиск: п
+ввод: пл
+поиск: пл
+ввод: пло
+поиск: пло</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Новое нажатие приходит каждые 150 мс. Чтобы поиск успел сработать <b>раньше</b> следующего нажатия, пауза должна быть короче этого промежутка.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Поставьте паузу заметно меньше 150 — например, <code>60</code>. Тогда таймер срабатывает через 60 мс, до того как придёт следующая буква и сбросит его.</p></details>
+        </article>
+
+        <article class="task" id="t4-4">
+          <header><span class="task-num">ЗАДАЧА 4.4</span><h4>Debounce с несколькими аргументами</h4><span class="level mid">средняя</span></header>
+          <p>Поиск теперь принимает запрос и номер страницы: <code>find(query, page)</code>. Текущий debounce передаёт дальше только первый аргумент. Перепишите его с <code>...args</code> так, чтобы доходили <b>все</b> аргументы последнего вызова.</p>
+<pre class="code" data-run>
+function debounce(fn, wait) {
+  let timer;
+  return function (arg) {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(arg), wait);
+  };
+}
+
+const find = debounce((query, page) =&gt; console.log(`поиск: ${query}, страница ${page}`), 100);
+
+find("п", 1);
+setTimeout(() =&gt; find("пл", 1), 40);
+setTimeout(() =&gt; find("плов", 2), 80);
+</pre>
+          <div class="expected"><b>Ожидаемый результат после правки</b><pre>поиск: плов, страница 2</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сейчас функция объявлена как <code>function (arg)</code> — она принимает один параметр, поэтому <code>page</code> теряется (получится <code>undefined</code>).</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Замените параметр на <code>...args</code>, а в вызове <code>fn(arg)</code> напишите <code>fn(...args)</code>.</p></details>
+        </article>
+
+        <article class="task" id="t4-5">
+          <header><span class="task-num">ЗАДАЧА 4.5</span><h4>Кнопка «отмена» у debounce</h4><span class="level mid">средняя</span></header>
+          <p>Допишите к debounce метод <code>cancel</code>, который отменяет ожидающий вызов. Расписание: два быстрых вызова, затем отмена, затем — спустя время — ещё один вызов. Сработать должен только <b>последний</b>.</p>
+<pre class="code" data-run>
+function debounce(fn, wait) {
+  let timer;
+  function debounced(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() =&gt; fn(...args), wait);
+  }
+  // добавьте метод debounced.cancel
+  return debounced;
+}
+
+const find = debounce((q) =&gt; console.log(`поиск: ${q}`), 100);
+
+setTimeout(() =&gt; { console.log("вызов: п"); find("п"); }, 0);
+setTimeout(() =&gt; { console.log("вызов: пл"); find("пл"); }, 40);
+setTimeout(() =&gt; { console.log("отмена"); find.cancel(); }, 80);
+setTimeout(() =&gt; { console.log("вызов: плов"); find("плов"); }, 300);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>вызов: п
+вызов: пл
+отмена
+вызов: плов
+поиск: плов</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Функция в JavaScript — объект, поэтому ей можно присвоить свойство: <code>debounced.cancel = ...</code>. Присвоенное значение — стрелочная функция.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>debounced.cancel = () =&gt; clearTimeout(timer);</code> — она видит <code>timer</code> через замыкание, как и сама <code>debounced</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="abort">
+      <h2 data-toc="AbortController"><span class="num">05</span> AbortController: отмена запроса</h2>
+
+      <p>Debounce уменьшает число запросов, но не убирает главную проблему: <b>запрос, который уже ушёл, нельзя «забыть»</b>. Он долетит до сервера и вернётся с ответом, даже если пользователю этот ответ уже не нужен. А это приводит к двум неприятностям.</p>
+
+      <h3>Проблема 1. Лишняя работа</h3>
+      <p>Пользователь открыл страницу каталога и сразу ушёл на другую. Запрос на 100 товаров всё равно скачивается и разбирается — трафик и батарея тратятся впустую (на мобильном интернете в маршрутке это ощутимо).</p>
+
+      <h3>Проблема 2. Гонка запросов (race condition)</h3>
+      <p>Пользователь набрал «с» — ушёл запрос №1. Через 50 мс дописал «са» — ушёл запрос №2. Сервер обрабатывает запросы <b>по-разному долго</b>: ответ на первый (его результатов много) пришёл через 400 мс, а на второй — через 100 мс. Что получится на экране?</p>
+
+<pre class="code" data-run data-title="Баг: устаревший ответ затирает новый">
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+let shown = "";
+
+function onType(query, ms) {
+  fakeSearch(query, { ms }).then(() => {
+    shown = query;                      // «рисуем» ответ
+    console.log(`пришёл ответ на «${query}»`);
+  });
+}
+
+onType("с", 400);                        // старый запрос — медленный
+setTimeout(() => onType("са", 100), 50); // новый запрос — быстрый
+setTimeout(() => console.log(`на экране: «${shown}»`), 600);
+</pre>
+      <p>На экране осталось «с» — хотя в поле уже давно написано «са». Ответ на <b>новый</b> запрос пришёл первым, а потом его затёр запоздавший ответ на <b>старый</b>. Пользователь видит результаты не для того, что набрал. Баг плавающий: у вас дома, на быстром интернете, он не проявится, а у клиента в горах — проявится обязательно.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы заказали плов, через минуту передумали и позвонили: «Лучше самбусу». Если в чойхоне не отменят первый заказ, к вам придут <b>оба</b> курьера — причём плов, возможно, раньше или позже самбусы. Правильно — позвонить и <b>отменить первый заказ</b>. Именно это делает <code>AbortController</code>: он «звонит» запросу и говорит «стоп».</p>
+      </div>
+
+      <h3>Как это работает: controller и signal</h3>
+      <dl class="terms">
+        <dt>AbortController</dt><dd>«Пульт»: объект, у которого есть кнопка <code>abort()</code>. Создаётся так: <code>new AbortController()</code>.</dd>
+        <dt>controller.signal</dt><dd>«Провод» от пульта: сигнал, который мы передаём запросу. Запрос слушает его и останавливается, когда нажали кнопку.</dd>
+        <dt>controller.abort()</dt><dd>Нажали кнопку — запрос отменён, его промис <b>отклоняется</b> с ошибкой по имени <code>AbortError</code>.</dd>
+      </dl>
+
+<pre class="code" data-run data-title="Отмена запроса: у «сервера» есть signal">
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const controller = new AbortController();
+
+// запрос на 500 мс, к нему «подключен» пульт
+fakeSearch("самбуса", { signal: controller.signal, ms: 500 })
+  .then((items) => console.log("получили", items.length))
+  .catch((err) => console.log("ошибка:", err.name));
+
+// через 100 мс пользователь нажал «Отмена»
+setTimeout(() => {
+  console.log("нажали abort()");
+  controller.abort();
+}, 100);
+</pre>
+      <p>Запрос, который должен был идти 500 мс, остановился через 100. Ответ не пришёл — вместо него сработал <code>catch</code> с <code>err.name === "AbortError"</code>.</p>
+
+      <h3>Настоящий <code>fetch</code> понимает <code>signal</code></h3>
+      <p>Наша заглушка устроена так же, как настоящий <code>fetch</code>: сигнал передаётся вторым аргументом, в объекте настроек. Если вызвать <code>abort()</code> сразу, запрос даже не начнёт скачивание:</p>
+
+<pre class="code" data-run data-title="Настоящий fetch + abort()">
+const controller = new AbortController();
+
+const request = fetch("https://dummyjson.com/products?limit=100", {
+  signal: controller.signal,
+});
+
+controller.abort();   // отменяем сразу
+
+request.catch((err) => console.log("fetch отменён:", err.name));
+</pre>
+
+      <h3>Не терпит дольше — таймаут одной строкой</h3>
+      <p>Нередко нужно не отменять вручную, а подождать <b>не дольше N миллисекунд</b>. Для этого есть готовая функция <code>AbortSignal.timeout(мс)</code>: она сама нажмёт «abort» через заданное время. Ошибка при этом называется не <code>AbortError</code>, а <code>TimeoutError</code> — так вы отличите «отменили мы» от «не дождались».</p>
+
+<pre class="code" data-run data-title="Таймаут: ждём не больше 1 мс (нужен интернет)">
+fetch("https://dummyjson.com/products?limit=100", { signal: AbortSignal.timeout(1) })
+  .then(() => console.log("успели"))
+  .catch((err) => console.log("ошибка:", err.name));
+</pre>
+
+      <h3>Паттерн: «каждый новый запрос отменяет прошлый»</h3>
+      <p>Именно так починить гонку из начала раздела. Храним контроллер в переменной снаружи функции; перед новым запросом отменяем старый и заводим новый контроллер.</p>
+
+<pre class="code" data-run data-title="Исправление: отменяем предыдущий запрос">
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+let shown = "";
+let controller = null;                     // контроллер последнего запроса
+
+function onType(query, ms) {
+  if (controller) controller.abort();      // 1. отменяем прошлый запрос (если он идёт)
+  controller = new AbortController();      // 2. заводим новый «пульт»
+
+  fakeSearch(query, { signal: controller.signal, ms })
+    .then(() => {
+      shown = query;
+      console.log(`пришёл ответ на «${query}»`);
+    })
+    .catch((err) => {
+      if (err.name !== "AbortError") console.log("ошибка:", err.message);   // 3.
+    });
+}
+
+onType("с", 400);
+setTimeout(() => onType("са", 100), 50);
+setTimeout(() => console.log(`на экране: «${shown}»`), 600);
+</pre>
+
+      <ol class="steps">
+        <li><b>Один «пульт» на один запрос.</b> Контроллер одноразовый: после <code>abort()</code> он «сломан» навсегда, поэтому на каждый запрос заводим новый.</li>
+        <li><b>Вызываем <code>abort()</code> на старом</b> перед тем, как создать новый — в этот момент старый запрос ещё может быть в пути.</li>
+        <li><b>В <code>catch</code> молча пропускаем <code>AbortError</code>.</b> Отмена — это не ошибка сервера, и пугать пользователя красным текстом «Ошибка!» из-за того, что он дописал букву, нельзя.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Частая ошибка</b>
+        <p>Не обработать <code>AbortError</code>. Отменённый запрос отклоняет промис, и если в <code>catch</code> просто написано «показать ошибку» — на экране на долю секунды мигает «Ошибка: The user aborted a request». Всегда проверяйте <code>err.name</code> и для <code>"AbortError"</code> выходите молча.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Есть и второй способ</b>
+        <p>Можно не отменять запрос, а просто <b>игнорировать устаревший ответ</b>: завести счётчик <code>requestId</code>, запомнить номер своего запроса и при ответе проверять, что он всё ещё последний. Это проще, но запрос всё равно дойдёт до сервера и потратит трафик. <code>AbortController</code> — «честный» способ: запрос реально останавливается.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/fetch-abort" target="_blank" rel="noopener">learn.javascript.ru: Fetch: прерывание запроса</a> · <a href="https://developer.mozilla.org/ru/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN: AbortController</a></p>
+
+      <div class="practice">
+        <h3>Практика: закрепляем</h3>
+        <p>«Сервер» уже вставлен в каждую задачу. Он понимает <code>signal</code> и при отмене отклоняет промис с тем самым <code>signal.reason</code>.</p>
+
+        <article class="task" id="t5-1">
+          <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Пользователь ушёл со страницы</h4><span class="level easy">лёгкая</span></header>
+          <p>Запрос идёт 500 мс, но через 100 мс пользователь уходит. Допишите отмену: внутри <code>setTimeout</code> после строки «пользователь ушёл» отмените запрос.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const controller = new AbortController();
+
+fakeSearch("самбуса", { signal: controller.signal, ms: 500 })
+  .then((r) =&gt; console.log("получили", r.length))
+  .catch((e) =&gt; console.log("ошибка:", e.name));
+
+setTimeout(() =&gt; {
+  console.log("пользователь ушёл");
+  // отмените запрос здесь
+}, 100);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>пользователь ушёл
+ошибка: AbortError</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Нужный контроллер уже создан — он называется <code>controller</code> и подключён к запросу через <code>signal</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Одна строка: <code>controller.abort();</code></p></details>
+        </article>
+
+        <article class="task" id="t5-2">
+          <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Гонка запросов</h4><span class="level mid">средняя</span></header>
+          <p><b>Сначала предскажите</b>, что выведет код ниже (посмотрите на раздел «Проблема 2»), потом запустите. Затем исправьте <code>onType</code> так, чтобы старый запрос отменялся, а ответ на него не появлялся. Ошибку отмены нужно молча пропустить.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+let shown = "";
+
+function onType(q, ms) {
+  fakeSearch(q, { ms }).then(() =&gt; {
+    shown = q;
+    console.log(`пришёл ответ на «${q}»`);
+  });
+}
+
+onType("с", 400);
+setTimeout(() =&gt; onType("са", 100), 50);
+setTimeout(() =&gt; console.log(`на экране: «${shown}»`), 600);
+</pre>
+          <div class="expected"><b>Ожидаемый результат после исправления</b><pre>пришёл ответ на «са»
+на экране: «са»</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Снаружи функции заведите <code>let controller = null;</code>. В начале <code>onType</code>: если <code>controller</code> уже есть — вызовите у него <code>abort()</code>, затем создайте новый <code>AbortController</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Передайте <code>signal: controller.signal</code> в настройки <code>fakeSearch</code> и добавьте к промису <code>.catch((e) =&gt; { if (e.name !== "AbortError") console.log("ошибка:", e.message); })</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-3">
+          <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Ждать не дольше лимита</h4><span class="level mid">средняя</span></header>
+          <p>Напишите <code>async function searchWithTimeout(query, limit, ms)</code>: она вызывает <code>fakeSearch</code> с сигналом <code>AbortSignal.timeout(limit)</code> и задержкой <code>ms</code>. Если ответ пришёл — возвращает строку <code>Найдено: N</code>. Если сработал таймаут (<code>err.name === "TimeoutError"</code>) — <code>Сервер отвечает слишком долго</code>. Любая другая ошибка — <code>Ошибка: текст</code>.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+// async function searchWithTimeout(query, limit, ms) { ... }
+
+async function main() {
+  console.log(await searchWithTimeout("самбуса", 500, 200));
+  console.log(await searchWithTimeout("курутоб", 100, 400));
+}
+main();
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Найдено: 2
+Сервер отвечает слишком долго</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Вторым аргументом <code>fakeSearch</code> передайте объект: <code>{ signal: AbortSignal.timeout(limit), ms }</code>. Обращение к функции — внутри <code>try</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>catch (err)</code> сначала проверьте <code>err.name === "TimeoutError"</code> и верните нужную строку, иначе верните <code>`Ошибка: ${err.message}`</code>.</p></details>
+        </article>
+
+        <article class="task" id="t5-4">
+          <header><span class="task-num">ЗАДАЧА 5.4</span><h4>createSearcher: поиск, который сам себя отменяет</h4><span class="level hard">сложная</span></header>
+          <p>Напишите функцию <code>createSearcher()</code>, которая возвращает функцию <code>search(query)</code>. Каждый новый вызов <b>отменяет предыдущий запрос</b>. Отменённый вызов возвращает <code>null</code> (а не бросает ошибку), успешный — массив блюд. Остальные ошибки пробрасываются дальше.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+// function createSearcher() { ... }
+
+const search = createSearcher();
+
+const p1 = search("самбуса");
+const p2 = new Promise((resolve) =&gt; setTimeout(() =&gt; resolve(search("курутоб")), 50));
+
+Promise.all([p1, p2]).then(([a, b]) =&gt; {
+  console.log("первый:", a === null ? "отменён" : a.join(", "));
+  console.log("второй:", b === null ? "отменён" : b.join(", "));
+});
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>первый: отменён
+второй: Курутоб</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Переменная <code>controller</code> живёт в замыкании — в <code>createSearcher</code>, до <code>return</code>. Возвращаемая <code>search</code> — <code>async</code>-функция: так проще использовать <code>try / catch</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>search</code>: отменить прошлый (если есть) → новый контроллер → <code>try { return await fakeSearch(query, { signal: controller.signal }); } catch (e) { if (e.name === "AbortError") return null; throw e; }</code>. Без <code>await</code> перед <code>fakeSearch</code> ошибка не попадёт в <code>catch</code>.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="cursor">
+      <h2 data-toc="Демо: Cursor"><span class="num">06</span> Что покажет преподаватель: Cursor</h2>
+
+      <p>До сих пор ИИ в нашем курсе — это чат: вы пишете вопрос, получаете текст, <b>вы сами</b> копируете код и вставляете в файл. Сегодня преподаватель покажет следующий уровень — <b>ИИ-агента внутри редактора кода</b>. Это демонстрация на экране: ставить Cursor на свои компьютеры не нужно. Главное в этом разделе — не «вау, как быстро», а <b>как этот результат проверять</b>.</p>
+
+      <div class="callout ai">
+        <b>Правила курса, которые особенно важны сегодня</b>
+        <p><b>1.</b> Сначала 15 минут пробуете сами. <b>2.</b> Промпт — по формуле: контекст → задача → ограничения → формат ответа → проверка. <b>3.</b> Не вставляйте в проект код, который не можете объяснить строка за строкой. <b>4.</b> Агент пишет быстро и много — значит, и проверять приходится быстро и много. Ответственность за код всегда на вас, а не на агенте.</p>
+      </div>
+
+      <h3>Чат и агент — в чём разница</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>ИИ-чат (ChatGPT, Claude, Gemini)</th><th>ИИ-агент в редакторе (Cursor)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Что видит</b></td><td>Только то, что вы вставили в окно</td><td>Весь проект: сам открывает и ищет нужные файлы</td></tr>
+            <tr><td><b>Что делает</b></td><td>Отвечает текстом</td><td>Предлагает план и правит сразу несколько файлов; по разрешению может запускать команды</td></tr>
+            <tr><td><b>Кто вносит код</b></td><td>Вы — копированием</td><td>Агент — вы просматриваете правки и принимаете или отклоняете</td></tr>
+            <tr><td><b>Главный риск</b></td><td>Не проверили ответ</td><td>Нажали «принять всё» и не прочитали правки в пяти файлах</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <b>Важно про интерфейс</b>
+        <p>Cursor — это редактор на основе VS Code с ИИ внутри, и он быстро развивается: названия режимов и кнопок меняются от версии к версии. Поэтому здесь мы описываем <b>суть</b> и порядок действий, а не «нажмите третью кнопку справа». На демонстрации смотрите на логику: что агент прочитал, что предложил, что изменил.</p>
+      </div>
+
+      <h3>Сценарий демонстрации</h3>
+      <p>Преподаватель берёт мини-приложение из прошлых уроков — поиск по API со списком и пагинацией — разложенное на несколько файлов: <code>index.html</code>, <code>style.css</code>, <code>api.js</code> (запросы), <code>ui.js</code> (рисование) и <code>main.js</code> (события). Задача — ровно та, что мы решаем сегодня руками: добавить состояния загрузки, пустоты и ошибки, debounce и отмену запросов.</p>
+
+      <ol class="steps">
+        <li><b>Сохраняем копию.</b> Перед демо папку проекта копируют (Git мы изучим на уроке 19, пока — обычная копия). Если агент напортачит, всегда можно вернуться.</li>
+        <li><b>Формулируем задачу по формуле.</b> Промпт зачитывается вслух (он ниже) — каждый его кусок отвечает за свою часть формулы.</li>
+        <li><b>Смотрим, что агент читает.</b> Агент не «угадывает»: он открывает файлы проекта. Обратите внимание, <b>какие</b> файлы он открыл — пропустил ли нужный.</li>
+        <li><b>Читаем план</b> — до правок. Просим агента сначала написать план: какие файлы и что изменит. Уже на этом шаге видно, понял ли он задачу.</li>
+        <li><b>Просматриваем правки файл за файлом.</b> В редакторе видно разницу: что добавлено, что удалено. Принимаем <b>по одному файлу</b>, а не «всё сразу».</li>
+        <li><b>Запускаем и пробуем сломать.</b> Быстро печатаем в поиске; в DevTools на вкладке Network включаем медленную сеть и режим Offline; ищем запрос, которого нет в API.</li>
+        <li><b>Находим упущенное.</b> Почти всегда что-то остаётся: забыли сбросить страницу на первую при новом запросе, пропустили <code>AbortError</code>, оставили <code>console.log</code>. Это исправляется следующим промптом или руками.</li>
+      </ol>
+
+      <h3>Промпт для демо</h3>
+      <p>Обратите внимание, как он устроен: сначала контекст, потом задача, потом ограничения, затем что показать и как проверить. Сравните с «плохим» вариантом:</p>
+
+      <div class="prompt bad-prompt">добавь загрузку и поиск с задержкой в мой проект</div>
+      <div class="prompt good-prompt">Контекст: учебное приложение на чистом JS без библиотек — поиск блюд по API с пагинацией. Файлы: index.html, style.css, api.js (fetch), ui.js (рисует список), main.js (события). Задача: 1) добавь три состояния — загрузка (skeleton из трёх серых блоков), пусто («Ничего не найдено») и ошибка (понятный текст и кнопка «Повторить»); 2) добавь debounce 400 мс на ввод в строке поиска; 3) при новом запросе отменяй предыдущий через AbortController и молча игнорируй AbortError; 4) при новом поисковом запросе сбрасывай страницу на первую. Ограничения: не трогай логику пагинации и названия существующих CSS-классов, не добавляй библиотеки, не меняй файлы, которые не нужны для этой задачи. Формат: сначала напиши план — какие файлы изменишь и зачем; затем внеси правки и перечисли изменённые файлы. Проверка: напиши, как мне вручную проверить каждое из четырёх изменений.</div>
+
+      <h3>На что смотреть во время демонстрации</h3>
+      <p>Держите эти вопросы в голове, пока смотрите на экран, — и задавайте их вслух:</p>
+      <ul>
+        <li><b>Сколько файлов изменено и все ли они нужны?</b> Правка в <code>style.css</code> уместна (skeleton). А вот изменения в чужих функциях, которые мы не просили трогать, — повод остановиться.</li>
+        <li><b>Прочитан ли весь diff?</b> Красное — удалено. Не исчезла ли рабочая логика (например, пагинация) в «рефакторинге»?</li>
+        <li><b>Нет ли выдуманного?</b> Поле JSON, которого нет в реальном ответе API, или функция, которой нет в браузере. Сверяем с настоящим ответом во вкладке Network.</li>
+        <li><b>Обработаны ли все четыре состояния?</b> Особенно путаница «пусто» и «ошибка» — ИИ часто их смешивает.</li>
+        <li><b>Есть ли <code>AbortError</code> в <code>catch</code>?</b> Без него на экране мигает «ошибка» при каждой новой букве.</li>
+        <li><b>Могу ли я объяснить каждую строку?</b> Если нет — код не принимаем (правило курса №3).</li>
+      </ul>
+
+      <h3>Риски: что может пойти не так</h3>
+      <div class="cols">
+        <div class="col bad">
+          <b>Опасные привычки</b>
+          <ul>
+            <li>Нажимать «принять всё», не читая правки</li>
+            <li>Просить «исправь всё» без ограничений: агент переписывает то, что работало</li>
+            <li>Верить, что «агент сам проверил» — запуск и проверка остаются за вами</li>
+            <li>Давать агенту секреты: ключи API, пароли, файлы с личными данными (<code>.env</code>)</li>
+            <li>Перестать читать код — со временем навык теряется</li>
+          </ul>
+        </div>
+        <div class="col good">
+          <b>Здоровые привычки</b>
+          <ul>
+            <li>Маленькая задача — маленькие правки — проверка</li>
+            <li>Всегда просить план до правок и список изменённых файлов после</li>
+            <li>Чётко писать, что <b>нельзя</b> трогать</li>
+            <li>Хранить копию проекта (позже — коммит в Git) до начала работы агента</li>
+            <li>Проверять в браузере: быстро, медленно, офлайн, пусто</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <b>Конфиденциальность</b>
+        <p>Код, который вы показываете агенту, отправляется на сервер ИИ-сервиса. Для учебных проектов это нормально, но <b>рабочий код заказчика, пароли и ключи</b> туда отправлять нельзя без разрешения. Привыкайте думать об этом заранее: на практике это вопрос доверия и иногда — закона.</p>
+      </div>
+
+      <h3>А вы — через ИИ-чат: разбираем документацию API</h3>
+      <p>Прямо сейчас вы можете использовать ИИ там, где он особенно полезен: чтобы разобраться с чужой документацией. Формула та же:</p>
+
+      <div class="prompt bad-prompt">как получить данные из этого api</div>
+      <div class="prompt good-prompt">Вот документация API поиска товаров: [вставьте текст или ссылку]. Мне нужно получить первые 5 результатов по запросу из поля ввода и обработать случай, когда ничего не найдено. Какой эндпоинт, какие параметры, какой пример запроса на fetch? Чистый JS, без библиотек. Ответь так: 1) таблица параметров; 2) пример кода; 3) что проверить на реальном ответе, чтобы убедиться, что поля названы правильно.</div>
+
+      <div class="callout tip">
+        <b>Проверка ответа ИИ: сверяем с реальным API</b>
+        <p>Откройте адрес запроса прямо в браузере (например, <code>https://dummyjson.com/products/search?q=phone&amp;limit=5</code>) или посмотрите ответ во вкладке Network. Совпадают ли названия полей (<code>products</code>, <code>total</code>) с тем, что написал ИИ? Если нет — ИИ выдумал или перепутал; верим только настоящему ответу сервера.</p>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: ревью работы «агента»</h3>
+        <p>Ниже — код, как его мог бы написать агент по нашему промпту. Мы так и делаем в реальной работе: не пишем с нуля, а <b>проверяем и чиним</b> чужую работу.</p>
+
+        <article class="task" id="t6-1">
+          <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Ревью кода от агента: три бага</h4><span class="level hard">сложная</span></header>
+          <p>В коде ниже три ошибки; из-за них поиск получает лишние запросы и показывает неверные состояния. Расписание «нажатий» в конце: «к», «ку», «кур» — быстрая серия; потом «самбуса», пока предыдущий запрос ещё идёт; потом «борщ» (в меню такого нет). Запустите код, посмотрите на беспорядок в консоли, найдите ошибки и исправьте. После исправления состояния должны идти ровно в таком порядке: загрузка, загрузка, успех, загрузка, пусто.</p>
+<pre class="code" data-run>
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+let state = { status: "idle", data: [], error: null };
+let timer = null;
+let controller = null;
+
+function setState(patch) {
+  state = { ...state, ...patch };
+  console.log(`состояние: ${state.status}`);
+}
+
+async function runSearch(query) {
+  controller = new AbortController();
+  setState({ status: "loading" });
+  try {
+    const items = await fakeSearch(query, { signal: controller.signal });
+    setState({ status: "success", data: items });
+  } catch (e) {
+    setState({ status: "error", error: e.message });
+  }
+}
+
+function onInput(query) {
+  timer = setTimeout(() =&gt; runSearch(query), 50);
+}
+
+[[0, "к"], [20, "ку"], [40, "кур"], [150, "самбуса"], [550, "борщ"]].forEach(([at, q]) =&gt;
+  setTimeout(() =&gt; onInput(q), at)
+);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>состояние: loading
+состояние: loading
+состояние: success
+состояние: loading
+состояние: empty</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три дефекта: (1) в <code>onInput</code> нет <code>clearTimeout</code> — это не debounce; (2) <code>runSearch</code> не отменяет предыдущий запрос; (3) пустой ответ получает статус <code>success</code> вместо <code>empty</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Исправляя второй дефект, вы столкнётесь с четвёртым: отменённый запрос попадёт в <code>catch</code> и покажет <code>error</code>. В <code>catch</code> нужно сначала проверить <code>e.name === "AbortError"</code> и выйти через <code>return</code> без состояния.</p></details>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="classwork">
+      <h2 data-toc="Практика на уроке"><span class="num">07</span> Практика на уроке: три состояния и debounce</h2>
+
+      <p>Собираем всё вместе в мини-приложении «Меню чайханы»: строка поиска и список блюд. Вместо настоящего API здесь знакомая заглушка <code>fakeSearch</code>, чтобы всё работало одинаково у всех и без интернета. Вы делаете в два этапа: сначала <b>состояния</b>, потом <b>debounce и отмена</b>.</p>
+
+      <ol class="steps">
+        <li><b>Этап 1. Состояния.</b> Один объект <code>state</code> и функция <code>render</code>, которая по <code>state.status</code> рисует: подсказку, skeleton, карточки, «пусто» или ошибку с кнопкой «Повторить». Функция <code>load</code> переводит статус: loading → success / empty / error.</li>
+        <li><b>Этап 2. Debounce.</b> Пишем <code>debounce</code>, вешаем на <code>input</code>: запрос уходит только после паузы.</li>
+        <li><b>Этап 3. Отмена.</b> Перед новым запросом отменяем старый, <code>AbortError</code> молча пропускаем.</li>
+        <li><b>Этап 4. В своём приложении.</b> То же самое переносим в проект из уроков 14–15 — ниже есть план.</li>
+      </ol>
+
+      <div class="practice">
+        <h3>Практика: меню чайханы</h3>
+        <p>Проверочные строки в консоли подтверждают, что каждый этап работает. Они сами нажимают «клавиши», так что результат одинаков у всех.</p>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Меню чайханы: четыре состояния</h4><span class="level mid">средняя</span></header>
+          <p>Допишите <code>render</code> и <code>load</code>. Для каждого статуса нужна своя разметка: <code>idle</code> — <code>&lt;p class="hint"&gt;Начните вводить название блюда&lt;/p&gt;</code>; <code>loading</code> — три <code>div.skeleton</code>; <code>success</code> — по <code>div.dish</code> на блюдо; <code>empty</code> — <code>&lt;p class="empty"&gt;Ничего не найдено&lt;/p&gt;</code>; <code>error</code> — <code>&lt;p class="error"&gt;</code> с текстом ошибки и <code>&lt;button class="retry"&gt;Повторить&lt;/button&gt;</code>. Функция <code>load(query)</code> ставит <code>loading</code> (и сразу перерисовывает), затем — по результату запроса — <code>success</code>, <code>empty</code> или <code>error</code>, и снова перерисовывает.</p>
+<div class="playground" data-mode="dom" data-title="Меню чайханы: состояния">
+<pre class="code" data-lang="html">
+&lt;h3 class="title"&gt;Меню чайханы&lt;/h3&gt;
+&lt;input id="q" class="search" placeholder="Что ищем?" autocomplete="off"&gt;
+&lt;div id="result" class="result"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.title { margin: 0 0 10px; font-size: 20px; }
+.search { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 2px solid #ccd3df; border-radius: 10px; font-size: 16px; margin-bottom: 12px; }
+.result { display: grid; gap: 8px; }
+.skeleton { height: 42px; border-radius: 10px; background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%); background-size: 400% 100%; animation: shimmer 1.2s ease infinite; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.dish { padding: 10px 14px; border: 2px solid #ccd3df; border-radius: 10px; background: #fff; font-weight: 700; }
+.hint, .empty { color: #6b7488; margin: 0; }
+.error { color: #c0392b; font-weight: 700; margin: 0; }
+.retry { justify-self: start; border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+// ↓ «сервер»: медленный поиск по меню — не меняйте
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+function fakeSearch(query, { signal, ms = 200 } = {}) {
+  return new Promise((resolve, reject) => {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) => d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const result = document.querySelector("#result");
+let state = { status: "idle", items: [], error: null };
+
+function render() {
+  result.dataset.state = state.status;
+  result.replaceChildren();
+  // TODO 1: нарисуйте result в зависимости от state.status
+}
+
+async function load(query) {
+  // TODO 2: loading -> запрос -> success / empty / error
+  // после каждой смены state вызывайте render()
+}
+
+render();
+
+// --- проверка (не удаляйте) ---
+async function check() {
+  const request = load("самбуса");
+  console.log(result.dataset.state, result.children.length);
+  await request;
+  console.log(result.dataset.state, result.children.length);
+  await load("борщ");
+  console.log(result.dataset.state, result.textContent.trim());
+  await load("ошибка");
+  console.log(result.dataset.state, !!result.querySelector(".retry"));
+}
+check();
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>loading 3
+success 2
+empty Ничего не найдено
+error true</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>render</code> — цепочка <code>if / else if</code> по <code>state.status</code>. Ветка <code>loading</code>: цикл на три шага с <code>document.createElement("div")</code> и <code>className = "skeleton"</code>. Ветка <code>success</code>: <code>state.items.map(...)</code> и <code>result.append(...cards)</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>load</code>: <code>state = { status: "loading", items: [], error: null }; render();</code> — затем <code>try { const items = await fakeSearch(query); ... } catch (err) { ... }</code>. Статус <code>"empty"</code> ставьте, если <code>items.length === 0</code>. Не забывайте <code>render()</code> после каждого изменения <code>state</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Меню чайханы: debounce и отмена</h4><span class="level hard">сложная</span></header>
+          <p>Состояния уже готовы (<code>render</code> и <code>load</code> из прошлой задачи). Допишите четыре места: <b>(1)</b> функцию <code>debounce(fn, wait)</code>; <b>(2)</b> в начале <code>load</code> — отмену предыдущего запроса и создание нового контроллера; <b>(3)</b> в <code>catch</code> — молчаливый выход при <code>AbortError</code>; <b>(4)</b> слушатель события <code>input</code> у поля поиска, который с debounce 100 мс вызывает <code>load(input.value.trim())</code>. Проверка сама «набирает» текст: быструю серию «с», «са», «сам», потом «кур» и сразу после — «курутоб». Лишние запросы должны отсекаться, а устаревший ответ — не рисоваться.</p>
+<div class="playground" data-mode="dom" data-title="Меню чайханы: debounce и abort">
+<pre class="code" data-lang="html">
+&lt;h3 class="title"&gt;Меню чайханы&lt;/h3&gt;
+&lt;input id="q" class="search" placeholder="Что ищем?" autocomplete="off"&gt;
+&lt;div id="result" class="result"&gt;&lt;/div&gt;
+</pre>
+<pre class="code" data-lang="css">
+.title { margin: 0 0 10px; font-size: 20px; }
+.search { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 2px solid #ccd3df; border-radius: 10px; font-size: 16px; margin-bottom: 12px; }
+.result { display: grid; gap: 8px; }
+.skeleton { height: 42px; border-radius: 10px; background: linear-gradient(90deg, #e6e9ef 25%, #f4f6fa 37%, #e6e9ef 63%); background-size: 400% 100%; animation: shimmer 1.2s ease infinite; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.dish { padding: 10px 14px; border: 2px solid #ccd3df; border-radius: 10px; background: #fff; font-weight: 700; }
+.hint, .empty { color: #6b7488; margin: 0; }
+.error { color: #c0392b; font-weight: 700; margin: 0; }
+.retry { justify-self: start; border: 2px solid #1c2230; background: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+const DISHES = ["Оши палав", "Самбуса с мясом", "Самбуса с тыквой", "Курутоб", "Шакароб", "Нон"];
+
+let requests = 0;                          // сколько запросов реально ушло
+function fakeSearch(query, { signal, ms = 300 } = {}) {
+  requests++;
+  return new Promise((resolve, reject) =&gt; {
+    if (signal &amp;&amp; signal.aborted) return reject(signal.reason);
+    const timer = setTimeout(() =&gt; {
+      if (query === "ошибка") return reject(new Error("Нет соединения с сервером"));
+      resolve(DISHES.filter((d) =&gt; d.toLowerCase().includes(query.toLowerCase())));
+    }, ms);
+    if (signal) {
+      signal.addEventListener("abort", () =&gt; {
+        clearTimeout(timer);
+        reject(signal.reason);
+      });
+    }
+  });
+}
+
+const input = document.querySelector("#q");
+const result = document.querySelector("#result");
+let state = { status: "idle", items: [], error: null };
+let controller = null;
+let successRenders = 0;                    // сколько раз рисовали успех
+
+function render() {
+  result.dataset.state = state.status;
+  result.replaceChildren();
+  if (state.status === "idle") {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "Начните вводить название блюда";
+    result.append(p);
+  } else if (state.status === "loading") {
+    for (let i = 0; i &lt; 3; i++) {
+      const stub = document.createElement("div");
+      stub.className = "skeleton";
+      result.append(stub);
+    }
+  } else if (state.status === "success") {
+    successRenders++;
+    result.append(...state.items.map((name) =&gt; {
+      const dish = document.createElement("div");
+      dish.className = "dish";
+      dish.textContent = name;
+      return dish;
+    }));
+  } else if (state.status === "empty") {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = "Ничего не найдено";
+    result.append(p);
+  } else {
+    const p = document.createElement("p");
+    p.className = "error";
+    p.textContent = state.error;
+    const retry = document.createElement("button");
+    retry.className = "retry";
+    retry.textContent = "Повторить";
+    result.append(p, retry);
+  }
+}
+
+// TODO 1: function debounce(fn, wait) { ... }
+
+async function load(query) {
+  // TODO 2: если controller уже есть — отмените его; затем создайте новый
+  state = { status: "loading", items: [], error: null };
+  render();
+  try {
+    const items = await fakeSearch(query, { signal: controller.signal });
+    state = { status: items.length === 0 ? "empty" : "success", items, error: null };
+  } catch (err) {
+    // TODO 3: если err.name === "AbortError" — просто выйти из функции
+    state = { status: "error", items: [], error: err.message };
+  }
+  render();
+}
+
+// TODO 4: input.addEventListener("input", ...) с debounce 100 мс
+
+render();
+
+// --- проверка (не удаляйте) ---
+function type(text) {
+  input.value = text;
+  input.dispatchEvent(new Event("input"));
+}
+type("с");
+setTimeout(() =&gt; type("са"), 30);
+setTimeout(() =&gt; type("сам"), 60);
+setTimeout(() =&gt; console.log("запросов:", requests), 500);
+setTimeout(() =&gt; type("кур"), 550);
+setTimeout(() =&gt; type("курутоб"), 720);
+setTimeout(() =&gt; {
+  console.log("запросов:", requests);
+  console.log("успешных отрисовок:", successRenders);
+  console.log(result.dataset.state, result.children.length);
+}, 1250);
+</pre>
+</div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>запросов: 1
+запросов: 3
+успешных отрисовок: 2
+success 1</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Три нажатия подряд («с», «са», «сам») должны дать <b>один</b> запрос — значит, <code>debounce</code> работает. Если в консоли «запросов: 3» уже в первой строке — слушатель вызывает <code>load</code> напрямую, без <code>debounce</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Если «успешных отрисовок» получилось 3, а не 2 — отмена не работает: ответ на «кур» нарисовался, хотя пользователь уже ввёл «курутоб». Проверьте, что <code>abort()</code> вызывается <b>до</b> создания нового контроллера и что <code>AbortError</code> в <code>catch</code> заканчивается <code>return</code>.</p></details>
+        </article>
+      </div>
+
+      <h3>Этап 4. Переносим в своё приложение</h3>
+      <p>Ваше приложение из уроков 14–15 уже умеет искать и листать страницы. Добавляем в него то же самое, шаг за шагом. После каждого шага запускайте и пробуйте:</p>
+      <ol class="steps">
+        <li><b>Заведите <code>state</code></b> с полями <code>status</code>, <code>items</code>, <code>error</code> (и <code>page</code>, если у вас есть пагинация).</li>
+        <li><b>Вынесите рисование в одну функцию <code>render()</code></b>, которая по <code>state.status</code> показывает нужную картинку. Больше нигде DOM не трогайте.</li>
+        <li><b>Оберните запрос</b>: сначала <code>loading</code>, потом <code>success</code> / <code>empty</code> / <code>error</code>. Не забудьте <code>if (!res.ok) throw ...</code>.</li>
+        <li><b>Skeleton</b>: скопируйте CSS из раздела 3, добавьте нужное число заглушек в состоянии <code>loading</code>.</li>
+        <li><b>Debounce</b>: скопируйте <code>debounce</code>, оберните обработчик <code>input</code> — пауза 300–400 мс.</li>
+        <li><b>AbortController</b>: передайте <code>signal</code> в свой <code>fetch</code>, отменяйте прошлый запрос, пропускайте <code>AbortError</code>.</li>
+        <li><b>Проверьте в DevTools</b> (вкладка Network): включите медленную сеть (Slow 4G) и режим Offline — все три состояния должны увидеться вживую.</li>
+      </ol>
+
+<pre class="code" data-run data-title="Каркас для своего приложения (с настоящим API, нужен интернет)">
+let state = { status: "idle", items: [], error: null };
+let controller = null;
+
+async function load(query) {
+  if (controller) controller.abort();
+  controller = new AbortController();
+  state = { status: "loading", items: [], error: null };
+  console.log("состояние:", state.status);          // здесь будет render()
+  try {
+    const url = `https://dummyjson.com/products/search?q=${encodeURIComponent(query)}&amp;limit=5`;
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Сервер ответил кодом ${res.status}`);
+    const data = await res.json();
+    state = { status: data.products.length ? "success" : "empty", items: data.products, error: null };
+  } catch (err) {
+    if (err.name === "AbortError") return;           // отмена — не ошибка
+    state = { status: "error", items: [], error: err.message };
+  }
+  console.log("состояние:", state.status, "| найдено:", state.items.length);
+}
+
+load("phone");
+</pre>
+
+      <div class="callout tip">
+        <b>Не забудьте про пагинацию</b>
+        <p>Если в приложении есть страницы, при <b>новом</b> поисковом запросе возвращайтесь на первую страницу. А пока идёт загрузка — делайте кнопки «Назад» и «Вперёд» неактивными (<code>disabled</code>), иначе пользователь успеет нажать их несколько раз подряд.</p>
+      </div>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">08</span> Домашнее задание</h2>
+
+      <p><b>Довести UX приложения:</b> загрузка, пустой результат, ошибка сети. Берёте своё приложение из уроков 14–15 (список или поиск по настоящему API) и делаете его вежливым к пользователю.</p>
+
+      <h3>Что нужно сделать</h3>
+      <ol>
+        <li><b>Загрузка.</b> Пока идёт запрос, показывается skeleton (3–6 заглушек нужной формы). На контейнере — <code>aria-busy</code>.</li>
+        <li><b>Пусто.</b> Если ничего не нашлось — понятный текст («Ничего не найдено по запросу «…»») и подсказка, что делать.</li>
+        <li><b>Ошибка.</b> Проверка <code>res.ok</code>; понятное сообщение по-человечески (не «Failed to fetch») и кнопка «Повторить», которая повторяет тот же запрос.</li>
+        <li><b>Debounce.</b> Поиск «на лету» с debounce 300–500 мс, написанный <b>вами</b> (не из библиотеки).</li>
+        <li><b>Отмена.</b> Новый запрос отменяет предыдущий через <code>AbortController</code>; <code>AbortError</code> не показывается как ошибка.</li>
+        <li><b>Проверка в DevTools.</b> Сделайте три скриншота: загрузка при медленной сети, режим Offline с ошибкой, пустой результат.</li>
+        <li><b>(Бонус.)</b> При новом запросе страница сбрасывается на первую; кнопки пагинации отключены на время загрузки.</li>
+      </ol>
+
+      <h3>Что сдавать</h3>
+      <ul>
+        <li>Ссылку на репозиторий в GitHub (или папку проекта — как договоритесь с преподавателем).</li>
+        <li>Три скриншота состояний (загрузка, ошибка, пусто).</li>
+        <li>Короткое описание на 3–5 предложений: что было сложнее всего и где использовали ИИ. Если использовали — каждую строку нужно уметь объяснить.</li>
+      </ul>
+
+      <h3>Как оцениваем (0–10)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что</th><th>Баллы</th></tr></thead>
+          <tbody>
+            <tr><td>Загрузка: skeleton или другая понятная индикация, содержимое не «прыгает»</td><td>2</td></tr>
+            <tr><td>Пусто и ошибка: разные тексты, проверка <code>res.ok</code>, работает «Повторить»</td><td>2</td></tr>
+            <tr><td>Debounce написан самостоятельно и работает (один запрос на серию нажатий)</td><td>2</td></tr>
+            <tr><td>AbortController: старый запрос отменяется, <code>AbortError</code> не показывается</td><td>2</td></tr>
+            <tr><td>Скриншоты и описание; студент объясняет код и решения на защите</td><td>2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout tip">
+        <b>Перед сдачей</b>
+        <p>Попробуйте сломать своё приложение: печатайте быстро, нажимайте «Найти» много раз подряд, включите Offline, введите запрос, которого нет. Если оно держится — оно готово.</p>
+      </div>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Четыре состояния:</b> <code>loading</code> (грузим), <code>error</code> (сломалось + «Повторить»), <code>empty</code> (ответ пуст), <code>success</code> (данные). Плюс <code>idle</code> — начало. Один <code>status</code> вместо кучи булевых.</li>
+        <li><b>Порядок проверок:</b> сначала loading и error, потом «пусто или нет». Иначе во время загрузки показывается «Ничего не найдено».</li>
+        <li><b>fetch и ошибки:</b> сети нет → промис отклонён (<code>catch</code>); сервер ответил 404/500 → <b>успех</b> для fetch. Всегда <code>if (!res.ok) throw new Error(...)</code>.</li>
+        <li><b>Пользователю</b> — понятный текст и «Повторить»; технические детали — в <code>console.error</code>.</li>
+        <li><b>Skeleton:</b> серые блоки той же формы + <code>background-size: 400%</code> и анимация <code>background-position</code>; <code>aria-busy</code>; <code>prefers-reduced-motion</code>; заменять содержимое целиком (<code>replaceChildren</code>).</li>
+        <li><b>debounce(fn, wait):</b> <code>let timer</code> снаружи, внутри <code>clearTimeout(timer); timer = setTimeout(() =&gt; fn(...args), wait)</code>. Пауза для поиска — 300–500 мс. Debounce — для потока событий, не для кнопок.</li>
+        <li><b>AbortController:</b> <code>const c = new AbortController(); fetch(url, { signal: c.signal }); c.abort();</code> — промис отклоняется с <code>AbortError</code>. Контроллер одноразовый; на новый запрос — новый.</li>
+        <li><b>Гонка запросов:</b> новый запрос отменяет прошлый; <code>AbortError</code> в <code>catch</code> молча пропускаем. <code>AbortSignal.timeout(мс)</code> — таймаут (<code>TimeoutError</code>).</li>
+        <li><b>ИИ-агент (Cursor):</b> видит весь проект, правит несколько файлов. Просим план до правок, читаем diff файл за файлом, не жмём «принять всё», проверяем в браузере (быстро, медленно, офлайн, пусто); секреты агенту не даём.</li>
+      </ul>
+    </section>
