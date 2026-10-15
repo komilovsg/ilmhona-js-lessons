@@ -1,4 +1,5 @@
 export type Theme = 'light' | 'dark' | 'system';
+// Legacy 'ilmhona:' prefix kept on purpose (renaming would reset saved themes).
 export const THEME_KEY = 'ilmhona:theme';
 export const themes: Theme[] = ['system', 'light', 'dark'];
 

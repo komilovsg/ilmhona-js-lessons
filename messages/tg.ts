@@ -3,8 +3,8 @@ import type { Messages } from './ru';
 
 export const tg: Messages = {
   meta: {
-    siteTitle: 'Ilmhona',
-    lessonTitle: 'Дарси {num} · {title} — Ilmhona',
+    siteTitle: 'MakeFirstStep',
+    lessonTitle: 'Дарси {num} · {title} — MakeFirstStep',
   },
   header: {
     brandSub: '· Frontend + зеҳни сунъӣ',
@@ -50,7 +50,7 @@ export const tg: Messages = {
     fallbackNotice: 'Тарҷумаи ин дарс ҳоло омода нест — матн бо забони русӣ.',
   },
   roadmap: {
-    metaTitle: 'Харитаи курс — Ilmhona',
+    metaTitle: 'Харитаи курс — MakeFirstStep',
     nav: 'Харитаи курс',
     kicker: 'Курс · Frontend + зеҳни сунъӣ',
     title: 'Харитаи курс',
@@ -129,7 +129,7 @@ export const tg: Messages = {
       'Тимлид',
       'Меъмор',
       'Гуруи JS',
-      'Афсонаи Ilmhona',
+      'Афсонаи MakeFirstStep',
     ],
     achievements: {
       first: { title: 'Вазифаи аввал', desc: 'Аввалин вазифаи худро ҳал кунед', how: 'Ягон вазифаро ҳал кунед' },
@@ -193,7 +193,7 @@ export const tg: Messages = {
   },
   auth: {
     signIn: 'Ворид шудан',
-    dialogTitle: 'Ворид шудан ба Ilmhona',
+    dialogTitle: 'Ворид шудан ба MakeFirstStep',
     dialogLead: 'Ворид шавед, то пешрафт дар ҳамаи дастгоҳҳо нигоҳ дошта шавад ва ба рейтинг ворид гардад.',
     google: 'Ворид шудан тавассути Google',
     or: 'ё',
@@ -222,7 +222,7 @@ export const tg: Messages = {
     },
   },
   leaderboard: {
-    metaTitle: 'Рейтинг — Ilmhona',
+    metaTitle: 'Рейтинг — MakeFirstStep',
     title: 'Рейтинг',
     lead: 'Беҳтарин 50 хонанда аз рӯи таҷриба (XP). Барои ворид шудан ба ҷадвал ворид шавед.',
     noServer: 'Рейтинг пас аз пайваст кардани сервер пайдо мешавад.',

@@ -1,8 +1,8 @@
 // Source of truth for UI strings. `tg.ts` must satisfy the same shape.
 export const ru = {
   meta: {
-    siteTitle: 'Ilmhona',
-    lessonTitle: 'Урок {num} · {title} — Ilmhona',
+    siteTitle: 'MakeFirstStep',
+    lessonTitle: 'Урок {num} · {title} — MakeFirstStep',
   },
   header: {
     brandSub: '· Frontend + ИИ',
@@ -48,7 +48,7 @@ export const ru = {
     fallbackNotice: 'Перевод этого урока пока не готов — текст на русском языке.',
   },
   roadmap: {
-    metaTitle: 'Карта курса — Ilmhona',
+    metaTitle: 'Карта курса — MakeFirstStep',
     nav: 'Карта курса',
     kicker: 'Курс · Frontend + ИИ',
     title: 'Карта курса',
@@ -127,7 +127,7 @@ export const ru = {
       'Тимлид',
       'Архитектор',
       'Гуру JS',
-      'Легенда Ilmhona',
+      'Легенда MakeFirstStep',
     ],
     achievements: {
       first: { title: 'Первая задача', desc: 'Решите свою первую задачу', how: 'Решите любую задачу' },
@@ -191,7 +191,7 @@ export const ru = {
   },
   auth: {
     signIn: 'Войти',
-    dialogTitle: 'Вход в Ilmhona',
+    dialogTitle: 'Вход в MakeFirstStep',
     dialogLead: 'Войдите, чтобы прогресс сохранялся на всех устройствах и попадал в рейтинг.',
     google: 'Войти через Google',
     or: 'или',
@@ -220,7 +220,7 @@ export const ru = {
     },
   },
   leaderboard: {
-    metaTitle: 'Рейтинг — Ilmhona',
+    metaTitle: 'Рейтинг — MakeFirstStep',
     title: 'Рейтинг',
     lead: 'Топ-50 учеников по опыту (XP). Войдите, чтобы попасть в таблицу.',
     noServer: 'Рейтинг появится после подключения сервера.',
