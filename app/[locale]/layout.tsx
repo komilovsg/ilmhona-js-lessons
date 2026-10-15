@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
 import I18nProvider from '@/components/I18nProvider';
 import { getMessages, isLocale, locales } from '@/lib/i18n';
-import { getTaskIds } from '@/lib/lessons.server';
 import { themeScript } from '@/lib/theme';
 import '../globals.css';
 
@@ -57,7 +56,7 @@ export default async function RootLayout({
       </head>
       <body>
         <I18nProvider locale={locale}>
-          <Header taskIds={getTaskIds()} />
+          <Header />
           {children}
         </I18nProvider>
       </body>

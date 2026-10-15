@@ -3,48 +3,51 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { lessons } from '@/content/lessons';
+import { lessonCounts } from '@/lib/course-status';
 import { useProgress } from '@/lib/progress';
-import HeaderExtras from './HeaderExtras';
+import AccountMenu from './AccountMenu';
 import { useT } from './I18nProvider';
-import LanguageSwitcher from './LanguageSwitcher';
+import LessonSwitcher from './LessonSwitcher';
+import XpBadge from './XpBadge';
 
-export default function Header({ taskIds }: { taskIds: Record<string, string[]> }) {
+export default function Header() {
   const pathname = usePathname();
   const progress = useProgress();
   const { t, locale } = useT();
   const current = lessons.find((l) => pathname === `/${locale}/lessons/${l.slug}`);
-  const ids = current ? (taskIds[current.slug] ?? []) : [];
-  const solved = current ? ids.filter((id) => progress.solved[`${current.slug}:${id}`]).length : 0;
-  const pct = ids.length ? (solved / ids.length) * 100 : 0;
+  const { solved, total } = current ? lessonCounts(current.slug, progress.solved) : { solved: 0, total: 0 };
+  const pct = total ? (solved / total) * 100 : 0;
 
   return (
     <header className="topbar">
-      <Link className="brand" href={`/${locale}`}>
+      <Link className="brand" href={`/${locale}`} aria-label={`Ilmhona — ${t.roadmap.nav}`}>
         <span className="brand-mark">I</span>
-        <span>
+        <span className="brand-name">
           Ilmhona <small>{t.header.brandSub}</small>
         </span>
       </Link>
-      <nav className="lessons" aria-label={t.header.lessonsNav}>
-        <Link href={`/${locale}`} aria-current={pathname === `/${locale}` ? 'page' : undefined}>
+      <nav className="topnav" aria-label={t.header.lessonsNav}>
+        <Link className="map-link" href={`/${locale}`} aria-current={pathname === `/${locale}` ? 'page' : undefined}>
           {t.roadmap.nav}
         </Link>
-        {lessons.map((l) => (
-          <Link key={l.slug} href={`/${locale}/lessons/${l.slug}`} aria-current={l === current ? 'page' : undefined}>
-            {`${l.num}. ${l.title[locale]}`}
-          </Link>
-        ))}
+        <LessonSwitcher currentSlug={current?.slug ?? null} solved={solved} total={total} />
       </nav>
-      <div className="progress">
-        <span>
-          {t.header.solved} <b data-solved>{solved}</b>/<b data-total>{ids.length}</b>
-        </span>
-        <div className="progress-bar">
+      <div className="topbar-end">
+        <XpBadge />
+        <AccountMenu />
+      </div>
+      {current && total > 0 && (
+        <div
+          className="topbar-line"
+          role="progressbar"
+          aria-label={t.header.solved}
+          aria-valuemin={0}
+          aria-valuemax={total}
+          aria-valuenow={solved}
+        >
           <i style={{ width: pct + '%' }} />
         </div>
-      </div>
-      <LanguageSwitcher />
-      <HeaderExtras />
+      )}
     </header>
   );
 }

@@ -5,18 +5,15 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { course, destination, isAvailable, modules, type CourseEntry } from '@/content/course';
+import { destination, isAvailable, modules } from '@/content/course';
+import { courseItems, type CourseItem, type CourseStatus } from '@/lib/course-status';
 import { levelInfo, totalXp } from '@/lib/game';
 import { fmt } from '@/lib/i18n';
-import { LESSON_META } from '@/lib/lesson-meta';
 import { useProgress } from '@/lib/progress';
 import { useT } from '../I18nProvider';
 import { BoltIcon, CheckIcon, ClockIcon, DotIcon, FlagIcon, LockIcon, PinIcon, TrophyIcon } from './icons';
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
-
-type Status = 'done' | 'progress' | 'available' | 'soon';
-type Item = CourseEntry & { status: Status; solved: number; total: number };
 
 /** Smooth S-curves through the marker centres. */
 function pathThrough(pts: [number, number][]): string {
@@ -36,17 +33,7 @@ export default function RoadmapView() {
   const r = t.roadmap;
   const progress = useProgress();
 
-  const items: Item[] = useMemo(
-    () =>
-      course.map((c) => {
-        const avail = isAvailable(c);
-        const ids = avail ? Object.keys(LESSON_META[c.slug] ?? {}) : [];
-        const solved = ids.filter((id) => progress.solved[`${c.slug}:${id}`]).length;
-        const status: Status = !avail ? 'soon' : ids.length > 0 && solved === ids.length ? 'done' : solved > 0 ? 'progress' : 'available';
-        return { ...c, status, solved, total: ids.length };
-      }),
-    [progress],
-  );
+  const items = useMemo(() => courseItems(progress.solved), [progress]);
 
   const doneCount = items.filter((i) => i.status === 'done').length;
   const progCount = items.filter((i) => i.status === 'progress').length;
@@ -204,7 +191,7 @@ export default function RoadmapView() {
     { scope: root, dependencies: [tick, hereIdx, locale], revertOnUpdate: true },
   );
 
-  const statusLabel = (i: Item) =>
+  const statusLabel = (i: CourseItem) =>
     i.status === 'done'
       ? r.statusDone
       : i.status === 'progress'
@@ -213,7 +200,7 @@ export default function RoadmapView() {
           ? r.statusAvailable
           : r.statusSoon;
 
-  const StatusIcon = ({ s }: { s: Status }) =>
+  const StatusIcon = ({ s }: { s: CourseStatus }) =>
     s === 'done' ? <CheckIcon /> : s === 'soon' ? <ClockIcon /> : <DotIcon />;
 
   return (

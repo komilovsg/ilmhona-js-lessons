@@ -19,10 +19,20 @@ export const tg: Messages = {
     tgName: 'Тоҷикӣ',
   },
   theme: {
-    label: 'Мавзӯи тарроҳӣ: {current}. Барои иваз кардан пахш кунед',
     system: 'худкор',
     light: 'равшан',
     dark: 'торик',
+  },
+  nav: {
+    lessons: 'Дарсҳо',
+    lesson: 'Дарси {num}',
+    pickLesson: 'Интихоби дарс',
+    account: 'Ҳисоб ва танзимот',
+    signInEmail: 'Ворид шудан бо почта',
+    theme: 'Мавзӯъ',
+    themeLight: 'Равшан',
+    themeDark: 'Торик',
+    themeAuto: 'Худкор',
   },
   toc: {
     title: 'Мундариҷа',

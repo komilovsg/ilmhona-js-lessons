@@ -17,10 +17,20 @@ export const ru = {
     tgName: 'Тоҷикӣ',
   },
   theme: {
-    label: 'Тема оформления: {current}. Нажмите, чтобы сменить',
     system: 'авто',
     light: 'светлая',
     dark: 'тёмная',
+  },
+  nav: {
+    lessons: 'Уроки',
+    lesson: 'Урок {num}',
+    pickLesson: 'Выбрать урок',
+    account: 'Аккаунт и настройки',
+    signInEmail: 'Войти по почте',
+    theme: 'Тема',
+    themeLight: 'Светлая',
+    themeDark: 'Тёмная',
+    themeAuto: 'Авто',
   },
   toc: {
     title: 'Содержание',
