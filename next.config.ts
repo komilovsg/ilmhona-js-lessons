@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
       { source: '/01-functions.html', destination: '/ru/lessons/functions', permanent: false },
       { source: '/02-arrays.html', destination: '/ru/lessons/arrays', permanent: false },
       { source: '/03-objects.html', destination: '/ru/lessons/objects', permanent: false },
+      // New numbering (file names of the lesson fragments).
+      { source: '/05-functions.html', destination: '/ru/lessons/functions', permanent: false },
+      { source: '/06-arrays.html', destination: '/ru/lessons/arrays', permanent: false },
+      { source: '/07-objects.html', destination: '/ru/lessons/objects', permanent: false },
     ];
   },
 };

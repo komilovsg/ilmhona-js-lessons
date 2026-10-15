@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { lessons } from '@/content/lessons';
+import { availableCourse } from '@/content/course';
 import { lessonCounts } from '@/lib/course-status';
 import { useProgress } from '@/lib/progress';
 import AccountMenu from './AccountMenu';
@@ -14,7 +14,7 @@ export default function Header() {
   const pathname = usePathname();
   const progress = useProgress();
   const { t, locale } = useT();
-  const current = lessons.find((l) => pathname === `/${locale}/lessons/${l.slug}`);
+  const current = availableCourse().find((l) => pathname === `/${locale}/lessons/${l.slug}`);
   const { solved, total } = current ? lessonCounts(current.slug, progress.solved) : { solved: 0, total: 0 };
   const pct = total ? (solved / total) * 100 : 0;
 

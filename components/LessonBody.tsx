@@ -1,15 +1,15 @@
 import { isTag } from 'domhandler';
 import { findAll, textContent } from 'domutils';
 import parse, { htmlToDOM, type Element } from 'html-react-parser';
-import type { Lesson } from '@/content/lessons';
+import type { CourseEntry } from '@/content/course';
 import { getMessages, type Locale } from '@/lib/i18n';
-import { readFragment } from '@/lib/lessons.server';
+import { neighbours, readFragment } from '@/lib/lessons.server';
 import { hasClass, makeReplaceOptions } from '@/lib/contentReplace';
 import Pager from './Pager';
 import Toc, { type TocItem } from './Toc';
 
-export default function LessonBody({ lesson, locale }: { lesson: Lesson; locale: Locale }) {
-  const { html: raw, isFallback } = readFragment(lesson.file, locale);
+export default function LessonBody({ lesson, locale }: { lesson: CourseEntry; locale: Locale }) {
+  const { html: raw, isFallback } = readFragment(lesson, locale);
   const styleMatch = raw.match(/^<style>([\s\S]*?)<\/style>\n/);
   const css = styleMatch ? styleMatch[1] : '';
   const html = styleMatch ? raw.slice(styleMatch[0].length) : raw;
@@ -33,7 +33,7 @@ export default function LessonBody({ lesson, locale }: { lesson: Lesson; locale:
             </div>
           )}
           {parse(html, options)}
-          <Pager lesson={lesson} locale={locale} />
+          <Pager {...neighbours(lesson.slug)} locale={locale} />
         </main>
       </div>
     </>

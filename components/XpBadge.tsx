@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { lessons } from '@/content/lessons';
+import { availableCourse } from '@/content/course';
 import { confetti } from '@/lib/confetti';
 import { achievements, currentStreak, levelInfo, totalXp, type Achievement } from '@/lib/game';
 import { LESSON_META } from '@/lib/lesson-meta';
@@ -130,7 +130,7 @@ export default function XpBadge() {
           </div>
           <p className="xp-h">{t.xp.lessons}</p>
           <ul className="xp-lessons">
-            {lessons.map((l) => {
+            {availableCourse().map((l) => {
               const ids = Object.keys(LESSON_META[l.slug] ?? {});
               const n = ids.filter((t) => progress.solved[`${l.slug}:${t}`]).length;
               return (
