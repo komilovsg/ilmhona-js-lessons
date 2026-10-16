@@ -162,5 +162,5 @@ Known ceilings, accepted for a classroom deployment:
 - **Avatars are Google-only.** The migration keeps `avatar_url` only for Google sign-ups and only
   for `https://lhN.googleusercontent.com/` URLs; email sign-ups always show the initial. Avatars
   appear on the leaderboard only for students who opted in.
-- **CSP is Report-Only** (`next.config.ts`). Switch it to enforcing once the browser console
-  shows no unexpected reports during normal use.
+- **CSP is enforced** (`next.config.ts`). It stays loose enough for student code (srcdoc runner
+  frames inherit it); a separate runner origin would allow a strict policy on the main pages.
