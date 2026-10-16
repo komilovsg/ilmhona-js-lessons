@@ -150,15 +150,18 @@ export type ChainResult =
  * Tries models in order. A 429 marks that model exhausted in `state` until its reset (retryDelay for per-minute,
  * next Pacific midnight for per-day) and the same request goes to the next model; nothing is streamed before that.
  * A 400 retries that model once without thinkingConfig (cached in `noThinking`).
- * `slot(model)` is an optional own throttle (seconds to wait, 0 = free) treated like a per-minute exhaustion.
+ * `slot(model)` is an optional own throttle (may be async, e.g. a shared store): 0 = free, seconds to wait (treated like a
+ * per-minute exhaustion) or 'day' (daily quota spent, skipped like a per-day exhaustion).
+ * `onExhausted(model, until, kind)` is told about every upstream 429 (to share it beyond this instance).
  */
 export async function runChain(
   models: readonly string[],
   call: (model: string, thinking: boolean) => Promise<Response>,
   state: Map<string, { until: number; kind: Quota }>,
-  slot: (model: string) => number = () => 0,
+  slot: (model: string) => number | 'day' | Promise<number | 'day'> = () => 0,
   now = () => Date.now(),
   noThinking: Set<string> = new Set(),
+  onExhausted?: (model: string, until: number, kind: Quota) => void,
 ): Promise<ChainResult> {
   let minuteWait = 0; // shortest wait among per-minute exhausted models, 0 = none
   let failed = false;
@@ -172,7 +175,8 @@ export async function runChain(
       }
       continue;
     }
-    const own = slot(model);
+    const own = await slot(model);
+    if (own === 'day') continue;
     if (own) {
       minuteWait = minuteWait ? Math.min(minuteWait, own) : own;
       continue;
@@ -196,6 +200,7 @@ export async function runChain(
       const secs = retryDelay(body);
       const until = kind === 'day' ? nextPacificMidnight(t) : t + secs * 1000;
       state.set(model, { until, kind });
+      onExhausted?.(model, until, kind);
       console.error('mentor model exhausted', kind); // never the body, never the model id in responses
       if (kind === 'minute') minuteWait = minuteWait ? Math.min(minuteWait, secs) : secs;
       continue;

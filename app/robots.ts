@@ -4,7 +4,7 @@ const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://ilmhona-js-lessons.ver
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/api/', '/*/dev/'] },
+    rules: { userAgent: '*', allow: '/', disallow: ['/api/', '/*/dev/', '/*/admin/'] },
     sitemap: `${base}/sitemap.xml`,
   };
 }
