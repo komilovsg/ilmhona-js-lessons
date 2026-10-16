@@ -483,10 +483,13 @@ function MenuView({ auth }: { auth?: AuthProps }) {
                 <GoogleIcon />
                 {T.google}
               </button>
-              <button type="button" className="auth-item" onClick={() => (close(), auth.onEmail())}>
-                <MailIcon />
-                {t.nav.signInEmail}
-              </button>
+              {/* email magic links need custom SMTP (Supabase's built-in mailer only reaches org members) */}
+              {process.env.NEXT_PUBLIC_AUTH_EMAIL === '1' && (
+                <button type="button" className="auth-item" onClick={() => (close(), auth.onEmail())}>
+                  <MailIcon />
+                  {t.nav.signInEmail}
+                </button>
+              )}
             </div>
           )}
           <div className={hasAuthBlock || signedIn ? 'auth-sec' : undefined}>
