@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import LegalPage from '@/components/LegalPage';
 import { fromUrlLocale, urlLocales } from '@/lib/i18n';
 import { legalDoc } from '@/lib/legal';
+import { SITE_NAME, buildMeta } from '@/lib/site';
 
 export function generateStaticParams() {
   return urlLocales.map((locale) => ({ locale }));
@@ -12,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const locale = fromUrlLocale((await params).locale);
   if (!locale) return {};
   const d = legalDoc(locale, 'privacy');
-  return { title: d.metaTitle, description: d.metaDescription, robots: { index: true, follow: true } };
+  return buildMeta({ locale, sub: '/privacy', title: d.metaTitle.replace(` — ${SITE_NAME}`, ''), description: d.metaDescription });
 }
 
 export default async function Page({ params }: { params: Promise<{ locale: string }> }) {

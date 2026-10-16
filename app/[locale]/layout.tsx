@@ -1,10 +1,11 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { JetBrains_Mono, Manrope } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
 import SiteFooter from '@/components/SiteFooter';
 import I18nProvider from '@/components/I18nProvider';
-import { getMessages, fromUrlLocale, urlLocales } from '@/lib/i18n';
+import { fromUrlLocale, urlLocales } from '@/lib/i18n';
+import { SITE_NAME, SITE_URL, alternatesFor, siteTexts } from '@/lib/site';
 import { themeScript } from '@/lib/theme';
 import '../globals.css';
 
@@ -32,10 +33,35 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = fromUrlLocale((await params).locale);
   if (!locale) return {};
+  const t = siteTexts[locale];
   return {
-    title: getMessages(locale).meta.siteTitle,
+    metadataBase: new URL(SITE_URL),
+    title: { default: `${SITE_NAME} — ${t.homeTitle}`, template: `%s — ${SITE_NAME}` },
+    description: t.description,
+    applicationName: SITE_NAME,
+    keywords: [...t.keywords],
+    authors: [{ name: SITE_NAME }],
+    creator: SITE_NAME,
+    alternates: alternatesFor(locale),
+    robots: { index: true, follow: true },
+    openGraph: {
+      type: 'website',
+      siteName: SITE_NAME,
+      title: `${SITE_NAME} — ${t.homeTitle}`,
+      description: t.description,
+      locale: locale === 'ru' ? 'ru_RU' : 'tg_TJ',
+      alternateLocale: [locale === 'ru' ? 'tg_TJ' : 'ru_RU'],
+    },
+    twitter: { card: 'summary_large_image', title: `${SITE_NAME} — ${t.homeTitle}`, description: t.description },
   };
 }
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f7f4ee' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f1613' },
+  ],
+};
 
 export default async function RootLayout({
   children,

@@ -1,7 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { AVAILABLE } from '@/lib/lesson-meta.generated';
-
-const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://ilmhona-js-lessons.vercel.app';
+import { SITE_URL as base } from '@/lib/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const out: MetadataRoute.Sitemap = [];
