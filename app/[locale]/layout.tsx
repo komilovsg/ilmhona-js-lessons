@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { JetBrains_Mono, Manrope } from 'next/font/google';
 import { notFound } from 'next/navigation';
 import Header from '@/components/Header';
+import SiteFooter from '@/components/SiteFooter';
 import I18nProvider from '@/components/I18nProvider';
 import { getMessages, fromUrlLocale, urlLocales } from '@/lib/i18n';
 import { themeScript } from '@/lib/theme';
@@ -55,6 +56,7 @@ export default async function RootLayout({
         <I18nProvider locale={locale}>
           <Header />
           {children}
+          <SiteFooter locale={locale} />
         </I18nProvider>
       </body>
     </html>

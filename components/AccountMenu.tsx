@@ -7,6 +7,7 @@ import { isTheme, readTheme, resolveTheme, THEME_KEY, type Theme } from '@/lib/t
 import { useT } from './I18nProvider';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { footerLabels } from '@/lib/legal';
 import { isSafeAvatar } from '@/lib/avatar';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import type { SyncStatus } from '@/lib/sync';
@@ -282,6 +283,7 @@ type AuthProps = {
 function MenuView({ auth }: { auth?: AuthProps }) {
   const { locale, t } = useT();
   const T = t.auth;
+  const legal = footerLabels(locale);
   const pathname = usePathname();
   const rest = pathname.replace(/^\/[^/]+/, '');
   const [theme, setTheme] = useThemeSetting();
@@ -481,16 +483,27 @@ function MenuView({ auth }: { auth?: AuthProps }) {
                 <GoogleIcon />
                 {T.google}
               </button>
-              <button type="button" className="auth-item" onClick={() => (close(), auth.onEmail())}>
-                <MailIcon />
-                {t.nav.signInEmail}
-              </button>
+              {/* email magic links need custom SMTP (Supabase's built-in mailer only reaches org members) */}
+              {process.env.NEXT_PUBLIC_AUTH_EMAIL === '1' && (
+                <button type="button" className="auth-item" onClick={() => (close(), auth.onEmail())}>
+                  <MailIcon />
+                  {t.nav.signInEmail}
+                </button>
+              )}
             </div>
           )}
           <div className={hasAuthBlock || signedIn ? 'auth-sec' : undefined}>
             <Link className="auth-item" href={`/${toUrlLocale(locale)}/leaderboard`} onClick={close}>
               <span aria-hidden="true">🏆</span>
               {T.leaderboard}
+            </Link>
+          </div>
+          <div className="auth-sec auth-legal">
+            <Link className="auth-item" href={`/${toUrlLocale(locale)}/privacy`} onClick={close}>
+              {legal.privacy}
+            </Link>
+            <Link className="auth-item" href={`/${toUrlLocale(locale)}/terms`} onClick={close}>
+              {legal.terms}
             </Link>
           </div>
           <div className="auth-sec">

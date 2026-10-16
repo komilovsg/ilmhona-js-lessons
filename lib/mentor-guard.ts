@@ -135,9 +135,23 @@ export const HOLD = 32;
  */
 export function guardStream(
   next: () => Promise<string | null>,
-  opts: { fixed: Record<Sentinel, string>; sign: (text: string) => string; onCancel?: () => void },
+  opts: {
+    fixed: Record<Sentinel, string>;
+    sign: (text: string) => string;
+    onCancel?: () => void;
+    /** Called once when the reply ends: normal answer, a fixed line (off / who), a stream error, or a client cancel ('ok'). */
+    onDone?: (kind: 'ok' | Sentinel | 'error') => void;
+  },
 ): ReadableStream<Uint8Array> {
   const enc = new TextEncoder();
+  let reported = false;
+  const done = (kind: 'ok' | Sentinel | 'error') => {
+    if (reported) return;
+    reported = true;
+    try {
+      opts.onDone?.(kind);
+    } catch {}
+  };
   let acc = '';
   let sent = 0;
   let delivered = '';
@@ -149,8 +163,9 @@ export function guardStream(
         delivered += t;
         c.enqueue(enc.encode(t));
       };
-      const end = () => {
+      const end = (kind: 'ok' | Sentinel = 'ok') => {
         over = true;
+        done(kind);
         const sig = delivered ? opts.sign(delivered) : '';
         if (sig) c.enqueue(enc.encode(SIG_SEP + sig));
         c.close();
@@ -158,7 +173,7 @@ export function guardStream(
       const finish = (kind: Sentinel) => {
         opts.onCancel?.();
         emit((sent ? '\n\n' : '') + opts.fixed[kind]);
-        end();
+        end(kind);
       };
       try {
         while (!over) {
@@ -189,10 +204,14 @@ export function guardStream(
       } catch {
         if (!over) {
           over = true;
+          done('error');
           c.close(); // no signature: the partial text is shown but not trusted as history later
         }
       }
     },
-    cancel: () => opts.onCancel?.(),
+    cancel: () => {
+      done('ok');
+      opts.onCancel?.();
+    },
   });
 }

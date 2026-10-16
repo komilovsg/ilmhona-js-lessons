@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     out.push({ url: `${base}/${l}` });
     for (const slug of AVAILABLE) out.push({ url: `${base}/${l}/lessons/${slug}` });
     out.push({ url: `${base}/${l}/leaderboard` });
+    out.push({ url: `${base}/${l}/privacy` }, { url: `${base}/${l}/terms` });
   }
   return out;
 }

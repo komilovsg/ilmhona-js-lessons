@@ -23,6 +23,18 @@ Everything fits the Supabase **free** plan.
 
 (With the Supabase CLI instead: `supabase link --project-ref <ref>` then `supabase db push`.)
 
+## 2b. Mentor quota + request log (`0002_mentor.sql`)
+
+Optional, independent of sign-in. Run [`migrations/0002_mentor.sql`](migrations/0002_mentor.sql) in the SQL Editor
+after 0001 (safe to re-run). It creates `mentor_model_usage` (shared per-model RPM/RPD counters) and `mentor_log`
+(one row per mentor request, redacted, kept 7 days), the service-role-only functions `mentor_try_acquire`,
+`mentor_mark_exhausted`, `mentor_outcome_totals`, `mentor_purge_logs`, and schedules the daily purge with pg_cron
+(**Database → Cron** shows the job `mentor-purge`; if pg_cron is unavailable the migration prints a notice and the API
+purges hourly instead). Both tables have RLS on and no policies: the publishable/anon key cannot read or write them.
+
+Then set the server-only variables (section 6): `SUPABASE_SECRET_KEY` and, for the status page, `MENTOR_ADMIN_TOKEN`.
+What is logged and the status page: [`docs/mentor.md`](../docs/mentor.md).
+
 ## 3. URLs
 
 Dashboard → **Authentication → URL Configuration**:
@@ -73,15 +85,21 @@ Dashboard → **Project Settings → API Keys** (and **Data API** for the URL):
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the **publishable** key, `sb_publishable_...` |
 
+| `SUPABASE_SECRET_KEY` | mentor only, **server-only**: a **secret** key, `sb_secret_...` (legacy projects: the `service_role` key in `SUPABASE_SERVICE_ROLE_KEY`) |
+| `MENTOR_ADMIN_TOKEN` | mentor status page, server-only: a long random string (`openssl rand -base64 32`) |
+
 Older projects that only show the legacy JWT keys: put the **anon** key into
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` instead (used only when the publishable key is empty).
-Never put the `service_role` / `sb_secret_...` key into the frontend.
+Never put the `service_role` / `sb_secret_...` key into the frontend: no `NEXT_PUBLIC_` prefix, never in client code.
+It bypasses RLS; only `lib/mentor-store.ts` (server) reads it. In Vercel mark it **Sensitive**. Without it the mentor
+works as before (per-instance memory limits, no log).
 
 - **Local**: copy `.env.example` to `.env.local`, fill in, restart `pnpm dev`.
 - **Vercel**: Project → **Settings → Environment Variables** → add both for Production (and Preview
   if you want), then **redeploy** — `NEXT_PUBLIC_*` values are baked in at build time.
 
-Both values are public by design; the data is protected by Row Level Security in the migration.
+The two `NEXT_PUBLIC_*` values are public by design; the data is protected by Row Level Security in the migration.
+`SUPABASE_SECRET_KEY` and `MENTOR_ADMIN_TOKEN` are secrets and take effect without a rebuild (redeploy is enough).
 
 ## 7. Check it works
 
@@ -144,5 +162,5 @@ Known ceilings, accepted for a classroom deployment:
 - **Avatars are Google-only.** The migration keeps `avatar_url` only for Google sign-ups and only
   for `https://lhN.googleusercontent.com/` URLs; email sign-ups always show the initial. Avatars
   appear on the leaderboard only for students who opted in.
-- **CSP is Report-Only** (`next.config.ts`). Switch it to enforcing once the browser console
-  shows no unexpected reports during normal use.
+- **CSP is enforced** (`next.config.ts`). It stays loose enough for student code (srcdoc runner
+  frames inherit it); a separate runner origin would allow a strict policy on the main pages.

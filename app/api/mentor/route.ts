@@ -1,35 +1,25 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { getLesson, readFragment } from '@/lib/lessons.server';
 import { guardStream, OFF, WHO } from '@/lib/mentor-guard';
-import { checkHeaders, clientKey, minuteGate, readBody, retryDelay, runChain, signReply, verifyReply } from '@/lib/mentor-server';
+import { CHAIN, getMentorStore } from '@/lib/mentor-models';
+import { checkHeaders, clientKey, readBody, retryDelay, runChain, signReply, verifyReply } from '@/lib/mentor-server';
+import { clip, type LogRow, type Outcome } from '@/lib/mentor-store';
 import { redactCodeField, redactMessage } from '@/lib/redact';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Docs: https://ai.google.dev/api/generate-content (streamGenerateContent), models: https://ai.google.dev/gemini-api/docs/models
-// Model ids verified with the models list endpoint on 2026-10-16 (note: Gemini 3 Flash is "gemini-3-flash-preview").
-// Free-tier limits per model from the owner's AI Studio rate-limit page, 2026-10-16. Each model has its own quota, so the chain
-// rotates: a model at its RPM (own gate, a bit under) or whose 429 says exhausted is skipped, the request goes to the next one.
-// Quotas are per Google Cloud project, not per key: never add projects/keys to multiply them (against Google's terms).
-// think: thinkingConfig per model; a 400 retries once without it (runChain). rpd is the free-tier requests per day.
-const CHAIN = [
-  { id: 'gemini-3.5-flash-lite', rpm: 14, rpd: 500, think: { thinkingLevel: 'minimal' } },
-  { id: 'gemini-2.5-flash-lite', rpm: 9, rpd: 20, think: { thinkingBudget: 0 } },
-  { id: 'gemini-3.8-flash', rpm: 4, rpd: 20, think: { thinkingLevel: 'minimal' } },
-  { id: 'gemini-3-flash-preview', rpm: 4, rpd: 20, think: { thinkingLevel: 'minimal' } },
-  { id: 'gemini-3.6-flash', rpm: 4, rpd: 20, think: { thinkingBudget: 0 } },
-  { id: 'gemini-2.5-flash', rpm: 4, rpd: 20, think: { thinkingBudget: 0 } },
-] as const;
+// Docs: https://ai.google.dev/api/generate-content (streamGenerateContent). Model chain and limits: lib/mentor-models.ts.
 const MODELS = CHAIN.map((m) => m.id);
 const endpoint = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
-const exhausted = new Map<string, { until: number; kind: 'minute' | 'day' }>();
+// Quota state: shared across instances via Supabase when configured (lib/mentor-store.ts), else per-instance memory as before.
+const store = getMentorStore();
 const noThinking = new Set<string>();
 const MAX_OUTPUT_TOKENS = 700; // thinking is disabled below, so this is the visible answer budget
 const TIMEOUT_MS = 30_000;
 
-// ponytail: in-memory limits. Serverless instances do not share memory, so the real ceiling is
-// (limit x warm instances). Upgrade to Upstash/Vercel KV or a Supabase table once accounts exist.
+// ponytail: per-client bucket and DAILY_CAP stay in memory (real ceiling = limit x warm instances). The upstream
+// per-model RPM/RPD quota is the shared one (Supabase, see store); move these too if abuse ever shows up in the log.
 const IP_LIMIT = 12;
 const IP_WINDOW_MS = 10 * 60_000;
 // Sum of the chain's free-tier RPD (500 + 5 x 20 = 600) minus ~5% margin.
@@ -72,9 +62,8 @@ const LIMITED = {
 const limited = () =>
   NextResponse.json({ error: 'rate_limited', messages: LIMITED }, { status: 429, headers: { 'Retry-After': '120' } });
 
-// Per-model RPM gates, each a bit under the model's free-tier RPM (AI Studio, 2026-10-16). Per instance (ponytail above).
-const gates = new Map<string, () => number>(CHAIN.map((m) => [m.id, minuteGate(m.rpm)]));
-const slot = (model: string) => gates.get(model)!();
+// Per-model RPM gates (each a bit under the model's free-tier RPM) live in the store: Supabase mentor_try_acquire
+// shared by all instances, or the in-memory minuteGate per instance without it (and whenever Supabase is unreachable).
 /** Upstream is saturated (our throttle or Google's 429): 503 + Retry-After (never above 60 s), the chat shows a countdown. */
 const busy = (retryAfter: number) => {
   const s = Math.min(60, Math.max(1, Math.ceil(retryAfter)));
@@ -263,7 +252,20 @@ function upstreamDeltas(reader: ReadableStreamDefaultReader<Uint8Array>): () => 
   };
 }
 
+/** Runs `task` after the response is sent (waitUntil on Vercel); never blocks or breaks the reply. */
+function later(task: () => Promise<unknown>) {
+  const run = () => task().catch(() => {});
+  try {
+    after(run);
+  } catch {
+    void run();
+  }
+}
+
+const OUTCOME = { ok: 'ok', off: 'off_topic', who: 'identity', error: 'error' } as const;
+
 export async function POST(req: Request) {
+  const t0 = Date.now();
   const hdr = checkHeaders(req);
   if (hdr) return bad(hdr, hdr === 415 ? 'unsupported_media_type' : 'forbidden');
 
@@ -271,35 +273,63 @@ export async function POST(req: Request) {
   const key = process.env.GEMINI_API_KEY;
   if (!key && !fake) return bad(503, 'not_configured');
 
-  if (!allowIp(clientKey(req.headers))) return limited();
+  const ip = clientKey(req.headers);
+  if (!allowIp(ip)) return limited(); // not logged: the per-client limiter also bounds log writes
+
+  // One log row per request that passed the per-client limiter. Only redacted, clipped text; never the answer or the IP.
+  let row: LogRow = {
+    lesson_slug: null,
+    task_id: null,
+    locale: null,
+    model_key: null,
+    outcome: 'rejected',
+    latency_ms: 0,
+    ip_hash: store.ipHash(ip),
+    redacted_question: null,
+    pii_redacted: false,
+  };
+  const record = (outcome: Outcome, model: string | null = null) =>
+    later(() => store.log({ ...row, outcome, model_key: model && store.keyOf(model), latency_ms: Date.now() - t0 }));
+  const reject = (status: number, error?: string) => (record('rejected'), bad(status, error));
 
   const text = await readBody(req);
-  if (text === 413) return bad(413, 'too_large');
-  if (text === 400) return bad(400);
+  if (text === 413) return reject(413, 'too_large');
+  if (text === 400) return reject(400);
   let raw: unknown;
   try {
     raw = JSON.parse(text);
   } catch {
-    return bad(400);
+    return reject(400);
   }
   const body = parse(raw);
-  if (!body) return bad(400);
-  if (!allowDaily()) return limited();
+  if (!body) return reject(400);
+  const asked = redactMessage(body.messages[body.messages.length - 1].text);
+  row = { ...row, lesson_slug: body.lessonSlug, task_id: body.taskId ?? null, locale: body.locale, redacted_question: clip(asked.text), pii_redacted: asked.hit };
+  if (!allowDaily()) return (record('daily_limit'), limited());
 
   const history = trustedHistory(body);
-  const relay = (next: () => Promise<string | null>, onCancel?: () => void) =>
-    new Response(
+  const relay = (next: () => Promise<string | null>, model: string | null, onCancel?: () => void) => {
+    // The outcome (answer / off-topic / identity) is only known when the guarded stream ends.
+    let settle: (kind: keyof typeof OUTCOME) => void = () => {};
+    const ended = new Promise<keyof typeof OUTCOME>((r) => (settle = r));
+    later(async () => {
+      const kind = await Promise.race([ended, new Promise<'error'>((r) => setTimeout(() => r('error'), TIMEOUT_MS + 5000))]);
+      await store.log({ ...row, outcome: OUTCOME[kind], model_key: model && store.keyOf(model), latency_ms: Date.now() - t0 });
+    });
+    return new Response(
       guardStream(next, {
         fixed: { off: FIXED.off[body.locale], who: FIXED.who[body.locale] },
         sign: (t) => signReply(body.lessonSlug, t),
         onCancel,
+        onDone: settle,
       }),
       { headers: textHeaders },
     );
+  };
 
   // Fake mode: "#busy" in the message simulates Google's 429 so the countdown UI can be tried without a key.
-  if (fake && body.messages[body.messages.length - 1].text.includes('#busy')) return busy(retryDelay('{"retryDelay": "12s"}'));
-  if (fake) return relay(fakeDeltas(body, history));
+  if (fake && body.messages[body.messages.length - 1].text.includes('#busy')) return (record('busy'), busy(retryDelay('{"retryDelay": "12s"}')));
+  if (fake) return relay(fakeDeltas(body, history), null);
 
   const r = await runChain(
     MODELS,
@@ -310,13 +340,17 @@ export async function POST(req: Request) {
         body: JSON.stringify(buildRequest(body, history, model, thinking)),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       }),
-    exhausted,
-    slot,
+    store.exhausted,
+    (model) => store.acquire(model),
     undefined,
     noThinking,
+    (model, until, kind) => store.markExhausted(model, until, kind),
   );
-  if (!r.ok) return r.error === 'busy' ? busy(r.retryAfter) : r.error === 'daily_limit' ? dailyLimit() : bad(502, 'upstream');
+  if (!r.ok) {
+    record(r.error === 'upstream' ? 'error' : r.error);
+    return r.error === 'busy' ? busy(r.retryAfter) : r.error === 'daily_limit' ? dailyLimit() : bad(502, 'upstream');
+  }
   const up = r.res;
   const reader = up.body!.getReader();
-  return relay(upstreamDeltas(reader), () => void reader.cancel().catch(() => {}));
+  return relay(upstreamDeltas(reader), r.model, () => void reader.cancel().catch(() => {}));
 }
