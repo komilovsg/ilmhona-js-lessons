@@ -112,3 +112,101 @@ export async function readBody(req: Request, max = MAX_BODY): Promise<string | 4
     return 400;
   }
 }
+
+// ---- Upstream model chain with quota-aware fallback ----
+
+/** Gemini free tier, ai.google.dev/gemini-api/docs/rate-limits (checked 2026-10-16): RPD resets at midnight Pacific time. */
+export type Quota = 'minute' | 'day';
+
+/** Quota type of an upstream 429 body: QuotaFailure violations first (quotaId/quotaMetric "PerDay"), then retryDelay > 120 s means daily. */
+export function classifyQuota(body: string): Quota {
+  if (/PerDay/i.test(body)) return 'day';
+  if (/PerMinute/i.test(body)) return 'minute';
+  return retryDelay(body) > 120 ? 'day' : 'minute';
+}
+
+const pacific = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Los_Angeles',
+  hourCycle: 'h23',
+  hour: 'numeric',
+  minute: 'numeric',
+  second: 'numeric',
+});
+
+/** Epoch ms of the next midnight in America/Los_Angeles (DST-safe: derived from the local clock reading). */
+export function nextPacificMidnight(now = Date.now()): number {
+  const p = Object.fromEntries(pacific.formatToParts(now).map((x) => [x.type, Number(x.value)]));
+  const sinceMidnight = (p.hour * 3600 + p.minute * 60 + p.second) * 1000;
+  return now - sinceMidnight - (now % 1000) + 24 * 3600_000;
+}
+
+export type ChainResult =
+  | { ok: true; res: Response; model: string }
+  | { ok: false; error: 'busy'; retryAfter: number }
+  | { ok: false; error: 'daily_limit' }
+  | { ok: false; error: 'upstream' };
+
+/**
+ * Tries models in order. A 429 marks that model exhausted in `state` until its reset (retryDelay for per-minute,
+ * next Pacific midnight for per-day) and the same request goes to the next model; nothing is streamed before that.
+ * A 400 retries that model once without thinkingConfig (cached in `noThinking`).
+ * `slot(model)` is an optional own throttle (seconds to wait, 0 = free) treated like a per-minute exhaustion.
+ */
+export async function runChain(
+  models: readonly string[],
+  call: (model: string, thinking: boolean) => Promise<Response>,
+  state: Map<string, { until: number; kind: Quota }>,
+  slot: (model: string) => number = () => 0,
+  now = () => Date.now(),
+  noThinking: Set<string> = new Set(),
+): Promise<ChainResult> {
+  let minuteWait = 0; // shortest wait among per-minute exhausted models, 0 = none
+  let failed = false;
+  for (const model of models) {
+    const t = now();
+    const ex = state.get(model);
+    if (ex && ex.until > t) {
+      if (ex.kind === 'minute') {
+        const w = Math.ceil((ex.until - t) / 1000);
+        minuteWait = minuteWait ? Math.min(minuteWait, w) : w;
+      }
+      continue;
+    }
+    const own = slot(model);
+    if (own) {
+      minuteWait = minuteWait ? Math.min(minuteWait, own) : own;
+      continue;
+    }
+    let res: Response;
+    try {
+      res = await call(model, !noThinking.has(model));
+      if (res.status === 400 && !noThinking.has(model)) {
+        // the model may reject our thinkingConfig: retry once without it and remember
+        noThinking.add(model);
+        console.error('mentor retry without thinking config');
+        res = await call(model, false);
+      }
+    } catch {
+      failed = true;
+      continue;
+    }
+    if (res.status === 429) {
+      const body = await res.text().catch(() => '');
+      const kind = classifyQuota(body);
+      const secs = retryDelay(body);
+      const until = kind === 'day' ? nextPacificMidnight(t) : t + secs * 1000;
+      state.set(model, { until, kind });
+      console.error('mentor model exhausted', kind); // never the body, never the model id in responses
+      if (kind === 'minute') minuteWait = minuteWait ? Math.min(minuteWait, secs) : secs;
+      continue;
+    }
+    if (!res.ok || !res.body) {
+      console.error('mentor upstream status', res.status);
+      failed = true;
+      continue;
+    }
+    return { ok: true, res, model };
+  }
+  if (minuteWait) return { ok: false, error: 'busy', retryAfter: Math.min(60, Math.max(1, minuteWait)) };
+  return failed ? { ok: false, error: 'upstream' } : { ok: false, error: 'daily_limit' };
+}

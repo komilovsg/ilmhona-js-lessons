@@ -1,15 +1,30 @@
 import { NextResponse } from 'next/server';
 import { getLesson, readFragment } from '@/lib/lessons.server';
 import { guardStream, OFF, WHO } from '@/lib/mentor-guard';
-import { checkHeaders, clientKey, minuteGate, readBody, retryDelay, signReply, verifyReply } from '@/lib/mentor-server';
+import { checkHeaders, clientKey, minuteGate, readBody, retryDelay, runChain, signReply, verifyReply } from '@/lib/mentor-server';
 import { redactCodeField, redactMessage } from '@/lib/redact';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // Docs: https://ai.google.dev/api/generate-content (streamGenerateContent), models: https://ai.google.dev/gemini-api/docs/models
-const MODEL = 'gemini-3.6-flash';
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse`;
+// Model ids verified with the models list endpoint on 2026-10-16 (note: Gemini 3 Flash is "gemini-3-flash-preview").
+// Free-tier limits per model from the owner's AI Studio rate-limit page, 2026-10-16. Each model has its own quota, so the chain
+// rotates: a model at its RPM (own gate, a bit under) or whose 429 says exhausted is skipped, the request goes to the next one.
+// Quotas are per Google Cloud project, not per key: never add projects/keys to multiply them (against Google's terms).
+// think: thinkingConfig per model; a 400 retries once without it (runChain). rpd is the free-tier requests per day.
+const CHAIN = [
+  { id: 'gemini-3.5-flash-lite', rpm: 14, rpd: 500, think: { thinkingLevel: 'minimal' } },
+  { id: 'gemini-2.5-flash-lite', rpm: 9, rpd: 20, think: { thinkingBudget: 0 } },
+  { id: 'gemini-3.8-flash', rpm: 4, rpd: 20, think: { thinkingLevel: 'minimal' } },
+  { id: 'gemini-3-flash-preview', rpm: 4, rpd: 20, think: { thinkingLevel: 'minimal' } },
+  { id: 'gemini-3.6-flash', rpm: 4, rpd: 20, think: { thinkingBudget: 0 } },
+  { id: 'gemini-2.5-flash', rpm: 4, rpd: 20, think: { thinkingBudget: 0 } },
+] as const;
+const MODELS = CHAIN.map((m) => m.id);
+const endpoint = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
+const exhausted = new Map<string, { until: number; kind: 'minute' | 'day' }>();
+const noThinking = new Set<string>();
 const MAX_OUTPUT_TOKENS = 700; // thinking is disabled below, so this is the visible answer budget
 const TIMEOUT_MS = 30_000;
 
@@ -17,7 +32,8 @@ const TIMEOUT_MS = 30_000;
 // (limit x warm instances). Upgrade to Upstash/Vercel KV or a Supabase table once accounts exist.
 const IP_LIMIT = 12;
 const IP_WINDOW_MS = 10 * 60_000;
-const DAILY_CAP = 1500;
+// Sum of the chain's free-tier RPD (500 + 5 x 20 = 600) minus ~5% margin.
+const DAILY_CAP = Math.floor(CHAIN.reduce((n, m) => n + m.rpd, 0) * 0.95);
 const buckets = new Map<string, { tokens: number; at: number }>();
 const daily = { day: '', n: 0 };
 
@@ -56,14 +72,16 @@ const LIMITED = {
 const limited = () =>
   NextResponse.json({ error: 'rate_limited', messages: LIMITED }, { status: 429, headers: { 'Retry-After': '120' } });
 
-// Free tier: Google does not publish a per-model RPM for gemini-3.6-flash (ai.google.dev/gemini-api/docs/rate-limits
-// points to AI Studio > Rate limit for the project's real numbers; Flash free tiers have been ~15 RPM). Stay a bit under
-// that so we queue students instead of hammering Google. Adjust to the project's AI Studio value. Per instance (ponytail above).
-const UPSTREAM_RPM = 10;
-const upstreamSlot = minuteGate(UPSTREAM_RPM);
-/** Upstream is saturated (our throttle or Google's 429): 503 + Retry-After, the chat shows a countdown. */
-const busy = (retryAfter: number) =>
-  NextResponse.json({ error: 'busy', retryAfter }, { status: 503, headers: { 'Retry-After': String(retryAfter) } });
+// Per-model RPM gates, each a bit under the model's free-tier RPM (AI Studio, 2026-10-16). Per instance (ponytail above).
+const gates = new Map<string, () => number>(CHAIN.map((m) => [m.id, minuteGate(m.rpm)]));
+const slot = (model: string) => gates.get(model)!();
+/** Upstream is saturated (our throttle or Google's 429): 503 + Retry-After (never above 60 s), the chat shows a countdown. */
+const busy = (retryAfter: number) => {
+  const s = Math.min(60, Math.max(1, Math.ceil(retryAfter)));
+  return NextResponse.json({ error: 'busy', retryAfter: s }, { status: 503, headers: { 'Retry-After': String(s) } });
+};
+/** Every model's daily quota is spent: nothing to retry until tomorrow. */
+const dailyLimit = () => NextResponse.json({ error: 'daily_limit' }, { status: 503 });
 
 const FIXED = {
   off: {
@@ -153,7 +171,7 @@ function trustedHistory(b: Body): Msg[] {
 const TAGS = /<\s*\/?\s*(?:student_message|student_code|console_output)\s*>/gi;
 const wrap = (tag: string, text: string) => `<${tag}>\n${text.replace(TAGS, '')}\n</${tag}>`;
 
-function buildRequest(b: Body, messages: Msg[]) {
+function buildRequest(b: Body, messages: Msg[], model: string, thinking: boolean) {
   const lesson = getLesson(b.lessonSlug)!;
   let system = `${SYSTEM}\n\nStudent locale: ${b.locale}.\nCurrent lesson: ${lesson.num}. ${lesson.title.ru}. Topics: ${lesson.topics.ru}.`;
   if (b.taskId) {
@@ -179,7 +197,7 @@ function buildRequest(b: Body, messages: Msg[]) {
   return {
     systemInstruction: { parts: [{ text: system }] },
     contents,
-    generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: 0.6, thinkingConfig: { thinkingBudget: 0 } },
+    generationConfig: { maxOutputTokens: MAX_OUTPUT_TOKENS, temperature: 0.6, ...(thinking ? { thinkingConfig: CHAIN.find((m) => m.id === model)!.think } : {}) },
   };
 }
 
@@ -283,29 +301,22 @@ export async function POST(req: Request) {
   if (fake && body.messages[body.messages.length - 1].text.includes('#busy')) return busy(retryDelay('{"retryDelay": "12s"}'));
   if (fake) return relay(fakeDeltas(body, history));
 
-  const wait = upstreamSlot();
-  if (wait) return busy(wait);
-
-  let up: Response;
-  try {
-    up = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key! },
-      body: JSON.stringify(buildRequest(body, history)),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-  } catch {
-    return bad(502, 'upstream');
-  }
-  if (up.status === 429) {
-    const err = await up.text().catch(() => '');
-    console.error('mentor upstream busy'); // never the body
-    return busy(retryDelay(err));
-  }
-  if (!up.ok || !up.body) {
-    console.error('mentor upstream status', up.status); // never the body, never student code
-    return bad(502, 'upstream');
-  }
-  const reader = up.body.getReader();
+  const r = await runChain(
+    MODELS,
+    (model, thinking) =>
+      fetch(endpoint(model), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key! },
+        body: JSON.stringify(buildRequest(body, history, model, thinking)),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      }),
+    exhausted,
+    slot,
+    undefined,
+    noThinking,
+  );
+  if (!r.ok) return r.error === 'busy' ? busy(r.retryAfter) : r.error === 'daily_limit' ? dailyLimit() : bad(502, 'upstream');
+  const up = r.res;
+  const reader = up.body!.getReader();
   return relay(upstreamDeltas(reader), () => void reader.cancel().catch(() => {}));
 }

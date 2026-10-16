@@ -182,7 +182,10 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
         } else if (res.status === 503 && j.error === 'busy') {
           setErr(S.busy);
           setCanRetry(true);
-          setWait(Math.min(300, Math.max(1, Number(res.headers.get('Retry-After')) || Number(j.retryAfter) || 30)));
+          setWait(Math.min(60, Math.max(1, Number(res.headers.get('Retry-After')) || Number(j.retryAfter) || 30)));
+        } else if (res.status === 503 && j.error === 'daily_limit') {
+          setErr(S.dailyLimit);
+          setCanRetry(false);
         } else {
           const limited = res.status === 429 ? j.messages?.[locale] : undefined;
           setErr(typeof limited === 'string' ? limited : S.errGeneric);
