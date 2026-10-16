@@ -121,6 +121,32 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
 
   useEffect(() => () => abort.current?.abort(), []);
 
+  // textarea auto-grows (max-height in CSS, then scrolls)
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  }, [input, m.open]);
+
+  // keep the sheet above the on-screen keyboard
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = panelRef.current;
+    if (!m.open || !vv || !el) return;
+    const fit = () => {
+      el.style.setProperty('--vvh', `${vv.height}px`);
+      el.style.setProperty('--vvb', `${Math.max(0, window.innerHeight - vv.height - vv.offsetTop)}px`);
+    };
+    fit();
+    vv.addEventListener('resize', fit);
+    vv.addEventListener('scroll', fit);
+    return () => {
+      vv.removeEventListener('resize', fit);
+      vv.removeEventListener('scroll', fit);
+    };
+  }, [m.open]);
+
   useEffect(() => {
     if (wait <= 0) return;
     const id = setTimeout(() => setWait((w) => w - 1), 1000);
@@ -312,7 +338,7 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
             >
               <textarea
                 ref={inputRef}
-                rows={2}
+                rows={1}
                 maxLength={2000}
                 value={input}
                 disabled={off}
@@ -320,14 +346,17 @@ export default function MentorChat({ lessonSlug }: { lessonSlug: string }) {
                 aria-label={S.placeholder}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && !window.matchMedia('(pointer: coarse)').matches) {
                     e.preventDefault();
                     void send();
                   }
                 }}
               />
-              <button type="submit" disabled={off || busy || wait > 0 || !input.trim()}>
-                {S.send}
+              <button type="submit" aria-label={S.send} disabled={off || busy || wait > 0 || !input.trim()}>
+                <span className="mentor-send-txt">{S.send}</span>
+                <svg className="mentor-send-ico" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                  <path d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12 2-12 2z" />
+                </svg>
               </button>
             </form>
             <p className="mentor-privacy">{S.privacy}</p>
