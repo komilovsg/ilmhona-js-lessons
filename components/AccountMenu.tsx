@@ -7,6 +7,7 @@ import { isTheme, readTheme, resolveTheme, THEME_KEY, type Theme } from '@/lib/t
 import { useT } from './I18nProvider';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { footerLabels } from '@/lib/legal';
 import { isSafeAvatar } from '@/lib/avatar';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import type { SyncStatus } from '@/lib/sync';
@@ -282,6 +283,7 @@ type AuthProps = {
 function MenuView({ auth }: { auth?: AuthProps }) {
   const { locale, t } = useT();
   const T = t.auth;
+  const legal = footerLabels(locale);
   const pathname = usePathname();
   const rest = pathname.replace(/^\/[^/]+/, '');
   const [theme, setTheme] = useThemeSetting();
@@ -491,6 +493,14 @@ function MenuView({ auth }: { auth?: AuthProps }) {
             <Link className="auth-item" href={`/${toUrlLocale(locale)}/leaderboard`} onClick={close}>
               <span aria-hidden="true">🏆</span>
               {T.leaderboard}
+            </Link>
+          </div>
+          <div className="auth-sec auth-legal">
+            <Link className="auth-item" href={`/${toUrlLocale(locale)}/privacy`} onClick={close}>
+              {legal.privacy}
+            </Link>
+            <Link className="auth-item" href={`/${toUrlLocale(locale)}/terms`} onClick={close}>
+              {legal.terms}
             </Link>
           </div>
           <div className="auth-sec">
