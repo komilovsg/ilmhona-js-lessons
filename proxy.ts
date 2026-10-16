@@ -44,6 +44,6 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Skip /_next, /api, /auth, /dev and anything with a file extension (favicon.ico, images, ...).
-  matcher: ['/((?!_next|api|auth|dev|.*\\..*).*)'],
+  // Skip /_next, /api, /auth, /dev, /apple-icon and anything with a file extension (favicon.ico, images, ...).
+  matcher: ['/((?!_next|api|auth|dev|apple-icon|.*\\..*).*)'],
 };
