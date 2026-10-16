@@ -3,7 +3,7 @@ import type { CourseEntry } from '@/content/course';
 import { toUrlLocale, type Locale } from '@/lib/i18n';
 
 /** The one place that knows the public origin. Change NEXT_PUBLIC_SITE_URL (or the fallback) when the domain moves. */
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://ilmhona-js-lessons.vercel.app').replace(/\/+$/, '');
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://ksg-courses.online').replace(/\/+$/, '');
 export const SITE_NAME = 'MakeFirstStep';
 
 /** Absolute URL for a path like `/ru/lessons/loops` (no locale logic). */
