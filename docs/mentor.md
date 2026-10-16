@@ -13,8 +13,10 @@ Route: `app/api/mentor/route.ts`. Helpers: `lib/mentor-guard.ts` (output guard),
 ## Limits (per server instance, in memory)
 
 - 12 requests / 10 min per client (IPv4 address or IPv6 /64; on Vercel taken from `x-real-ip`).
-- 10 upstream requests / min for everyone (`UPSTREAM_RPM`, a bit under the free-tier RPM; check AI Studio > Rate limit for the project's real number). Over it, or when Google answers 429, the API returns `503 {error:'busy'}` with `Retry-After` and the chat shows a countdown.
-- 1500 requests / day for everyone (`DAILY_CAP`).
+- Model chain (`CHAIN` in `app/api/mentor/route.ts`): gemini-3.5-flash-lite (14 RPM / 500 RPD), gemini-2.5-flash-lite, gemini-3.8-flash, gemini-3-flash-preview, gemini-3.6-flash, gemini-2.5-flash (free tier, AI Studio, 2026-10-16). Each model has its own per-minute gate (a bit under its RPM); a model at its limit, or one whose 429 says exhausted (per-minute: retryDelay; per-day: until midnight Pacific), is skipped and the same request goes to the next model before anything is streamed. A 400 on a model's thinking config retries once without it.
+- All models busy per-minute: `503 {error:'busy'}` with `Retry-After` <= 60 s and the chat shows a countdown. All models out of daily quota: `503 {error:'daily_limit'}`, no retry until tomorrow.
+- `DAILY_CAP` = sum of the chain's RPD minus 5% (570).
+- Quotas are per Google Cloud project, not per API key. Do NOT create extra projects or keys to multiply quota: it is against Google's terms.
 - Body ≤ 64 KB, JSON only, same-origin only.
 
 Serverless instances do not share memory, so real ceilings are "limit × warm instances". Move to Vercel KV / Supabase when accounts exist.
