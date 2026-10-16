@@ -63,7 +63,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/readme/architecture-dark.svg">
-    <img src="docs/readme/architecture-light.svg" alt="Браузер получает статические страницы Next.js; код студента выполняется в изолированном iframe-раннере. Прогресс хранится в localStorage и синхронизируется с Supabase." width="100%">
+    <img src="docs/readme/architecture-light.svg" alt="Браузер получает статические страницы Next.js; код студента выполняется в изолированном iframe-раннере. Прогресс хранится в localStorage и синхронизируется с Supabase. Вопросы ментору идут из браузера через /api/mentor (Vercel) к ИИ-моделям, квота и лог запросов хранятся в Supabase." width="100%">
   </picture>
 </p>
 
