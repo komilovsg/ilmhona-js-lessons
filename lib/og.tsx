@@ -22,11 +22,12 @@ let cache: ReturnType<typeof loadFonts> | undefined;
 const fonts = () => (cache ??= loadFonts());
 
 async function loadFonts() {
-  const spec: { family: string; weight: 600 | 700 | 800; file: string }[] = subsets.flatMap((s) => [
-    { family: 'Manrope', weight: 800 as const, file: `manrope-${s}-800-normal` },
-    { family: 'Manrope', weight: 600 as const, file: `manrope-${s}-600-normal` },
-    { family: 'Mono', weight: 700 as const, file: `jetbrains-mono-${s}-700-normal` },
-  ]);
+  // grouped by weight: satori's per-glyph fallback otherwise picks a lighter Cyrillic face for bold text
+  const spec: { family: string; weight: 600 | 700 | 800; file: string }[] = [
+    ...subsets.map((s) => ({ family: 'Manrope', weight: 800 as const, file: `manrope-${s}-800-normal` })),
+    ...subsets.map((s) => ({ family: 'Manrope', weight: 600 as const, file: `manrope-${s}-600-normal` })),
+    ...subsets.map((s) => ({ family: 'Mono', weight: 700 as const, file: `jetbrains-mono-${s}-700-normal` })),
+  ];
   return Promise.all(spec.map(async (f) => ({ name: f.family, weight: f.weight, style: 'normal' as const, data: await load(f.file) })));
 }
 
@@ -76,7 +77,7 @@ function Frame({ locale, children, card }: { locale: Locale; children: React.Rea
           <div style={{ fontSize: 38, fontWeight: 800 }}>{SITE_NAME}</div>
           <div style={{ ...row, marginLeft: 8, padding: '6px 16px', borderRadius: 999, border: `2px solid ${C.line}`, color: C.accent, fontSize: 24, fontWeight: 600 }}>{courseName[locale]}</div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', width: 660 }}>{children}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', width: 590 }}>{children}</div>
         <div style={{ ...row, color: C.mute, fontSize: 25, fontWeight: 600 }}>{siteTexts[locale].tagline}</div>
       </div>
       <div style={{ position: 'absolute', right: 56, bottom: 120, display: 'flex' }}>{card}</div>
@@ -134,7 +135,7 @@ export async function lessonOg(locale: Locale, c: CourseEntry) {
             {mod ? `${t.moduleWord} ${mod.id} · ${mod.title[locale]}` : ''}
           </div>
         </div>
-        <div style={{ fontSize: sizeFor(title, 84, 62, 22), fontWeight: 800, lineHeight: 1.08, letterSpacing: -1.5, display: 'flex' }}>{title}</div>
+        <div style={{ fontSize: sizeFor(title, 84, 62, 22), fontWeight: 800, lineHeight: 1.08, letterSpacing: -1.5, display: 'flex', flexWrap: 'wrap', maxWidth: 590 }}>{title}</div>
       </Frame>
     ),
     { ...ogSize, fonts: await fonts() },
