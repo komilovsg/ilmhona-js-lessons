@@ -711,7 +711,7 @@ export const LESSON_META: LessonMeta = {
 };
 
 /** Vibe Coding: slugs with content/vibe-coding/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const VC_AVAILABLE = ['intro', 'prompting', 'html-css', 'setup-git', 'first-project'] as const;
+export const VC_AVAILABLE = ['intro', 'prompting', 'html-css', 'setup-git', 'first-project', 'cursor-agent', 'react-basics'] as const;
 
 /** Vibe Coding task levels, keyed by progress key `vc-<slug>`. */
 export const VC_LESSON_META: LessonMeta = {
@@ -791,6 +791,40 @@ export const VC_LESSON_META: LessonMeta = {
     'cl-build': 'm',
     'cl-deployed': 'm',
     'cl-clone': 'e',
+    'hw-req': 'm',
+    'hw-github': 'm',
+    'hw-vercel': 'm',
+    't-understood': 'e',
+  },
+  'vc-cursor-agent': {
+    'q-modes': 'e',
+    'q-prompt': 'e',
+    'q-rules': 'e',
+    'q-json': 'e',
+    'q-mcp': 'm',
+    'q-undo': 'e',
+    'q-errors': 'm',
+    'cl-prep-task': 'e',
+    'cl-build': 'm',
+    'cl-error': 'm',
+    'cl-duel': 'e',
+    'hw-req': 'm',
+    'hw-github': 'm',
+    'hw-vercel': 'm',
+    't-understood': 'e',
+  },
+  'vc-react-basics': {
+    'q-why': 'e',
+    'js-vars': 'e',
+    'js-array': 'e',
+    'js-func': 'm',
+    'q-js-read': 'm',
+    'jsx-fix': 'm',
+    'card-props': 'm',
+    'map-console': 'm',
+    'map-react': 'm',
+    'q-components': 'm',
+    'cl-practice-task': 'm',
     'hw-req': 'm',
     'hw-github': 'm',
     'hw-vercel': 'm',
