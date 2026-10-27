@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { course, modules } from '@/content/course';
-import { courseItems, type CourseItem, type CourseStatus } from '@/lib/course-status';
-import { fmt, toUrlLocale } from '@/lib/i18n';
-import { useProgress } from '@/lib/progress';
+import { courseItems, useCourseProgress, type CourseItem, type CourseStatus } from '@/lib/course-status';
+import { COURSES, lessonHref, type CourseId } from '@/lib/courses';
+import { fmt } from '@/lib/i18n';
 import { useT } from './I18nProvider';
 import { CheckIcon, DotIcon, LockIcon } from './roadmap/icons';
 
@@ -20,21 +19,24 @@ export default function LessonSwitcher({
   currentSlug,
   solved,
   total,
+  courseId = 'frontend',
 }: {
   currentSlug: string | null;
   solved: number;
   total: number;
+  courseId?: CourseId;
 }) {
   const { t, locale } = useT();
-  const progress = useProgress();
+  const c = COURSES[courseId];
+  const progress = useCourseProgress(c);
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const panelId = useId();
 
-  const items = useMemo(() => courseItems(progress.solved), [progress]);
-  const lesson = currentSlug ? course.find((l) => l.slug === currentSlug) : undefined;
+  const items = useMemo(() => courseItems(progress.solved, c), [progress, c]);
+  const lesson = currentSlug ? c.entries.find((l) => l.slug === currentSlug) : undefined;
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -110,7 +112,7 @@ export default function LessonSwitcher({
       </button>
       {open && (
         <div ref={panel} id={panelId} className="lsw-panel" role="region" aria-label={t.nav.pickLesson}>
-          {modules.map((m) => (
+          {c.modules.map((m) => (
             <section key={m.id} aria-labelledby={`${panelId}-m${m.id}`}>
               <h2 className="lsw-mod" id={`${panelId}-m${m.id}`}>
                 {fmt(t.roadmap.moduleLabel, { n: m.id })} · {m.title[locale]}
@@ -141,7 +143,7 @@ export default function LessonSwitcher({
                         ) : (
                           <Link
                             className={`lsw-row${here ? ' is-current' : ''}`}
-                            href={`/${toUrlLocale(locale)}/lessons/${i.slug}`}
+                            href={lessonHref(c, locale, i.slug)}
                             aria-current={here ? 'page' : undefined}
                             onClick={close}
                           >

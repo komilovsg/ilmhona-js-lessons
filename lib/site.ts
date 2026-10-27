@@ -42,7 +42,7 @@ export const siteTexts = {
 
 export const lessonTitle = (locale: Locale, c: CourseEntry) => `${siteTexts[locale].lesson} ${c.num} · ${c.title[locale]}`;
 
-const clip = (s: string, n: number) => (s.length <= n ? s : `${s.slice(0, n - 1).replace(/[\s,;:.]+\S*$/, '')}…`);
+export const clip = (s: string, n: number) => (s.length <= n ? s : `${s.slice(0, n - 1).replace(/[\s,;:.]+\S*$/, '')}…`);
 
 export const lessonDescription = (locale: Locale, c: CourseEntry) =>
   clip(siteTexts[locale].lessonDesc(c.num, c.topics[locale].replace(/\.$/, '')), 200);

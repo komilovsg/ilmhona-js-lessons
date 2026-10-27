@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ImageResponse } from 'next/og';
 import type { CourseEntry } from '@/content/course';
-import { modules } from '@/content/course';
+import { COURSES, type CourseId } from '@/lib/courses';
 import type { Locale } from '@/lib/i18n';
 import { courseName, siteTexts, SITE_NAME } from '@/lib/site';
 
@@ -64,9 +64,27 @@ function CodeCard({ lines }: { lines: { t: string; c: string }[][] }) {
   );
 }
 
+/** Frame props of the Vibe Coding course; the old course keeps the Frame defaults. */
+const vibeFrame = (courseId: CourseId, locale: Locale) => {
+  const v = COURSES[courseId].texts?.[locale];
+  return v ? { chip: v.name, tagline: v.tagline } : {};
+};
+
 const sizeFor = (s: string, big: number, small: number, limit: number) => (s.length > limit ? small : big);
 
-function Frame({ locale, children, card }: { locale: Locale; children: React.ReactNode; card: React.ReactNode }) {
+function Frame({
+  locale,
+  children,
+  card,
+  chip = courseName[locale],
+  tagline = siteTexts[locale].tagline,
+}: {
+  locale: Locale;
+  children: React.ReactNode;
+  card: React.ReactNode;
+  chip?: string;
+  tagline?: string;
+}) {
   return (
     <div style={{ width: 1200, height: 630, display: 'flex', position: 'relative', background: C.bg, fontFamily: 'Manrope', color: C.ink, overflow: 'hidden' }}>
       <div style={{ position: 'absolute', right: -160, top: -220, width: 700, height: 700, borderRadius: 350, background: 'rgba(60,207,149,.13)' }} />
@@ -75,19 +93,31 @@ function Frame({ locale, children, card }: { locale: Locale; children: React.Rea
         <div style={{ ...row, alignItems: 'center', gap: 18 }}>
           <Mark size={68} />
           <div style={{ fontSize: 38, fontWeight: 800 }}>{SITE_NAME}</div>
-          <div style={{ ...row, marginLeft: 8, padding: '6px 16px', borderRadius: 999, border: `2px solid ${C.line}`, color: C.accent, fontSize: 24, fontWeight: 600 }}>{courseName[locale]}</div>
+          <div style={{ ...row, marginLeft: 8, padding: '6px 16px', borderRadius: 999, border: `2px solid ${C.line}`, color: C.accent, fontSize: 24, fontWeight: 600 }}>{chip}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', width: 590 }}>{children}</div>
-        <div style={{ ...row, color: C.mute, fontSize: 25, fontWeight: 600 }}>{siteTexts[locale].tagline}</div>
+        <div style={{ ...row, color: C.mute, fontSize: 25, fontWeight: 600 }}>{tagline}</div>
       </div>
       <div style={{ position: 'absolute', right: 56, bottom: 120, display: 'flex' }}>{card}</div>
     </div>
   );
 }
 
-export async function homeOg(locale: Locale) {
-  const head = locale === 'ru' ? ['Сделай', 'первый шаг'] : ['Қадами', 'аввалро гузор'];
-  const card = (
+export async function homeOg(locale: Locale, courseId: CourseId = 'frontend') {
+  const vibe = courseId === 'vibe-coding';
+  const head = vibe
+    ? locale === 'ru' ? ['Вайб-кодинг', 'с нуля'] : ['Вайб-кодинг', 'аз сифр']
+    : locale === 'ru' ? ['Сделай', 'первый шаг'] : ['Қадами', 'аввалро гузор'];
+  const card = vibe ? (
+    <CodeCard
+      lines={[
+        [{ t: 'const ', c: C.kw }, { t: 'idea', c: C.code }, { t: ' = ', c: C.code }, { t: "'...'", c: C.str }, { t: ';', c: C.code }],
+        [{ t: 'await ', c: C.kw }, { t: 'ai.', c: C.code }, { t: 'build', c: C.accent }, { t: '(idea);', c: C.code }],
+        [{ t: 'deploy', c: C.accent }, { t: '();', c: C.code }],
+        [{ t: '// → ', c: C.cm }, { t: 'XP +100', c: C.accent }],
+      ]}
+    />
+  ) : (
     <CodeCard
       lines={[
         [{ t: 'const ', c: C.kw }, { t: 'course', c: C.code }, { t: ' = {', c: C.code }],
@@ -101,18 +131,18 @@ export async function homeOg(locale: Locale) {
   );
   return new ImageResponse(
     (
-      <Frame locale={locale} card={card}>
-        <div style={{ fontSize: 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2 }}>{head[0]}</div>
-        <div style={{ fontSize: 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2, color: C.accent }}>{head[1]}</div>
+      <Frame locale={locale} card={card} {...vibeFrame(courseId, locale)}>
+        <div style={{ fontSize: vibe ? 76 : 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2 }}>{head[0]}</div>
+        <div style={{ fontSize: vibe ? 76 : 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2, color: C.accent }}>{head[1]}</div>
       </Frame>
     ),
     { ...ogSize, fonts: await fonts() },
   );
 }
 
-export async function lessonOg(locale: Locale, c: CourseEntry) {
+export async function lessonOg(locale: Locale, c: CourseEntry, courseId: CourseId = 'frontend') {
   const t = siteTexts[locale];
-  const mod = modules.find((m) => m.id === c.module);
+  const mod = COURSES[courseId].modules.find((m) => m.id === c.module);
   const title = c.title[locale].replace(/№\s?/g, '#'); // № is missing from the bundled font subsets
   const num = String(c.num).padStart(2, '0');
   const card = (
@@ -128,7 +158,7 @@ export async function lessonOg(locale: Locale, c: CourseEntry) {
   );
   return new ImageResponse(
     (
-      <Frame locale={locale} card={card}>
+      <Frame locale={locale} card={card} {...vibeFrame(courseId, locale)}>
         <div style={{ ...row, alignItems: 'center', gap: 16, marginBottom: 22 }}>
           <div style={{ ...row, ...mono, fontSize: 30, color: '#0f1613', background: C.accent, borderRadius: 12, padding: '4px 16px' }}>{num}</div>
           <div style={{ ...row, fontSize: 27, fontWeight: 600, color: C.accent }}>
