@@ -3,13 +3,16 @@ import { notFound } from 'next/navigation';
 import JsonLd from '@/components/JsonLd';
 import RoadmapView from '@/components/roadmap/RoadmapView';
 import { availableCourse } from '@/content/course';
+import { COURSES, courseHome } from '@/lib/courses';
 import { fromUrlLocale } from '@/lib/i18n';
 import { SITE_NAME, absUrl, buildMeta, courseName, pagePath, siteTexts } from '@/lib/site';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = fromUrlLocale((await params).locale);
   if (!locale) return {};
-  return buildMeta({ locale, title: siteTexts[locale].homeTitle });
+  const title = siteTexts[locale].homeTitle;
+  // the old home page had no " — MakeFirstStep" suffix in <title>: keep it
+  return { ...buildMeta({ locale, sub: COURSES.frontend.base, title }), title: { absolute: title } };
 }
 
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
@@ -22,10 +25,10 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
   const courseLd = {
     '@context': 'https://schema.org',
     '@type': 'Course',
-    '@id': absUrl(`${pagePath(locale)}#course`),
+    '@id': absUrl(`${courseHome(COURSES.frontend, locale)}#course`),
     name: `${SITE_NAME}: ${courseName[locale]}`,
     description: t.description,
-    url: absUrl(pagePath(locale)),
+    url: absUrl(courseHome(COURSES.frontend, locale)),
     inLanguage: lang,
     provider,
     educationalLevel: 'Beginner',
@@ -40,20 +43,9 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
       url: absUrl(pagePath(locale, `/lessons/${c.slug}`)),
     })),
   };
-  const siteLd = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    '@id': absUrl('/#website'),
-    name: SITE_NAME,
-    url: absUrl(pagePath(locale)),
-    description: t.description,
-    inLanguage: ['ru', 'tg'],
-    publisher: provider,
-  };
   return (
     <>
       <JsonLd data={courseLd} />
-      <JsonLd data={siteLd} />
       <RoadmapView />
     </>
   );
