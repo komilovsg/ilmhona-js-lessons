@@ -711,7 +711,7 @@ export const LESSON_META: LessonMeta = {
 };
 
 /** Vibe Coding: slugs with content/vibe-coding/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const VC_AVAILABLE = ['intro', 'prompting', 'html-css', 'setup-git', 'first-project', 'cursor-agent', 'react-basics', 'react-state', 'nextjs-routing', 'web-api', 'supabase-db', 'auth', 'llm-api', 'ai-features', 'rag', 'product-spec', 'sprint-1', 'sprint-2', 'security', 'testing', 'telegram-bot', 'polish', 'portfolio'] as const;
+export const VC_AVAILABLE = ['intro', 'prompting', 'html-css', 'setup-git', 'first-project', 'cursor-agent', 'react-basics', 'react-state', 'nextjs-routing', 'web-api', 'supabase-db', 'auth', 'llm-api', 'ai-features', 'rag', 'product-spec', 'sprint-1', 'sprint-2', 'security', 'testing', 'telegram-bot', 'polish', 'portfolio', 'demo-day'] as const;
 
 /** Vibe Coding task levels, keyed by progress key `vc-<slug>`. */
 export const VC_LESSON_META: LessonMeta = {
@@ -1093,6 +1093,21 @@ export const VC_LESSON_META: LessonMeta = {
     'hw-req': 'm',
     'hw-vercel': 'm',
     'hw-github': 'm',
+    't-understood': 'e',
+  },
+  'vc-demo-day': {
+    'q-rules': 'e',
+    'pg-grade': 'm',
+    'cl-defence': 'm',
+    'q-feedback': 'm',
+    'cl-plan': 'm',
+    'q-next': 'm',
+    'q-recap': 'e',
+    'cl-feedback-day': 'e',
+    'hw-req': 'm',
+    'hw-vercel': 'm',
+    'hw-github': 'm',
+    'hw-bonus': 'm',
     't-understood': 'e',
   },
 };
