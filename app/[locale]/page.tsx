@@ -1,44 +1,47 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import HomeView from '@/components/home/HomeView';
 import JsonLd from '@/components/JsonLd';
-import RoadmapView from '@/components/roadmap/RoadmapView';
-import { availableCourse } from '@/content/course';
-import { fromUrlLocale } from '@/lib/i18n';
-import { SITE_NAME, absUrl, buildMeta, courseName, pagePath, siteTexts } from '@/lib/site';
+import { COURSES, LADDER, courseHome } from '@/lib/courses';
+import { fromUrlLocale, getMessages } from '@/lib/i18n';
+import { SITE_NAME, absUrl, buildMeta, courseName, pagePath } from '@/lib/site';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const locale = fromUrlLocale((await params).locale);
   if (!locale) return {};
-  return buildMeta({ locale, title: siteTexts[locale].homeTitle });
+  const m = getMessages(locale).home;
+  const meta = buildMeta({ locale, title: m.metaTitle, description: m.metaDescription });
+  // the full title is already branded: skip the " — MakeFirstStep" template
+  return { ...meta, title: { absolute: m.metaTitle } };
 }
 
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const locale = fromUrlLocale((await params).locale);
   if (!locale) notFound();
-  const t = siteTexts[locale];
+  const m = getMessages(locale).home;
   const lang = locale === 'ru' ? 'ru' : 'tg';
   const provider = { '@type': 'Organization', '@id': absUrl('/#org'), name: SITE_NAME, url: absUrl(pagePath('ru')) };
-  const lessons = availableCourse();
-  const courseLd = {
+  const listLd = {
     '@context': 'https://schema.org',
-    '@type': 'Course',
-    '@id': absUrl(`${pagePath(locale)}#course`),
-    name: `${SITE_NAME}: ${courseName[locale]}`,
-    description: t.description,
-    url: absUrl(pagePath(locale)),
-    inLanguage: lang,
-    provider,
-    educationalLevel: 'Beginner',
-    isAccessibleForFree: true,
-    numberOfLessons: lessons.length,
-    teaches: 'JavaScript',
-    hasCourseInstance: { '@type': 'CourseInstance', courseMode: 'online', inLanguage: lang },
-    hasPart: lessons.map((c) => ({
-      '@type': 'LearningResource',
-      name: c.title[locale],
-      position: c.num,
-      url: absUrl(pagePath(locale, `/lessons/${c.slug}`)),
-    })),
+    '@type': 'ItemList',
+    name: m.metaTitle,
+    itemListElement: LADDER.map((id, i) => {
+      const c = COURSES[id];
+      const name = c.texts?.[locale].name ?? courseName[locale];
+      return {
+        '@type': 'ListItem',
+        position: i + 1,
+        item: {
+          '@type': 'Course',
+          name: `${SITE_NAME}: ${name}`,
+          url: absUrl(courseHome(c, locale)),
+          inLanguage: lang,
+          provider,
+          isAccessibleForFree: true,
+          numberOfLessons: c.entries.length,
+        },
+      };
+    }),
   };
   const siteLd = {
     '@context': 'https://schema.org',
@@ -46,15 +49,15 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
     '@id': absUrl('/#website'),
     name: SITE_NAME,
     url: absUrl(pagePath(locale)),
-    description: t.description,
+    description: m.metaDescription,
     inLanguage: ['ru', 'tg'],
     publisher: provider,
   };
   return (
     <>
-      <JsonLd data={courseLd} />
+      <JsonLd data={listLd} />
       <JsonLd data={siteLd} />
-      <RoadmapView />
+      <HomeView />
     </>
   );
 }

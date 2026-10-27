@@ -1,19 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { isSafeAvatar } from '@/lib/avatar';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { useLeaderboard } from '@/lib/use-leaderboard';
 import { useT } from './I18nProvider';
 
-
-type Entry = {
-  rank: number;
-  display_name: string;
-  avatar_url: string | null;
-  xp_total: number;
-  solved_count: number;
-  is_me: boolean;
-};
 
 const MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
 
@@ -36,54 +27,7 @@ export default function Leaderboard() {
 
 function LeaderboardTable() {
   const T = useT().t.leaderboard;
-  const [userId, setUserId] = useState<string | null | undefined>(undefined); // undefined = loading
-  const [rows, setRows] = useState<Entry[] | null>(null);
-  const [listed, setListed] = useState(true);
-  const [failed, setFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-
-  // The leaderboard is for signed-in students only (the RPC is not executable by anon).
-  useEffect(() => {
-    let alive = true;
-    let unsub: (() => void) | undefined;
-    (async () => {
-      const { getBrowserSupabase } = await import('@/lib/supabase/client');
-      const sb = getBrowserSupabase();
-      if (!alive || !sb) return;
-      const { data } = sb.auth.onAuthStateChange((_event, session) => {
-        // Don't await Supabase calls inside this callback (auth lock); defer instead.
-        setTimeout(() => alive && setUserId(session?.user.id ?? null), 0);
-      });
-      unsub = () => data.subscription.unsubscribe();
-    })();
-    return () => {
-      alive = false;
-      unsub?.();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!userId) return;
-    let alive = true;
-    (async () => {
-      const { getBrowserSupabase } = await import('@/lib/supabase/client');
-      const sb = getBrowserSupabase();
-      if (!sb) return;
-      const [board, me] = await Promise.all([
-        sb.rpc('leaderboard', { limit_n: 50 }),
-        sb.from('profiles').select('show_on_leaderboard').eq('id', userId).maybeSingle(),
-      ]);
-      if (!alive) return;
-      if (board.error) setFailed(true);
-      else {
-        setRows((board.data ?? []) as Entry[]);
-        setListed(!!(me.data as { show_on_leaderboard?: boolean } | null)?.show_on_leaderboard);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [userId, attempt]);
+  const { userId, rows, listed, failed, retry } = useLeaderboard(50);
 
   if (userId === null) return <p className="lb-note">{T.signInPrompt}</p>;
   if (failed) {
@@ -93,10 +37,7 @@ function LeaderboardTable() {
         <button
           type="button"
           className="auth-link"
-          onClick={() => {
-            setFailed(false);
-            setAttempt((a) => a + 1);
-          }}
+          onClick={retry}
         >
           {T.retry}
         </button>

@@ -103,7 +103,8 @@ function Frame({
   );
 }
 
-export async function homeOg(locale: Locale, courseId: CourseId = 'frontend') {
+export async function homeOg(locale: Locale, courseId: CourseId | 'board' = 'frontend') {
+  if (courseId === 'board') return boardOg(locale);
   const vibe = courseId === 'vibe-coding';
   const rn = courseId === 'react-next';
   const head = vibe
@@ -147,6 +148,33 @@ export async function homeOg(locale: Locale, courseId: CourseId = 'frontend') {
       <Frame locale={locale} card={card} {...courseFrame(courseId, locale)}>
         <div style={{ fontSize: vibe || rn ? 76 : 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2 }}>{head[0]}</div>
         <div style={{ fontSize: vibe || rn ? 76 : 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2, color: C.accent }}>{head[1]}</div>
+      </Frame>
+    ),
+    { ...ogSize, fonts: await fonts() },
+  );
+}
+
+/** OG image of the course board: the heading and three stairs. */
+async function boardOg(locale: Locale) {
+  const head = locale === 'ru' ? ['Сделай', 'первый шаг'] : ['Қадами', 'аввалро гузор'];
+  const steps = [0, 1, 2];
+  const card = (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, transform: 'rotate(-3deg)' }}>
+      {steps.map((i) => (
+        <div
+          key={i}
+          style={{ display: 'flex', width: 130, height: 120 + i * 90, borderRadius: 22, background: C.card, border: `2px solid ${i === 2 ? C.accent : C.line}`, boxShadow: '0 30px 60px rgba(0,0,0,.45)', alignItems: 'flex-start', padding: 18 }}
+        >
+          <div style={{ ...row, ...mono, fontSize: 34, color: i === 2 ? C.accent : C.mute }}>{`0${i + 1}`}</div>
+        </div>
+      ))}
+    </div>
+  );
+  return new ImageResponse(
+    (
+      <Frame locale={locale} card={card} chip="Vibe Coding · Frontend · React" tagline={locale === 'ru' ? 'Программирование и ИИ шаг за шагом' : 'Барномасозӣ ва зеҳни сунъӣ қадам ба қадам'}>
+        <div style={{ fontSize: 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2 }}>{head[0]}</div>
+        <div style={{ fontSize: 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2, color: C.accent }}>{head[1]}</div>
       </Frame>
     ),
     { ...ogSize, fonts: await fonts() },

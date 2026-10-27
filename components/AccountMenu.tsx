@@ -32,6 +32,15 @@ function currentPath() {
 }
 const callbackUrl = () => `${window.location.origin}/auth/callback?next=${encodeURIComponent(currentPath())}`;
 
+/** Google OAuth sign-in (same call as the account menu); resolves false when it could not start. */
+export async function signInWithGoogle(): Promise<boolean> {
+  const { getBrowserSupabase } = await import('@/lib/supabase/client');
+  const sb = getBrowserSupabase();
+  if (!sb) return false;
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: callbackUrl() } });
+  return !error;
+}
+
 /** Always rendered: language + theme (+ leaderboard) for everyone; auth items only when Supabase env vars are set. */
 export default function AccountMenu() {
   if (!isSupabaseConfigured) return <MenuView />;
