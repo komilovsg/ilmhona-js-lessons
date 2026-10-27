@@ -1,0 +1,1181 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+  .topic p code, .topic li code, .topic td code, .topic summary + p code, .explain code, .hint code { white-space: normal; overflow-wrap: anywhere; }
+</style>
+
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 18 · Модули 6. Маҳсулоти пурра</p>
+      <h1>Спринти 2: маълумот, админка, файлҳо</h1>
+      <p class="lead">То охири дарс лоиҳаи хатмии шумо вазифаи асосии худро иҷро мекунад: корбар сабтҳоро месозад, меёбад, таҳрир мекунад ва нест мекунад, тасвир замима менамояд, соҳиб дар бораи сабти нав мактуб мегирад. Администратор панел бо омор ва идоракунии сабтҳо дорад, файлҳо дар анбори пӯшида нигоҳ дошта мешаванд ва ҳар корбар танҳо ба папкаи худ дастрасӣ дорад.</p>
+      <ul class="goals">
+        <li>Экранҳои CRUD-ро (сохтан, нишон додан, тағйир додан, нест кардан) бо санҷиши маълумот дар сервер ва қоидаҳои RLS созед</li>
+        <li>Ҷустуҷӯ, филтрҳо, ҷудокунӣ ва саҳифабандиро чунон кунед, ки ҳолат дар суроғаи саҳифа (query string) нигоҳ дошта шавад</li>
+        <li>Бакети пӯшидаи Supabase Storage созед, сиёсатҳоро аз рӯи id-и корбар нависед ва тасвир бор кунед</li>
+        <li>Огоҳиномаи e-mail-ро тавассути Resend фиристед ва фаҳмонед, ки чаро бе домени худӣ мактубҳо танҳо ба суроғаи шумо мераванд</li>
+        <li>Админ-панел созед: омор ва идоракунии сабтҳо, дастрасӣ танҳо барои нақши admin дар се сатҳ</li>
+        <li>Сенарияи асосии маҳсулотро аз аввал то охир гузаред ва хатогиҳои дигаронро бо ёрии баг-репорт пайдо кунед</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Ин дарсро чӣ тавр гузаштан лозим</b>
+      <p>Ин спринти дуюм аст: лоиҳаи хатмиро аз дарси 17 идома медиҳем. Дарсро дар нимаи экран кушоед, Cursor-ро бо репозиторияи худ дар нимаи дигар. Лозим мешавад: чорчӯбаи корӣ (воридшавӣ, нақшҳо, экранҳои холӣ), файлҳои <code>docs/SPEC.md</code>, <code>docs/SCHEMA.md</code>, <code>docs/SPRINT.md</code>, <code>AGENTS.md</code>, ҳисобҳои Supabase, GitHub ва Vercel; дар бахши 4 ҳисоби ройгони Resend илова мешавад. Вақт: 5–6 соат, беҳтараш дар ду нишаст: назария ва нақша (бахшҳои 1–6), баъд амалиёт (бахши 7) ва «Чизи ғайриро вайрон кун» (бахши 8). Қоида ҳамон: як вазифа = як промпт = як commit; чӣ тавр вазифаҳоро буридан ва баргаштан дар дарси 17 шарҳ дода шудааст, дар ин ҷо он танҳо татбиқ мешавад. Ҷадвалҳо, RLS ва нақшҳоро аз дарсҳои 11–12 мегирем, даъвати API-и беруна бо калиди махфӣ дар сервер аз дарси 13.</p>
+    </div>
+
+    <!-- ============ 01 · CRUD ============ -->
+    <section class="topic" id="crud">
+      <h2 data-toc="Экранҳои CRUD"><span class="num">01</span> CRUD: чор амал бо ҳар як сабт</h2>
+
+      <p>Қариб ҳар маҳсулот, аз CRM то мағозаи интернетӣ, бо маълумот чор амал мекунад: <b>месозад</b> (Create), <b>нишон медиҳад</b> (Read), <b>тағйир медиҳад</b> (Update) ва <b>нест мекунад</b> (Delete). Ихтисори CRUD-ро як бор ба ёд гиред: он экран, амали пойгоҳ ва қоидаи RLS-ро мепайвандад. Барои як бахши маҳсулот одатан чор экран лозим аст: рӯйхат, шакли сохтан, саҳифаи сабт бо шакли тағйирдиҳӣ ва тасдиқи нестсозӣ.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Ҷадвали чор сатр: Create — шакли сохтан, фармони insert, қоидаи with check; Read — рӯйхат ва саҳифаи сабт, фармони select, қоидаи using; Update — шакли тағйирдиҳӣ, фармони update, қоидаҳои using ва with check; Delete — тугма бо тасдиқ, фармони delete, қоидаи using">
+          <text class="sub" x="14" y="22">Амал</text><text class="sub" x="150" y="22">Экран</text><text class="sub" x="360" y="22">Фармони пойгоҳ</text><text class="sub" x="520" y="22">Қоидаи RLS</text>
+          <rect class="fill-g" x="8" y="32" width="124" height="44" rx="10" /><text x="70" y="60" text-anchor="middle">Create</text>
+          <rect class="box" x="146" y="32" width="196" height="44" rx="10" /><text x="244" y="60" text-anchor="middle">шакли «Илова кардан»</text>
+          <rect class="box b" x="356" y="32" width="150" height="44" rx="10" /><text class="mono" x="431" y="60" text-anchor="middle">insert</text>
+          <rect class="box v" x="520" y="32" width="190" height="44" rx="10" /><text class="mono" x="615" y="60" text-anchor="middle">with check</text>
+          <rect class="fill-g" x="8" y="88" width="124" height="44" rx="10" /><text x="70" y="116" text-anchor="middle">Read</text>
+          <rect class="box" x="146" y="88" width="196" height="44" rx="10" /><text x="244" y="116" text-anchor="middle">рӯйхат ва саҳифаи сабт</text>
+          <rect class="box b" x="356" y="88" width="150" height="44" rx="10" /><text class="mono" x="431" y="116" text-anchor="middle">select</text>
+          <rect class="box v" x="520" y="88" width="190" height="44" rx="10" /><text class="mono" x="615" y="116" text-anchor="middle">using</text>
+          <rect class="fill-y" x="8" y="144" width="124" height="44" rx="10" /><text x="70" y="172" text-anchor="middle">Update</text>
+          <rect class="box" x="146" y="144" width="196" height="44" rx="10" /><text x="244" y="172" text-anchor="middle">шакли «Тағйир додан»</text>
+          <rect class="box b" x="356" y="144" width="150" height="44" rx="10" /><text class="mono" x="431" y="172" text-anchor="middle">update</text>
+          <rect class="box v" x="520" y="144" width="190" height="44" rx="10" /><text class="mono" x="615" y="172" text-anchor="middle">using + with check</text>
+          <rect class="fill-r" x="8" y="200" width="124" height="44" rx="10" /><text x="70" y="228" text-anchor="middle">Delete</text>
+          <rect class="box" x="146" y="200" width="196" height="44" rx="10" /><text x="244" y="228" text-anchor="middle">тугма + «Боварӣ доред?»</text>
+          <rect class="box b" x="356" y="200" width="150" height="44" rx="10" /><text class="mono" x="431" y="228" text-anchor="middle">delete</text>
+          <rect class="box v" x="520" y="200" width="190" height="44" rx="10" /><text class="mono" x="615" y="228" text-anchor="middle">using</text>
+        </svg>
+        <figcaption>Ҳар ҳарфи CRUD: экран, фармони пойгоҳ ва қоидаи RLS (дарси 11). Агар барои фармон қоида набошад, пойгоҳ хомӯшона ҳеҷ коре намекунад</figcaption>
+      </figure>
+
+      <h3>Куҷо чӣ иҷро мешавад</h3>
+      <p>Саҳифа маълумотро дар сервер мехонад (он компоненти серверӣ аст, дарси 9). Шаклҳо маълумотро ба <b>амалҳои серверӣ</b> (Server Actions) мефиристанд: инҳо функсияҳое бо директиваи <code>"use server"</code> мебошанд, ки Next.js ҳангоми фиристодани шакл даъват мекунад. Амал се корро аз рӯи тартиб мекунад: корбари воридшударо месанҷад (<code>getClaims()</code>, дарси 12), маълумоти шаклро месанҷад ва дархости Supabase-ро иҷро мекунад; баъд ба саҳифа мегӯяд, ки нав шавад (<code>revalidatePath</code>) ё ба суроғаи лозимӣ равона мекунад. Тамоми кодро ИИ мегузорад, шумо бошед онро аз рӯи се қоидаи зер месанҷед.</p>
+
+      <div class="callout tip">
+        <b>Се қоидаи экрани CRUD</b>
+        <p><b>1. Маълумотро сервер месанҷад.</b> Санҷиши браузерӣ (<code>required</code>, дарозии майдон) барои қулайӣ аст, ҳимояи воқеӣ бошад дар амали серверӣ ва дар пойгоҳ аст: дархостро бе шакли шумо ҳам фиристодан мумкин аст. <b>2. Ҳуқуқро RLS ҳал мекунад.</b> «Тугмаро пинҳон мекунем» нест, балки дар пойгоҳ қоидаҳои <code>update</code> ва <code>delete</code> танҳо барои сатрҳои худӣ ва барои admin ҳастанд. <b>3. Ҳар экран чор ҳолат дорад:</b> боркунӣ, холӣ, хатогӣ, муваффақият (баъд аз захира паёми кӯтоҳ ё гузариш ба рӯйхат).</p>
+      </div>
+
+      <h3>Нуктаҳои амалӣ</h3>
+      <ul>
+        <li><b>Нестсозӣ тасдиқ мепурсад.</b> «Боварӣ доред?» аз клики тасодуфӣ муҳофизат мекунад. Нестсозии нарм (сутуни <code>deleted_at</code> ба ҷои <code>delete</code>-и воқеӣ) лозим аст, агар сабтро баргардонидан даркор шавад; дар лоиҳаи таълимӣ <code>delete</code>-и оддӣ кифоят аст.</li>
+        <li><b>Идентификатори соҳибро сервер мегузорад.</b> Сутуни <code>user_id</code> дар амали серверӣ аз <code>getClaims()</code> пур мешавад, на аз майдони пинҳонии шакл: майдонро иваз кардан мумкин аст.</li>
+        <li><b>Баъд аз тағйирот рӯйхатро нав кунед.</b> Агар саҳифаи рӯйхат кӯҳна монад, пас <code>revalidatePath</code> барои суроғаи он даъват нашудааст.</li>
+        <li><b>Як компоненти шакл барои сохтан ва тағйир додан.</b> Фарқ дар қиматҳои ибтидоӣ ва тугма аст: ҳамин тавр код камтар ва хатогиҳо камтаранд.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Дафтари ҳисоб дар дукони хурди бозор. Фурӯшанда маҳсули навро менависад (Create), сабтҳоро мебинад (Read), нархро ислоҳ мекунад (Update) ва фурӯхташударо хат мезанад (Delete). Аммо соҳиби дукон ҳал мекунад, ки кӣ ба дафтар даст мезанад: ёрдамчӣ танҳо дар қисми худаш менависад, хат задан ва ҳамаро дидан танҳо кори соҳиб аст. Дафтар — ҷадвал, соҳиб — қоидаҳои RLS, шакли шумо бошад танҳо тиреза аст, ки фурӯшанда аз он даст дароз мекунад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Қоидаи <code>select</code> ва <code>insert</code> ҳаст, аммо <code>update</code> ва <code>delete</code>-ро фаромӯш кардаанд: тугмаи «Захира кардан» зер мешавад, хатогӣ нест, аммо сабт тағйир намеёбад (RLS сатрро хомӯшона филтр кард). <b>2.</b> <code>user_id</code>-ро аз шакл мегиранд. <b>3.</b> Санҷиш дар сервер нест: сатрҳои холӣ ва аз ҳад дароз ба пойгоҳ мерасанд. <b>4.</b> Нестсозӣ бе тасдиқ ва бе <code>revalidatePath</code>: сабт нест шуд, аммо дар рӯйхат ҳанӯз намоён аст. <b>5.</b> Ҳолати сабтро дар интерфейс иваз мекунанд, дар пойгоҳ бошад қоида ба ҳар воридшуда имкон медиҳад, ки ҳар сатрро иваз кунад (<code>using (true)</code>). <b>6.</b> Хатогии ҷавоби Supabase-ро намесанҷанд: <code>const { error } = …</code> навиштаанд, аммо <code>error</code>-ро истифода намебаранд.</p>
+      </div>
+
+      <article class="task" id="q-crud">
+        <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Худро санҷед: CRUD ва ҳуқуқҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Корбар дар шакли тағйирдиҳии сабти худ «Захира кардан»-ро зер кард. Хатогӣ нест, аммо қимат пештара монд. Дар ҷадвал RLS фаъол аст, қоидаҳои <code>select</code> ва <code>insert</code> ҳастанд. Эҳтимолтарин сабаб чист?</p>
+          <ol class="options">
+            <li>Браузер саҳифаро барои як ҳафта нигоҳ дошт</li>
+            <li>Дар Supabase квотаи ройгон тамом шуд</li>
+            <li>Барои ин ҷадвал қоидаи <code>update</code> нест: RLS хатогӣ намедиҳад, балки барои тағйир додан сатр намеёбад</li>
+            <li>Номи ҷадвал бо ҳарфҳои калон навишта шудааст</li>
+          </ol>
+          <div class="explain"><p>RLS-и фаъол бе қоидаи мувофиқ сатрҳоро аз фармон хомӯшона пинҳон мекунад. Аз ИИ хоҳиш кунед, ки қоидаҳои ҷадвалро нишон диҳад ва <code>update</code>-ро барои сатрҳои худӣ ва барои admin илова кунад, бе хомӯш кардани RLS.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p><code>user_id</code>-и сабти нав бояд аз куҷо гирифта шавад?</p>
+          <ol class="options">
+            <li>Аз майдони пинҳонии шакл: ин қулайтар аст</li>
+            <li>Аз маълумоти санҷидашудаи корбари воридшуда дар сервер (<code>getClaims()</code>)</li>
+            <li>Аз суроғаи саҳифа</li>
+            <li>Аз анбори маҳаллии браузер</li>
+          </ol>
+          <div class="explain"><p>Майдони пинҳонӣ ва ҳар чизе, ки аз браузер меояд, иваз карда мешавад. Соҳиби сабтро сервер аз рӯи сессияи санҷидашуда мегузорад, қоидаи <code>with check</code> дар пойгоҳ бошад кафолат медиҳад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Кадом фармонҳои пойгоҳ ба ҳарфҳои C, R, U, D мувофиқанд?</p>
+          <ol class="options">
+            <li><code>insert</code>, <code>select</code>, <code>update</code>, <code>delete</code></li>
+            <li><code>create</code>, <code>read</code>, <code>use</code>, <code>drop</code></li>
+            <li><code>post</code>, <code>get</code>, <code>put</code>, <code>remove</code></li>
+            <li>Ҳар чор ҳарфро <code>select</code> иҷро мекунад</li>
+          </ol>
+          <div class="explain"><p>Дар SQL ин <code>insert</code>, <code>select</code>, <code>update</code>, <code>delete</code> аст ва барои ҳар фармон қоидаи худи RLS лозим. Вариантҳо бо <code>post/get/put</code> ба дархостҳои HTTP тааллуқ доранд (дарси 10).</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://nextjs.org/docs/app/getting-started/mutating-data" target="_blank" rel="noopener">Next.js: Mutating Data (Server Actions)</a>, <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener">Supabase: Row Level Security</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 02 · Поиск, фильтры, сортировка, пагинация ============ -->
+    <section class="topic" id="list">
+      <h2 data-toc="Ҷустуҷӯ, филтрҳо, саҳифабандӣ"><span class="num">02</span> Рӯйхати сабтҳо: ҷустуҷӯ, филтрҳо, ҷудокунӣ, саҳифабандӣ</h2>
+
+      <p>Вақте сабтҳо даҳтоанд, рӯйхатро оддӣ баровардан мумкин аст. Вақте ҳазор шуданд, корбарро чор асбоб лозим мешавад: <b>ҷустуҷӯ</b> аз рӯи матн, <b>филтр</b> («танҳо кушодаҳо»), <b>ҷудокунӣ</b> («аввал гаронҳо») ва <b>саҳифабандӣ</b> (дар ҳар саҳифа 10 сабт). Фикри асосӣ: ҳамаи ин ҳолат <b>дар суроғаи саҳифа</b>, дар query string нигоҳ дошта мешавад:</p>
+
+<pre class="code" data-title="Суроғаи рӯйхат">
+/items?q=tea&amp;status=open&amp;sort=price_desc&amp;page=2
+</pre>
+
+      <p>Чунин суроғаро ба дӯст фиристодан, ба хатбарак гузоштан, саҳифаро нав кардан ва бо тугмаи «ақиб» баргаштан мумкин аст, аммо ҳолат гум намешавад. Агар онро дар <code>useState</code> нигоҳ доред, ҳама чиз ҳангоми нав кардани саҳифа нест мешавад. Дар Next.js саҳифаи серверӣ параметрҳои суроғаро тайёр мегирад: хосияти <code>searchParams</code> (дар Next.js 16 ин промис аст, онро тавассути <code>await</code> мехонанд).</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Ҷараён: суроға бо параметрҳо, баъд саҳифаи серверӣ searchParams-ро мехонад, баъд дархост ба Supabase бо филтр, ҷудокунӣ ва диапазон, баъд ҷавоб бо сатрҳо ва шумораи умумӣ, баъд рӯйхат ва рақамҳои саҳифаҳо; тир аз истинодҳои саҳифаҳо ба суроға бармегардад">
+          <rect class="fill-y" x="8" y="40" width="150" height="70" rx="10" /><text x="83" y="68" text-anchor="middle">1. Суроға</text><text class="sub mono" x="83" y="90" text-anchor="middle">?q=tea&amp;page=2</text>
+          <rect class="box v" x="188" y="40" width="150" height="70" rx="10" /><text x="263" y="68" text-anchor="middle">2. page.tsx</text><text class="sub" x="263" y="90" text-anchor="middle">await searchParams</text>
+          <rect class="box b" x="368" y="40" width="160" height="70" rx="10" /><text x="448" y="68" text-anchor="middle">3. Дархост</text><text class="sub" x="448" y="90" text-anchor="middle">ilike, eq, order, range</text>
+          <rect class="fill-g" x="558" y="40" width="152" height="70" rx="10" /><text x="634" y="68" text-anchor="middle">4. Экран</text><text class="sub" x="634" y="90" text-anchor="middle">сатрҳо + саҳифаҳо</text>
+          <path class="arr" d="M158 75H182" /><path class="arr-head" d="M182 69l8 6-8 6z" />
+          <path class="arr" d="M338 75H362" /><path class="arr-head" d="M362 69l8 6-8 6z" />
+          <path class="arr" d="M528 75H552" /><path class="arr-head" d="M552 69l8 6-8 6z" />
+          <path class="arr" d="M634 110V170H83V116" /><path class="arr-head" d="M77 116l6-9 6 9z" />
+          <text class="sub" x="360" y="198" text-anchor="middle">клик ба «Саҳифаи 3» ё иваз кардани филтр суроғаро иваз мекунад ва давр такрор мешавад</text>
+        </svg>
+        <figcaption>Суроғаи саҳифа — ягона манбаи ҳақиқат: шакл ва истинодҳо танҳо онро иваз мекунанд, рӯйхат аз он сохта мешавад</figcaption>
+      </figure>
+
+      <h3>Дар дархост ба Supabase ин чӣ тавр менамояд</h3>
+      <p>Филтрҳои лозимӣ як-як ба дархост илова мешаванд (кодро ИИ менависад, аммо шумо бояд онро бо чашм хонед):</p>
+
+<pre class="code" data-title="app/(app)/items/page.tsx (порча)">
+const size = 10;
+const from = (page - 1) * size;
+const to = from + size - 1; // range includes both ends
+
+let query = supabase
+  .from("items")
+  .select("id, title, status, price, created_at", { count: "exact" })
+  .order(sort, { ascending: dir === "asc" })
+  .range(from, to);
+
+if (q) query = query.ilike("title", `%${q}%`);
+if (status) query = query.eq("status", status);
+
+const { data, count, error } = await query;
+const pages = Math.max(1, Math.ceil((count ?? 0) / size));
+</pre>
+
+      <ul>
+        <li><code>ilike</code> бе ба назар гирифтани ҳарфи калон ва хурд меҷӯяд, аломатҳои <code>%</code> дар канорҳо маънои «ҳар чиз пеш ва баъд»-ро доранд. Барои ҷустуҷӯҳои зуд-зуд дар ҷадвали калон баъдтар индекс илова мекунанд, ба лоиҳаи таълимӣ ин таъсир намекунад.</li>
+        <li><code>range(from, to)</code> аз сифр ҳисоб мешавад ва ҳудудҳо <b>дохил</b> мешаванд: <code>range(0, 9)</code> даҳ сатри аввалро бармегардонад. Ҳамеша бо <code>order</code>, вагарна тартиби сатрҳо кафолат дода намешавад ва сабтҳо байни саҳифаҳо «ҷаҳида» метавонанд.</li>
+        <li><code>{ count: "exact" }</code> шумораи умумии сатрҳои мувофиқро бармегардонад: аз рӯи он саҳифаҳоро ҳисоб мекунед. Барои панели омор варианти <code>{ count: "exact", head: true }</code> ҳаст: танҳо рақам бе худи сатрҳо бармегардад.</li>
+        <li><b>Ҷудокуниро аз рӯи рӯйхати сафед санҷед.</b> Агар <code>sort</code>-ро аз суроға ҳамон тавр гиред, корбар ҳар чизро мегузорад: танҳо майдонҳои маълумро иҷозат диҳед (<code>created_at</code>, <code>price</code>, <code>title</code>).</li>
+        <li><b>Партов дар суроға набояд саҳифаро вайрон кунад.</b> <code>?page=abc</code> ва <code>?page=-5</code> ба саҳифаи аввал табдил меёбанд, <code>page</code>, ки аз шумораи саҳифаҳо зиёд аст, саҳифаи охир ё ҳолати холиро нишон медиҳад.</li>
+      </ul>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/18-sprint-2/list-toolbar.svg" alt="Нақшаи экрани рӯйхат: боло майдони ҷустуҷӯи «tea», рӯйхатҳои кушодашавандаи «Ҳолат: open» ва «Ҷудокунӣ: нарх аз зиёд ба кам» ва тугмаи «Тоза кардан»; поёнтар ҷадвали се сабт; дар поён «Саҳифаи 2 аз 2» ва тугмаҳои «Ақиб» ва «Пеш»; дар сатри суроға параметрҳои q, status, sort ва page намоёнанд" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Панели маъмулии рӯйхат: ҷустуҷӯ, ду филтр, ҷудокунӣ, «Тоза кардан» ва саҳифабандӣ. Ивази ҳар қимат суроғаро иваз мекунад</figcaption>
+      </figure>
+
+      <h3>Чиро бояд донист, то қарорро шарҳ диҳед</h3>
+      <ul>
+        <li><b>Саҳифабандии серверӣ.</b> Ба браузер як саҳифа (10 сатр) дода мешавад, на тамоми ҷадвал: вагарна сайт суст аст ва маълумоти зиёдатӣ ба корбар мерасад.</li>
+        <li><b>Иваз кардани филтр саҳифаро ба аввал бармегардонад.</b> Вагарна пас аз интихоби филтр корбар дар саҳифаи сеюм мемонад, ки он дигар вуҷуд надорад.</li>
+        <li><b>Шакл бо усули GET.</b> Ҷустуҷӯ ва филтрҳоро бо шакли оддии <code>&lt;form&gt;</code> бе JavaScript сохтан мумкин аст: браузер худаш майдонҳоро ба суроға илова мекунад. Барои саҳифабандӣ истинодҳои оддӣ кифоянд.</li>
+      </ul>
+
+      <h3>Худатон санҷед: мантиқи рӯйхат бо JavaScript-и тоза</h3>
+      <p>Аввал мантиқро дар массив месанҷем: ҳамин тавр ҳар қадам намоён аст ва мефаҳмед, ки дархост ба пойгоҳ дақиқан чӣ кор мекунад.</p>
+
+      <article class="task" id="pg-query">
+        <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Филтр, ҷудокунӣ ва саҳифабандии массив</h4><span class="level mid">миёна</span></header>
+        <p>Дар назди шумо сабтҳо ва параметрҳои «суроға» ҳастанд. Се қадамро анҷом диҳед: аз рӯи матн (бе ба назар гирифтани регистр) ва ҳолат (сатри холӣ маънои «ҳар ягон»-ро дорад) филтр кунед, аз рӯи нарх аз зиёд ба кам ҷудо кунед, саҳифаи лозимиро гиред. Натиҷаро бо формати блоки «Натиҷаи интизоршаванда» барор кунед.</p>
+<pre class="code" data-run data-lang="js">
+const items = [
+  { id: 1, title: "Green tea", status: "open", price: 15 },
+  { id: 2, title: "Black tea", status: "open", price: 12 },
+  { id: 3, title: "Tea pot", status: "closed", price: 90 },
+  { id: 4, title: "Teapot cover", status: "open", price: 25 },
+  { id: 5, title: "Coffee beans", status: "open", price: 60 },
+  { id: 6, title: "Tea spoon", status: "open", price: 5 },
+  { id: 7, title: "Iced tea", status: "closed", price: 18 },
+  { id: 8, title: "Tea cup", status: "open", price: 30 },
+  { id: 9, title: "Sugar", status: "open", price: 8 },
+  { id: 10, title: "Tea tray", status: "open", price: 45 },
+];
+const params = { q: "tea", status: "open", sort: "price_desc", page: 2, size: 3 };
+
+// TODO 1: сабтҳоеро нигоҳ доред, ки title дорои params.q аст (бе регистр)
+// ва (агар params.status сатри холӣ набошад) status ба params.status баробар аст
+let rows = items;
+
+// TODO 2: агар params.sort === "price_desc" бошад, аз рӯи нарх аз зиёд ба кам ҷудо кунед,
+// вагарна аз кам ба зиёд
+// (sort массивро дар ҷояш иваз мекунад: rows пас аз filter массиви нав аст)
+
+const total = rows.length;
+const pages = Math.ceil(total / params.size);
+// TODO 3: from = (page - 1) * size; pageRows = rows.slice(from, from + size)
+const from = 0;
+const pageRows = rows;
+
+console.log("total: " + total);
+console.log("pages: " + pages);
+console.log("page: " + params.page + " of " + pages);
+for (const r of pageRows) console.log(r.id + " " + r.title + " " + r.price);
+console.log("range: " + from + "-" + (from + pageRows.length - 1));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>total: 6
+pages: 2
+page: 2 of 2
+1 Green tea 15
+2 Black tea 12
+6 Tea spoon 5
+range: 3-5</pre></div>
+        <details class="hint"><summary>Ишораи 1</summary><p>TODO 1: <code>let rows = items.filter((i) =&gt; i.title.toLowerCase().includes(params.q.toLowerCase()) &amp;&amp; (params.status === "" || i.status === params.status));</code> (сатри <code>let rows = items;</code>-ро иваз кунед).</p></details>
+        <details class="hint"><summary>Ишораи 2</summary><p>TODO 2: <code>rows.sort((a, b) =&gt; params.sort === "price_desc" ? b.price - a.price : a.price - b.price);</code>. TODO 3: <code>const from = (params.page - 1) * params.size;</code> ва <code>const pageRows = rows.slice(from, from + params.size);</code></p></details>
+      </article>
+
+      <h3>Суроға аз филтрҳо: query string</h3>
+      <p>Вазифаи баръакс: аз қиматҳои шакл суроға созед. Қиматҳоро бояд рамзгузорӣ кард (<code>encodeURIComponent</code>): фосила, кириллика, аломатҳои <code>&amp;</code> ва <code>=</code> вагарна суроғаро вайрон мекунанд. Қиматҳои пешфарзро ба суроға намегузоранд: <code>/items</code>-и тоза аз <code>/items?q=&amp;status=all&amp;page=1</code> беҳтар аст.</p>
+
+      <article class="task" id="pg-qs">
+        <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Суроғаро аз филтрҳо созед</h4><span class="level mid">миёна</span></header>
+        <p>Функсияи <code>buildQuery(f)</code>-ро анҷом диҳед: он сатри намуди <code>?q=…&amp;status=…&amp;sort=…&amp;page=…</code>-ро бо ҳамин тартиб бармегардонад. <code>q</code>-и холӣ, <code>status</code> бо қимати <code>"all"</code>, <code>sort</code> бо қимати <code>"new"</code> ва <code>page</code>-ро, ки аз 1 зиёд нест, дохил накунед. Агар параметрҳо набошанд, сатри холӣ баргардонед.</p>
+<pre class="code" data-run data-lang="js">
+function buildQuery(f) {
+  const parts = [];
+  // TODO 1: агар f.q холӣ набошад, "q=" + encodeURIComponent(f.q)-ро илова кунед
+  // TODO 2: агар f.status дода шуда бошад ва ба "all" баробар набошад, "status=" + ...-ро илова кунед
+  // TODO 3: агар f.sort дода шуда бошад ва ба "new" баробар набошад, "sort=" + ...-ро илова кунед
+  // TODO 4: агар f.page аз 1 зиёд бошад, "page=" + f.page-ро илова кунед
+  return parts.length ? "?" + parts.join("&amp;") : "";
+}
+
+const cases = [
+  { q: "", status: "all", sort: "new", page: 1 },
+  { q: "green tea", status: "open", sort: "new", page: 1 },
+  { q: "чай", status: "all", sort: "price_asc", page: 3 },
+  { q: "a&amp;b=c", status: "closed", sort: "new", page: 2 },
+];
+for (const c of cases) console.log("/items" + buildQuery(c));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>/items
+/items?q=green%20tea&amp;status=open
+/items?q=%D1%87%D0%B0%D0%B9&amp;sort=price_asc&amp;page=3
+/items?q=a%26b%3Dc&amp;status=closed&amp;page=2</pre></div>
+        <details class="hint"><summary>Ишораи 1</summary><p>Ҳар сатр аз рӯи намуна: <code>if (f.q) parts.push("q=" + encodeURIComponent(f.q));</code></p></details>
+        <details class="hint"><summary>Ишораи 2</summary><p><code>if (f.status &amp;&amp; f.status !== "all") parts.push("status=" + encodeURIComponent(f.status));</code>, барои <code>sort</code> бо қимати <code>"new"</code> ҳамин тавр, барои саҳифа бошад: <code>if (f.page &amp;&amp; f.page &gt; 1) parts.push("page=" + f.page);</code></p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Бозор ва қатори савдо. Шумо «тамоми бозор»-ро намехаред: ба фурӯшанда мегӯед «чой, танҳо сабз, арзонтар» (ҷустуҷӯ, филтр, ҷудокунӣ) ва мепурсед «даҳ бастаи аввалро нишон диҳед» (саҳифа). Агар ин хоҳишро ба коғазпора нависед, ҳар касе, ки коғазро гирад, ҳамон рафро мегирад. Коғазпора — ин суроғаи саҳифа аст.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Тамоми ҷадвалро боргирӣ кардан ва дар браузер бо массив филтр кардан: дар ҳазор сабт ин суст аст ва маълумоти бегона ба корбар мерасад. <b>2.</b> Филтрҳоро дар <code>useState</code> нигоҳ доштан: саҳифаро нав кардед ва ҳама гум шуд. <b>3.</b> <code>range</code> бе <code>order</code>: сабтҳо байни саҳифаҳо такрор мешаванд ё намоён нестанд. <b>4.</b> Ҳангоми иваз кардани филтр <code>page</code>-ро ба 1 барнагардонидан. <b>5.</b> <code>sort</code>-ро аз суроға бе санҷиш ба дархост гузоштан. <b>6.</b> Саҳифаҳоро аз рӯи дарозии массиви саҳифаи ҷорӣ ҳисоб кардан, на аз рӯи <code>count</code>. <b>7.</b> Ба сатри ҷустуҷӯ <code>%</code> ё <code>,</code> меафтад ва корбар хатогӣ мебинад: онҳоро экран кунед ё тоза намоед.</p>
+      </div>
+
+      <article class="task" id="q-list">
+        <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Худро санҷед: рӯйхатҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="4">
+          <p>Чаро ҳолати ҷустуҷӯ ва филтрҳоро беҳтар аст дар суроғаи саҳифа нигоҳ доред?</p>
+          <ol class="options">
+            <li>Пойгоҳи маълумот зудтар кор мекунад</li>
+            <li>Суроға аз тағйирёбанда хотираи камтар мегирад</li>
+            <li>Ҳамин тавр RLS-ро истифода бурдан мумкин нест</li>
+            <li>Ҳолат нав кардани саҳифаро аз сар мегузаронад ва бо тугмаи «ақиб» кор мекунад, суроғаро ба шахси дигар фиристодан мумкин аст</li>
+          </ol>
+          <div class="explain"><p>Суроға — ҳолатест, ки браузер худаш онро нигоҳ доштан, нусха кардан ва барқарор кардан мефаҳмад. Ба суръати пойгоҳ ва ба RLS ин тааллуқ надорад.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Дар саҳифа 10 сабт мегузоранд. Барои саҳифаи 3 кадом диапазонро ба <code>range</code> додан лозим?</p>
+          <ol class="options">
+            <li><code>range(20, 30)</code></li>
+            <li><code>range(20, 29)</code></li>
+            <li><code>range(30, 39)</code></li>
+            <li><code>range(21, 30)</code></li>
+          </ol>
+          <div class="explain"><p>Оғоз: <code>(3 − 1) × 10 = 20</code>. Анҷом: оғоз плюс андоза минус як, яъне 29. Индексҳо аз сифр мераванд, ҳар ду ҳудуд ба диапазон дохиланд, барои ҳамин дар саҳифа дақиқан даҳ сабт мешавад.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Вақте корбар филтри «Ҳолат»-ро иваз мекунад, бо <code>page</code> чӣ кор кардан лозим?</p>
+          <ol class="options">
+            <li>Ҳамон тавр монданд</li>
+            <li>Ба як зиёд кунанд</li>
+            <li>Ба саҳифаи аввал баргардонанд: дар саҳифаи кӯҳна сабтҳои мувофиқ шояд набошанд</li>
+            <li>Ҷадвалро нест кунанд</li>
+          </ol>
+          <div class="explain"><p>Баъд аз филтр сабтҳо камтар мешаванд ва саҳифаи 3 дигар нест. Барои ҳамин суроғаи филтри навро бе <code>page</code> (ё бо <code>page=1</code>) месозанд.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://nextjs.org/docs/app/api-reference/file-conventions/page" target="_blank" rel="noopener">Next.js: page.js ва searchParams</a>, <a href="https://supabase.com/docs/reference/javascript/range" target="_blank" rel="noopener">Supabase JS: range</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 03 · Файлы и Storage ============ -->
+    <section class="topic" id="storage">
+      <h2 data-toc="Файлҳо ва Storage"><span class="num">03</span> Файлҳо ва тасвирҳо: Supabase Storage</h2>
+
+      <p>Тасвирҳо, PDF ва дигар файлҳоро дар ҷадвали оддӣ нигоҳ доштан мумкин нест: онҳо вазнинанд. Барои онҳо дар Supabase <b>Storage</b> ҳаст: анбори файлӣ, ки файлҳо дар он дар <b>бакетҳо</b> (buckets, «сабадҳо») ва дар дохили бакет дар папкаҳо нигоҳ дошта мешаванд. Ба ҷадвал шумо танҳо <b>роҳи файлро</b> (матн) менависед, худи файл дар анбор мемонад.</p>
+
+      <h3>Бакети оммавӣ ё пӯшида</h3>
+      <div class="cmp">
+        <div class="old">
+          <h5>Бакети оммавӣ</h5>
+          <ul>
+            <li>Файлро аз рӯи истинод ҳар кас бе воридшавӣ ва бе RLS хонда метавонад (<code>getPublicUrl</code>)</li>
+            <li>Боркунӣ, иваз ва нестсозӣ ба ҳар ҳол бо қоидаҳо санҷида мешаванд</li>
+            <li>Барои логотипҳо ва тасвирҳои сайт мувофиқ аст, ки онро ҳама мебинанд</li>
+          </ul>
+        </div>
+        <div class="new">
+          <h5>Бакети пӯшида (пешфарз)</h5>
+          <ul>
+            <li>Ҳама чиз, аз ҷумла хондан, тавассути қоидаҳои RLS мегузарад</li>
+            <li>Файлро бо истиноди имзошудаи муваққатӣ нишон медиҳанд (<code>createSignedUrl</code>)</li>
+            <li>Барои ҳуҷҷатҳо, сурати корбарон ва ҳар чизе, ки бегонагон набояд бубинанд, мувофиқ аст</li>
+          </ul>
+        </div>
+      </div>
+      <p>Дар ин спринт тасвирҳои сабтҳо ва замимаҳоро дар <b>бакети пӯшида</b> месозем: бехатартар аст ва пешфарз ҳамин аст, оммавӣ кардани он баъдтар мумкин аст, агар маълум шавад, ки файл барои ҳама лозим аст. Қоидаи дарс: <b>бакетро бо сабти оммавӣ ҳеҷ гоҳ намесозем</b> (иҷозати «ҳар кас метавонад бор кунад» анбори шуморо ба файлбанди ройгон барои спам ва файлҳои зараровар табдил медиҳад).</p>
+
+      <h3>Бакетро чӣ тавр дуруст сохтан</h3>
+      <ol class="steps">
+        <li>Дар панели Supabase бахши <b>Storage</b>-ро кушоед, <b>New bucket</b>-ро зер кунед ва ном нависед, масалан <code>item-images</code> (дар ҳуҷҷатҳои Supabase ин роҳи «Storage → New Bucket → Create Bucket» аст).</li>
+        <li>Гузаргари «Public bucket»-ро хомӯш гузоред.</li>
+        <li>Дар танзимоти иловагии бакет маҳдудиятҳо гузоред: андозаи ҳадди аксари файл (масалан, 2 МБ) ва навъҳои иҷозатдодашуда (<code>image/jpeg</code>, <code>image/png</code>, <code>image/webp</code>). Маҳдудиятҳои бакетро пойгоҳ дар тарафи худ месанҷад ва ба браузер бовар намекунад. Номи бандҳо дар панел каме фарқ карда метавонад: «file size limit» ва «allowed MIME types»-ро ҷустуҷӯ кунед.</li>
+        <li>Бакет сохта шуд, аммо ҳоло ба он бор кардан мумкин нест: <b>бе сиёсатҳо дар <code>storage.objects</code> боркунӣ барои ҳама пӯшида аст</b>. Ин муқаррарӣ ва бехатар аст: баъд шумо дақиқан ҳамон ҳуқуқҳоро медиҳед, ки лозиманд.</li>
+      </ol>
+
+      <h3>Сиёсатҳо аз рӯи id-и корбар (RLS дар storage.objects)</h3>
+      <p>Файлҳо бо сатрҳои ҷадвали <code>storage.objects</code> тавсиф мешаванд: дар сутуни <code>name</code>-и он роҳи пурра бо намуди <code>папка/файл.jpg</code> меистад, дар <code>bucket_id</code> номи бакет. Яъне қоидаҳои RLS мисли ҷадвалҳои оддӣ навишта мешаванд (дарси 11), функсияи <code>storage.foldername(name)</code> бошад массиви папкаҳои роҳро бармегардонад. Созиш: <b>папкаи аввали роҳ — id-и корбар аст</b>, яъне файли корбари воридшуда ҳамчун <code>&lt;user-id&gt;/&lt;номи-тасодуфӣ&gt;.jpg</code> меистад.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Нақшаи боркунӣ: браузер файлро бо роҳи user-id/файл ба бакет мефиристад; анбор қоидаро месанҷад, ки папкаи аввал ба id-и корбари воридшуда баробар аст; дар сурати муваффақият файл захира мешавад, роҳ ба сутуни image_path-и ҷадвал навишта мешавад; барои нишон додан сервер истиноди имзошудаи муваққатӣ месозад">
+          <rect class="box g" x="8" y="30" width="150" height="80" rx="12" /><text x="83" y="62" text-anchor="middle">Браузер</text><text class="sub" x="83" y="84" text-anchor="middle">файл интихоб шуд</text>
+          <rect class="fill-y" x="205" y="30" width="190" height="80" rx="12" /><text x="300" y="58" text-anchor="middle">Санҷиши RLS</text><text class="sub mono" x="300" y="80" text-anchor="middle">папкаи аввал =</text><text class="sub mono" x="300" y="98" text-anchor="middle">id-и корбар</text>
+          <rect class="box b" x="440" y="30" width="270" height="80" rx="12" /><text x="575" y="62" text-anchor="middle">Бакети item-images</text><text class="sub mono" x="575" y="84" text-anchor="middle">u-42/9f3a.webp</text>
+          <path class="arr" d="M158 70H199" /><path class="arr-head" d="M199 64l8 6-8 6z" />
+          <path class="arr" d="M395 70H434" /><path class="arr-head" d="M434 64l8 6-8 6z" />
+          <rect class="box v" x="205" y="160" width="190" height="80" rx="12" /><text x="300" y="192" text-anchor="middle">Ҷадвали items</text><text class="sub mono" x="300" y="214" text-anchor="middle">image_path</text>
+          <rect class="fill-g" x="440" y="160" width="270" height="80" rx="12" /><text x="575" y="192" text-anchor="middle">Нишон додани тасвир</text><text class="sub" x="575" y="214" text-anchor="middle">истиноди имзошуда барои як соат</text>
+          <path class="arr" d="M83 110V200H199" /><path class="arr-head" d="M199 194l8 6-8 6z" />
+          <path class="arr" d="M395 200H434" /><path class="arr-head" d="M434 194l8 6-8 6z" />
+          <text class="sub" x="140" y="150">роҳро ба ҷадвал менависем</text>
+        </svg>
+        <figcaption>Файл танҳо бо роҳи id-и худ ба бакет меравад, роҳ дар ҷадвал захира мешавад, файл бошад бо истиноди муваққатӣ нишон дода мешавад</figcaption>
+      </figure>
+
+      <p>Сиёсатҳоро ба файли <code>db/003_storage.sql</code> захира кунед ва дар SQL Editor иҷро намоед, чунон ки дар дарси 11 карда будед. Номи бакетро бо номи худ иваз кунед:</p>
+
+<pre class="code" data-title="db/003_storage.sql">
+/* корбар файлҳоро танҳо ба папкаи худ бор мекунад */
+create policy "item-images: insert own folder"
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'item-images'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+);
+
+/* файлҳои худро мехонад; admin ҳамаро мехонад (функсияи is_admin аз дарси 12) */
+create policy "item-images: select own or admin"
+on storage.objects for select to authenticated
+using (
+  bucket_id = 'item-images'
+  and ((storage.foldername(name))[1] = (select auth.uid())::text
+       or (select public.is_admin()))
+);
+
+/* файлҳои худро нест мекунад; admin ҳар кадомро нест мекунад */
+create policy "item-images: delete own or admin"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'item-images'
+  and ((storage.foldername(name))[1] = (select auth.uid())::text
+       or (select public.is_admin()))
+);
+</pre>
+
+      <ul>
+        <li><b><code>to authenticated</code></b>: меҳмони бе воридшавӣ тамоман бор карда наметавонад. Қоидаҳо «барои anon» ба сабт намениависем.</li>
+        <li><b>Папкаи кист, кӣ ҳал мекунад.</b> На шакл ва на браузер: санҷиш роҳро бо <code>auth.uid()</code> аз сессия муқоиса мекунад. Кӯшиши ба папкаи корбари дигар бор кардан хатогии вайронкунии RLS мегирад.</li>
+        <li><b>Танҳо фармонҳое, ки лозиманд.</b> Қоидаи <code>update</code> дар ин ҷо нест: файлҳо аз нав навишта намешаванд, балки бо номи тасодуфии нав бор карда мешаванд ва кӯҳна нест мешавад. (Барои аз нав навиштан бо <code>upsert</code> боз <code>select</code> ва <code>update</code> лозим аст.)</li>
+        <li><b>Хондан ҳатто барои истиноди имзошуда лозим аст:</b> истинодро танҳо касе сохта метавонад, ки ба ӯ <code>select</code> иҷозат дода шудааст.</li>
+        <li>Дар ҳуҷҷатҳои расмии Supabase ҳамин санҷиш тавассути <code>auth.jwt()-&gt;&gt;'sub'</code> навишта шудааст: ин ҳамон id-и корбар бо роҳи дигар аст.</li>
+      </ul>
+
+      <h3>Боркунӣ ва нишон додани файл</h3>
+      <p>Боркунӣ аз браузер бо клиенти Supabase (аз файли <code>lib/supabase/client.ts</code>-и дарси 12) зери сессияи корбар мегузарад, барои ҳамин қоидаҳои RLS ба ӯ татбиқ мешаванд. Id-и корбарро аз сервер ба компоненти шакл диҳед: саҳифаи серверӣ онро аллакай аз <code>getClaims()</code> медонад.</p>
+
+<pre class="code" data-title="Боркунии тасвир (порчаи компоненти клиентӣ)">
+const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+
+const { error } = await supabase.storage
+  .from("item-images")
+  .upload(path, file, { contentType: file.type });
+
+if (error) {
+  setMessage("Upload failed: " + error.message);
+  return;
+}
+// баъд: path-ро ба сутуни image_path-и сабт захира кунед
+</pre>
+
+<pre class="code" data-title="Нишон додани тасвир дар сервер (порча)">
+const { data } = await supabase.storage
+  .from("item-images")
+  .createSignedUrl(item.image_path, 3600); // истинод 3600 сония кор мекунад
+
+// data?.signedUrl-ро ба src-и тасвир мегузорем
+</pre>
+
+      <ul>
+        <li><b>Номи тасодуфии файл</b> (<code>crypto.randomUUID()</code>) аз мувофиқатҳо ва аломатҳои аҷиб дар ном муҳофизат мекунад. Боркунӣ ба роҳи мавҷуда бе <code>upsert</code> хатогии «Asset Already Exists» мегардонад.</li>
+        <li><b>Андоза ва навъро ду бор месанҷем:</b> дар браузер (барои қулайӣ: хатогӣ фавран) ва дар танзимоти бакет (барои ҳимоя). Ба санҷиши браузерӣ бовар кардан мумкин нест.</li>
+        <li><b>Боркунии оддӣ</b> барои файлҳо тахминан то 6 МБ пешбинӣ шудааст; барои калонтарҳо боркунии барқароршаванда ҳаст, дар лоиҳаи таълимӣ он лозим нест.</li>
+        <li><b>Тасвирро бо тегги оддии <code>&lt;img&gt;</code> бо паҳно ва баландӣ нишон диҳед.</b> Агар <code>next/image</code>-ро интихоб кунед (дарси 9), суроғаи анборро бояд ба <code>images.remotePatterns</code> дар <code>next.config.ts</code> илова кунед, вагарна Next.js тасвирро нишон намедиҳад.</li>
+        <li><b>Ҳангоми нест кардани сабт файлро низ нест кунед</b> (<code>storage.from(…).remove([path])</code>), вагарна дар анбор партов ҷамъ мешавад. Қоидаи <code>delete</code> лозим аст, он дар SQL-и боло ҳаст.</li>
+      </ul>
+
+      <div class="yt" data-id="4ERX__Y908k" data-title="How to Configure Access Control on Your Supabase Storage Buckets — SupabaseTips, канали расмии Supabase" data-start="0"></div>
+      <p class="muted">Видео бо забони англисӣ, субтитрҳоро фаъол кунед. Бубинед, ки экрани сиёсатҳои бакет чӣ хел менамояд ва қоидаҳо чӣ тавр ҳал мекунанд, ки кӣ бо файлҳо чӣ карда метавонад. Интерфейси панел бо мурури замон иваз мешавад, аммо фикр ҳамон аст.</p>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Ҳуҷраи нигоҳдорӣ дар вокзали Душанбе. Ҳар мусофир ҳуҷраи рақамдори худро дорад, дар чек рақами ҳуҷра навишта шудааст (роҳ дар ҷадвал). Танҳо ҳуҷраи худро кушодан мумкин аст: хадамоти амният месанҷад, ки рақами чек бо рақами билети шумо мувофиқ аст (сиёсат аз рӯи id). Бакети оммавӣ бо сабт барои ҳама ҳуҷраи нигоҳдорӣ бе посбон ва бе қуфл мебуд: ҳар кас ҳар чизро дар он мегузорад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Бакетро оммавӣ кардан, то ки «кор кунад» ва дар бораи сиёсатҳо фаромӯш кардан. <b>2.</b> Сиёсати <code>with check (true)</code>-ро барои <code>insert</code> навиштан: ҳар воридшуда ба ҳар папка бор карда метавонад. <b>3.</b> Нақши <code>anon</code>-ро ба сабт гузоштан: меҳмонон файл бор карда метавонанд. <b>4.</b> Номи файли корбарро бе тоза кардан ба роҳ гузоштан: кириллика, фосилаҳо ва такрорҳо боркуниро вайрон мекунанд. <b>5.</b> Маҳдудияти андоза ва навъро нагузоштан: ба бакет видеоҳои гигабайтӣ ва файлҳои иҷрошаванда мерасанд. <b>6.</b> Истиноди имзошудаи тайёрро дар ҷадвал нигоҳ доштан: он кӯҳна мешавад, дар ҳоле ки роҳро нигоҳ доштан лозим аст. <b>7.</b> Secret key-ро дар браузер истифода бурдан «барои гузаштан аз RLS»: он ба ҳама чиз дастрасии пурра медиҳад ва бояд танҳо дар сервер зиндагӣ кунад (дарси 11). <b>8.</b> Хатогии ҷавоби <code>upload</code>-ро нагузаронидан.</p>
+      </div>
+
+      <h3>Санҷиши файл пеш аз боркунӣ</h3>
+      <article class="task" id="pg-validate">
+        <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Файлҳоро санҷед ва роҳҳоро созед</h4><span class="level mid">миёна</span></header>
+        <p>Санҷиши рӯйхати файлҳоро анҷом диҳед. Барои ҳар файл: агар навъ аз иҷозатдодашудаҳо набошад, <code>type not allowed</code> барор кунед; вагарна агар андоза аз лимит зиёд бошад, <code>too big</code> барор кунед; вагарна роҳро бо намуди <code>id-и-корбар/рақам.васеъшавӣ</code> барор кунед, ки рақамро танҳо файлҳои қабулшуда мешуморанд (аз як), васеъшавӣ бошад аз ном бо ҳарфҳои хурд гирифта мешавад (агар нуқта набошад, <code>bin</code>). Андозаи дақиқан ба лимит баробар иҷозат дода мешавад.</p>
+<pre class="code" data-run data-lang="js">
+const MAX = 2 * 1024 * 1024;
+const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+const userId = "u42";
+const files = [
+  { name: "Photo.JPG", size: 500000, type: "image/jpeg" },
+  { name: "scan.pdf", size: 100000, type: "application/pdf" },
+  { name: "big.png", size: 3000000, type: "image/png" },
+  { name: "cover.webp", size: 2097152, type: "image/webp" },
+  { name: "noext", size: 1000, type: "image/png" },
+];
+
+let accepted = 0;
+for (const f of files) {
+  // TODO 1: агар навъ дар ALLOWED набошад, f.name + ": type not allowed" барор кунед ва ба файли оянда гузаред (continue)
+  // TODO 2: агар f.size аз MAX зиёд бошад, f.name + ": too big" барор кунед ва continue
+  accepted++;
+  // TODO 3: васеъшавӣ: қисми ном баъд аз нуқтаи охирин бо ҳарфҳои хурд, агар нуқта набошад: "bin"
+  const ext = "bin";
+  console.log(f.name + ": " + userId + "/" + accepted + "." + ext);
+}
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Photo.JPG: u42/1.jpg
+scan.pdf: type not allowed
+big.png: too big
+cover.webp: u42/2.webp
+noext: u42/3.bin</pre></div>
+        <details class="hint"><summary>Ишораи 1</summary><p>TODO 1 ва 2: <code>if (!ALLOWED.includes(f.type)) { console.log(f.name + ": type not allowed"); continue; }</code> ва ҳамин гуна <code>if</code> барои <code>f.size &gt; MAX</code>.</p></details>
+        <details class="hint"><summary>Ишораи 2</summary><p>TODO 3: <code>const dot = f.name.lastIndexOf("."); const ext = dot === -1 ? "bin" : f.name.slice(dot + 1).toLowerCase();</code> (сатри <code>const ext = "bin";</code>-ро иваз кунед).</p></details>
+      </article>
+
+      <article class="task" id="q-storage">
+        <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Худро санҷед: анбор</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Кадом сиёсат ба корбар дуруст иҷозат медиҳад, ки файлҳоро танҳо ба папкаи худи бакет бор кунад?</p>
+          <ol class="options">
+            <li><code>insert to authenticated with check (bucket_id = 'item-images' and (storage.foldername(name))[1] = (select auth.uid())::text)</code></li>
+            <li><code>insert to anon with check (true)</code></li>
+            <li><code>insert to authenticated with check (true)</code></li>
+            <li>Сиёсатҳо лозим нестанд, оммавӣ кардани бакет кифоя аст</li>
+          </ol>
+          <div class="explain"><p>Варианти дуруст папкаи аввали роҳро бо id аз сессия муқоиса мекунад ва ба як бакет баста шудааст. Боқӣ боркуниро ба меҳмонон ё ба ҳар воридшуда ба ҳар папка иҷозат медиҳанд; бакети оммавӣ хонданро мекушояд, аммо назорати сабтро иваз намекунад.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Боркунӣ ба бакет хатогии «new row violates row-level security policy»-ро бармегардонад. Аввал чиро санҷидан лозим?</p>
+          <ol class="options">
+            <li>Оё тасвир барои браузер аз ҳад вазнин нест</li>
+            <li>Оё номи сайт аз ҳад дароз нест</li>
+            <li>Оё сиёсати <code>insert</code> ҳаст ва оё папкаи аввали роҳ бо id-и корбари воридшуда мувофиқ аст</li>
+            <li>Оё мавзӯи торик фаъол нест</li>
+          </ol>
+          <div class="explain"><p>Ин паём маънои онро дорад, ки сиёсат дарҷро иҷозат надод: ё қоида нест, ё роҳ бо id-и шумо оғоз намешавад, ё шумо ворид нашудаед. Андоза ва навъи файл хатогиҳои дигар медиҳанд (лимити андоза ва навъи MIME-и иҷозатнашуда).</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Баъд аз боркунии бомуваффақият ба ҷадвал чиро навиштан лозим?</p>
+          <ol class="options">
+            <li>Худи файлро пурра ба майдони матнӣ</li>
+            <li>Роҳи файлро дар бакет (масалан, <code>u-42/9f3a.webp</code>), истинодро бошад дар сервер ҳангоми нишон додан месозанд</li>
+            <li>Истиноди имзошударо: он ба ҳамеша мерасад</li>
+            <li>Ҳеҷ чиро, Supabase худаш файлро аз рӯи номи сабт меёбад</li>
+          </ol>
+          <div class="explain"><p>Роҳ тағйир намеёбад, истиноди имзошуда бошад вақти маҳдуд кор мекунад, барои ҳамин ҳар дафъа ҳангоми нишон додан аз нав сохта мешавад. Файлро ба ҷадвал намегузоранд: анбор барои ҳамин аст.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/storage/security/access-control" target="_blank" rel="noopener">Supabase Storage: Access Control</a>, <a href="https://supabase.com/docs/guides/storage/uploads/standard-uploads" target="_blank" rel="noopener">Supabase Storage: Standard Uploads</a>, <a href="https://supabase.com/docs/guides/storage/serving/downloads" target="_blank" rel="noopener">Supabase Storage: Serving downloads</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 04 · E-mail ============ -->
+    <section class="topic" id="email">
+      <h2 data-toc="Огоҳиномаҳо ба e-mail"><span class="num">04</span> Огоҳиномаҳо ба e-mail</h2>
+
+      <p>Маҳсулот бояд дар бораи муҳим хабар диҳад: «дархости нав омад», «фармоиш қабул шуд», «ҳолат иваз шуд». Мактубҳо <b>танҳо аз сервер</b> фиристода мешаванд: сайт хидмати почтаро бо API ва калиди махфӣ даъват мекунад (мисли Gemini дар дарси 13), браузер бошад ин калидро набояд бубинад. Дар курс хидмати <b>Resend</b>-ро истифода мебарем: он тарифи ройгон дорад (дар лаҳзаи навиштан: то 3000 мактуб дар як моҳ, на зиёда аз 100 дар як шабонарӯз), API-и оддӣ ва китобхонаи тайёр барои Node.js.</p>
+
+      <div class="callout warn">
+        <b>Маҳдудияти асосӣ: бе домени худӣ мактубҳо танҳо ба шумо мераванд</b>
+        <p>Мактубҳоро «аз номи худ» ба ҳар суроға танҳо баъд аз тасдиқи домен (<code>вебсайти-шумо.com</code>) тавассути сабтҳои DNS фиристодан мумкин аст. То даме ки домен нест, фиристандаи озмоишӣ <code>onboarding@resend.dev</code> истифода мешавад ва мактубҳо <b>танҳо ба суроғае мерасанд, ки ҳисоби шумо дар Resend бо он сабт шудааст</b>. Кӯшиши ба каси дигар фиристодан хатогии 403 бо матни «You can only send testing emails to your own email address … To send emails to other recipients, please verify a domain»-ро бармегардонад. <b>Барои вазифаи хонагӣ ин кифоя аст</b>: огоҳиномаро соҳиби маҳсулот (шумо) мегирад. Домени худро баъдтар пайваст кардан мумкин аст, он танҳо барои оғози воқеӣ лозим аст.</p>
+      </div>
+
+      <h3>Чиро фикр кардан лозим</h3>
+      <p>Дар лоиҳаи хатмӣ мактубро соҳиб мегирад, яъне шумо: «дар мағозаи интернетӣ фармоиш расмӣ шуд», «дар Booking брон сохта шуд», «дар CRM дархости нав пайдо шуд». Суроғаи гирандаро дар тағйирёбандаи муҳит <code>NOTIFY_EMAIL</code> нигоҳ доред, на дар код. Огоҳиномаҳои Telegram дар дарси 21 пайдо мешаванд, дар ин ҷо танҳо e-mail.</p>
+
+      <h3>Пайвастшавӣ бо панҷ қадам</h3>
+      <ol class="steps">
+        <li>Дар resend.com бо <b>ҳамон суроғае сабти ном кунед, ки мехоҳед мактуб гиред</b>.</li>
+        <li>Дар панел бахши API Keys-ро кушоед ва калидро бо ҳуқуқи фиристодан (sending access) эҷод кунед. Калидро як бор нишон медиҳанд: фавран дар <code>.env.local</code> ҳамчун <code>RESEND_API_KEY=…</code> захира кунед. Ба ҳамон ҷо <code>NOTIFY_EMAIL=суроғаи-шумо</code>. Дар <code>.env.example</code> номҳоро бе қиматҳо нависед.</li>
+        <li>Китобхонаро насб кунед: <code>npm install resend</code> (ин ягона китобхонаи нави дарс аст, барои ҳамин қоидаи «бе пурсиш ҳеҷ чиз насб накун»-и <code>AGENTS.md</code>-ро шумо дар ин ҷо бошуурона иҷозат медиҳед).</li>
+        <li>Дар амали серверӣ баъд аз захираи муваффақонаи сабт мактубро фиристед.</li>
+        <li>Ҳарду тағйирёбандаро ба танзимоти Vercel илова кунед (Settings → Environment Variables) ва деплойро аз нав оғоз кунед.</li>
+      </ol>
+
+<pre class="code" data-title="lib/notify.ts (порча)">
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function notifyOwner(subject: string, html: string) {
+  const { error } = await resend.emails.send({
+    from: "My Project &lt;onboarding@resend.dev&gt;",
+    to: [process.env.NOTIFY_EMAIL!],
+    subject,
+    html,
+  });
+  if (error) console.error("e-mail not sent:", error.message);
+}
+</pre>
+
+      <ul>
+        <li><b>Хатогии мактуб набояд захираро вайрон кунад.</b> Сабт аллакай дар пойгоҳ аст: функсия танҳо хатогиро ба журнал менависад ва бармегардад, корбар муваффақиятро мебинад.</li>
+        <li><b>Маълумоти бегонаро ба мактуб бе экран кардан наандозед.</b> Матни шакл метавонад теггҳо дошта бошад: ё HTML-ро экран кунед, ё матни оддӣ фиристед.</li>
+        <li><b>Мактубҳо метавонанд ба «Спам» афтанд.</b> Барои фиристандаи озмоишӣ ин ҳолати маъмул аст: пеш аз ҷустуҷӯи хатогӣ дар код папкаро санҷед.</li>
+        <li><b>Лимитҳо.</b> Барои ҳар зеркунии клавиш мактуб нафиристед ва даврҳо нанависед: сад мактуб дар як шабонарӯз дар тарифи ройгон зуд тамом мешавад.</li>
+        <li>Дар Resend суроғаҳои озмоишӣ мисли <code>delivered@resend.dev</code> ҳастанд, аммо онҳо танҳо барои санҷиши API лозиманд, на барои огоҳиномаи воқеӣ, ки бояд ба почтаи шумо расад.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Почтальон аз ноҳияи ҳамсоя. То даме ки шумо лавҳаи худро (домен) надоред, почта розӣ аст мактубҳоро танҳо ба суроғаи соҳиби ҳисоб барад: ҳамин тавр месанҷанд, ки шумо аз номи бегона спам намефиристед. Вақте лавҳаро сабт мекунед ва ҳуҷҷатҳоро нишон медиҳед (сабтҳои DNS), почтальон мактубҳоро ба ҳар кас мебарад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Калиди <code>RESEND_API_KEY</code> ба код, ба чат ё ба репозиторий афтод. <b>2.</b> Тағйирёбанда бо <code>NEXT_PUBLIC_</code> номгузорӣ шудааст: калид ба браузер меравад. <b>3.</b> Тағйирёбандаҳоро ба <code>.env.local</code> илова карданд, ба Vercel фаромӯш карданд: дар сайт мактубҳо намераванд. <b>4.</b> Мактубро ба муштарӣ фиристодан мехоҳанд ва 403 мегиранд: то тасдиқи домен мактубҳо танҳо ба суроғаи шумо мераванд. <b>5.</b> Дар Resend бо як суроға сабти ном мекунанд, <code>NOTIFY_EMAIL</code>-ро бо суроғаи дигар менависанд. <b>6.</b> <code>error</code>-и ҷавобро намесанҷанд ва намефаҳманд, чаро ором ҳеҷ чиз нарасид.</p>
+      </div>
+
+      <p class="muted">Бештар хонед: <a href="https://resend.com/docs/send-with-nextjs" target="_blank" rel="noopener">Resend: фиристодан аз Next.js</a>, <a href="https://resend.com/docs/api-reference/errors" target="_blank" rel="noopener">Resend: рамзҳои хатогӣ</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 05 · Админ-панель ============ -->
+    <section class="topic" id="admin">
+      <h2 data-toc="Админ-панел"><span class="num">05</span> Админ-панел: омор ва идоракунии сабтҳо</h2>
+
+      <p>Админ-панел — бахши пӯшида барои нақши <code>admin</code> (дарси 12) мебошад, ки дар он соҳиб мебинад, корҳо чӣ тавр мераванд ва сабтҳои ҳамаи корбаронро идора мекунад. Барои лоиҳаи таълимӣ дар он ду блок аст: <b>омор</b> (якчанд рақам ва диаграммаи оддӣ) ва <b>ҷадвали сабтҳо</b> бо ҳамон ҷустуҷӯ, филтрҳо ва саҳифабандие, ки шумо аллакай сохтаед, ва илова бар он амалҳо: ҳолатро иваз кардан, файлро дидан, нест кардан.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/18-sprint-2/admin-panel.svg" alt="Нақшаи админ-панел: боло чор корти омор — ҳамагӣ сабтҳо 128, нав дар 7 рӯз 14, дар кор 31, иҷрошуда 83; поёнтар навори уфуқӣ аз рӯи ҳолатҳо; поёнтар ҷадвали сабтҳо бо сутунҳои ном, ҳолат, соҳиб ва тугмаҳои «Иваз кардани ҳолат» ва «Нест кардан»; дар чап меню бо банди «Админка» ва нишони нақши admin" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Админ-панел: дар чап меню, боло омор, поёнтар ҷадвали идоракунии сабтҳо. Рақамҳои нақша тахайюлианд</figcaption>
+      </figure>
+
+      <h3>Омор: чиро ҳисоб кардан лозим</h3>
+      <ul>
+        <li><b>Ҳамагӣ сабтҳо</b> ва <b>аз рӯи ҳолатҳо</b>: барои ҳар ҳолат як дархост бо <code>{ count: "exact", head: true }</code> (дархостҳоро якҷоя тавассути <code>Promise.all</code> оғоз мекунанд).</li>
+        <li><b>Нав дар давра</b>: ҳамон дархостҳо бо шарти <code>.gte("created_at", санаиОғоз)</code>.</li>
+        <li><b>Шумораи корбарон</b> ва аз рӯи нақшҳо: ҳисоб кардани сатрҳои ҷадвали <code>profiles</code>.</li>
+        <li><b>Диаграмма</b> бе китобхонаҳо: навор бо паҳно дар фоизи шумораи умумӣ. Пайваст кардани китобхонаи графикҳо дар ин спринт лозим нест.</li>
+        <li>Барои ҳисобҳои мураккаб (аз рӯи рӯзҳо, аз рӯи категорияҳо) ИИ метавонад намоиши SQL (view) пешниҳод кунад. Барои он дар Postgres 15+ параметри <code>security_invoker = true</code> лозим аст, вагарна намоиш RLS-ро давр мезанад. Агар боварӣ надошта бошед, бо дархостҳои оддӣ ҳисоб кунед.</li>
+      </ul>
+
+      <h3>Се сатҳи ҳимояи админка</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Сатҳ</th><th>Чӣ мекунад</th><th>Бе он чӣ мешавад</th></tr></thead>
+          <tbody>
+            <tr><td>Меню (<code>lib/nav.ts</code>)</td><td>банди «Админка»-ро танҳо ба admin нишон медиҳад</td><td>корбари оддӣ банди зиёдатиро мебинад (нороҳат, аммо даҳшатнок нест)</td></tr>
+            <tr><td>Саҳифа ва амалҳои серверӣ</td><td>нақшро аз <code>profiles</code> дар сервер месанҷанд; ба бегона 404 мегӯянд ва амалро иҷро намекунанд</td><td>корбари оддӣ <code>/admin</code>-ро аз рӯи суроға мекушояд ё амалро дастӣ даъват мекунад</td></tr>
+            <tr><td>Пойгоҳ (RLS ва <code>is_admin()</code>)</td><td>сатрҳо ва файлҳои бегонаро танҳо ба admin медиҳад</td><td>тавассути API-и Supabase ҳар воридшуда маълумоти бегонаро мехонад ва иваз мекунад</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Сатҳи асосӣ охирин аст: менюро ва саҳифаро гузаштан мумкин аст, пойгоҳ бошад ҳар сатрро месанҷад. <b>Secret key-ро «барои админка» истифода набаред</b>: он RLS-ро давр мезанад ва ҳимоя нест мешавад. Сиёсатҳо бо <code>is_admin()</code> кифоя аст, ки шумо барои дархостҳо (дарси 12) ва анбор (бахши 3) аллакай навиштаед.</p>
+
+      <h3>Идоракунии сабтҳо</h3>
+      <ul>
+        <li>Ҷадвал ҳамон компоненти рӯйхат ва ҳамон мантиқи <code>searchParams</code>-ро истифода мебарад, ки рӯйхати корбарӣ (истифодаи дубора, на нусхаи код).</li>
+        <li>Иваз кардани ҳолат ва нест кардан бо амалҳои серверӣ иҷро мешаванд, ки дар сатри аввал санҷиши «ин admin аст?» меистад; нест кардан тасдиқ мепурсад.</li>
+        <li>Барои амалҳои администратор журнал фоидаовар аст: сутуни <code>updated_at</code> ё ҷадвали алоҳида. Барои лоиҳаи таълимӣ <code>updated_at</code> кифоя аст.</li>
+        <li>Корбар набояд майдонҳоеро иваз кунад, ки ба администратор тааллуқ доранд (масалан, <code>status</code>). Сиёсати <code>update</code> иваз кардани тамоми сатрро иҷозат медиҳад, барои ҳамин дар ин спринт ҳолатро танҳо тавассути амали серверии админ иваз мекунанд, шакли корбар бошад ин майдонро тамоман надорад. Ҳимояи пурраи сутунҳо — мавзӯи сӯҳбати алоҳида.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Мудири чойхона шабона дафтарро мебинад: чанд чойник фурӯхта шуд (омор), кадом фармоишҳо иҷро нашудаанд (ҷадвал) ва яке аз онҳоро бекор карда метавонад. Ба толор рафтани ӯ шарт нест, аммо дари кабинет баста аст: на танҳо лавҳаи «Ба бегонагон вуруд мамнуъ» (меню), балки қуфл (саҳифа) ва сейф низ ҳаст, ки калидаш танҳо дасти мудир аст (пойгоҳ).</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Танҳо менюро ҳимоя карданд: <code>/admin</code> ба ҳама аз рӯи суроға мекушояд. <b>2.</b> Калиди махфӣ дар админка «то ҳама чиз кор кунад». <b>3.</b> Омори тахайюлӣ (рақамҳо ба код навишта шудаанд) ба ҷои ҳисоб аз пойгоҳ. <b>4.</b> Амалҳои серверии админка нақшро намесанҷанд. <b>5.</b> Нусхаи рӯйхати корбарӣ бо номҳои дигар ба ҷои истифодаи дубора. <b>6.</b> Админ тасвирҳои бегонаро мебинад, аммо сиёсати <code>select</code> барои анбор барои админ нест. <b>7.</b> Ҳисоби ҳамаи сабтҳо бе саҳифабандӣ: ҷадвали админ тамоми пойгоҳро якбора боргирӣ мекунад.</p>
+      </div>
+
+      <article class="task" id="q-email-admin">
+        <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Худро санҷед: e-mail ва админка</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Шумо мактубро аз <code>onboarding@resend.dev</code> ба муштарӣ ба суроғаи дигар мефиристед ва хатогии 403 мегиред. Ин чӣ маъно дорад ва чӣ кор кардан лозим?</p>
+          <ol class="options">
+            <li>Калид гум шудааст: калиди нав созед ва ба код гузоред</li>
+            <li>Бе домени тасдиқшуда Resend танҳо ба суроғаи соҳиби ҳисоб мефиристад: барои вазифа огоҳиномаро ба худатон фиристед, доменро пеш аз оғози воқеӣ пайваст кунед</li>
+            <li>Тарифи ройгон абадӣ тамом шуд</li>
+            <li>Мактубҳоро аз браузер фиристодан лозим, на аз сервер</li>
+          </ol>
+          <div class="explain"><p>Ин қоидаи хидмат барои фиристандаи озмоишӣ аст. Хатогӣ на дар бораи калид ва на дар бораи код. Огоҳинома ба соҳиб вазифаи спринтро пурра ҳал мекунад.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Тағйирёбандаи <code>RESEND_API_KEY</code> бояд дар куҷо нигоҳ дошта шавад?</p>
+          <ol class="options">
+            <li>Дар коди компонент, то гум нашавад</li>
+            <li>Дар тағйирёбанда бо префикси <code>NEXT_PUBLIC_</code></li>
+            <li>Дар <code>.env.local</code> ва дар тағйирёбандаҳои муҳити Vercel, ном дар <code>.env.example</code> бе қимат</li>
+            <li>Дар файли <code>README.md</code></li>
+          </ol>
+          <div class="explain"><p>Махфиҳо танҳо дар муҳити сервер зиндагӣ мекунанд. Ҳар чизе, ки префикси <code>NEXT_PUBLIC_</code> дорад, ба браузер меафтад ва репозиторийро ҳама мебинанд.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Админ-панелро чӣ тавр дуруст ҳимоя кардан лозим?</p>
+          <ol class="options">
+            <li>Нақш дар сервер (саҳифаҳо ва амалҳо) санҷида мешавад, дар пойгоҳ сиёсатҳо бо <code>is_admin()</code> кор мекунанд; меню танҳо бандро пинҳон мекунад</li>
+            <li>Банди «Админка» дар меню нишон дода намешавад, ин кифоя аст</li>
+            <li>Дар админка secret key истифода мешавад, то дархостҳо ҳатман гузаранд</li>
+            <li>Суроғаи <code>/admin</code> содда нашр намешавад</li>
+          </ol>
+          <div class="explain"><p>Менюи пинҳон ва суроғаи «махфӣ» ҳимоя намекунанд. Ҳимоя бояд дар ҷое бошад, ки қарор қабул мешавад: дар сервер ва дар пойгоҳ. Secret key RLS-ро давр мезанад ва ҳимояро бартараф мекунад.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener">Supabase: RLS ва намоишҳо</a>, <a href="https://nextjs.org/docs/app/guides/authentication" target="_blank" rel="noopener">Next.js: Authentication ва авторизатсия</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: промптҳои спринт"><span class="num">06</span> Блоки ИИ: чӣ тавр маълумот, файлҳо ва админкаро хоҳиш кардан</h2>
+
+      <div class="callout ai">
+        <b>Қоидаҳои кор бо ИИ дар спринти дуюм</b>
+        <p><b>1.</b> Мисли дарси 17: як вазифа = як промпт = як commit, аввал нақша ва «ок»-и шумо, баъд тағйирот. Буриданро дар ин ҷо такрор накунед: шаблонро аз бахши 6-и дарси 17 гиред. <b>2.</b> Ба агент ҳуҷҷатҳо медиҳед: <code>@AGENTS.md</code>, <code>@docs/SPEC.md</code>, <code>@docs/SCHEMA.md</code>. <b>3.</b> SQL ва сиёсатҳоро (ҷадвалҳо, RLS, анбор) бо блоки алоҳида хоҳиш кунед, худатон хонед ва иҷро кунед; ИИ онҳоро иҷро намекунад. <b>4.</b> Дар ҳар вазифа <b>ҳудудҳоро</b> ном баред: кадом файлҳоро даст задан мумкин ва чиро не (махфиҳо, RLS, китобхонаҳои нав). <b>5.</b> Мувофиқ наомад: аз нав оғоз накунед, матни хатогиро (бе калидҳо) фиристед ва тавсиф кунед, ки чӣ дақиқан нодуруст аст.</p>
+      </div>
+
+      <p>Промпти бади спринти 2 чунин менамояд:</p>
+      <div class="prompt bad-prompt">Сделай полный CRUD с поиском, загрузкой картинок и админкой со статистикой, чтобы всё работало</div>
+      <p>Он чор чизи калонро якбора талаб мекунад, ҷадвал, ҳуқуқҳо ва маҳдудиятҳоро ном намебарад. ИИ ҷадвалҳои худашро меандешад, бакетро «то кор кунад» оммавӣ мекунад ва китобхонаи графикҳоро илова менамояд. Промпти хуб яктост ва танг. Мисол барои вазифаи филтрҳо ва саҳифабандӣ (қиматҳоро дар қавсҳои чоркунҷа бо қиматҳои худ иваз кунед). Промптҳоро ба забони русӣ ҳамон тавр истифода баред: онҳо ба модел бо ин забон беҳтар кор мекунанд, ва шумо метавонед онҳоро нусха кунед:</p>
+      <div class="prompt good-prompt">Контекст: проект по правилам @AGENTS.md, ТЗ @docs/SPEC.md, схема @docs/SCHEMA.md. Уже сделано: каркас, вход, роли, форма создания и изменения записей [таблица items]. Страница списка: app/(app)/items/page.tsx.
+Цель: добавить на страницу списка поиск по полю title, фильтр по status, сортировку (новые, по названию, по цене) и пагинацию по 10 записей. Состояние хранится в адресе страницы (searchParams).
+Ограничения: 1) сначала короткий план по файлам и жди подтверждения «ок»; 2) запрос к базе делает серверный компонент: ilike, eq, order, range и count; 3) sort принимай только из белого списка [created_at, title, price]; некорректные page и sort заменяй значениями по умолчанию; 4) смена фильтра сбрасывает page на 1; 5) форма поиска и фильтров с методом GET, пагинация обычными ссылками; 6) новые библиотеки не ставь, RLS и схему базы не меняй; 7) пустое состояние «Ничего не найдено» и кнопка «Сбросить».
+Примеры: адрес /items?q=tea&amp;status=open&amp;sort=title&amp;page=2 показывает вторую страницу найденных открытых записей.
+Проверка: перечисли изменённые файлы, что проверить руками по шагам (в том числе мусорный адрес ?page=abc) и предложи сообщение commit.</div>
+      <p>Ва мисол барои SQL бо сиёсатҳои анбор: SQL-ро хоҳиш мекунем, на иҷрои онро.</p>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md. Бакет item-images создан в панели Supabase как закрытый, лимит 2 МБ, типы jpeg, png, webp. Функция public.is_admin() уже есть (@db/ с прошлого спринта).
+Цель: написать файл db/003_storage.sql с политиками на storage.objects для бакета item-images: загрузка и удаление только в папку с id пользователя (первая папка пути равна auth.uid()), чтение своих файлов, admin читает и удаляет все.
+Ограничения: 1) только SQL и короткое пояснение к каждой политике, ничего не выполняй; 2) права только для роли authenticated, никакого anon и никаких with check (true); 3) без update: файлы не перезаписываем; 4) не трогай файлы приложения.
+Примеры: файл u-42/photo.webp пользователь с id u-42 может загрузить и прочитать, а пользователь u-7 — нет.
+Проверка: покажи, как проверить политики двумя тестовыми аккаунтами.</div>
+
+      <div class="callout warn">
+        <b>ИИ дар ин спринт аксар вақт чиро нодуруст мекунад</b>
+        <p><b>1.</b> Бакети оммавӣ ё сиёсати <code>using (true)</code> ва <code>with check (true)</code> месозад «то боркунӣ кор кунад». <b>2.</b> <code>user_id</code>-ро аз шакл мегирад, на аз сессия. <b>3.</b> Secret key-ро (service role) барои админка ё боркунӣ истифода мебарад, чунки «ин содатар аст». <b>4.</b> Тамоми ҷадвалро боргирӣ мекунад ва саҳифаҳоро бо массив дар браузер мебурад. <b>5.</b> <code>sort</code>-ро аз суроға бе санҷиш ба дархост мегузорад. <b>6.</b> Ба ҷадвал истиноди имзошударо ба ҷои роҳ менависад. <b>7.</b> Китобхонаи графикҳо, шаклҳо ё ҷадвалҳоро «барои зебоӣ» насб мекунад. <b>8.</b> Мактубро ба муштарӣ мефиристад (403 мегирад) ё калиди почтаро ба <code>NEXT_PUBLIC_</code> мегузорад. <b>9.</b> Дар омор маълумоти тахайюлиро мегузорад. Пеш аз commit дар diff <code>secret</code>, <code>service_role</code>, <code>NEXT_PUBLIC_RESEND</code>, <code>using (true)</code>, <code>with check (true)</code> ва файлҳои берун аз вазифаро ҷустуҷӯ кунед.</p>
+      </div>
+
+      <p><code>AGENTS.md</code>-ро бо қоидаҳои спринти 2 пурра кунед (ба охири бахши «Rules» илова кунед, бо забони англисӣ, мисли тамоми файл):</p>
+
+<pre class="code" data-title="AGENTS.md: ба Rules илова кунед">
+- Lists: filters, search, sort and page live in URL searchParams. Query runs on the server with order + range + count. Allow only whitelisted sort fields.
+- Storage buckets are private. Files go to path {user_id}/{random}.{ext}. Policies on storage.objects check the first folder against auth.uid(). Never create a public-write bucket. Store the path in the table, create signed URLs on read.
+- Admin pages and server actions check the role on the server. Never use the secret/service_role key in the app. Admin access comes from RLS policies with is_admin().
+- E-mail only from the server (Resend). RESEND_API_KEY and NOTIFY_EMAIL only in .env.local and Vercel env vars. Without a verified domain mail goes only to the account owner address. An e-mail error must not break saving.
+- Server actions: check the user, validate input, take user_id from the session, check the error of every Supabase call, then revalidatePath.
+</pre>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/storage/security/access-control" target="_blank" rel="noopener">Supabase Storage: Access Control</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Амалиёт: мантиқи асосӣ"><span class="num">07</span> Амалиёт: мантиқи асосӣ ва админ-панели лоиҳаи хатмӣ</h2>
+
+      <p>Ёздаҳ вазифа аз рӯи қоидаи «як промпт = як commit». Онҳо барои ҳар лоиҳа якхеланд: номи ҷадвал, майдонҳо ва экранҳоро аз ТТ-и худ гиред. Дар зер сабти асосӣ <code>items</code> ном дорад; номи худро гузоред (<code>clients</code>, <code>orders</code>, <code>bookings</code>…). Баъд аз ҳар вазифа: <code>npm run build</code>, санҷиш дар браузер, хондани diff, commit, push, аломат дар тахтаи <code>docs/SPRINT.md</code>.</p>
+
+      <h3>Дар лоиҳаи шумо чиро гузоштан лозим</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Лоиҳа</th><th>Сабти асосӣ</th><th>Филтр</th><th>Файл</th><th>Мактуб ба соҳиб</th><th>Омори админ</th></tr></thead>
+          <tbody>
+            <tr><td>CRM</td><td>муштарӣ ё созиш</td><td>ҳолат</td><td>акс, шартнома</td><td>дархости нав</td><td>аз рӯи ҳолатҳо, нав дар 7 рӯз</td></tr>
+            <tr><td>Мағоза</td><td>маҳсул ва фармоиш</td><td>категория, ҳолат</td><td>акси маҳсул</td><td>фармоиши нав</td><td>фармоишҳо аз рӯи ҳолатҳо, маблағ</td></tr>
+            <tr><td>Booking</td><td>брон</td><td>сана, ҳолат</td><td>акси хизматрасонӣ</td><td>брони нав</td><td>бронҳо аз рӯи ҳолатҳо</td></tr>
+            <tr><td>HRM</td><td>дархости корманд</td><td>навъ, ҳолат</td><td>ҳуҷҷат (<code>application/pdf</code>-ро ба навъҳо илова кунед)</td><td>дархости нав</td><td>аз рӯи навъҳо ва ҳолатҳо</td></tr>
+            <tr><td>Боти Telegram</td><td>муроҷиат ё қоидаи бот</td><td>ҳолат</td><td>тасвири ҷавоб</td><td>муроҷиати нав (Telegram дар дарси 21)</td><td>аз рӯи ҳолатҳо</td></tr>
+            <tr><td>AI Resume Builder</td><td>резюме</td><td>шаблон, ҳолат</td><td>акс барои резюме</td><td>резюме сохта шуд</td><td>аз рӯи шаблонҳо, нав дар 7 рӯз</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Тайёрӣ (пеш аз промпти аввал), 10 дақиқа:</p>
+      <ul>
+        <li>Чорчӯба аз дарси 17 кор мекунад, дар тахтаи <code>docs/SPRINT.md</code> вазифаҳои спринти 2 илова шудаанд.</li>
+        <li>Ҷадвали мавҷудияти асосӣ ҳаст: <code>id</code>, <code>user_id</code>, <code>title</code>, <code>status</code>, <code>created_at</code> (сутунҳои намерасидаро аз рӯи <code>docs/SCHEMA.md</code> илова кунед).</li>
+        <li>Дар <code>AGENTS.md</code> қоидаҳо аз бахши 6 илова шудаанд.</li>
+        <li>Ду ҳисоби озмоишӣ ҳаст: оддӣ ва admin.</li>
+      </ul>
+
+      <h3>Вазифаи 1. Сохтани сабт</h3>
+      <div class="prompt good-prompt">Контекст: проект по правилам @AGENTS.md, схема @docs/SCHEMA.md. Страница списка app/(app)/items/page.tsx уже показывает записи из базы.
+Цель: страница /items/new с формой создания записи (поля из схемы: title, description) и серверным действием, которое сохраняет запись и возвращает на список с сообщением об успехе.
+Ограничения: 1) сначала план по файлам и жди подтверждения «ок»; 2) действие проверяет вошедшего пользователя через getClaims(), проверяет поля (title 3–100 символов, description до 1000) и ставит user_id из сессии; 3) проверяй error ответа Supabase и показывай понятное сообщение; 4) после сохранения revalidatePath для /items; 5) правила RLS не менять; 6) без новых библиотек.
+Проверка: перечисли файлы и что проверить руками (в том числе пустой title).</div>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> сабти нав дар рӯйхат ва дар ҷадвали Supabase бо <code>user_id</code>-и шумо пайдо мешавад; <code>title</code>-и холӣ хатогии фаҳмо медиҳад.</li>
+        <li><b>Commit:</b> <code>add create form</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 2. Тағйир додан ва нест кардан</h3>
+      <p>Аввал қоидаҳои <code>update</code> ва <code>delete</code>-ро ба <code>db/004_crud_policies.sql</code> нависед (намунаи зер), хонед ва дар SQL Editor иҷро кунед, баъд промптро фиристед.</p>
+<pre class="code" data-title="db/004_crud_policies.sql (items-ро бо ҷадвали худ иваз кунед)">
+create policy "items: update own or admin"
+on public.items for update to authenticated
+using (user_id = (select auth.uid()) or (select public.is_admin()))
+with check (user_id = (select auth.uid()) or (select public.is_admin()));
+
+create policy "items: delete own or admin"
+on public.items for delete to authenticated
+using (user_id = (select auth.uid()) or (select public.is_admin()));
+</pre>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, правила update и delete для items добавлены (db/004_crud_policies.sql).
+Цель: страница /items/[id] с формой изменения (та же форма, что при создании) и кнопка «Удалить» с подтверждением «Вы уверены?». Серверные действия: updateItem и deleteItem.
+Ограничения: 1) план и жди подтверждения «ок» до изменений; 2) переиспользуй компонент формы из задачи 1; 3) проверка пользователя и данных, user_id не принимать из формы; 4) revalidatePath и переход на список; 5) если записи нет или она чужая, показывай not-found; 6) RLS не менять.
+Проверка: что проверить руками двумя аккаунтами: чужую запись изменить и удалить нельзя.</div>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> сабт тағйир меёбад ва нест мешавад, сабти бегонаро корбари оддӣ намекушояд; admin метавонад.</li>
+        <li><b>Commit:</b> <code>add edit and delete</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 3. Ҷустуҷӯ, филтр ва ҷудокунӣ</h3>
+      <p>Промпти намунавиро дар бахши 6 бинед. Қисми «саҳифабандӣ»-ро ҳоло хориҷ кунед: он дар вазифаи 4 мешавад. Рӯйхати сафеди майдонҳои ҷудокуниро фаромӯш накунед.</p>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> суроғаи <code>/items?q=…&amp;status=…&amp;sort=…</code> рӯйхати лозимиро медиҳад, «Тоза кардан» суроғаро тоза мекунад, қиматҳои партов саҳифаро вайрон намекунанд.</li>
+        <li><b>Commit:</b> <code>add search and filters</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 4. Саҳифабандӣ</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, список /items фильтруется по searchParams (q, status, sort).
+Цель: пагинация по 10 записей: запрос с order, range и count, внизу «Страница N из M» и ссылки «Назад» и «Вперёд» с сохранением остальных параметров.
+Ограничения: 1) сначала план; 2) page из адреса приводи к числу от 1 до M, мусор считай первой страницей; 3) смена фильтра или поиска сбрасывает page; 4) кнопки неактивны на краях; 5) не грузить всю таблицу; 6) без новых библиотек.
+Проверка: что проверить руками (в том числе ?page=999 и ?page=abc), сообщение commit.</div>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> дар 25 сабт се саҳифа намоён аст, филтрҳо ҳангоми гузариш нигоҳ дошта мешаванд, канорҳо кор мекунанд.</li>
+        <li><b>Commit:</b> <code>add pagination</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 5. Бакет ва сиёсатҳои анбор</h3>
+      <p>Ин вазифа <b>дастӣ</b> иҷро мешавад (аз рӯи қадамҳои бахши 3), SQL-ро ИИ навишта метавонад (промпти намунавӣ дар бахши 6), аммо хондан ва иҷро кардани онро шумо мекунед.</p>
+      <ol class="steps">
+        <li>Storage → New bucket: <code>item-images</code>, дастрасии оммавӣ хомӯш, лимит 2 МБ, навъҳо <code>image/jpeg</code>, <code>image/png</code>, <code>image/webp</code>.</li>
+        <li>Файли <code>db/003_storage.sql</code> бо сиёсатҳо аз бахши 3: дар SQL Editor иҷро кунед.</li>
+        <li>Ба ҷадвал сутун илова кунед: <code>alter table public.items add column if not exists image_path text;</code> ва фармонро ба <code>db/005_image_path.sql</code> захира кунед.</li>
+        <li>Агар чизе кор накунад, сиёсатҳоро ба «ба ҳама иҷозат» иваз накунед: аввал хатогиро хонед.</li>
+      </ol>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> бакет пӯшида аст, сиёсатҳо дар ҷой, сутуни <code>image_path</code> вуҷуд дорад, SQL дар <code>db/</code> меистад.</li>
+        <li><b>Commit:</b> <code>add storage bucket and policies</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 6. Боркунӣ ва нишон додани тасвир</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, закрытый бакет item-images с политиками (db/003_storage.sql), в items есть столбец image_path.
+Цель: в форму записи добавить поле «Картинка»: файл загружается в бакет по пути {userId}/{uuid}.{ext}, путь сохраняется в image_path. В карточке записи и в списке картинка показывается через подписанную ссылку на 3600 секунд.
+Ограничения: 1) сначала план; 2) загрузка из браузерного клиента Supabase под сессией пользователя, userId передаётся из серверного компонента (getClaims); 3) перед загрузкой проверить размер до 2 МБ и тип jpeg, png, webp и показать понятную ошибку; 4) подписанную ссылку создавать на сервере, в таблице хранить только путь; 5) показывать обычным тегом img с width и height (без next/image); 6) при удалении записи удалять и файл (remove); 7) secret key не использовать, политики не менять.
+Проверка: что проверить руками: загрузка, показ, слишком большой файл, чужая папка (попытка должна упасть).</div>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> тасвир бор мешавад ва нишон дода мешавад, файли зиёдатӣ рад мешавад, ҳисоби дуюм папкаи худро дорад, дар панели Storage файлҳо аз рӯи роҳҳо бо id меистанд.</li>
+        <li><b>Commit:</b> <code>add image upload</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 7. Огоҳиномаи e-mail ба соҳиб</h3>
+      <p>Дар Resend сабти ном кунед, калид эҷод кунед, <code>RESEND_API_KEY</code> ва <code>NOTIFY_EMAIL</code>-ро ба <code>.env.local</code> илова кунед (бахши 4); номҳоро бе қиматҳо ба <code>.env.example</code>.</p>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md. В .env.local уже есть RESEND_API_KEY и NOTIFY_EMAIL (значения не показывай и не меняй). Пакет resend установлен.
+Цель: функция notifyOwner(subject, html) в lib/notify.ts и вызов из серверного действия создания записи: после успешного сохранения владельцу уходит письмо «Новая запись: [title]» со ссылкой на запись в админке.
+Ограничения: 1) сначала план; 2) отправитель onboarding@resend.dev, получатель только NOTIFY_EMAIL (без своего домена письма идут лишь на адрес аккаунта Resend); 3) ошибка отправки пишется в журнал и не ломает сохранение; 4) текст из формы экранируй или отправляй простым текстом; 5) ключ только из process.env на сервере, без NEXT_PUBLIC_.
+Проверка: что проверить руками (письмо пришло, а если пришло не сразу, то проверить папку «Спам»).</div>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> баъд аз сохтани сабт мактуб ба суроғаи шумо мерасад; бо калиди нодуруст сабт ба ҳар ҳол захира мешавад.</li>
+        <li><b>Commit:</b> <code>add email notification</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 8. Сенарияи асосӣ аз аввал то охир</h3>
+      <p>Сенарияи асосиро аз <code>docs/SPEC.md</code> интихоб кунед (муҳимтарин ҳикояи корбар) ва онро дар сайти маҳаллӣ бо ду ҳисоб гузаред. Мисолҳо: муштарӣ фармоиш медиҳад ва соҳиб мактуб мегирад; меҳмон сабти ном мекунад, брон месозад ва онро дар рӯйхат мебинад; менеҷер муштарӣ илова мекунад, шартнома замима менамояд ва муштариро бо ҷустуҷӯ меёбад. Ҳамаи сӯрохиҳоро ба тахта нависед, бо вазифаҳои хурд пӯшонед.</p>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> сенария бе таваққуф ва бе таҳрири дастӣ дар пойгоҳ мегузарад; дар ҳар экран ҳолатҳои «боркунӣ», «холӣ», «хатогӣ» ҳастанд; дар консоли браузер хатогиҳои сурх нестанд.</li>
+        <li><b>Commit:</b> барои ҳар сӯрохии ёфтшуда яктоӣ, масалан <code>fix empty state in orders</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 9. Админ-панел: омор</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, роль admin хранится в profiles, функция is_admin() есть. Страница app/(app)/admin/page.tsx пока заглушка.
+Цель: на /admin показать статистику по items: всего записей, по каждому status, новых за последние 7 дней, число пользователей; под числами простая диаграмма статусов полосками.
+Ограничения: 1) сначала план; 2) страница серверная, роль проверяется на сервере, чужому 404; 3) числа считай запросами select с count: exact и head: true через Promise.all, без выдуманных данных; 4) диаграмма на CSS, без библиотек; 5) secret key не использовать, RLS не менять; 6) состояния загрузка, ошибка, нет данных.
+Проверка: что проверить руками: admin видит числа, обычный пользователь получает 404, числа совпадают с таблицей Supabase.</div>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> рақамҳо воқеианд ва бо ҷадвал мувофиқанд, диаграмма нишон дода мешавад, ба корбари оддӣ админка дастнорас аст.</li>
+        <li><b>Commit:</b> <code>add admin stats</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 10. Админ-панел: идоракунии сабтҳо</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, /admin показывает статистику, пользовательский список /items с поиском, фильтрами и пагинацией уже есть.
+Цель: страница /admin/items со списком записей всех пользователей (поиск, фильтр по статусу, пагинация как в /items), столбец «владелец», ссылка на картинку и действия: сменить статус и удалить с подтверждением.
+Ограничения: 1) сначала план; 2) переиспользуй компоненты и логику списка из /items; 3) серверные действия сначала проверяют, что пользователь admin, чужому 404; 4) удаление записи удаляет и файл из бакета; 5) secret key не использовать; 6) без новых библиотек.
+Проверка: что проверить руками двумя аккаунтами: admin видит всё и управляет, обычный пользователь не открывает страницу и не вызывает действия.</div>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> admin сабтҳои ҳамаи корбаронро мебинад, ҳолатро иваз мекунад ва нест мекунад; аз номи корбари оддӣ амалҳо кор намекунанд.</li>
+        <li><b>Commit:</b> <code>add admin records</code>.</li>
+      </ul>
+
+      <h3>Вазифаи 11. Деплой ва README</h3>
+      <p>Ба Vercel тағйирёбандаҳои <code>RESEND_API_KEY</code> ва <code>NOTIFY_EMAIL</code>-ро илова кунед (Settings → Environment Variables), деплойро аз нав оғоз кунед ва сенарияи асосиро дар сайти зинда гузаред. Дар <code>README.md</code> бахши «Дар спринти 2 чӣ карда шуд ва минбаъд чӣ» -ро илова кунед.</p>
+      <ul>
+        <li><b>Тайёр аст, вақте ки:</b> дар сайти зинда сенарияи асосӣ кор мекунад, мактуб мерасад, файлҳо бор мешаванд, админка ҳимоя шудааст.</li>
+        <li><b>Commit:</b> <code>update readme</code>.</li>
+      </ul>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/18-sprint-2/policies.svg" alt="Нақшаи экрани сиёсатҳои Storage: рӯйхати се сиёсат барои бакети item-images (insert, select, delete), дар назди ҳар кадом навиштаи «authenticated» ва шарти «папкаи аввал ба id-и корбар баробар аст»; дар рост ду ҳисоб: Аня ба папкаи худи u-42 бомуваффақият бор мекунад, кӯшиши ба папкаи u-7 бор кардан хатогии вайронкунии сиёсатро мегирад" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Натиҷаи вазифаи 5 дар шакли соддакардашуда чунин менамояд: се сиёсат ва ду ҳисоб. Нақша соддакарда шудааст, панели воқеии Supabase дигар хел менамояд</figcaption>
+      </figure>
+
+      <article class="task" id="cl-sprint">
+        <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Рӯйхати санҷиш: спринти 2 ҷамъ шуд</h4><span class="level mid">миёна</span></header>
+        <p>Қайд кунед, ки дар сайти зиндаи Vercel аллакай чӣ кор мекунад, на танҳо дар компютери шумо.</p>
+        <ul class="checklist" id="cl-built2">
+          <li>Сохтан, тағйир додан ва нест кардани сабтҳо кор мекунанд, сабти бегонаро корбари оддӣ тағйир дода наметавонад</li>
+          <li>Ҷустуҷӯ, филтр, ҷудокунӣ ва саҳифабандӣ дар суроға зиндагӣ мекунанд, партов дар суроға саҳифаро вайрон намекунад</li>
+          <li>Бакет пӯшида аст, лимит ва навъҳо гузошта шудаанд, сиёсатҳо дар <code>storage.objects</code> аз рӯи id-и корбар дар <code>db/</code> меистанд</li>
+          <li>Тасвир бор мешавад, бо истиноди имзошуда нишон дода мешавад, дар ҷадвал танҳо роҳ нигоҳ дошта мешавад</li>
+          <li>Мактуб ба соҳиб баъд аз сохтани сабт мерасад, калид танҳо дар <code>.env.local</code> ва Vercel</li>
+          <li>Админ-панел омори воқеиро нишон медиҳад ва сабтҳои ҳамаи корбаронро идора мекунад</li>
+          <li><code>/admin</code> ба корбари оддӣ дастнорас аст: бо ду ҳисоб санҷида шуд</li>
+          <li>Дар таърихи Git на камтар аз даҳ commit-и нав, дар репозиторий махфиҳо нестанд, <code>.env.example</code> нав шудааст</li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-fix">
+        <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Агар вайрон шуд: сабабро ёбед</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Дар сайт дар Vercel боркунии тасвир кор мекунад, аммо мактубҳо намераванд, дар маҳаллӣ бошад мераванд. Эҳтимолтарин сабаб чист?</p>
+          <ol class="options">
+            <li>Vercel мактуб фиристода наметавонад</li>
+            <li>Дар Vercel <code>RESEND_API_KEY</code> ва <code>NOTIFY_EMAIL</code> илова нашудаанд ё баъд аз илова кардан деплои нав набуд</li>
+            <li>Номи бакетро иваз кардан лозим</li>
+            <li>Дар браузер JavaScript хомӯш аст</li>
+          </ol>
+          <div class="explain"><p><code>.env.local</code> ба Git намеафтад, барои ҳамин сервери Vercel калидҳоро намедонад. Тағйирёбандаҳоро дар Settings → Environment Variables илова кунед ва деплойро аз нав оғоз намоед.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Тасвир бор шуд, роҳ сабт шуд, аммо дар рӯйхат ба ҷои он чоркунҷаи холӣ ва дар журнал хатогӣ дар бораи «hostname is not configured under images». Сабаб чист?</p>
+          <ol class="options">
+            <li>Файл вайрон шудааст</li>
+            <li>Бакет аз ҳад калон аст</li>
+            <li>Тасвир тавассути <code>next/image</code> нишон дода мешавад, суроғаи анбор бошад ба <code>images.remotePatterns</code> илова нашудааст: ё онро илова кунед, ё <code>&lt;img&gt;</code>-и оддиро истифода баред</li>
+            <li>RLS-ро хомӯш кардан лозим</li>
+          </ol>
+          <div class="explain"><p>Next.js тасвирҳоро аз суроғаҳое, ки дар танзимот номбар нашудаанд, коркард намекунад. RLS-ро хомӯш кардан лозим нест: ин ба ҳуқуқҳо тааллуқ надорад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Корбари оддӣ <code>/admin</code>-ро мекушояд ва ҷадвали ҳамаи сабтҳоро мебинад. Чиро санҷидан лозим?</p>
+          <ol class="options">
+            <li>Санҷиши нақшро дар сервери саҳифа ва сиёсатҳои пойгоҳ: шояд дархостҳои лозимӣ бо secret key иҷро мешаванд, сиёсатҳо бошанд ба ҳама иҷозат медиҳанд (<code>using (true)</code>)</li>
+            <li>Ранги тугмаи «Админка»</li>
+            <li>Андозаи ҳарфи ҷадвал</li>
+            <li>Номи репозиторий дар GitHub</li>
+          </ol>
+          <div class="explain"><p>Ин осебпазирии дастрасӣ аст: нақш дар сервер санҷида намешавад ё пойгоҳ сатрҳои бегонаро медиҳад. Қатъ кунед, вазифаро баргардонед ё ислоҳ кунед, то даме ки қоида ислоҳ нашавад, сайтро нашр накунед.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://vercel.com/docs/environment-variables" target="_blank" rel="noopener">Vercel: Environment Variables</a>, <a href="https://nextjs.org/docs/app/api-reference/components/image" target="_blank" rel="noopener">Next.js: компоненти Image</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 08 · Фишка ============ -->
+    <section class="topic" id="breakit">
+      <h2 data-toc="Чизи ғайриро вайрон кун"><span class="num">08</span> Хусусияти дарс: «Маҳсули ғайриро вайрон кун»</h2>
+
+      <p>Муаллиф ҳамеша маҳсули худро бо чашми касе мебинад, ки медонад онро чӣ тавр истифода бурдан лозим. Барои ҳамин хатогиҳоро дигарон меёбанд. Дар ин бозӣ шумо 30 дақиқа маҳсули ғайриро месанҷед ва баг-репортҳо месозед, сипас хатогиҳои ёфтшударо дар маҳсули худ ислоҳ мекунед. Тестерҳо дар даста ҳамин тавр кор мекунанд ва шумо фавран мефаҳмед, ки кадом сӯрохиҳо монданд.</p>
+
+      <div class="callout warn">
+        <b>Қоидаҳои бозии бехатар</b>
+        <p><b>1.</b> Танҳо тавассути интерфейси сайт ва танҳо дар ҳисобҳои озмоишӣ месанҷем: ҳисоби шумо ва ҳисоби озмоишие, ки муаллиф додааст. <b>2.</b> Ҳеҷ сканер, ҷустуҷӯи парол ва борҳои вазнин: мақсад ёфтани хатогиҳост, на афтондани сайт. <b>3.</b> Калидҳо ва паролҳои бегонаро намепурсем ва намеҷӯем; агар тасодуфан махфиро дидед (калид дар коди саҳифа, дар ҷавоби сайт), фавран ба муаллиф шахсан хабар диҳед, ва ин низ хатогии ҷиддӣ аст. <b>4.</b> Хатогиро алайҳи муаллиф истифода намебаранд ва берун аз гурӯҳ нашр намекунанд. <b>5.</b> Агар маълумотро вайрон кардед (сабтро нест кардед), ба муаллиф бигӯед.</p>
+      </div>
+
+      <h3>Ҷараёни бозӣ (50 дақиқа)</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Вақт</th><th>Чӣ мекунанд</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:05</td><td>Ба ҷуфтҳо (ё сеҳо) тақсим мешаванд ва истинодҳо ба Vercel, маълумоти ҳисобҳои озмоишӣ (нақши user ва нақши admin) ва тавсифи сенарияи асосиро аз <code>docs/SPEC.md</code> иваз мекунанд</td></tr>
+            <tr><td>0:05–0:35</td><td>Тест аз рӯи сенарияи санҷиш (ҷадвали зер). Ҳар хатогии ёфтшуда бо баг-репорти алоҳида аз рӯи шаблон сабт мешавад</td></tr>
+            <tr><td>0:35–0:45</td><td>Иваз кардани репортҳо: муаллиф мехонад, савол медиҳад, «такрор шуд» ё «такрор нашуд» қайд мекунад ва афзалият мегузорад</td></tr>
+            <tr><td>0:45–0:50</td><td>Ҳисоб кардани холҳо, нақшаи ислоҳҳо дар тахтаи <code>docs/SPRINT.md</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Сенарияи санҷиш барои тестер</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Соҳа</th><th>Чиро кӯшиш кардан</th></tr></thead>
+          <tbody>
+            <tr><td>Меҳмон</td><td>Суроғаҳои пӯшидаро бе воридшавӣ кушоед; суроғаҳои <code>/admin</code> ва сабтҳо аз рӯи истиноди рост; суроғаи ғайримавҷуд</td></tr>
+            <tr><td>Корбари оддӣ</td><td>Сенарияи асосиро гузаред; <code>/admin</code> ва суроғаҳои админиро кушоед; сабти бегонаро аз рӯи суроғааш кушоданро кӯшиш кунед</td></tr>
+            <tr><td>Шаклҳо</td><td>Майдонҳои холӣ, матни хеле дароз, аломатҳои махсус ва теггҳо (<code>&lt;b&gt;</code>), зеркунии дучандаи «Захира кардан», нав кардани саҳифа баъд аз фиристодан</td></tr>
+            <tr><td>Рӯйхат</td><td>Ҷустуҷӯ (аз ҷумла <code>%</code> ва кириллика), ҳамаи филтрҳо, ҷудокуниҳо, гузариш аз рӯи саҳифаҳо, партов дар суроға (<code>?page=abc</code>, <code>?sort=drop</code>)</td></tr>
+            <tr><td>Файлҳо</td><td>Файли хеле калон, на тасвир (PDF, файли матнӣ), файл бо номи дароз ва аҷиб, файл бо кириллика, боркунӣ бе воридшавӣ</td></tr>
+            <tr><td>Мактуб</td><td>Оё мактуб ба соҳиб омад; дар мактуб чӣ ҳаст; оё захира вайрон намешавад, агар мактуб нарафта бошад (аз муаллиф пурсед)</td></tr>
+            <tr><td>Админ-панел</td><td>Администратор: рақамҳо бо ҷадвал мувофиқанд, иваз кардани ҳолат, нест кардан; корбар: ҳамин амалҳо бояд пӯшида бошанд</td></tr>
+            <tr><td>Телефон</td><td>Экрани бо паҳнои 390 пиксел (ҳолати дастгоҳ дар DevTools, дарси 3): чизе берун намебарояд, тугмаҳо зер мешаванд, меню кор мекунад</td></tr>
+            <tr><td>Ҳолатҳо</td><td>Рӯйхати холӣ, хатогӣ (интернетро як дақиқа хомӯш кунед), боркунии дароз</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Шаблони баг-репорт</h3>
+      <p>Як баг — як репорт. Шаблонро ба файл ё ба issue дар GitHub нусха кунед (ҷадвали Issues-и репозиторийи муаллиф):</p>
+
+<div class="prompt good-prompt">Ном: [чӣ вайрон аст, дар як сатр, бе калимаҳои «кор намекунад»]
+Муҳимият: critical | major | minor | cosmetic
+
+Дар куҷо: [суроғаи саҳифа ва нақш: меҳмон, user ё admin]
+Қадамҳо:
+1. [кушодан …]
+2. [зер кардан …]
+3. [ворид кардан …]
+Интизор будам: [чӣ бояд мешуд]
+Гирифтам: [дар асл чӣ шуд, матни хатогӣ айнан]
+Муҳит: [браузер, телефон ё компютер, паҳнои экран]
+Далел: [скриншот, сабти экран ё матни хатогӣ аз консоли браузер]
+Такрор мешавад: ҳамеша | баъзан | як бор</div>
+
+      <h3>Муҳимиятро чӣ тавр баҳо додан</h3>
+      <ul>
+        <li><b>critical</b> (3 хол): сенарияи асосиро вайрон мекунад ё маълумоти бегонаро ошкор менамояд: сабт ё файли бегона кушода мешавад, корбари оддӣ админкаро мебинад, дар коди саҳифа махфӣ намоён аст.</li>
+        <li><b>major</b> (2 хол): функсияи муҳим кор намекунад, аммо роҳи гузаштан ҳаст: филтр филтр намекунад, тасвир бор намешавад.</li>
+        <li><b>minor</b> (1 хол): хатогии хурд: матни нодуруст, тугмаи нороҳат, ҳолати холӣ нест.</li>
+        <li><b>cosmetic</b> (0,5 хол): намуди зоҳирӣ: ҷойивазкунӣ, ранг, мувофиқсозӣ.</li>
+      </ul>
+
+      <h3>Холҳо</h3>
+      <ul>
+        <li>Холҳо аз рӯи муҳимият барои ҳар хатогии аз ҷониби муаллиф тасдиқшуда (такрорҳо ҳисоб намешаванд).</li>
+        <li><b>+1</b> барои репорте, ки дар он ҳама майдонҳо пур шудаанд ва муаллиф хатогиро аз рӯи қадамҳо аз бори аввал такрор кардааст.</li>
+        <li><b>+2</b> ба муаллиф барои ҳар хатогии критикӣ ё муҳими ислоҳшуда аз репортҳо то охири дарс (commit бо рақами репорт дар паём).</li>
+        <li><b>−1</b> барои «репорт» бе қадамҳо ё бе далел («дар шумо ҳама чиз кор намекунад»).</li>
+      </ul>
+
+      <article class="task" id="cl-bug">
+        <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Рӯйхати санҷиш: баг-репорти ман хуб аст</h4><span class="level easy">осон</span></header>
+        <p>Баъд аз бозӣ яке аз репортҳои худро гирифта, қайд кунед.</p>
+        <ul class="checklist" id="cl-bugreport">
+          <li>Дар ном гуфта шудааст, ки дақиқан чӣ вайрон аст, бе калимаҳои «кор намекунад» ва «ғалат мекунад»</li>
+          <li>Суроғаи саҳифа ва нақше, ки зери он тест кардам, нишон дода шудаанд</li>
+          <li>Қадамҳо аз рӯи тартиб навишта шудаанд, муаллиф метавонад онҳоро бе савол такрор кунад</li>
+          <li>«Интизор будам» ва «гирифтам» ҳастанд, матни хатогӣ айнан нусха шудааст</li>
+          <li>Скриншот ё матн аз консол замима шудааст, дар онҳо калидҳо ва паролҳо нестанд</li>
+          <li>Муҳимият интихоб шудааст ва ман шарҳ дода метавонам, чаро дақиқан чунин</li>
+          <li>Ман санҷидам, ки хатогӣ такрор мешавад ва ин такрор нест</li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-bug">
+        <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Худро санҷед: баг-репортҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Кадом баг-репорт аз ҳама судмандтар аст?</p>
+          <ol class="options">
+            <li>«Сайт ғалат мекунад, ислоҳ кунед»</li>
+            <li>«Филтр тамоман кор намекунад, хеле бад»</li>
+            <li>«/items: нақши user. Қадамҳо: 1) /items-ро кушоед; 2) ҳолати open-ро интихоб кунед; 3) «Пеш»-ро зер кунед. Интизор будам: саҳифаи дуюми сабтҳои кушода. Гирифтам: саҳифаи 2 ҳамаи сабтҳоро нишон медиҳад, филтр аз суроға нопадид шуд. Скриншот замима шудааст»</li>
+            <li>«Тарҳ ба ман маъқул нест»</li>
+          </ol>
+          <div class="explain"><p>Репорти сеюм суроға, нақш, қадамҳо, интизорӣ, натиҷа ва далелро медиҳад: муаллиф хатогиро дар як дақиқа такрор мекунад. Боқӣ имкон намедиҳанд, ки чизеро такрор кунед.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Тестер ҳамчун корбари оддӣ ворид шуд ва аз рӯи истиноди рост сабти корбари дигарро кушод. Ин кадом муҳимият аст?</p>
+          <ol class="options">
+            <li>critical: маълумоти бегона ошкор шудааст, инро аввалин бор бояд ислоҳ кард</li>
+            <li>cosmetic: танҳо намуди зоҳирӣ</li>
+            <li>minor: нороҳатии хурд</li>
+            <li>Хатогӣ нест: истинод ахир вуҷуд дорад</li>
+          </ol>
+          <div class="explain"><p>Дастрасӣ ба маълумоти бегона — вайронкунии ҳуқуқ дар сатҳи RLS ё коди серверӣ аст. Чунин хатогиҳо ҳамеша critical мебошанд: онҳо бехатариро вайрон мекунанд, на қулайиро.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Ҳангоми санҷидани маҳсули ғайр чиро кардан мумкин нест?</p>
+          <ol class="options">
+            <li>Қиматҳои холӣ ва хеле дарозро ворид кардан</li>
+            <li>Сканерҳо ва дархостҳои оммавиро оғоз кардан, парол ҷустан ё калидҳои бегонаро ҷустуҷӯ кардан</li>
+            <li>Сайтро аз телефон кушодан</li>
+            <li>Файли хеле калонро бор кардан</li>
+          </ol>
+          <div class="explain"><p>Бозӣ маҳсулро тавассути интерфейс дар ҳисобҳои озмоишӣ месанҷад. Сканерҳо, ҷустуҷӯи парол ва бор зарар расонида метавонанд ва аз доираи созиш берун мебароянд.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://docs.github.com/en/issues/tracking-your-work-with-issues/about-issues" target="_blank" rel="noopener">GitHub: дар бораи issues</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 09 · ДЗ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">09</span> Вазифаи хонагӣ: админкаи корӣ ва сенарияи асосӣ (ВХ-18)</h2>
+
+      <p>Лоиҳаро то ҳолате расонед, ки вазифаи асосии он аз аввал то охир иҷро мешавад, админ-панел омори воқеиро нишон медиҳад ва сабтҳоро идора мекунад. Супоридан: ду истинод (репозиторийи GitHub ва сайт дар Vercel). Агар дар дарс натавонистед, вазифаҳои боқимондаро аз бахши 7 анҷом диҳед ва хатогиҳоро аз репортҳо ислоҳ кунед.</p>
+
+      <h3>Талабот</h3>
+      <ul>
+        <li><b>Сенарияи асосӣ:</b> корбар сенарияи асосиро аз <code>docs/SPEC.md</code> аз аввал то охир дар сайти зинда бе таҳрири дастӣ дар пойгоҳ мегузарад.</li>
+        <li><b>CRUD:</b> сохтан, дидан, тағйир додан ва нест кардани сабти асосӣ, санҷиши маълумот дар сервер, <code>user_id</code> аз сессия, RLS дар ҳамаи фармонҳо (<code>select</code>, <code>insert</code>, <code>update</code>, <code>delete</code>).</li>
+        <li><b>Рӯйхат:</b> ҷустуҷӯ, ақаллан як филтр, ҷудокунӣ ва саҳифабандӣ, ҳолат дар суроға, партов дар суроға саҳифаро вайрон намекунад.</li>
+        <li><b>Файлҳо:</b> боркунии тасвир ё файл ба бакети пӯшида, маҳдудияти андоза ва навъ, сиёсатҳо дар <code>storage.objects</code> аз рӯи id-и корбар дар <code>db/</code>, дар ҷадвал роҳ, нишон додан бо истиноди имзошуда. Бакетҳои оммавӣ бо сабт нестанд.</li>
+        <li><b>E-mail:</b> соҳиб дар бораи сабти нав мактуб мегирад (гиранда танҳо суроғаи шумо), калид танҳо дар <code>.env.local</code> ва Vercel, хатогии мактуб захираро вайрон намекунад.</li>
+        <li><b>Админ-панел:</b> омори воқеӣ (на камтар аз чор рақам ва диаграммаи ҳолатҳо) ва ҷадвали сабтҳои ҳамаи корбарон бо ҷустуҷӯ, саҳифабандӣ, иваз кардани ҳолат ва нест кардан; дастрасӣ танҳо барои admin дар се сатҳ.</li>
+        <li><b>Баг-репортҳо:</b> шумо лоиҳаи ғайриро санҷидед ва ақаллан ду репорт аз рӯи шаблон сохтед; на камтар аз ду хатогиро аз репортҳои гирифташуда ислоҳ кардед (дар commit ё дар README рақам нишон дода шудааст).</li>
+        <li><b>Тартиб:</b> на камтар аз даҳ commit-и нав аз рӯи вазифаҳо, <code>README.md</code> нав шудааст (бахши «Дар спринти 2 чӣ карда шуд ва минбаъд чӣ»), тахтаи <code>docs/SPRINT.md</code> ҷорӣ аст.</li>
+        <li><b>Махфиҳо:</b> дар репозиторий калидҳо ва паролҳо нестанд, <code>.env.example</code> бе қиматҳо, <code>npm run build</code> мегузарад.</li>
+      </ul>
+
+      <h3>Чӣ кор кардан лозим</h3>
+      <ol class="steps">
+        <li>Вазифаҳои 1–11-ро аз бахши 7 барои лоиҳаи худ иҷро кунед.</li>
+        <li>Сенарияи асосиро дар сайти зинда бо ду ҳисоб (оддӣ ва admin) гузаред ва харитаи дастрасии «нақш × экран»-ро боз як бор санҷед.</li>
+        <li>Хатогиҳоро аз баг-репортҳои гирифташуда ислоҳ кунед, аз critical оғоз карда.</li>
+        <li>Дар <code>README.md</code> бахши «Дар спринти 2 чӣ карда шуд ва минбаъд чӣ»-ро илова кунед (3–5 банд) ва 2–3 скриншоти сенарияи асосӣ ва админкаро замима намоед (бе маълумоти шахсӣ ва калидҳо).</li>
+        <li>Истинодҳоро дар зер гузоред ва рӯйхати санҷишро қайд кунед.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмул дар вазифаи хонагӣ</b>
+        <p><b>1.</b> Бакет оммавӣ аст ё сиёсати <code>with check (true)</code>. <b>2.</b> Омори админка тахайюлӣ аст. <b>3.</b> Рӯйхат тамоми ҷадвалро боргирӣ мекунад, саҳифабандӣ массивро дар браузер мебурад. <b>4.</b> Калиди почта дар репозиторий ё дар <code>NEXT_PUBLIC_</code> аст. <b>5.</b> Дар Vercel тағйирёбандаҳо нестанд: мактубҳо намераванд. <b>6.</b> <code>/admin</code> ба корбари оддӣ кушода мешавад. <b>7.</b> Кӯшиши ба муштарӣ мактуб фиристодан ва хатогии 403: дар вазифа мактуб ба соҳиб кифоя аст. <b>8.</b> Калиди махфӣ дар админка истифода мешавад. <b>9.</b> Як commit-и азим. <b>10.</b> Репортҳо бе қадамҳо ва далел.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Чӣ тавр месанҷанд</b>
+        <p>Санҷанда сайтро мекушояд, сабти ном мекунад, сенарияи асосиро мегузарад, ҷустуҷӯ ва саҳифабандиро бо суроғаҳои «партов» мекӯшад, тасвир бор мекунад (ва файли хеле калонро), <code>/admin</code> ва сабти бегонаро аз номи корбари оддӣ кушодан мекӯшад, сипас репозиторийро меомӯзад: таърихи commit-ҳо, папкаи <code>db/</code> (сиёсатҳои ҷадвалҳо ва анбор), <code>README.md</code>, набудани махфиҳо, баг-репортҳои шумо. Холҳо: барои сенарияи асосии корӣ, барои ҷустуҷӯ ва саҳифабандӣ, барои кори бехатар бо файлҳо, барои админкаи ҳалол, барои сифати репортҳо ва қобилияти шарҳ додани қарори худ.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ВАЗИФАИ 9.1</span><h4>Рӯйхати санҷиши талаботи ВХ-18</h4><span class="level mid">миёна</span></header>
+        <p>Пеш аз супоридан банд ба банд санҷед.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Сенарияи асосӣ аз аввал то охир дар сайти зинда мегузарад</li>
+          <li>CRUD кор мекунад, RLS дар ҳамаи фармонҳо ҳаст, <code>user_id</code> аз сессия гирифта мешавад</li>
+          <li>Ҷустуҷӯ, филтр, ҷудокунӣ ва саҳифабандӣ дар суроға зиндагӣ мекунанд ва аз партов вайрон намешаванд</li>
+          <li>Бакети пӯшида, маҳдудиятҳо, сиёсатҳо аз рӯи id-и корбар дар <code>db/</code>, дар ҷадвал роҳ</li>
+          <li>Мактуб ба соҳиб мерасад, калид танҳо дар <code>.env.local</code> ва Vercel</li>
+          <li>Админ-панел: омори воқеӣ ва идоракунии сабтҳо, дастрасӣ танҳо барои admin</li>
+          <li>Ман лоиҳаи ғайриро санҷидам ва ақаллан ду баг-репорт аз рӯи шаблон сохтам</li>
+          <li>На камтар аз ду хатогӣ аз репортҳои гирифташуда ислоҳ шуд</li>
+          <li>На камтар аз даҳ commit-и нав, <code>README.md</code> ва тахта нав шудаанд, дар репозиторий махфиҳо нестанд</li>
+          <li><code>npm run build</code> мегузарад, истинодҳо ба GitHub ва Vercel дар зер гузошта шудаанд</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ВАЗИФАИ 9.2</span><h4>Истинод ба репозиторийи GitHub</h4><span class="level mid">миёна</span></header>
+        <p>Истинод ба репозиторийи лоиҳаи хатмиро гузоред.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/graduation-project"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ВАЗИФАИ 9.3</span><h4>Истинод ба сайт дар Vercel</h4><span class="level mid">миёна</span></header>
+        <p>Истинод ба сайти нашршударо гузоред (суроғаи намуди <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://graduation-project.vercel.app"></div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/storage" target="_blank" rel="noopener">Supabase Storage: шарҳи умумӣ</a>, <a href="https://resend.com/docs/introduction" target="_blank" rel="noopener">Resend: ҳуҷҷатгузорӣ</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Варақаи кӯмакӣ"><span class="num">✓</span> Варақаи кӯмакии дарс</h2>
+      <ul>
+        <li><b>CRUD:</b> чор экран (рӯйхат, сохтан, сабт бо тағйирдиҳӣ, нестсозӣ бо тасдиқ); фармонҳои <code>insert/select/update/delete</code> ва барои ҳар кадом қоидаи RLS; амали серверӣ: корбар, санҷиши маълумот, дархост, санҷиши <code>error</code>, <code>revalidatePath</code>. <code>user_id</code>-ро сервер мегузорад.</li>
+        <li><b>Рӯйхатҳо:</b> ҳолат дар суроға (<code>q</code>, <code>status</code>, <code>sort</code>, <code>page</code>); дархост дар сервер бо <code>ilike</code>, <code>eq</code>, <code>order</code>, <code>range</code>, <code>count</code>; <code>range(from, to)</code> ҳар ду ҳудудро дохил мекунад; ҷудокунӣ аз рӯи рӯйхати сафед; иваз кардани филтр саҳифаро бозмегардонад.</li>
+        <li><b>Storage:</b> бакет пешфарз пӯшида аст, лимити андоза ва навъҳо дар танзимоти бакет; роҳи <code>{user_id}/{номи тасодуфӣ}.{ext}</code>; сиёсатҳо дар <code>storage.objects</code> тавассути <code>storage.foldername(name)</code> ва <code>auth.uid()</code>; дар ҷадвал роҳ; нишон додан тавассути <code>createSignedUrl</code>. Бакетро бо сабти оммавӣ намесозанд.</li>
+        <li><b>E-mail:</b> танҳо аз сервер; Resend, <code>RESEND_API_KEY</code> ва <code>NOTIFY_EMAIL</code> дар <code>.env.local</code> ва Vercel; бе домени тасдиқшуда мактубҳо танҳо ба суроғаи ҳисоб мераванд (вагарна 403), барои ВХ ин кифоя аст; хатогии мактуб захираро вайрон намекунад.</li>
+        <li><b>Админка:</b> омор аз рӯи дархостҳои воқеӣ (<code>count: "exact", head: true</code>), ҷадвали сабтҳо бо ҳамон филтрҳо; ҳимоя дар се сатҳ: меню, сервер, пойгоҳ (<code>is_admin()</code>); secret key-ро истифода набаред.</li>
+        <li><b>Маҳсули ғайриро вайрон кун:</b> тест тавассути интерфейс дар ҳисобҳои озмоишӣ; як баг — як репорт (ном, муҳимият, дар куҷо, қадамҳо, интизор будам, гирифтам, муҳит, далел); critical = ошкор шудани маълумот ё вайрон шудани сенарияи асосӣ.</li>
+        <li><b>Тартиб:</b> як вазифа = як промпт = як commit; пеш аз commit <code>npm run build</code>, санҷиш дар браузер, хондани diff бе махфиҳо.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ВАЗИФАИ 10.1</span><h4>Ман мавзӯъро воқеан фаҳмидам</h4><span class="level easy">осон</span></header>
+        <p>Танҳо он чиро қайд кунед, ки бе ишора карда метавонед.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Метавонам шарҳ диҳам, ки барои CRUD кадом экранҳо, фармонҳои пойгоҳ ва қоидаҳои RLS лозиманд</li>
+          <li>Метавонам ҷустуҷӯ, филтрҳо, ҷудокунӣ ва саҳифабандиро бо ҳолат дар суроғаи саҳифа созам</li>
+          <li>Метавонам бакети пӯшида созам ва сиёсатҳоро аз рӯи id-и корбар нависам</li>
+          <li>Метавонам файл бор кунам, роҳро захира кунам ва тасвирро бо истиноди имзошуда нишон диҳам</li>
+          <li>Метавонам шарҳ диҳам, ки чаро бе домени худӣ мактубҳо танҳо ба суроғаи ман мераванд ва фиристодан аз серверро пайваст кунам</li>
+          <li>Метавонам админ-панел бо омор созам ва онро дар се сатҳ ҳимоя кунам</li>
+          <li>Метавонам маҳсули ғайриро санҷам ва баг-репорти фаҳмо нависам</li>
+        </ul>
+      </article>
+    </section>
