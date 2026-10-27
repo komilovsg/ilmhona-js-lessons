@@ -6,7 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { courseItems, useCourseProgress, type CourseItem, type CourseStatus } from '@/lib/course-status';
-import { COURSES, courseHome, lessonHref, otherCourse, type CourseId } from '@/lib/courses';
+import { COURSES, courseHome, lessonHref, otherCourses, type CourseId } from '@/lib/courses';
 import { levelInfo, totalXp } from '@/lib/game';
 import { fmt } from '@/lib/i18n';
 import { courseName } from '@/lib/site';
@@ -33,7 +33,8 @@ export default function RoadmapView({ courseId = 'frontend' }: { courseId?: Cour
   const c = COURSES[courseId];
   const r = { ...t.roadmap, ...(c.texts?.[locale].roadmap ?? {}) };
   const progress = useCourseProgress(c);
-  const other = otherCourse(c);
+  const others = otherCourses(c);
+  const next = c.next && COURSES[c.next];
 
   const items = useMemo(() => courseItems(progress.solved, c), [progress, c]);
 
@@ -205,6 +206,22 @@ export default function RoadmapView({ courseId = 'frontend' }: { courseId?: Cour
   const StatusIcon = ({ s }: { s: CourseStatus }) =>
     s === 'done' ? <CheckIcon /> : s === 'soon' ? <ClockIcon /> : <DotIcon />;
 
+  const finalBody = (
+    <>
+      <span className="rm-final-icon" aria-hidden="true">
+        <TrophyIcon />
+        {Array.from({ length: 10 }, (_, k) => (
+          <i key={k} className="rm-spark" />
+        ))}
+      </span>
+      <div className="rm-final-txt">
+        <p className="kicker">{r.finalKicker}</p>
+        <h2 id="rm-final-t">{c.destination.title[locale]}</h2>
+        <p>{r.finalText}</p>
+      </div>
+    </>
+  );
+
   return (
     <main className="rm" ref={root}>
       <section className="hero rm-hero">
@@ -235,9 +252,11 @@ export default function RoadmapView({ courseId = 'frontend' }: { courseId?: Cour
           ) : (
             <p className="rm-cta-note">{r.ctaAllDone}</p>
           )}
-          <Link className="rm-alt" href={courseHome(other, locale)}>
-            {fmt(t.roadmap.otherCourse, { name: other.texts?.[locale].name ?? courseName[locale] })} <span aria-hidden="true">→</span>
-          </Link>
+          {others.map((o) => (
+            <Link key={o.id} className="rm-alt" href={courseHome(o, locale)}>
+              {fmt(t.roadmap.otherCourse, { name: o.texts?.[locale].name ?? courseName[locale] })} <span aria-hidden="true">→</span>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -358,19 +377,13 @@ export default function RoadmapView({ courseId = 'frontend' }: { courseId?: Cour
               <TrophyIcon />
             </span>
           </span>
-          <div className="rm-final-card">
-            <span className="rm-final-icon" aria-hidden="true">
-              <TrophyIcon />
-              {Array.from({ length: 10 }, (_, k) => (
-                <i key={k} className="rm-spark" />
-              ))}
-            </span>
-            <div className="rm-final-txt">
-              <p className="kicker">{r.finalKicker}</p>
-              <h2 id="rm-final-t">{c.destination.title[locale]}</h2>
-              <p>{r.finalText}</p>
-            </div>
-          </div>
+          {next ? (
+            <Link className="rm-final-card rm-final-link" href={courseHome(next, locale)}>
+              {finalBody}
+            </Link>
+          ) : (
+            <div className="rm-final-card">{finalBody}</div>
+          )}
         </section>
       </div>
     </main>
