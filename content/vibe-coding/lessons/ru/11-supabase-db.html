@@ -1,0 +1,971 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 11 · Модуль 4. Backend без боли</p>
+      <h1>Supabase: своя база данных за один урок</h1>
+      <p class="lead">К концу урока данные вашего сайта будут жить в настоящей базе данных: форма бронирования сохраняет заявки в таблицу Supabase (Postgres), а простая админ-таблица показывает их владельцу. Вы нарисуете схему базы на бумаге до единой строки кода, включите защиту RLS и будете точно знать, какой ключ можно показывать браузеру, а какой нельзя никому.</p>
+      <ul class="goals">
+        <li>Объяснить, что такое база данных, таблица, строка, поле, первичный и внешний ключ, и нарисовать схему из двух связанных таблиц</li>
+        <li>Создать проект Supabase и таблицу в Table Editor, выполнить SQL в SQL Editor</li>
+        <li>Прочитать запросы <code>select</code>, <code>insert</code>, <code>update</code>, <code>delete</code> и сказать, что они сделают с таблицей</li>
+        <li>Включить RLS и написать правило (policy), которое разрешает форме только добавлять заявки</li>
+        <li>Различать publishable (anon) и secret (service_role) ключи и хранить их в <code>.env.local</code> и в переменных Vercel</li>
+        <li>Сохранить данные формы в базу и вывести их в админ-таблицу на сервере; сравнить Supabase и Firebase</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: Cursor, проект Next.js и форма из уроков 7–9, запросы и <code>.env.local</code> из урока 10, аккаунт GitHub (через него удобно войти в Supabase). Время: 3–4 часа. Откройте урок в одной половине экрана, а Cursor и панель Supabase — в другой. Теорию (разделы 1–5) читайте по частям: SQL в браузере урока выполнить нельзя, поэтому запросы вы разберёте на таблицах-примерах и потренируете на аналогии с массивами JavaScript. Практику (раздел 7) делайте за один присест: к концу у вас будет форма, которая пишет в настоящую базу.</p>
+    </div>
+
+    <!-- ============ 01 · Что такое БД ============ -->
+    <section class="topic" id="db">
+      <h2 data-toc="Что такое база данных"><span class="num">01</span> База данных: таблицы, поля и связи</h2>
+
+      <p>До сих пор данные вашего сайта жили в коде (массив услуг) или в браузере посетителя. Закройте вкладку, и введённое пропало, а владелец ресторана ничего не увидел. Чтобы заявки сохранялись и их можно было прочитать позже с любого устройства, нужна <b>база данных</b> (БД): программа на сервере, которая хранит данные надёжно и умеет быстро их искать, добавлять, менять и удалять.</p>
+
+      <p>Чаще всего база устроена как набор таблиц, похожих на листы Excel. Такие базы называют <b>реляционными</b> (от relation: связь), потому что таблицы можно связывать между собой.</p>
+
+      <dl class="terms">
+        <dt>Таблица</dt><dd>Набор однотипных записей: «заявки», «столики», «пользователи». Имя таблицы — обычно во множественном числе и латиницей: <code>bookings</code>.</dd>
+        <dt>Столбец (поле, колонка)</dt><dd>Один вид данных и его тип: <code>name</code> — текст, <code>guests</code> — целое число, <code>booking_at</code> — дата и время.</dd>
+        <dt>Строка (запись)</dt><dd>Одна заявка целиком: имя, телефон, число гостей и так далее.</dd>
+        <dt>Первичный ключ (<code>id</code>)</dt><dd>Номер, который однозначно называет строку. Двух строк с одним <code>id</code> не бывает. Имена и телефоны повторяются, поэтому искать строку «по имени» ненадёжно.</dd>
+        <dt>Внешний ключ</dt><dd>Столбец, в котором лежит <code>id</code> строки из другой таблицы. Так заявка «знает», за каким столиком она закреплена: <code>bookings.table_id</code> указывает на <code>restaurant_tables.id</code>.</dd>
+        <dt>Связь «один ко многим»</dt><dd>Один столик встречается во многих заявках, а у заявки столик один. Самая частая связь.</dd>
+      </dl>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 300" role="img" aria-label="Схема базы: таблица restaurant_tables с полями id, name, seats и таблица bookings с полями id, name, phone, guests, booking_at, table_id; стрелка от table_id к id связывает таблицы">
+          <rect class="box b" x="14" y="20" width="250" height="150" rx="10" />
+          <rect class="fill-y" x="14" y="20" width="250" height="32" rx="10" />
+          <text class="mono" x="28" y="42">restaurant_tables</text>
+          <text class="mono t-o" x="28" y="76">id</text><text class="sub" x="150" y="76">число, ключ</text>
+          <text class="mono" x="28" y="104">name</text><text class="sub" x="150" y="104">текст</text>
+          <text class="mono" x="28" y="132">seats</text><text class="sub" x="150" y="132">число мест</text>
+          <rect class="box g" x="400" y="20" width="306" height="266" rx="10" />
+          <rect class="fill-g" x="400" y="20" width="306" height="32" rx="10" />
+          <text class="mono" x="414" y="42">bookings</text>
+          <text class="mono t-o" x="414" y="76">id</text><text class="sub" x="540" y="76">число, ключ</text>
+          <text class="mono" x="414" y="104">created_at</text><text class="sub" x="540" y="104">когда создана</text>
+          <text class="mono" x="414" y="132">name</text><text class="sub" x="540" y="132">текст</text>
+          <text class="mono" x="414" y="160">phone</text><text class="sub" x="540" y="160">текст</text>
+          <text class="mono" x="414" y="188">guests</text><text class="sub" x="540" y="188">число гостей</text>
+          <text class="mono" x="414" y="216">booking_at</text><text class="sub" x="540" y="216">дата и время</text>
+          <text class="mono t-v" x="414" y="244">table_id</text><text class="sub" x="540" y="244">чей столик</text>
+          <text class="mono" x="414" y="272">status</text><text class="sub" x="540" y="272">new / confirmed</text>
+          <path class="arr" style="stroke:var(--violet-ink)" d="M398 244H298V76H276" /><path class="arr-head" style="fill:var(--violet-ink)" d="M266 76l10-5v10z" />
+          <text class="sub t-v" x="306" y="120">1 столик</text>
+          <text class="sub t-v" x="306" y="138">много заявок</text>
+        </svg>
+        <figcaption>Схема из двух таблиц. Фиолетовая стрелка: <code>table_id</code> хранит <code>id</code> столика, поэтому имя и число мест не нужно копировать в каждую заявку</figcaption>
+      </figure>
+
+      <p>Зачем связи? Без них в каждую заявку пришлось бы писать «Столик у окна, 4 места». Захотите переименовать столик, и менять придётся сотни строк. Со связью название хранится в одном месте, а заявки лишь ссылаются на номер.</p>
+
+      <div class="yt" data-id="mvpDRH37IBQ" data-title="Что такое базы данных? Для новичков — канал GeekBrains" data-start="0"></div>
+      <p class="muted">Ролик на русском, около 6 минут: что такое БД и зачем она нужна. Снят в 2021 году, но основы баз данных не меняются. Про Supabase в нём нет, он нужен для общей картины.</p>
+
+      <h3>Рисуем схему до кода</h3>
+      <p>Главная привычка этого урока: <b>сначала схема на листе или доске, потом код</b>. Возьмите ручку и ответьте на три вопроса: «Какие вещи хранит сайт?» (это таблицы), «Что нужно знать о каждой?» (столбцы), «Кто на кого ссылается?» (стрелки). Пять минут рисунка экономят часы переписывания, а ИИ по понятной схеме создаёт таблицы почти без ошибок.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Тетрадь администратора чойхоны. На одной странице список столов: номер, название, число мест. На другой — книга заявок: имя гостя, телефон, время и номер стола. Номер стола в книге заявок — это внешний ключ. Название «Стол у окна» записано один раз, а в заявках только цифра.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Хранить всё в одной таблице и копировать название столика в каждую строку: опечатка в одной копии, и данные расходятся. <b>2.</b> Использовать имя как ключ: два Фирдавса — и база их путает. <b>3.</b> Класть в один столбец несколько значений («стол 3, стол 4»). <b>4.</b> Хранить дату как текст «завтра вечером»: сортировать и искать по ней нельзя, для этого есть тип «дата и время». <b>5.</b> Писать код, не нарисовав схему, и потом менять таблицы под уже готовый интерфейс.</p>
+      </div>
+
+      <article class="task" id="q-tables">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: таблицы и связи</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>В таблице <code>bookings</code> есть столбец <code>table_id</code> со значением <code>3</code>. Что это значит?</p>
+          <ol class="options">
+            <li>Гость заказал три стола</li>
+            <li>Заявка связана со строкой таблицы столиков, у которой <code>id = 3</code></li>
+            <li>Это третья заявка в таблице</li>
+            <li>В заявке три гостя</li>
+          </ol>
+          <div class="explain"><p>Внешний ключ хранит <code>id</code> строки из другой таблицы. Число гостей лежит в <code>guests</code>, а номер самой заявки — в её собственном <code>id</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Почему строки отличают по <code>id</code>, а не по имени гостя?</p>
+          <ol class="options">
+            <li>Имена повторяются, а <code>id</code> у каждой строки уникален</li>
+            <li>Имена нельзя хранить в базе данных</li>
+            <li>База не умеет работать с текстом</li>
+            <li>Так быстрее набирать в форме</li>
+          </ol>
+          <div class="explain"><p>Первичный ключ нужен, чтобы однозначно назвать одну строку: поменять или удалить именно её, а не всех однофамильцев.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Столики переименовали: «Стол у окна» стал «VIP». Как организована база, чтобы поменять название один раз?</p>
+          <ol class="options">
+            <li>Название записано в каждой заявке, и нужно изменить все строки</li>
+            <li>Название хранится в браузере посетителя</li>
+            <li>Название лежит в таблице столиков, а заявки ссылаются на столик через <code>table_id</code></li>
+            <li>Название лежит в <code>.env.local</code></li>
+          </ol>
+          <div class="explain"><p>Это и есть смысл связей: данные хранятся один раз, остальные таблицы ссылаются на них по ключу.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/database/overview" target="_blank" rel="noopener">Supabase: Database overview</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 02 · Supabase и Postgres ============ -->
+    <section class="topic" id="supabase">
+      <h2 data-toc="Supabase и Postgres"><span class="num">02</span> Supabase: настоящий Postgres без своего сервера</h2>
+
+      <p><b>Postgres</b> (PostgreSQL) — одна из самых популярных и надёжных реляционных баз данных в мире. Настраивать сервер, обновления и резервные копии новичку незачем: <b>Supabase</b> разворачивает для вас Postgres в облаке и добавляет сверху удобные вещи: веб-панель, готовый программный интерфейс (API) для каждой таблицы, авторизацию (урок 12) и хранилище файлов. То есть вы пишете в коде <code>supabase.from("bookings").insert(…)</code>, а Supabase превращает это в запрос к базе.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>Форма на сайте</b><span>браузер посетителя</span><code>supabase-js</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>API Supabase</b><span>проверяет ключ и правила RLS</span><code>HTTPS</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>Postgres</b><span>таблица <code>bookings</code></span><code>новая строка</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>Админ-страница</b><span>читает на сервере</span><code>select</code></div>
+        </div>
+        <figcaption>Путь заявки: форма → API → таблица → админ-таблица. База сама вашей страницы не видит: она отвечает только на запросы</figcaption>
+      </figure>
+
+      <h3>Две части панели: Table Editor и SQL Editor</h3>
+      <p>В панели проекта слева есть <b>Table Editor</b>: это «Excel» вашей базы. Таблицы создаются кнопкой, строки видны сразу, можно править ячейки мышью. И есть <b>SQL Editor</b>: поле, куда вставляют текст запросов на языке SQL и нажимают Run. Для учебных таблиц удобнее второй: запрос можно сохранить, скопировать в чат и повторить в другом проекте.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/11-supabase-db/table-editor.svg" alt="Схема окна Table Editor: слева список таблиц bookings и restaurant_tables и кнопка New table; справа таблица заявок с тремя строками и кнопкой Insert row; внизу зелёная плашка RLS enabled" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Упрощённая схема Table Editor. Настоящая панель может выглядеть иначе: названия кнопок и их расположение Supabase меняет</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/11-supabase-db/sql-editor.svg" alt="Схема окна SQL Editor: тёмное поле с запросом create table bookings и строкой alter table enable row level security, кнопка Run и поле результата Success. No rows returned" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>SQL Editor: вставили запрос, нажали Run, внизу видно результат или текст ошибки</figcaption>
+      </figure>
+
+      <h3>Бесплатный тариф и «один проект на курс»</h3>
+      <p>Бесплатного тарифа хватает для всего курса. По странице тарифов Supabase (проверено в октябре 2026) на нём: до <b>2 активных проектов</b>, база до <b>500 МБ</b>, до 5 ГБ трафика в месяц, до 50 000 активных пользователей в месяц. Важно для вас: <b>бесплатные проекты ставятся на паузу после недели без активности</b>. Пауза не стирает данные: в панели нажимаете восстановление, и проект просыпается, но после паузы сайт на время не работает. Резервных копий на бесплатном тарифе нет.</p>
+      <ul>
+        <li><b>Создайте один проект на весь курс.</b> Для домашних заданий 11–15 делайте в нём разные таблицы с понятными именами (<code>bookings</code>, <code>restaurant_tables</code>, позже <code>chat_messages</code> и другие), а не новые проекты: второй проект уже займёт лимит «2 активных».</li>
+        <li>Лимиты и условия меняются: актуальные цифры смотрите на странице тарифов. Если проект ушёл на паузу, откройте панель и восстановите его.</li>
+        <li>Пароль от базы, который вы задаёте при создании проекта, сохраните в менеджере паролей. В Git и в чаты он не попадает.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Склад на рынке. Своя база на своём сервере — как построить склад самому: стены, охрана, замки. Supabase — как арендовать готовую секцию: ключ дают, охрану нанимают за вас, но что хранить и кому открыть дверь, решаете вы. Забудете закрыть секцию (RLS), и товар унесут.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Создавать новый проект под каждое задание и упереться в лимит двух активных. <b>2.</b> Потерять пароль базы: он не нужен для работы сайта, но нужен для прямого подключения, держите его в менеджере паролей. <b>3.</b> Удивляться, что сайт «сломался» через неделю: проект на паузе, восстановите его в панели. <b>4.</b> Хранить в бесплатной базе чужие паспортные данные и платёжную информацию: в учебных проектах только вымышленные или минимальные данные. <b>5.</b> Выбрать далёкий регион при создании проекта: запросы станут медленнее, выбирайте ближайший к вам из предложенных.</p>
+      </div>
+
+      <article class="task" id="q-supabase">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: Supabase и бесплатный тариф</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что делает Supabase для вашего проекта?</p>
+          <ol class="options">
+            <li>Заменяет браузер и показывает сайт посетителям</li>
+            <li>Даёт облачную базу Postgres, панель управления и API для обращения к таблицам из кода</li>
+            <li>Хранит исходный код сайта вместо GitHub</li>
+            <li>Генерирует тексты с помощью ИИ</li>
+          </ol>
+          <div class="explain"><p>Supabase — это «Postgres как сервис» с панелью, API, авторизацией и хранилищем. Код сайта лежит на GitHub и Vercel.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Какие утверждения о бесплатном проекте Supabase верны? (выберите все)</p>
+          <ol class="options">
+            <li>Проект, которым неделю не пользовались, ставится на паузу, данные при этом не удаляются</li>
+            <li>Бесплатный тариф включает автоматические резервные копии</li>
+            <li>Для курса достаточно одного проекта с разными таблицами под разные задания</li>
+            <li>Активных проектов можно создать сколько угодно</li>
+          </ol>
+          <div class="explain"><p>Пауза после недели без активности — условие бесплатного тарифа, а лимит — 2 активных проекта. Автоматических бэкапов на бесплатном тарифе нет: важные данные выгружайте сами. Актуальные цифры всегда смотрите на странице тарифов.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/pricing" target="_blank" rel="noopener">Supabase: тарифы</a> и <a href="https://supabase.com/docs/guides/getting-started/quickstarts/nextjs" target="_blank" rel="noopener">Supabase: быстрый старт для Next.js</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 03 · SQL и CRUD ============ -->
+    <section class="topic" id="sql">
+      <h2 data-toc="SQL-минимум и CRUD"><span class="num">03</span> SQL-минимум: четыре действия с таблицей (CRUD)</h2>
+
+      <p><b>SQL</b> — язык, на котором говорят с реляционной базой. Учить его целиком не нужно: любое приложение сводится к четырём действиям, которые называют <b>CRUD</b>: Create (создать), Read (прочитать), Update (изменить), Delete (удалить). ИИ напишет запросы за вас, но вы должны читать их и понимать, что они сделают, особенно с данными клиентов.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Действие</th><th>SQL</th><th>В коде сайта (supabase-js)</th></tr></thead>
+          <tbody>
+            <tr><td><b>C</b>reate</td><td><code>insert into</code></td><td><code>.from("bookings").insert({…})</code></td></tr>
+            <tr><td><b>R</b>ead</td><td><code>select</code></td><td><code>.from("bookings").select("*")</code></td></tr>
+            <tr><td><b>U</b>pdate</td><td><code>update … set … where</code></td><td><code>.update({…}).eq("id", 2)</code></td></tr>
+            <tr><td><b>D</b>elete</td><td><code>delete from … where</code></td><td><code>.delete().eq("id", 2)</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Создаём таблицу</h3>
+<pre class="code" data-title="SQL Editor: таблица заявок">
+create table bookings (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  name text not null,
+  phone text not null,
+  guests int not null,
+  status text not null default 'new'
+);
+</pre>
+      <p>Читается почти как по-русски: «создать таблицу <code>bookings</code>; <code>id</code> — большое целое число, которое база нумерует сама, и это первичный ключ; <code>created_at</code> — дата и время, по умолчанию «сейчас»; <code>name</code>, <code>phone</code> — текст, обязательны (<code>not null</code>); <code>status</code> по умолчанию <code>'new'</code>».</p>
+
+      <h3>Читаем, добавляем, меняем, удаляем</h3>
+<pre class="code" data-title="SQL: четыре действия">
+-- Create: добавить строку
+insert into bookings (name, phone, guests)
+values ('Мадина', '+992900000001', 2);
+
+-- Read: прочитать
+select * from bookings;                                -- все строки, все столбцы
+select name, guests from bookings                      -- только два столбца
+where status = 'new' and guests &gt;= 4                   -- фильтр
+order by created_at desc                               -- сначала новые
+limit 10;                                              -- не больше 10 строк
+
+-- Update: изменить (where обязателен!)
+update bookings set status = 'confirmed' where id = 2;
+
+-- Delete: удалить (where обязателен!)
+delete from bookings where id = 2;
+</pre>
+      <p>Текстовые значения в SQL пишут в одинарных кавычках. Слово <code>where</code> отвечает за «какие строки». Звёздочка <code>*</code> означает «все столбцы». Чтобы запомнить порядок, читайте запрос как предложение: выбрать (select) что, из (from) какой таблицы, где (where) выполняется условие, упорядочить (order by), ограничить (limit).</p>
+
+      <div class="callout warn">
+        <b>Опасный update и delete без where</b>
+        <p><code>delete from bookings;</code> без <code>where</code> удалит <b>все</b> строки таблицы, а <code>update bookings set status = 'cancelled';</code> отменит все заявки. Резервных копий на бесплатном тарифе нет. Перед <code>update</code> и <code>delete</code> сначала выполните такой же запрос с <code>select</code> и посмотрите, какие строки попадут под условие. Просите ИИ писать такие запросы с <code>where</code> и показывать, сколько строк затронуто.</p>
+      </div>
+
+      <h3>SQL похож на методы массивов JavaScript</h3>
+      <p>Таблица — это почти как массив объектов из уроков 7–10, а запросы — как методы массива. Это не одно и то же, но если вы понимаете <code>filter</code> и <code>sort</code>, то понимаете и <code>where</code> и <code>order by</code>. Потренируйтесь на массиве «строк».</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>SQL</th><th>JavaScript-аналог</th></tr></thead>
+          <tbody>
+            <tr><td><code>where guests &gt;= 4</code></td><td><code>rows.filter((r) =&gt; r.guests &gt;= 4)</code></td></tr>
+            <tr><td><code>select name</code></td><td><code>.map((r) =&gt; r.name)</code></td></tr>
+            <tr><td><code>order by guests desc</code></td><td><code>[...rows].sort((a, b) =&gt; b.guests - a.guests)</code></td></tr>
+            <tr><td><code>limit 2</code></td><td><code>.slice(0, 2)</code></td></tr>
+            <tr><td><code>insert</code> / <code>update</code> / <code>delete</code></td><td><code>push</code> / <code>map</code> с изменением / <code>filter</code> без лишнего</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <article class="task" id="pg-select">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Read: фильтруем и сортируем «таблицу»</h4><span class="level easy">лёгкая</span></header>
+        <p>Массив <code>rows</code> играет роль таблицы <code>bookings</code>. Допишите три запроса из комментариев, формат строк возьмите из блока «Ожидаемый результат».</p>
+<pre class="code" data-run data-lang="js">
+const rows = [
+  { id: 1, name: "Мадина", guests: 2, status: "new" },
+  { id: 2, name: "Фирдавс", guests: 5, status: "confirmed" },
+  { id: 3, name: "Нигина", guests: 4, status: "new" },
+  { id: 4, name: "Рустам", guests: 3, status: "cancelled" },
+  { id: 5, name: "Зарина", guests: 6, status: "new" },
+  { id: 6, name: "Алишер", guests: 2, status: "confirmed" },
+];
+
+// TODO 1: select name from rows where status = 'new'
+// выведите: new: Мадина, Нигина, Зарина
+
+// TODO 2: select name from rows order by guests desc limit 2
+// выведите: top2: Зарина, Фирдавс
+
+// TODO 3: select count(*) from rows where guests >= 4
+// выведите: big: 3
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>new: Мадина, Нигина, Зарина
+top2: Зарина, Фирдавс
+big: 3</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Первый запрос: <code>rows.filter((r) =&gt; r.status === "new").map((r) =&gt; r.name).join(", ")</code>. Результат вставьте в шаблонную строку: `new: ${…}`.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Второй: <code>[...rows].sort((a, b) =&gt; b.guests - a.guests).slice(0, 2)</code>, затем <code>map</code> и <code>join</code>. Третий: длина (<code>length</code>) отфильтрованного массива. Копия <code>[...rows]</code> нужна, чтобы <code>sort</code> не менял исходный массив.</p></details>
+      </article>
+
+      <article class="task" id="pg-crud">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Create, Update, Delete на «таблице»</h4><span class="level mid">средняя</span></header>
+        <p>Выполните три действия над массивом <code>table</code>, не меняя код вывода внизу. Нельзя править исходные строки руками: используйте <code>push</code>, <code>map</code> и <code>filter</code>, как это делает SQL.</p>
+<pre class="code" data-run data-lang="js">
+let table = [
+  { id: 1, name: "Мадина", status: "new" },
+  { id: 2, name: "Фирдавс", status: "new" },
+  { id: 3, name: "Нигина", status: "new" },
+];
+
+// TODO 1 (insert): добавьте строку { id: 4, name: "Шахноза", status: "new" }
+
+// TODO 2 (update ... where id = 2): строке с id 2 поставьте status "confirmed"
+// остальные строки не трогайте
+
+// TODO 3 (delete ... where id = 1): уберите строку с id 1
+
+// вывод, не меняйте
+for (const r of table) console.log(r.id, r.name, r.status);
+console.log("rows:", table.length);
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>2 Фирдавс confirmed
+3 Нигина new
+4 Шахноза new
+rows: 3</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Insert: <code>table.push({ id: 4, name: "Шахноза", status: "new" });</code></p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Update: <code>table = table.map((r) =&gt; (r.id === 2 ? { ...r, status: "confirmed" } : r));</code> Delete: <code>table = table.filter((r) =&gt; r.id !== 1);</code> Условие <code>where</code> здесь — это проверка <code>r.id</code>. Без неё изменились бы все строки.</p></details>
+      </article>
+
+      <p>Теперь то же, но на настоящем SQL: что вернёт запрос? Ниже таблица и вопросы, в SQL Editor ничего запускать не нужно.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>id</th><th>name</th><th>guests</th><th>status</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Мадина</td><td>2</td><td>new</td></tr>
+            <tr><td>2</td><td>Фирдавс</td><td>5</td><td>confirmed</td></tr>
+            <tr><td>3</td><td>Нигина</td><td>4</td><td>new</td></tr>
+            <tr><td>4</td><td>Рустам</td><td>3</td><td>cancelled</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <article class="task" id="q-sql">
+        <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Проверь себя: что вернёт запрос</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Что вернёт <code>select name from bookings where guests &gt;= 4 order by name;</code> для таблицы выше?</p>
+          <ol class="options">
+            <li>Мадина, Рустам</li>
+            <li>Фирдавс, Нигина, Рустам</li>
+            <li>Нигина, Фирдавс (по алфавиту)</li>
+            <li>Все четыре имени</li>
+          </ol>
+          <div class="explain"><p>Условие <code>guests &gt;= 4</code> оставляет Фирдавса (5) и Нигину (4). Сортировка <code>order by name</code> ставит их по алфавиту: Нигина, Фирдавс.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что произойдёт после <code>update bookings set status = 'cancelled';</code> (без <code>where</code>)?</p>
+          <ol class="options">
+            <li>База откажется выполнять запрос</li>
+            <li>У всех четырёх строк статус станет <code>cancelled</code></li>
+            <li>Изменится только первая строка</li>
+            <li>Обновится только строка с <code>id = 1</code></li>
+          </ol>
+          <div class="explain"><p>Без <code>where</code> запрос затрагивает все строки таблицы. Поэтому условие в <code>update</code> и <code>delete</code> обязательно перепроверяют.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Как получить из таблицы двух самых больших по числу гостей?</p>
+          <ol class="options">
+            <li><code>select * from bookings order by guests desc limit 2;</code></li>
+            <li><code>select * from bookings where guests = 2;</code></li>
+            <li><code>delete from bookings limit 2;</code></li>
+            <li><code>insert into bookings order by guests;</code></li>
+          </ol>
+          <div class="explain"><p><code>order by guests desc</code> ставит большие числа первыми, <code>limit 2</code> оставляет две строки. Остальные варианты либо ищут другое, либо меняют таблицу.</p></div>
+        </div>
+      </article>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Тетрадь продавца на бозоре. «Дописать запись» — insert, «найти всех, кто должен больше 100 сомони» — select с where, «исправить сумму» — update, «вычеркнуть» — delete. А «вычеркнуть без указания чьё» (delete без where) вычеркнет всю тетрадь.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/reference/javascript/select" target="_blank" rel="noopener">Supabase JS: select</a> и <a href="https://supabase.com/docs/reference/javascript/insert" target="_blank" rel="noopener">Supabase JS: insert</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · RLS и ключи ============ -->
+    <section class="topic" id="rls">
+      <h2 data-toc="RLS и ключи"><span class="num">04</span> Безопасность: RLS и два вида ключей</h2>
+
+      <div class="callout warn">
+        <b>Главное правило урока</b>
+        <p>Адрес проекта и publishable-ключ лежат в коде страницы, любой посетитель может их увидеть. Если для таблицы <b>не включена RLS и не написаны правила</b>, то с таким ключом данные можно прочитать, подменить или удалить прямо из консоли браузера. Выключенная или забытая RLS — самая частая дыра в проектах, которые собрали «на вайбе». Включать её нужно всегда, на каждой таблице, с первой минуты.</p>
+      </div>
+
+      <h3>Что такое RLS простыми словами</h3>
+      <p><b>RLS</b> (Row Level Security, защита на уровне строк) — встроенная в Postgres проверка: перед каждым запросом база спрашивает «а этому посетителю можно?» и смотрит в список ваших правил (<code>policy</code>). Нет подходящего правила — запрос отклонён.</p>
+      <ul>
+        <li>Включили RLS и не написали ни одного правила: через API с publishable-ключом таблица <b>полностью закрыта</b> (по документации Supabase). Это безопасное начало.</li>
+        <li>Каждое правило относится к одному действию (select, insert, update, delete) и к роли. Посетитель без входа — роль <code>anon</code>, вошедший пользователь (урок 12) — <code>authenticated</code>.</li>
+        <li>Условие <code>using</code> отвечает «какие существующие строки можно видеть или менять», условие <code>with check</code> — «какие новые строки можно записать».</li>
+      </ul>
+
+<pre class="code" data-title="SQL Editor: форма может только добавлять заявки">
+alter table bookings enable row level security;
+
+grant insert on table bookings to anon;
+
+create policy "anon can create bookings"
+on bookings for insert
+to anon
+with check (
+  status = 'new'
+  and guests between 1 and 20
+  and char_length(name) between 2 and 80
+);
+</pre>
+      <p>Что здесь происходит. Первая строка включает RLS. <code>grant insert</code> даёт роли <code>anon</code> саму возможность обращаться к таблице на добавление (без этого вы получите ошибку <code>42501</code>, и это отдельный слой защиты перед правилами). Правило разрешает форме добавить только строку со статусом <code>new</code>, разумным числом гостей и нормальной длиной имени. <b>Читать</b> заявки анонимному посетителю нельзя: правила на <code>select</code> нет. Список заявок увидит только код на вашем сервере (раздел 7).</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 300" role="img" aria-label="Схема: посетитель с publishable-ключом проходит через проверку RLS к таблице, запрос на чтение блокируется; сервер с secret-ключом идёт к таблице напрямую в обход RLS">
+          <rect class="box" x="12" y="30" width="150" height="70" rx="10" />
+          <text x="87" y="58" text-anchor="middle">Браузер</text><text class="sub" x="87" y="78" text-anchor="middle">publishable key</text>
+          <rect class="fill-y" x="260" y="20" width="170" height="90" rx="10" />
+          <text x="345" y="52" text-anchor="middle">RLS: правила</text><text class="sub" x="345" y="72" text-anchor="middle">insert: можно</text><text class="sub t-r" x="345" y="92" text-anchor="middle">select: нельзя</text>
+          <rect class="box g" x="530" y="30" width="170" height="70" rx="10" />
+          <text class="mono" x="615" y="58" text-anchor="middle">bookings</text><text class="sub" x="615" y="78" text-anchor="middle">таблица</text>
+          <path class="arr" d="M162 65H254" /><path class="arr-head" d="M254 60l8 5-8 5z" />
+          <path class="arr" d="M430 65H524" /><path class="arr-head" d="M524 60l8 5-8 5z" />
+          <rect class="box" x="12" y="190" width="150" height="70" rx="10" />
+          <text x="87" y="218" text-anchor="middle">Ваш сервер</text><text class="sub t-r" x="87" y="238" text-anchor="middle">secret key</text>
+          <path class="arr" d="M162 225H600V106" /><path class="arr-head" d="M595 106l5-8 5 8z" />
+          <text class="sub t-r" x="300" y="214">secret key обходит RLS: только на сервере</text>
+          <text class="sub" x="300" y="246">в браузер, GitHub, чат и скриншоты — никогда</text>
+        </svg>
+        <figcaption>Браузер проходит через правила RLS. Сервер с secret-ключом идёт напрямую, поэтому ключ нельзя показывать никому</figcaption>
+      </figure>
+
+      <h3>Два вида ключей</h3>
+      <p>В панели в разделе <b>Settings → API Keys</b> (также ключи показывает окно Connect) лежат два ключа:</p>
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/11-supabase-db/api-keys.svg" alt="Схема страницы API Keys: зелёная карточка Publishable key — можно в браузере, права ограничивает RLS; красная карточка Secret key — только сервер, обходит RLS; жёлтая плашка о старых названиях anon и service_role" width="720" height="360" loading="lazy" decoding="async">
+        <figcaption>Два ключа с разной ценой ошибки. Схема упрощена, настоящую страницу открывайте только у себя и не показывайте на экране</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Publishable key</th><th>Secret key</th></tr></thead>
+          <tbody>
+            <tr><td><b>Выглядит</b></td><td><code>sb_publishable_…</code></td><td><code>sb_secret_…</code></td></tr>
+            <tr><td><b>Старое название</b></td><td><code>anon</code> key</td><td><code>service_role</code> key</td></tr>
+            <tr><td><b>Роль в базе</b></td><td><code>anon</code> (или <code>authenticated</code>, если пользователь вошёл)</td><td><code>service_role</code></td></tr>
+            <tr><td><b>RLS</b></td><td>действует: права ограничены правилами</td><td><b>обходится</b>: полный доступ ко всем данным</td></tr>
+            <tr><td><b>Где можно</b></td><td>в браузере и в коде страницы</td><td>только в серверном коде</td></tr>
+            <tr><td><b>Переменная</b></td><td><code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code></td><td><code>SUPABASE_SECRET_KEY</code> (без <code>NEXT_PUBLIC_</code>)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Старые руководства и ответы ИИ часто пишут <code>anon</code> и <code>service_role</code>: это прежние, длинные ключи, начинающиеся с <code>eyJ</code>. Supabase переходит на новые названия и планирует отключить старые ключи к концу 2026 года, поэтому в новых проектах берите publishable и secret. Если ИИ предложил <code>SUPABASE_ANON_KEY</code>, замените на актуальное имя.</p>
+
+<pre class="code" data-title=".env.local (корень проекта; значения выдуманные)">
+NEXT_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_not-a-real-key
+SUPABASE_SECRET_KEY=sb_secret_not-a-real-key
+</pre>
+      <p>Из урока 10 вы знаете: приставка <code>NEXT_PUBLIC_</code> отдаёт значение в браузер, поэтому она допустима только для адреса и publishable-ключа. Secret-ключ читают на сервере (<code>process.env.SUPABASE_SECRET_KEY</code>). На Vercel добавьте те же три переменные в Settings → Environment Variables и сделайте Redeploy: значения с <code>NEXT_PUBLIC_</code> вшиваются при сборке.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Ресторан. Publishable-ключ — это ключ от входной двери для гостей: гость может зайти и сделать заказ (insert), но в кассу и в бухгалтерию его не пустят. Правила RLS — это охранник, который решает, куда можно гостю. Secret-ключ — мастер-ключ от всех дверей, включая кассу и сейф: он висит только у владельца, а не на стене в зале.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Создать таблицу в SQL Editor и не включить RLS: таблицы, созданные запросом, нужно защищать самим (созданные через кнопку в панели получают RLS по умолчанию, но проверьте). <b>2.</b> Написать правило <code>using (true)</code> для <code>select</code> на таблице с заявками: так телефоны гостей увидит любой посетитель. <b>3.</b> Выключить RLS «чтобы заработало»: когда запрос не проходит, нужно добавить правило, а не снимать замок. <b>4.</b> Положить secret-ключ в <code>NEXT_PUBLIC_…</code>, в клиентский компонент или в публичный репозиторий. <b>5.</b> Отправить ключ в чат или показать на скриншоте. Если ключ утёк, сразу удалите его в панели и создайте новый: пока ключ жив, им может пользоваться любой, кто его скопировал.</p>
+      </div>
+
+      <article class="task" id="q-rls">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: RLS и ключи</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Вы создали таблицу и не включили RLS. Что можно сделать с ней, зная адрес проекта и publishable-ключ из кода сайта?</p>
+          <ol class="options">
+            <li>Ничего: ключ из браузера слишком слабый</li>
+            <li>Скорее всего, читать и менять данные напрямую: правил, которые бы это запрещали, нет</li>
+            <li>Только читать, а удалять нельзя</li>
+            <li>Ничего: Supabase сам отклоняет запросы из браузера</li>
+          </ol>
+          <div class="explain"><p>Publishable-ключ можно найти в коде страницы, поэтому защиту обеспечивает не секретность ключа, а RLS и правила. Без них таблица открыта всем, у кого есть этот ключ. Именно так утекают базы вайбкод-проектов.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>RLS включена на таблице, правил нет. Что вернёт <code>.from("bookings").select()</code> с publishable-ключом?</p>
+          <ol class="options">
+            <li>Все строки таблицы</li>
+            <li>Ошибку сборки Next.js</li>
+            <li>Ничего: данные недоступны, пока не созданы правила (в ответе пустой список или ошибка доступа)</li>
+            <li>Только первую строку</li>
+          </ol>
+          <div class="explain"><p>RLS по умолчанию закрывает всё. Открывать нужно точечно, правилом для конкретного действия и роли.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Где допустимо использовать <code>SUPABASE_SECRET_KEY</code>?</p>
+          <ol class="options">
+            <li>Только в серверном коде (серверный компонент, route handler), значение в <code>.env.local</code> и в переменных Vercel</li>
+            <li>В клиентском компоненте с формой</li>
+            <li>В файле <code>.env.local</code> с приставкой <code>NEXT_PUBLIC_</code></li>
+            <li>В описании репозитория на GitHub, чтобы проверяющему было проще</li>
+          </ol>
+          <div class="explain"><p>Secret-ключ обходит RLS, поэтому его место только на сервере и в переменных окружения.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Какие правила для таблицы заявок безопасны? (выберите все)</p>
+          <ol class="options">
+            <li><code>for select to anon using (true)</code>: «чтобы админка работала»</li>
+            <li><code>for insert to anon with check (…)</code> с проверкой полей</li>
+            <li>Выключить RLS на время отладки и забыть</li>
+            <li>Читать заявки на сервере через secret-ключ</li>
+          </ol>
+          <div class="explain"><p>Открытое чтение раздаёт телефоны всем, а выключенная RLS открывает таблицу целиком. Безопасно: узкое правило на добавление и чтение на сервере.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener">Supabase: Row Level Security</a> и <a href="https://supabase.com/docs/guides/api/api-keys" target="_blank" rel="noopener">Supabase: API keys</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · Firebase ============ -->
+    <section class="topic" id="firebase">
+      <h2 data-toc="Firebase: обзор"><span class="num">05</span> Firebase как альтернатива (обзор)</h2>
+
+      <p><b>Firebase</b> — похожий «бэкенд как сервис» от Google. Главное отличие в самой базе: у Supabase это реляционный Postgres (таблицы, связи, SQL), а у Firebase основная база Cloud Firestore — <b>документная NoSQL</b>: данные лежат документами (объектами, как в JSON) внутри коллекций, и таблиц со связями нет. Firebase силён в мобильных приложениях и в обновлении данных «вживую», а правила доступа там пишутся на своём языке (Security Rules), не на SQL.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Supabase</th><th>Firebase</th></tr></thead>
+          <tbody>
+            <tr><td><b>База</b></td><td>Postgres: таблицы, связи, SQL</td><td>Firestore: коллекции и документы (NoSQL)</td></tr>
+            <tr><td><b>Защита данных</b></td><td>RLS и правила на SQL</td><td>Security Rules на своём языке правил</td></tr>
+            <tr><td><b>Привязка к поставщику</b></td><td>Postgres можно перенести и развернуть самим</td><td>Сильнее привязка к платформе Google</td></tr>
+            <tr><td><b>Где удобно</b></td><td>Сайты и сервисы с таблицами, отчётами и связями</td><td>Мобильные приложения, быстрые прототипы с живым обновлением</td></tr>
+            <tr><td><b>Для курса</b></td><td>Основной выбор: один проект, SQL, RLS</td><td>Только знать, что это такое</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Нет «лучшей базы»: для сайта ресторана с заявками, столиками и отчётами подходит таблица со связями, а для чата с мгновенными обновлениями на телефоне — вполне Firebase. Тарифы и бесплатные лимиты у обеих платформ меняются, проверяйте их на официальных страницах перед выбором. В курсе дальше используется Supabase.</p>
+
+      <div class="yt" data-id="XUu2V6j7Nic" data-title="Firebase vs Supabase 2026: что выбрать? — канал Павел Дуглас" data-start="0"></div>
+      <p class="muted">Ролик на русском, около 9 минут, август 2026: сравнение двух платформ. Это мнение автора, а не официальные данные: цифры по тарифам сверяйте на сайтах сервисов. Смотрите как обзор, повторять за автором ничего не нужно.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Выбирать платформу по моде, а не по данным: сначала нарисуйте схему, потом решайте, какая база подходит. <b>2.</b> Думать, что в Firebase защита не нужна: Security Rules тоже надо писать, иначе база открыта. <b>3.</b> Смешивать в проекте обе платформы без причины: две базы — два набора ключей и правил.</p>
+      </div>
+
+      <article class="task" id="q-firebase">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: Supabase и Firebase</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Чем главным образом отличается база Supabase от Firestore в Firebase?</p>
+          <ol class="options">
+            <li>Supabase — реляционный Postgres с таблицами и SQL, Firestore — документная NoSQL-база из коллекций</li>
+            <li>Supabase работает только на телефонах, а Firebase только на сайтах</li>
+            <li>В Firebase защита данных не нужна</li>
+            <li>Различий нет, это одна и та же база под разными названиями</li>
+          </ol>
+          <div class="explain"><p>Различие в модели данных: таблицы со связями и SQL против документов в коллекциях. Защита нужна в обеих.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Сайт ресторана хранит столики и заявки, которые ссылаются на столики. Какая модель данных здесь естественнее?</p>
+          <ol class="options">
+            <li>Один большой текстовый файл</li>
+            <li>Хранить всё в <code>localStorage</code> у посетителя</li>
+            <li>Две связанные таблицы в реляционной базе</li>
+            <li>Картинки со схемами</li>
+          </ol>
+          <div class="explain"><p>Есть сущности и связь между ними («заявка — столик»), это классический случай для таблиц. <code>localStorage</code> живёт только в одном браузере и владельцу ничего не покажет.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://firebase.google.com/docs/firestore" target="_blank" rel="noopener">Firebase: Cloud Firestore</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai-prompt">
+      <h2 data-toc="ИИ: схема, потом код"><span class="num">06</span> ИИ-блок: сначала схема, потом код</h2>
+
+      <div class="callout ai">
+        <b>Правила работы с ИИ и базой данных</b>
+        <p><b>1.</b> Схему рисуете вы (бумага, доска), ИИ получает её текстом: таблицы, столбцы, типы, связи. ИИ без схемы придумывает свою, и она не совпадёт с вашей формой. <b>2.</b> Просите SQL отдельно от кода сайта и читайте его перед запуском: особенно <code>delete</code> и <code>update</code>. <b>3.</b> Всегда требуйте включить RLS и написать правила, а в ответе перечислить, что разрешено каждой роли. <b>4.</b> Секреты только в <code>.env.local</code>, в чат и в код не вставляйте. <b>5.</b> Меняйте схему итерациями («добавь столбец comment»), а не переписывайте всё заново. <b>6.</b> Не вставляйте в чат настоящие данные клиентов: только вымышленные.</p>
+      </div>
+
+      <div class="prompt bad-prompt">Сделай сохранение заявок в supabase</div>
+      <div class="prompt good-prompt">Контекст: проект Next.js 16 (App Router, TypeScript, Tailwind CSS 4), сайт ресторана «Чойхона у Рудаки» (вымышленный). Форма бронирования уже есть в components/BookingForm.tsx (клиентский компонент: имя, телефон, число гостей, дата и время). Правила проекта лежат в AGENTS.md. Проект Supabase создан.
+Цель: сохранять заявки в базу. Схема (нарисована на бумаге):
+- restaurant_tables: id (bigint, identity, primary key), name (text, not null), seats (int, not null, больше 0)
+- bookings: id (bigint, identity, primary key), created_at (timestamptz, default now()), name (text, 2..80 символов), phone (text), guests (int, 1..20), booking_at (timestamptz), table_id (bigint, внешний ключ на restaurant_tables.id, может быть пустым), status (text, default 'new')
+Ограничения: 1) сначала только SQL для SQL Editor (создание таблиц, пять тестовых столиков, включение RLS на ОБЕИХ таблицах, grant и правила: anon может только вставлять в bookings со status = 'new' и проверкой полей, и только читать restaurant_tables); никакого delete и update без where; 2) потом код: пакет @supabase/supabase-js, lib/supabase.ts с клиентом из NEXT_PUBLIC_SUPABASE_URL и NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; форма вызывает insert без .select(); состояния «отправляется», «ошибка» (понятный текст), «заявка принята»; 3) страница /admin: серверный компонент, читает bookings через SUPABASE_SECRET_KEY (без NEXT_PUBLIC_), export const dynamic = "force-dynamic", таблица с колонками, сортировка по created_at по убыванию, в метаданных robots noindex; 4) никаких ключей в коде, добавь в .env.example имена переменных без значений.
+Примеры: ошибка при пустом телефоне должна показываться под полем, а не alert.
+Проверка: в конце перечисли, что разрешено роли anon на каждой таблице, и покажи, как проверить, что select из браузера с publishable-ключом не возвращает заявки.</div>
+
+      <p>Если ответ не подошёл, не начинайте заново: напишите, что именно не так («insert падает с ошибкой row-level security, вот её текст»), и дайте ИИ полный текст ошибки без ключей.</p>
+
+      <div class="callout warn">
+        <b>Что ИИ делает неправильно чаще всего</b>
+        <p><b>1.</b> Забывает включить RLS на второй таблице. <b>2.</b> Пишет <code>using (true)</code> на <code>select</code> «чтобы заработало». <b>3.</b> Подставляет secret-ключ в клиентский код или в <code>NEXT_PUBLIC_…</code>. <b>4.</b> Пишет <code>SUPABASE_ANON_KEY</code> вместо новой пары publishable и secret. <b>5.</b> Вставляет в код реальный ключ «для примера». <b>6.</b> Добавляет <code>.select()</code> после <code>insert</code>, из-за чего вставка падает без правила на чтение. Перед commit просмотрите изменения (diff) и найдите в них <code>secret</code>, <code>sb_</code>, <code>eyJ</code>, <code>using (true)</code>.</p>
+      </div>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: заявки в базу"><span class="num">07</span> Практика: заявки сохраняются в базу</h2>
+
+      <p>Берём сайт ресторана (любой вашей версии: форма бронирования из уроков 8–9 или новая) и подключаем к нему базу. Порядок: схема → проект → таблицы и RLS → ключи → форма → админ-таблица → проверка → деплой.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1</b><span>схема на бумаге</span><code>2 таблицы</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>2–3</b><span>проект, SQL, RLS</span><code>SQL Editor</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>4</b><span>ключи</span><code>.env.local</code></div>
+          <div class="ar">→</div>
+          <div class="st ai"><b>5–6</b><span>форма и админка (ИИ)</span><code>insert / select</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>7–9</b><span>проверка и деплой</span><code>Vercel env</code></div>
+        </div>
+        <figcaption>Порядок работы: схема и защита раньше кода формы, а секреты — только в переменных окружения</figcaption>
+      </figure>
+
+      <h3>Шаг за шагом</h3>
+      <ol class="steps">
+        <li><b>Схема на бумаге.</b> На листе или доске нарисуйте две таблицы и стрелку, как на схеме из раздела 1: <code>restaurant_tables</code> и <code>bookings</code>, у каждого столбца тип. Сфотографируйте для себя. Проверьте по трём вопросам: у каждой таблицы есть <code>id</code>? Нет ли столбца с несколькими значениями? Куда ведёт стрелка?</li>
+        <li><b>Создайте проект Supabase.</b> Зайдите на supabase.com (удобно войти через GitHub), создайте проект: название (например <code>mfs-course</code>), пароль базы (в менеджер паролей), ближайший к вам регион. Дождитесь, пока проект поднимется. Это единственный проект на весь курс.</li>
+        <li><b>Таблицы и RLS.</b> Откройте SQL Editor и вставьте SQL из блока ниже, нажмите Run. Результат: «Success». Затем в Table Editor убедитесь, что обе таблицы есть и помечены как RLS enabled.</li>
+        <li><b>Ключи в <code>.env.local</code>.</b> В панели откройте Settings → API Keys (или окно Connect): скопируйте адрес проекта, publishable key и secret key. В корне проекта создайте или дополните <code>.env.local</code> тремя переменными из раздела 4. Проверьте, что <code>.env.local</code> есть в <code>.gitignore</code> (<code>git check-ignore -v .env.local</code>, урок 10). Перезапустите <code>npm run dev</code>.</li>
+        <li><b>Форма и клиент.</b> Установите пакет: <code>npm install @supabase/supabase-js</code>. Отправьте ИИ хороший промпт из раздела 6 (в режиме «План», урок 6) и примените изменения по шагам. Откройте форму, отправьте заявку с вымышленными данными: появилось «заявка принята»?</li>
+        <li><b>Проверьте базу.</b> В Table Editor откройте <code>bookings</code>: новая строка там? Какой <code>status</code>, заполнен ли <code>created_at</code>?</li>
+        <li><b>Админ-таблица.</b> Откройте <code>/admin</code>: все заявки видны, новые сверху. Попросите ИИ объяснить, почему страница серверная и почему здесь нужен secret-ключ.</li>
+        <li><b>Проверка защиты.</b> Временно добавьте внутрь async-обработчика формы <code>console.log(await supabase.from("bookings").select())</code>, отправьте форму и откройте консоль браузера (урок 10): должен быть пустой список или ошибка доступа (<code>permission denied</code>, код <code>42501</code>). Если вы видите чужие заявки, защита дырявая: вернитесь к разделу 4. Удалите временный <code>console.log</code>.</li>
+        <li><b>Деплой.</b> Закоммитьте и отправьте код на GitHub. В Vercel добавьте три переменные в Settings → Environment Variables, сделайте Redeploy (урок 10). Отправьте тестовую заявку на сайте <code>…vercel.app</code> и найдите её в Table Editor.</li>
+        <li><b>Объяснение.</b> Расскажите своими словами (или спросите у ИИ и перескажите): какие два ключа есть, какой куда можно, что делает ваше правило, почему <code>/admin</code> читает на сервере.</li>
+      </ol>
+
+<pre class="code" data-title="SQL Editor: таблицы, RLS и правила (вымышленный ресторан)">
+create table restaurant_tables (
+  id bigint generated always as identity primary key,
+  name text not null,
+  seats int not null check (seats &gt; 0)
+);
+
+create table bookings (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  name text not null check (char_length(name) between 2 and 80),
+  phone text not null,
+  guests int not null check (guests between 1 and 20),
+  booking_at timestamptz not null,
+  table_id bigint references restaurant_tables (id),
+  status text not null default 'new'
+);
+
+insert into restaurant_tables (name, seats) values
+  ('У окна', 2), ('Центр', 4), ('Семейный', 6), ('Терраса', 4), ('VIP', 8);
+
+alter table restaurant_tables enable row level security;
+alter table bookings enable row level security;
+
+grant select on table restaurant_tables to anon;
+grant insert on table bookings to anon;
+
+create policy "anyone can read tables"
+on restaurant_tables for select to anon using (true);
+
+create policy "anyone can create a new booking"
+on bookings for insert to anon
+with check (status = 'new' and guests between 1 and 20);
+</pre>
+      <p>Столики могут читать все (это публичные данные: названия и число мест), а заявки анонимный посетитель только добавляет и прочитать не может. Правило из раздела 4 с проверкой длины имени уже закрыто ограничением <code>check</code> в самой таблице.</p>
+
+      <h3>Как выглядят ключевые куски кода</h3>
+<pre class="code" data-title="lib/supabase.ts: клиент для браузера (только publishable key)">
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+);
+</pre>
+<pre class="code" data-title="В форме: добавляем заявку (без .select() после insert)">
+const { error } = await supabase.from("bookings").insert({
+  name,
+  phone,
+  guests: Number(guests),
+  booking_at: bookingAt,
+});
+if (error) {
+  setMessage("Не удалось отправить заявку. Попробуйте ещё раз.");
+} else {
+  setMessage("Заявка принята!");
+}
+</pre>
+<pre class="code" data-title="app/admin/page.tsx: серверная страница, secret key (фрагмент)">
+import { createClient } from "@supabase/supabase-js";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminPage() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+  );
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .order("created_at", { ascending: false });
+  // ... таблица из data или текст ошибки
+}
+</pre>
+      <p>В файле нет <code>"use client"</code>, поэтому он выполняется на сервере, а <code>SUPABASE_SECRET_KEY</code> без приставки <code>NEXT_PUBLIC_</code> в браузер не попадает. <code>force-dynamic</code> заставляет Next.js читать базу при каждом открытии, а не один раз при сборке.</p>
+
+      <div class="callout warn">
+        <b>Админка пока открыта всем</b>
+        <p>Адрес <code>/admin</code> сейчас может открыть любой, кто знает ссылку: пароля нет, вход появится в уроке 12. Поэтому в учебной базе храните <b>только вымышленные данные</b> (выдуманные имена, телефоны вида <code>+992 900 00 00 01</code>) и не публикуйте ссылку. Не вставляйте настоящие номера друзей и гостей.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b><code>new row violates row-level security policy for table "bookings"</code>.</b> Запрос не подошёл под правило. Проверьте: правило на <code>insert</code> создано и относится к роли <code>anon</code>; <code>status</code> равен <code>new</code>; <code>guests</code> от 1 до 20. Часто виноват <code>.select()</code> после <code>insert</code>: он требует права чтения, которых у <code>anon</code> нет. Уберите его.</p>
+        <p><b><code>permission denied for table bookings</code> (код 42501).</b> Нет <code>grant insert … to anon</code>. Выполните строку <code>grant</code> из SQL выше.</p>
+        <p><b><code>supabaseUrl is required</code> или <code>Invalid API key</code>.</b> Переменная не прочитана: имя в <code>.env.local</code> с опечаткой, файл не в корне, лишние пробелы или кавычки, не перезапущен <code>npm run dev</code>. Помните: клиентский код видит только переменные с <code>NEXT_PUBLIC_</code>, а остальные доступны лишь на сервере.</p>
+        <p><b><code>null value in column "phone" violates not-null constraint</code>.</b> Форма не передала столбец, который обязателен. Сверьте имена полей объекта в <code>insert</code> с именами столбцов (<code>booking_at</code>, а не <code>bookingAt</code>).</p>
+        <p><b>В <code>/admin</code> пусто, хотя в Table Editor строки есть.</b> Либо ключ не secret (с publishable RLS скрывает всё), либо страница закеширована при сборке: добавьте <code>export const dynamic = "force-dynamic"</code>. На Vercel проверьте, что переменные добавлены и сделан Redeploy.</p>
+        <p><b>Всё работало, а теперь «Failed to fetch» или долгое ожидание.</b> Бесплатный проект мог уйти на паузу после недели без активности: откройте панель Supabase и восстановите проект.</p>
+        <p><b>Вы случайно закоммитили <code>.env.local</code> или показали ключ.</b> Считайте ключ утёкшим: удалите его в панели (Settings → API Keys), создайте новый, обновите <code>.env.local</code> и Vercel. Простое удаление файла из репозитория не помогает: ключ остался в истории Git.</p>
+      </div>
+
+      <article class="task" id="cl-built">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Чек-лист: заявки живут в базе</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-db">
+          <li>Нарисована схема из двух таблиц со стрелкой связи, у каждого столбца есть тип</li>
+          <li>Создан один проект Supabase, пароль базы сохранён в менеджере паролей</li>
+          <li>Таблицы <code>restaurant_tables</code> и <code>bookings</code> созданы, на обеих включена RLS</li>
+          <li>Правило разрешает анонимному посетителю только добавлять заявки и читать столики</li>
+          <li>Адрес, publishable key и secret key лежат в <code>.env.local</code>, файл не попал в Git, secret без <code>NEXT_PUBLIC_</code></li>
+          <li>Форма сохраняет заявку, строка видна в Table Editor</li>
+          <li>Страница <code>/admin</code> читает заявки на сервере через secret key и показывает их таблицей</li>
+          <li>Проверено: <code>select</code> из браузера с publishable key заявки не возвращает</li>
+          <li>Переменные добавлены на Vercel, сделан Redeploy, на сайте <code>…vercel.app</code> заявка сохраняется</li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-fix">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Если сломалось: найди причину</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Форма выдаёт <code>new row violates row-level security policy for table "bookings"</code>. В коде <code>insert({ ..., status: "confirmed" })</code>, правило: <code>with check (status = 'new')</code>. Причина?</p>
+          <ol class="options">
+            <li>Проект Supabase на паузе</li>
+            <li>Строка не прошла условие <code>with check</code>: статус должен быть <code>new</code></li>
+            <li>В <code>.env.local</code> лишний пробел</li>
+            <li>В таблице слишком много строк</li>
+          </ol>
+          <div class="explain"><p>Эта ошибка означает, что RLS работает: правило проверило новую строку и отклонило её. Не отключайте RLS, а исправьте данные или условие осознанно.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>На сайте на Vercel форма работает, а при запуске на компьютере пишет <code>supabaseUrl is required</code>. Что проверить первым?</p>
+          <ol class="options">
+            <li>Лимит бесплатного тарифа Supabase</li>
+            <li>Включена ли RLS</li>
+            <li>Есть ли в корне проекта <code>.env.local</code> с правильными именами и перезапущен ли <code>npm run dev</code></li>
+            <li>Версию браузера</li>
+          </ol>
+          <div class="explain"><p>На Vercel переменные добавлены в настройках, а локально их берут из <code>.env.local</code>. Если там нет имени или не было перезапуска, значение останется <code>undefined</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>ИИ предложил для страницы <code>/admin</code> читать заявки в клиентском компоненте с publishable-ключом и добавить правило <code>for select to anon using (true)</code>. Что вы ответите?</p>
+          <ol class="options">
+            <li>Нет: так телефоны гостей увидит любой посетитель. Читать нужно на сервере с secret-ключом, а позже закрыть страницу входом</li>
+            <li>Да, так проще всего, правило безопасное</li>
+            <li>Да, но добавить ещё <code>NEXT_PUBLIC_</code> перед secret-ключом</li>
+            <li>Отключить RLS полностью, тогда ошибок не будет</li>
+          </ol>
+          <div class="explain"><p>Открытое чтение раздаёт все заявки всем. Серверный код с secret-ключом — единственный безопасный путь на этом этапе.</p></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============ 08 · Фишка ============ -->
+    <section class="topic" id="challenge">
+      <h2 data-toc="Схема на доске"><span class="num">08</span> Фишка урока: «Схема на доске» и охота на дыру</h2>
+
+      <p>Сначала схема, потом код — привычка, которую лучше отработать в игре. Блок рассчитан на преподавателя и проводится в аудитории или онлайн (общая доска, например Miro, или просто бумага и фото). Время: около 50 минут.</p>
+
+      <div class="callout tip">
+        <b>Правила</b>
+        <p><b>1.</b> Преподаватель называет жизненный случай: барбершоп с записью, школа танцев, такси, склад, библиотека. Один случай на всю группу или каждой паре свой. <b>2.</b> Участники работают в парах. 10 минут: нарисовать схему базы (таблицы, столбцы с типами, стрелки связей), компьютер выключен. <b>3.</b> 5 минут: пары меняются схемами и проверяют чужую по чек-листу ниже. <b>4.</b> 15 минут: автор просит ИИ превратить схему в SQL (текстом пересказывает схему, как в промпте раздела 6) и сравнивает результат с рисунком. <b>5.</b> Любой выданный ИИ <code>using (true)</code> на таблице с личными данными — повод для общего «ага»: кто нашёл, получает очко.</p>
+      </div>
+
+      <h3>Чек-лист проверки чужой схемы</h3>
+      <ul>
+        <li>У каждой таблицы есть первичный ключ <code>id</code>.</li>
+        <li>Нет столбцов, в которых лежит сразу несколько значений.</li>
+        <li>Связи показаны стрелками, и понятно, какая таблица «один», какая «многие».</li>
+        <li>Тип выбран осмысленно: даты — не текст, деньги — число, статус — короткий текст из списка.</li>
+        <li>Для каждой таблицы подписано, кто может читать и кто может добавлять (будущие правила RLS).</li>
+        <li>Нет настоящих персональных данных в примерах.</li>
+      </ul>
+
+      <h3>Расписание</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:05</td><td>Случай, пары, вопросы: «Какие вещи хранит система?»</td></tr>
+            <tr><td>0:05–0:15</td><td>Рисуют схему, компьютеры закрыты</td></tr>
+            <tr><td>0:15–0:20</td><td>Обмен схемами, проверка по чек-листу, 3 замечания</td></tr>
+            <tr><td>0:20–0:35</td><td>Промпт ИИ, SQL, сравнение с рисунком, поиск дыр в правилах</td></tr>
+            <tr><td>0:35–0:50</td><td>Демо: две-три пары показывают схему и самую интересную ошибку (своей схемы или ответа ИИ)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Очки (необязательно)</h3>
+      <ul>
+        <li><b>+2</b> за схему, где проверяющий не нашёл ни одного замечания по чек-листу.</li>
+        <li><b>+1</b> за каждое принятое автором замечание.</li>
+        <li><b>+2</b> за найденную дыру в ответе ИИ (нет RLS, открытое чтение, secret-ключ не на сервере).</li>
+        <li><b>+1</b> за SQL, который совпал со схемой с первой попытки.</li>
+      </ul>
+
+      <article class="task" id="cl-schema">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: «Схема на доске» сыграна</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте выполненное.</p>
+        <ul class="checklist" id="cl-board">
+          <li>Нарисовал(а) схему базы для своего случая до того, как открыл(а) компьютер</li>
+          <li>Проверил(а) чужую схему по чек-листу и написал(а) не меньше трёх замечаний</li>
+          <li>Получил(а) замечания к своей схеме и исправил(а) хотя бы одно</li>
+          <li>Попросил(а) ИИ написать SQL по схеме, сравнил(а) с рисунком и нашёл(а) хотя бы одно расхождение или опасное место</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ ДЗ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание: сайт ресторана с бронированием (ДЗ-11)</h2>
+
+      <p>Доведите сайт ресторана (вымышленного или любого другого заведения с записью) до такого состояния, чтобы заявки на бронирование столика сохранялись в базу Supabase. Сдача: две ссылки (репозиторий GitHub и сайт на Vercel).</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Схема:</b> на бумаге нарисована до кода, в <code>README.md</code> репозитория есть её текстовая версия (таблицы, столбцы, связи). Минимум две связанные таблицы (например <code>restaurant_tables</code> и <code>bookings</code> с <code>table_id</code>).</li>
+        <li><b>Один проект Supabase</b> на весь курс; таблицы названы понятно, чтобы позже в нём жили и другие.</li>
+        <li><b>RLS включена на всех таблицах.</b> Анонимный посетитель может только добавлять заявки (с проверкой данных в правиле или ограничениях) и читать публичные данные (список столиков). Читать заявки с publishable-ключом нельзя.</li>
+        <li><b>Форма бронирования:</b> проверка полей на странице (урок 8), понятные состояния «отправляется», «заявка принята», «ошибка», данные попадают в <code>bookings</code>. Столик выбирается из списка, загруженного из базы.</li>
+        <li><b>Админ-таблица</b> <code>/admin</code>: серверная страница, читает заявки через secret-ключ, новые сверху; закрыта от индексации (<code>noindex</code>). Пока в ней только вымышленные данные.</li>
+        <li><b>Ключи:</b> адрес и publishable key с <code>NEXT_PUBLIC_</code>, secret только без неё; всё в <code>.env.local</code> и в переменных Vercel; в репозитории есть <code>.env.example</code> без значений, самих ключей и <code>.env.local</code> нет ни в коде, ни в истории Git.</li>
+        <li><b>Качество:</b> <code>npm run build</code> без ошибок; на сайте на Vercel форма работает; вы можете объяснить каждую строку SQL и каждое правило.</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li>Сначала схема на бумаге, потом SQL, потом код (раздел 6 и практика).</li>
+        <li>Включите RLS на всех таблицах, напишите правила и проверьте защиту консольной проверкой из шага 8 практики.</li>
+        <li>Настройте переменные в Vercel и сделайте Redeploy.</li>
+        <li>Отправьте тестовую заявку с вымышленными данными на ссылке Vercel и убедитесь, что строка появилась в Table Editor и в <code>/admin</code>.</li>
+        <li>Вставьте ссылки ниже и отметьте чек-лист.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> RLS выключена или включена только на одной таблице. <b>2.</b> Правило <code>using (true)</code> на заявках. <b>3.</b> Secret-ключ в клиентском компоненте или в <code>NEXT_PUBLIC_…</code>. <b>4.</b> Ключи или <code>.env.local</code> в публичном репозитории. <b>5.</b> Форма работает на компьютере, а на Vercel нет: не добавлены переменные или не сделан Redeploy. <b>6.</b> Схема нарисована после кода и под него подогнана. <b>7.</b> В базе настоящие телефоны друзей. <b>8.</b> Нет проверки полей: в таблицу попадают пустые заявки.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Как проверяют</b>
+        <p>Проверяющий откроет сайт, отправит заявку, посмотрит <code>/admin</code>, затем проверит репозиторий: нет ли ключей в коде и в истории, как оформлен <code>.env.example</code>, как выглядят схема в README и SQL. Баллы за схему, за защиту (RLS и ключи), за работающую форму и за то, что вы можете объяснить своё решение.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист требований к ДЗ-11</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Схема нарисована до кода, текстовая версия лежит в README</li>
+          <li>Не меньше двух связанных таблиц, использован один проект Supabase</li>
+          <li>RLS включена на всех таблицах, анонимные посетители только добавляют заявки и читают публичные данные</li>
+          <li>Проверено консолью: заявки с publishable-ключом не читаются</li>
+          <li>Форма с проверкой полей и состояниями сохраняет заявки, столик выбирается из базы</li>
+          <li><code>/admin</code> читает на сервере через secret-ключ, закрыта от индексации, данные вымышленные</li>
+          <li>Ключи только в <code>.env.local</code> и Vercel, есть <code>.env.example</code>, в репозитории и истории секретов нет</li>
+          <li><code>npm run build</code> проходит, на Vercel заявка сохраняется</li>
+          <li>Ссылки на GitHub и Vercel вставлены ниже</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий сайта.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/restaurant-site"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 9.3</span><h4>Ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на опубликованный сайт (адрес вида <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://restaurant-site.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/api/securing-your-api" target="_blank" rel="noopener">Supabase: защита вашего API</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>База данных:</b> таблицы из строк и столбцов; у каждой таблицы первичный ключ <code>id</code>; внешний ключ хранит <code>id</code> из другой таблицы (связь «один ко многим»).</li>
+        <li><b>Порядок работы:</b> схема на бумаге → SQL → RLS → код. Схему ИИ получает текстом.</li>
+        <li><b>Supabase:</b> облачный Postgres + панель (Table Editor, SQL Editor) + API. Бесплатно: до 2 активных проектов, 500 МБ, пауза после недели без активности, без автобэкапов. Один проект на весь курс.</li>
+        <li><b>SQL и CRUD:</b> <code>insert</code> (создать), <code>select … where … order by … limit</code> (прочитать), <code>update … set … where</code> (изменить), <code>delete … where</code> (удалить). Без <code>where</code> затрагиваются все строки.</li>
+        <li><b>RLS:</b> включайте на каждой таблице: <code>alter table … enable row level security</code>. Без правил через API с publishable-ключом таблица закрыта. Правило: действие + роль + <code>using</code> / <code>with check</code>. Для <code>anon</code> нужен ещё <code>grant</code>. Не пишите <code>using (true)</code> для личных данных.</li>
+        <li><b>Ключи:</b> publishable (<code>sb_publishable_…</code>, раньше anon) — можно в браузере, права ограничивает RLS; secret (<code>sb_secret_…</code>, раньше service_role) — обходит RLS, только на сервере. Оба в <code>.env.local</code> и Vercel, secret без <code>NEXT_PUBLIC_</code>. Утёк — удалить и создать новый.</li>
+        <li><b>Админка:</b> серверная страница, secret-ключ, <code>dynamic = "force-dynamic"</code>. Без входа она открыта всем (вход — урок 12), поэтому данные только вымышленные.</li>
+        <li><b>Firebase:</b> документная NoSQL-база Firestore, коллекции и документы, Security Rules; Supabase — Postgres, таблицы и SQL.</li>
+        <li><b>ИИ:</b> просите SQL отдельно, проверяйте <code>where</code>, RLS на всех таблицах, отсутствие <code>using (true)</code> и секретов в клиентском коде; ошибку присылайте полным текстом без ключей.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу нарисовать схему из двух связанных таблиц и объяснить первичный и внешний ключ</li>
+          <li>Могу создать проект Supabase, таблицу и выполнить SQL в SQL Editor</li>
+          <li>Могу прочитать <code>select</code>, <code>insert</code>, <code>update</code>, <code>delete</code> и объяснить, что случится без <code>where</code></li>
+          <li>Могу включить RLS, написать правило на добавление и проверить, что читать заявки с браузера нельзя</li>
+          <li>Могу объяснить разницу между publishable и secret ключами и где хранить каждый</li>
+          <li>Могу сохранить данные формы в базу и вывести их в админ-таблицу на сервере</li>
+          <li>Могу в двух предложениях сравнить Supabase и Firebase</li>
+        </ul>
+      </article>
+    </section>
