@@ -732,3 +732,15 @@ export const VC_LESSON_META: LessonMeta = {
     't-understood': 'e',
   },
 };
+
+/** React Pro + Next.js: slugs with content/react-next/lessons/ru/NN-slug.html (plain slugs, course order). */
+export const RN_AVAILABLE = ['start'] as const;
+
+/** React Pro + Next.js task levels, keyed by progress key `rn-<slug>`. */
+export const RN_LESSON_META: LessonMeta = {
+  'rn-start': {
+    'q1-1': 'e',
+    'r1-1': 'm',
+    'ts1-1': 'e',
+  },
+};

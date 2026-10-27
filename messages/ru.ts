@@ -220,6 +220,11 @@ export const ru = {
     noReact: 'Не удалось загрузить React с esm.sh. Проверьте подключение к интернету.',
     noApp: 'Экспортируйте компонент: export default function App() { … }',
   },
+  ts: {
+    loading: 'Загружаем TypeScript…',
+    loadFail: 'Не удалось загрузить TypeScript. Проверьте подключение к интернету и запустите ещё раз.',
+    at: (line: number, col: number) => `Строка ${line}, столбец ${col}`,
+  },
   explain: {
     network: 'Ошибка сети: проверьте адрес, интернет или CORS у API.',
     notDefined: (name: string) => `Переменная «${name}» не найдена: её не объявили или она не видна в этом месте (область видимости).`,

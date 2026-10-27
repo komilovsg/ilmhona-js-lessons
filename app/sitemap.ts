@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { AVAILABLE, VC_AVAILABLE } from '@/lib/lesson-meta.generated';
+import { AVAILABLE, RN_AVAILABLE, VC_AVAILABLE } from '@/lib/lesson-meta.generated';
 import { SITE_URL as base } from '@/lib/site';
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -13,6 +13,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
   for (const l of ['ru', 'tj']) {
     out.push({ url: `${base}/${l}/vibe-coding` });
     for (const slug of VC_AVAILABLE) out.push({ url: `${base}/${l}/vibe-coding/lessons/${slug}` });
+  }
+  for (const l of ['ru', 'tj']) {
+    out.push({ url: `${base}/${l}/react-next` });
+    for (const slug of RN_AVAILABLE) out.push({ url: `${base}/${l}/react-next/lessons/${slug}` });
   }
   return out;
 }

@@ -64,8 +64,8 @@ function CodeCard({ lines }: { lines: { t: string; c: string }[][] }) {
   );
 }
 
-/** Frame props of the Vibe Coding course; the old course keeps the Frame defaults. */
-const vibeFrame = (courseId: CourseId, locale: Locale) => {
+/** Frame props of the newer courses; the old course keeps the Frame defaults. */
+const courseFrame = (courseId: CourseId, locale: Locale) => {
   const v = COURSES[courseId].texts?.[locale];
   return v ? { chip: v.name, tagline: v.tagline } : {};
 };
@@ -105,10 +105,23 @@ function Frame({
 
 export async function homeOg(locale: Locale, courseId: CourseId = 'frontend') {
   const vibe = courseId === 'vibe-coding';
+  const rn = courseId === 'react-next';
   const head = vibe
     ? locale === 'ru' ? ['Вайб-кодинг', 'с нуля'] : ['Вайб-кодинг', 'аз сифр']
-    : locale === 'ru' ? ['Сделай', 'первый шаг'] : ['Қадами', 'аввалро гузор'];
-  const card = vibe ? (
+    : rn
+      ? ['React Pro', '+ Next.js']
+      : locale === 'ru' ? ['Сделай', 'первый шаг'] : ['Қадами', 'аввалро гузор'];
+  const card = rn ? (
+    <CodeCard
+      lines={[
+        [{ t: 'async function ', c: C.kw }, { t: 'Page', c: C.accent }, { t: '() {', c: C.code }],
+        [{ t: ' const ', c: C.kw }, { t: 'd = ', c: C.code }, { t: 'await ', c: C.kw }, { t: 'load();', c: C.code }],
+        [{ t: ' return ', c: C.kw }, { t: '<Store d={d} />;', c: C.code }],
+        [{ t: '}', c: C.code }],
+        [{ t: '// → ', c: C.cm }, { t: 'XP +100', c: C.accent }],
+      ]}
+    />
+  ) : vibe ? (
     <CodeCard
       lines={[
         [{ t: 'const ', c: C.kw }, { t: 'idea', c: C.code }, { t: ' = ', c: C.code }, { t: "'...'", c: C.str }, { t: ';', c: C.code }],
@@ -131,9 +144,9 @@ export async function homeOg(locale: Locale, courseId: CourseId = 'frontend') {
   );
   return new ImageResponse(
     (
-      <Frame locale={locale} card={card} {...vibeFrame(courseId, locale)}>
-        <div style={{ fontSize: vibe ? 76 : 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2 }}>{head[0]}</div>
-        <div style={{ fontSize: vibe ? 76 : 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2, color: C.accent }}>{head[1]}</div>
+      <Frame locale={locale} card={card} {...courseFrame(courseId, locale)}>
+        <div style={{ fontSize: vibe || rn ? 76 : 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2 }}>{head[0]}</div>
+        <div style={{ fontSize: vibe || rn ? 76 : 92, fontWeight: 800, lineHeight: 1.02, letterSpacing: -2, color: C.accent }}>{head[1]}</div>
       </Frame>
     ),
     { ...ogSize, fonts: await fonts() },
@@ -158,7 +171,7 @@ export async function lessonOg(locale: Locale, c: CourseEntry, courseId: CourseI
   );
   return new ImageResponse(
     (
-      <Frame locale={locale} card={card} {...vibeFrame(courseId, locale)}>
+      <Frame locale={locale} card={card} {...courseFrame(courseId, locale)}>
         <div style={{ ...row, alignItems: 'center', gap: 16, marginBottom: 22 }}>
           <div style={{ ...row, ...mono, fontSize: 30, color: '#0f1613', background: C.accent, borderRadius: 12, padding: '4px 16px' }}>{num}</div>
           <div style={{ ...row, fontSize: 27, fontWeight: 600, color: C.accent }}>

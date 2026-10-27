@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type Lang = 'js' | 'jsx' | 'html' | 'css';
+export type Lang = 'js' | 'jsx' | 'ts' | 'html' | 'css';
 
 const KEYWORDS =
   'const|let|var|function|return|if|else|for|of|in|while|do|new|this|true|false|null|undefined|typeof|instanceof|class|break|continue|switch|case|default|try|catch|throw|async|await|delete';

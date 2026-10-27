@@ -1,16 +1,16 @@
 // Guards a lesson translation: everything that affects running code or auto-check must be identical.
-// Usage: node scripts/check-translation.mjs [tg] [--course vibe-coding] [NN-slug.html ...]
-// Default: all files present in content/lessons/<locale> (or content/vibe-coding/lessons/<locale> with --course vibe-coding).
+// Usage: node scripts/check-translation.mjs [tg] [--course vibe-coding|react-next] [NN-slug.html ...]
+// Default: all files present in content/lessons/<locale> (or content/<course>/lessons/<locale> with --course vibe-coding|react-next).
 import fs from 'node:fs';
 
 const args = process.argv.slice(2);
 const ci = args.indexOf('--course');
 const course = ci >= 0 ? args.splice(ci, 2)[1] : 'frontend';
-const base = course === 'vibe-coding' ? 'content/vibe-coding/lessons' : 'content/lessons';
+const base = course === 'frontend' ? 'content/lessons' : `content/${course}/lessons`;
 const locale = args[0] && !args[0].endsWith('.html') ? args[0] : 'tg';
 const files = args.filter((a) => a.endsWith('.html'));
 const dir = (l) => new URL(`../${base}/${l}/`, import.meta.url);
-const list = files.length ? files : fs.readdirSync(dir(locale)).filter((f) => f.endsWith('.html'));
+const list = files.length ? files : (fs.existsSync(dir(locale)) ? fs.readdirSync(dir(locale)) : []).filter((f) => f.endsWith('.html'));
 
 // comments are translatable; everything else inside <pre> must match
 const stripComments = (code) =>

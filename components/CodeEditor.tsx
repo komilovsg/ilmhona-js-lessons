@@ -6,7 +6,11 @@ import { highlightLang, type Lang } from '@/lib/highlight';
 import type { MountedEditor } from '@/lib/cm';
 import { useT } from './I18nProvider';
 
-export type CodeEditorHandle = { getValue: () => string };
+export type CodeEditorHandle = {
+  getValue: () => string;
+  /** Underline error ranges once CodeMirror is mounted (no-op before that); [] clears. */
+  setDiagnostics: (d: { from: number; to: number; message: string }[]) => void;
+};
 
 type Props = {
   value: string;
@@ -41,7 +45,10 @@ export default function CodeEditor({ value, onChange, onRun, readOnly, lang = 'j
     cb.current = { onChange, onRun, value };
   });
 
-  useImperativeHandle(handle, () => ({ getValue: () => cm.current?.getValue() ?? cb.current.value }));
+  useImperativeHandle(handle, () => ({
+    getValue: () => cm.current?.getValue() ?? cb.current.value,
+    setDiagnostics: (d) => cm.current?.setDiagnostics(d),
+  }));
 
   const activate = useCallback(
     async (from?: { x: number; y: number }, viaFocus = false) => {
