@@ -1,0 +1,946 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+</style>
+
+
+    <!-- ============ HERO ============ -->
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 21 · Модуль 7. Надёжность: безопасность, тесты, боты</p>
+      <h1>Telegram-бот и автоматизации</h1>
+      <p class="lead">К концу урока у вашего выпускного проекта появится второй интерфейс: Telegram-бот. Новые заявки или заказы приходят владельцу в Telegram, бот отвечает на команды вроде <code>/status</code>, а чужие люди не могут ни подделать запрос к боту, ни выполнить админские команды. Вдобавок вы соберёте одну автоматизацию в n8n (или в Make) без единой строки кода.</p>
+      <ul class="goals">
+        <li>Создать бота через BotFather, хранить токен только в переменных окружения и объяснить, чем он опасен при утечке</li>
+        <li>Прочитать JSON-обновление (Update) от Telegram и достать из него номер чата, текст и команду</li>
+        <li>Подключить вебхук к route handler Next.js, проверять заголовок <code>secret_token</code> и отвечать на команды</li>
+        <li>Отправлять уведомление в Telegram при новой заявке и защитить админские команды списком разрешённых chat id и лимитом запросов</li>
+        <li>Проверить вебхук на публичном HTTPS-адресе: на Vercel или через туннель (ngrok, cloudflared)</li>
+        <li>Собрать автоматизацию в n8n или Make и объяснить, когда хватает конструктора, а когда нужен код</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: выпускной проект из уроков 17–19 (репозиторий на GitHub, сайт на Vercel, Supabase), Cursor, приложение Telegram на телефоне или компьютере. Время: 4–5 часов, удобно в два подхода: теория (разделы 1–6) и практика (разделы 7–9). Откройте урок в одной половине экрана, Cursor в другой. Токен бота и любые ключи в чаты, скриншоты и в репозиторий не попадают: это правило из уроков 10 и 19 действует и здесь. В конце урока вас ждёт «Бот-шоу»: каждый показывает своего бота группе в живом чате.</p>
+    </div>
+
+    <!-- ============ 01 · Бот как второй интерфейс ============ -->
+    <section class="topic" id="why-bot">
+      <h2 data-toc="Бот как интерфейс"><span class="num">01</span> Зачем продукту бот: Telegram как второй интерфейс</h2>
+
+      <p>Представьте заказ на фрилансе. Владелец чойхоны в Душанбе говорит: «Заявки на столы приходят на сайт, но я сижу на кухне и сайт не открываю. Хочу, чтобы в Telegram прилетало: кто, на сколько человек, на когда. И чтобы я мог написать боту <code>/status</code> и узнать, сколько заявок на сегодня». Это очень типичный заказ: в Таджикистане Telegram и есть главный мессенджер клиентов, поставщиков и сотрудников. Люди не установят «ещё одно приложение» вашего магазина, но Telegram у них открыт всегда.</p>
+
+      <p>Бот работает как <b>второй интерфейс</b> того же продукта. Сайт остаётся главным местом, где данные создаются и хранятся (Supabase, урок 11). Бот не заменяет сайт, а даёт другой способ говорить с теми же данными:</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Схема: клиент создаёт заявку на сайте, сайт на Vercel сохраняет её в Supabase и отправляет уведомление в бот Telegram, владелец видит сообщение в Telegram и пишет боту команду /status, бот читает данные из Supabase и отвечает">
+          <rect class="box b" x="8" y="20" width="130" height="70" rx="12" />
+          <text x="73" y="50" text-anchor="middle">Клиент</text><text class="sub" x="73" y="70" text-anchor="middle">заполняет форму</text>
+          <rect class="box g" x="200" y="20" width="150" height="70" rx="12" />
+          <text x="275" y="50" text-anchor="middle">Сайт на Vercel</text><text class="sub" x="275" y="70" text-anchor="middle">route handler / action</text>
+          <rect class="box o" x="412" y="20" width="130" height="70" rx="12" />
+          <text x="477" y="50" text-anchor="middle">Supabase</text><text class="sub" x="477" y="70" text-anchor="middle">таблица заявок</text>
+          <rect class="box v" x="584" y="20" width="128" height="70" rx="12" />
+          <text x="648" y="50" text-anchor="middle">Telegram</text><text class="sub" x="648" y="70" text-anchor="middle">бот и чаты</text>
+          <path class="arr" d="M138 55H194" /><path class="arr-head" d="M194 49l9 6-9 6z" />
+          <path class="arr" d="M350 55H406" /><path class="arr-head" d="M406 49l9 6-9 6z" />
+          <path class="arr" d="M275 90V150H640V96" /><path class="arr-head" d="M634 100l6-10 6 10z" />
+          <text class="sub t-v" x="458" y="144" text-anchor="middle">1. sendMessage: «новая заявка»</text>
+          <rect class="fill-g" x="440" y="190" width="272" height="60" rx="12" />
+          <text x="576" y="216" text-anchor="middle">Владелец в Telegram</text><text class="sub" x="576" y="236" text-anchor="middle">читает уведомление, пишет /status</text>
+          <path class="arr" d="M648 96V186" /><path class="arr-head" d="M642 180l6 10 6-10z" />
+          <path class="arr" d="M440 220H300" /><path class="arr-head" d="M306 214l-10 6 10 6z" />
+          <rect class="fill-y" x="60" y="190" width="240" height="60" rx="12" />
+          <text x="180" y="216" text-anchor="middle">Вебхук на вашем сайте</text><text class="sub" x="180" y="236" text-anchor="middle">2. Telegram присылает команду</text>
+        </svg>
+        <figcaption>Бот ходит в двух направлениях: ваш сайт пишет в Telegram (уведомления), а Telegram пишет на ваш сайт (команды владельца)</figcaption>
+      </figure>
+
+      <p>Что обычно просят у бота в реальных заказах:</p>
+      <ul>
+        <li><b>Уведомления</b>: новая заявка, новый заказ, оплата прошла, остаток товара кончился. Одно сообщение владельцу.</li>
+        <li><b>Простые команды</b>: <code>/status</code> (сколько заявок сегодня), <code>/orders</code> (последние заказы), <code>/help</code> (что умеет бот).</li>
+        <li><b>Приём заявок прямо в чате</b> (клиент пишет боту вместо формы). Это следующий уровень, в уроке остаётся идеей для бонуса.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Чойхона. Основной зал — это сайт: там принимают гостей и записывают заказы в журнал (Supabase). Бот — это звонок на кухню и личный телефон владельца. Когда в зале появляется новый заказ, официант (сайт) звонит владельцу: «Стол на четверых на семь вечера». А владелец может сам позвонить официанту и спросить: «Сколько сегодня столов занято?». Но если номер телефона владельца знает весь город, звонить станут все подряд. Поэтому у бота есть пароль и список тех, кому он отвечает: об этом раздел 5.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Считать, что бот заменяет сайт: данные всё равно живут в базе, а бот только показывает их и принимает команды. <b>2.</b> Ждать, что бот сам напишет владельцу первым: Telegram не даёт боту писать человеку, который ни разу не нажал <code>/start</code>. <b>3.</b> Делать «бота для всех» с командами, которые видят все: <code>/orders</code> показывает данные клиентов. <b>4.</b> Забыть, что уведомление не должно ломать основное действие: если Telegram недоступен, заявка клиента всё равно должна сохраниться.</p>
+      </div>
+
+      <article class="task" id="q-why">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: роль бота в продукте</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Заказчик просит: «Нужно, чтобы каждая новая заявка с сайта приходила в Telegram». Где должны храниться сами заявки?</p>
+          <ol class="options">
+            <li>Только в переписке с ботом: Telegram и есть база данных</li>
+            <li>В базе данных проекта (Supabase), а бот только присылает уведомление и показывает данные по команде</li>
+            <li>В переменной внутри кода бота: так быстрее</li>
+            <li>В токене бота, он же уникальный</li>
+          </ol>
+          <div class="explain"><p>Бот — интерфейс, а не хранилище. Сообщения в чате нельзя искать, фильтровать и защитить правилами RLS. Данные остаются в Supabase, а в Telegram уходит копия-уведомление.</p></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============ 02 · Bot API ============ -->
+    <section class="topic" id="bot-api">
+      <h2 data-toc="Bot API и BotFather"><span class="num">02</span> Telegram Bot API: BotFather, токен, Update</h2>
+
+      <p>Telegram даёт ботам обычное HTTP API, то есть то, что вы уже знаете из урока 10: запрос по адресу, JSON туда, JSON обратно. Настоящего «программирования бота» не требуется: бот — это ваш сервер, который отвечает на запросы Telegram и сам зовёт методы Telegram.</p>
+
+      <h3>Шаг 1. Регистрируем бота в BotFather</h3>
+      <p>Единственный официальный способ создать бота: написать <b>@BotFather</b> в самом Telegram (рядом с названием стоит синяя галочка; подделок с похожим именем много). Диалог выглядит так:</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/21-telegram-bot/botfather.svg" alt="Схема чата с BotFather: пользователь отправляет /newbot, BotFather просит имя, затем username, который должен заканчиваться на bot, и в конце присылает токен доступа к HTTP API; токен закрашен красным как секрет" width="720" height="420" loading="lazy" decoding="async">
+        <figcaption>Диалог с BotFather на упрощённой схеме: команда <code>/newbot</code>, имя, username на «bot» и токен. Реальные тексты BotFather могут отличаться</figcaption>
+      </figure>
+
+      <div class="yt" data-id="miiZ_wSaA0g" data-title="Как создать чат бота в телеграм BotFather и получить токен для бота — канал Антон Медведев IT"></div>
+
+      <ol class="steps">
+        <li>Откройте @BotFather и отправьте <code>/newbot</code>.</li>
+        <li>Введите <b>имя</b> (его видят люди, можно на русском: «Чойхона Рудаки») и <b>username</b> (уникальный, латиницей, обязательно оканчивается на <code>bot</code>, например <code>choyxona_rudaki_bot</code>).</li>
+        <li>BotFather пришлёт <b>токен</b>: строка вида <code>числа:буквы-и-цифры</code>. Это ключ от бота.</li>
+        <li>Токен сразу копируйте в <code>.env.local</code> как <code>TELEGRAM_BOT_TOKEN</code> и больше нигде не показывайте.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Токен — это пароль от бота</b>
+        <p>Кто знает токен, может отправлять сообщения от имени бота, читать то, что пишут боту, и сменить вебхук. Правила те же, что для ключа Gemini в уроке 13: только <code>.env.local</code> и переменные Vercel, без префикса <code>NEXT_PUBLIC_</code>, не в коде, не в чате с ИИ, не на скриншоте, <b>не в логах</b>. Если токен утёк, в BotFather откройте своего бота (команда <code>/mybots</code>) и перевыпустите токен (в меню API Token есть пункт отзыва текущего), затем обновите <code>.env.local</code> и Vercel. Точные названия пунктов могут меняться.</p>
+      </div>
+
+      <h3>Шаг 2. Как выглядит запрос к API</h3>
+      <p>Все методы вызываются по одному шаблону: <code>https://api.telegram.org/bot&lt;ТОКЕН&gt;/&lt;МЕТОД&gt;</code>. Обратите внимание: <b>токен входит в адрес</b>. Поэтому нельзя печатать в лог сам адрес запроса или ошибку, которая его содержит. Ответ всегда JSON: <code>{"ok": true, "result": …}</code> при успехе или <code>{"ok": false, "description": "…"}</code> при ошибке.</p>
+
+<pre class="code" data-title="Терминал: проверить токен (метод getMe)">
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMe"
+</pre>
+
+      <p>Ответ <code>getMe</code> показывает имя и username бота: так проверяют, что токен рабочий. Три метода, которые нужны в этом уроке:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Метод</th><th>Что делает</th><th>Главные поля</th></tr></thead>
+          <tbody>
+            <tr><td><code>getMe</code></td><td>Проверка токена, данные бота</td><td>нет полей</td></tr>
+            <tr><td><code>sendMessage</code></td><td>Отправить текст в чат</td><td><code>chat_id</code>, <code>text</code>, необязательно <code>parse_mode</code></td></tr>
+            <tr><td><code>setWebhook</code></td><td>Сказать Telegram, куда присылать сообщения</td><td><code>url</code>, <code>secret_token</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Шаг 3. Что приходит от Telegram: объект Update</h3>
+      <p>Когда человек пишет боту, Telegram формирует JSON-объект <b>Update</b> («обновление»). У него есть номер <code>update_id</code> и ровно одно из полей-событий. Для текстового сообщения это поле <code>message</code>: внутри него <code>chat</code> (чат, где пришло сообщение, с числовым <code>id</code>), <code>from</code> (кто написал), <code>text</code> и, если это команда, массив <code>entities</code> с записью типа <code>bot_command</code>. В личном чате <code>chat.id</code> совпадает с номером пользователя; в группе это отдельный (отрицательный) номер.</p>
+
+<pre class="code" data-title="Пример Update (учебный)">
+{
+  "update_id": 900001,
+  "message": {
+    "message_id": 17,
+    "from": { "id": 555111, "is_bot": false, "first_name": "Фарзона" },
+    "chat": { "id": 555111, "type": "private", "first_name": "Фарзона" },
+    "date": 1767225600,
+    "text": "/status",
+    "entities": [{ "offset": 0, "length": 7, "type": "bot_command" }]
+  }
+}
+</pre>
+
+      <p>Не каждое обновление — сообщение: бывают отредактированные сообщения, нажатия кнопок, добавление бота в группу. Поэтому код всегда начинается с вопроса «а есть ли тут <code>message.text</code>?». Команда в группе может прийти с именем бота: <code>/status@choyxona_rudaki_bot</code>, это тоже надо уметь разобрать.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Взять <code>update.text</code> вместо <code>update.message.text</code>: верхний уровень — только <code>update_id</code> и тип события. <b>2.</b> Падать на обновлении без <code>message</code> (например, <code>edited_message</code>): сервер вернёт ошибку, и Telegram начнёт присылать то же обновление снова. <b>3.</b> Хранить <code>chat.id</code> строкой и сравнивать с числом: <code>"555111" === 555111</code> даст <code>false</code>. <b>4.</b> Выложить пример Update с настоящим токеном или чужим номером телефона в чат с ИИ.</p>
+      </div>
+
+      <article class="task" id="pg-update">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Разбор Update: chat id, текст, команда</h4><span class="level mid">средняя</span></header>
+        <p>Ниже три учебных обновления (строки JSON). Допишите функцию <code>extract</code>: она возвращает объект <code>{ chatId, text, command, args }</code> или <code>null</code>, если в обновлении нет текстового сообщения. Команда берётся из записи <code>entities</code> типа <code>bot_command</code> с <code>offset: 0</code>: имя — это текст без <code>/</code> и без <code>@имя_бота</code>, в нижнем регистре; <code>args</code> — всё, что идёт после команды, без пробелов по краям. Для обычного текста <code>command</code> равен <code>null</code>, а <code>args</code> — пустая строка.</p>
+<pre class="code" data-run data-lang="js">
+const raw1 = `{ "update_id": 900001, "message": { "message_id": 17,
+  "from": { "id": 555111, "is_bot": false, "first_name": "Фарзона" },
+  "chat": { "id": 555111, "type": "private" }, "date": 1767225600,
+  "text": "/Status@MyShop_bot today",
+  "entities": [{ "offset": 0, "length": 18, "type": "bot_command" }] } }`;
+const raw2 = `{ "update_id": 900002, "message": { "message_id": 18,
+  "from": { "id": 777, "is_bot": false, "first_name": "Мирзо" },
+  "chat": { "id": 777, "type": "private" }, "date": 1767225700,
+  "text": "Салом, нарх чанд сомонӣ?" } }`;
+const raw3 = `{ "update_id": 900003, "edited_message": { "message_id": 19,
+  "chat": { "id": 777, "type": "private" }, "text": "поправил" } }`;
+
+function extract(update) {
+  const msg = update.message;
+  // TODO 1: если сообщения нет или text не строка, вернуть null
+  const chatId = msg.chat.id;
+  const text = msg.text;
+  let command = null;
+  let args = "";
+  const entity = (msg.entities || []).find((e) => e.type === "bot_command" &amp;&amp; e.offset === 0);
+  if (entity) {
+    // TODO 2: command = слова от 1-го символа до entity.length, без "@имя_бота", в нижнем регистре
+    // TODO 3: args = остаток текста после команды, без пробелов по краям
+  }
+  return { chatId, text, command, args };
+}
+
+for (const raw of [raw1, raw2, raw3]) {
+  console.log(JSON.stringify(extract(JSON.parse(raw))));
+}
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>{"chatId":555111,"text":"/Status@MyShop_bot today","command":"status","args":"today"}
+{"chatId":777,"text":"Салом, нарх чанд сомонӣ?","command":null,"args":""}
+null</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Условие для TODO 1: <code>if (!msg || typeof msg.text !== "string") return null;</code> — оно ставится до чтения <code>msg.chat</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Текст команды: <code>text.slice(1, entity.length)</code> даёт <code>Status@MyShop_bot</code>. Разделите его по <code>"@"</code> (<code>.split("@")[0]</code>) и приведите к нижнему регистру (<code>.toLowerCase()</code>). Остаток: <code>text.slice(entity.length).trim()</code>.</p></details>
+      </article>
+
+      <article class="task" id="q-botapi">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Проверь себя: токен и Update</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1,3">
+          <p>Выберите все верные утверждения.</p>
+          <ol class="options">
+            <li>Токен бота нужно хранить в переменных окружения и не печатать в логи, потому что он входит в адрес запросов к API</li>
+            <li>Токен можно положить в переменную с префиксом <code>NEXT_PUBLIC_</code>: он нужен и браузеру</li>
+            <li>В Update текст сообщения лежит в <code>message.text</code>, а номер чата в <code>message.chat.id</code></li>
+            <li>Если обновление пришло без <code>message</code>, сервер должен вернуть ошибку 500</li>
+          </ol>
+          <div class="explain"><p>Префикс <code>NEXT_PUBLIC_</code> отправляет значение в браузер, то есть публикует токен всем. А обновление без <code>message</code> надо спокойно проигнорировать и ответить 200: на ошибку Telegram отвечает повторной отправкой того же обновления.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://core.telegram.org/bots/tutorial" target="_blank" rel="noopener">Telegram: Bot tutorial</a>, <a href="https://core.telegram.org/bots/api" target="_blank" rel="noopener">Telegram Bot API</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 03 · Вебхук ============ -->
+    <section class="topic" id="webhook">
+      <h2 data-toc="Вебхук"><span class="num">03</span> Вебхук на route handler Next.js и публичный адрес</h2>
+
+      <p>Как бот узнаёт, что ему написали? Есть два способа, и они <b>взаимоисключающие</b>: либо бот сам постоянно спрашивает Telegram «что нового?» (метод <code>getUpdates</code>, «опрос»), либо вы один раз говорите Telegram «присылай новости на этот адрес» (<code>setWebhook</code>, «вебхук»). Пока вебхук установлен, <code>getUpdates</code> не работает. Для сайта на Vercel подходит вебхук: у вас нет постоянно работающей программы, которая могла бы опрашивать, зато есть route handler (урок 10), который просыпается на запрос.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 280" role="img" aria-label="Путь вебхука: человек пишет боту, Telegram отправляет HTTPS POST с JSON Update и заголовком секретного токена на адрес сайта, route handler проверяет заголовок и chat id, выполняет команду, зовёт sendMessage, Telegram доставляет ответ человеку; сервер должен ответить статусом 200">
+          <rect class="box b" x="8" y="20" width="120" height="70" rx="12" />
+          <text x="68" y="50" text-anchor="middle">Человек</text><text class="sub" x="68" y="70" text-anchor="middle">пишет /status</text>
+          <rect class="box v" x="168" y="20" width="130" height="70" rx="12" />
+          <text x="233" y="50" text-anchor="middle">Telegram</text><text class="sub" x="233" y="70" text-anchor="middle">мессенджер</text>
+          <rect class="box g" x="364" y="20" width="200" height="70" rx="12" />
+          <text x="464" y="50" text-anchor="middle">/api/telegram/route.ts</text><text class="sub" x="464" y="70" text-anchor="middle">ваш сайт, публичный HTTPS</text>
+          <rect class="box o" x="610" y="20" width="102" height="70" rx="12" />
+          <text x="661" y="50" text-anchor="middle">Supabase</text><text class="sub" x="661" y="70" text-anchor="middle">данные</text>
+          <path class="arr" d="M128 55H162" /><path class="arr-head" d="M162 49l9 6-9 6z" />
+          <path class="arr" d="M298 55H358" /><path class="arr-head" d="M358 49l9 6-9 6z" />
+          <path class="arr" d="M564 55H604" /><path class="arr-head" d="M604 49l9 6-9 6z" />
+          <text class="sub t-v mono" x="330" y="44" text-anchor="middle">POST</text>
+          <rect class="fill-y" x="168" y="124" width="396" height="52" rx="10" />
+          <text class="sub mono" x="366" y="146" text-anchor="middle">заголовок X-Telegram-Bot-Api-Secret-Token</text><text class="sub" x="366" y="164" text-anchor="middle">совпал с вашим секретом? нет: 401, дальше не идём</text>
+          <path class="arr" d="M464 90V120" /><path class="arr-head" d="M458 114l6 10 6-10z" />
+          <rect class="fill-g" x="168" y="206" width="396" height="52" rx="10" />
+          <text class="sub" x="366" y="228" text-anchor="middle">chat id из списка? команда → ответ через sendMessage</text><text class="sub" x="366" y="246" text-anchor="middle">и обязательно быстрый ответ 200</text>
+          <path class="arr" d="M464 176V202" /><path class="arr-head" d="M458 196l6 10 6-10z" />
+          <path class="arr" d="M168 232H68V96" /><path class="arr-head" d="M62 102l6-10 6 10z" />
+          <text class="sub t-b" x="118" y="222" text-anchor="middle">ответ</text>
+        </svg>
+        <figcaption>Вебхук: Telegram сам стучится на ваш адрес. Сайт обязан проверить заголовок с секретом, проверить, кто пишет, и быстро ответить кодом 200</figcaption>
+      </figure>
+
+      <h3>Требования Telegram к адресу вебхука</h3>
+      <ul>
+        <li><b>Только HTTPS</b> с настоящим сертификатом. Порты по документации: 443, 80, 88 или 8443.</li>
+        <li>Адрес должен быть <b>публичным</b>: серверы Telegram стучатся из интернета. <code>http://localhost:3000</code> для них не существует.</li>
+        <li>Редиректы не поддерживаются: адрес должен отвечать сам, а не перенаправлять.</li>
+        <li>Telegram шлёт запрос методом <b>POST</b> с JSON-телом. Если ответ не 2xx, Telegram повторит отправку несколько раз и в итоге перестанет, так что ответ 500 «на всякий случай» чреват повторами и дубликатами.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>«Вебхук не работает на localhost» — и что с этим делать</b>
+        <p>Вариантов три. <b>1. Продакшн на Vercel:</b> выложить роут и поставить вебхук на <code>https://ваш-проект.vercel.app/api/telegram</code>. Это самый простой путь, и он нужен для настоящего бота всё равно. <b>2. Preview на Vercel:</b> у веток есть свои адреса, но по умолчанию Vercel закрывает preview-адреса защитой (Deployment Protection: Standard Protection закрывает все адреса, кроме продакшн-доменов). Запрос Telegram упрётся в страницу входа и получит не ваш JSON. Поэтому для проверки на preview нужно в настройках проекта отдельно разрешить доступ автоматическим запросам (раздел «Protection Bypass for Automation» в документации Vercel). Для учебной работы проще не трогать защиту и использовать продакшн-адрес или туннель. <b>3. Туннель на локальный компьютер:</b> программа, которая выдаёт временный публичный HTTPS-адрес и пересылает запросы на ваш <code>localhost</code>.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Способ</th><th>Как</th><th>Подходит</th></tr></thead>
+          <tbody>
+            <tr><td><b>Vercel (продакшн)</b></td><td><code>git push</code> в <code>main</code>, адрес вида <code>https://…vercel.app/api/telegram</code></td><td>Основной путь для ДЗ, адрес постоянный</td></tr>
+            <tr><td><b>cloudflared</b></td><td><code>cloudflared tunnel --url http://localhost:3000</code>: временный адрес на <code>trycloudflare.com</code>, аккаунт не нужен (по документации Cloudflare)</td><td>Быстрая локальная проверка; адрес меняется при каждом запуске, и вебхук придётся ставить заново</td></tr>
+            <tr><td><b>ngrok</b></td><td><code>ngrok http 3000</code>: выдаёт публичный HTTPS-адрес; нужен бесплатный аккаунт и токен авторизации (проверьте условия на ngrok.com)</td><td>То же, привычный инструмент во многих руководствах</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Route handler: приём обновлений</h3>
+      <p>Роут лежит в файле <code>app/api/telegram/route.ts</code>. Ниже базовая версия: проверка секрета, разбор Update, ответ на <code>/start</code>. Админские команды, лимит и уведомления добавим в следующих разделах.</p>
+
+<pre class="code" data-lang="ts" data-title="app/api/telegram/route.ts">
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
+
+type Update = {
+  update_id: number;
+  message?: { chat: { id: number; type: string }; from?: { id: number }; text?: string };
+};
+
+async function sendMessage(chatId: number, text: string) {
+  const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text }),
+  });
+  // В лог только статус, никогда адрес запроса: в нём токен
+  if (!res.ok) console.error("telegram sendMessage failed", res.status);
+}
+
+export async function POST(req: Request) {
+  // 1. Запрос действительно от Telegram?
+  if (!SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== SECRET) {
+    return new Response("unauthorized", { status: 401 });
+  }
+
+  // 2. Разбор обновления
+  const update = (await req.json()) as Update;
+  const msg = update.message;
+  if (!msg?.text) return Response.json({ ok: true }); // не текст: молча принимаем
+
+  // 3. Команды
+  if (msg.text.startsWith("/start")) {
+    await sendMessage(msg.chat.id, "Салом! Я бот чойхоны. Команда /help покажет, что я умею.");
+  }
+
+  return Response.json({ ok: true }); // всегда быстрый 200
+}
+</pre>
+
+      <p>Что здесь важно. Заголовок <code>x-telegram-bot-api-secret-token</code> Telegram добавляет к каждому запросу, если вы указали <code>secret_token</code> при <code>setWebhook</code> (1–256 символов: латинские буквы, цифры, <code>_</code> и <code>-</code>, по документации Bot API). Если заголовок не совпадает — это не Telegram, а посторонний, который узнал адрес роута. Секрет вы придумываете сами и кладёте в <code>TELEGRAM_WEBHOOK_SECRET</code>: например, 32 случайных символа из генератора паролей.</p>
+
+      <h3>Ставим вебхук: один раз после деплоя</h3>
+
+<pre class="code" data-title="Терминал: setWebhook (переменные заданы в терминале, не вписывайте значения в историю команд на общем компьютере)">
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d "{\"url\": \"https://ваш-проект.vercel.app/api/telegram\", \"secret_token\": \"$TELEGRAM_WEBHOOK_SECRET\"}"
+
+
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo"
+</pre>
+
+      <p>Ответ <code>getWebhookInfo</code> показывает <code>url</code>, число ожидающих обновлений (<code>pending_update_count</code>) и последнюю ошибку (<code>last_error_message</code>). Это главный инструмент отладки. Снять вебхук можно методом <code>deleteWebhook</code>.</p>
+
+      <div class="callout tip">
+        <b>Если сломалось</b>
+        <p><b>Бот молчит, а в <code>getWebhookInfo</code> написано <code>Wrong response from the webhook: 401</code>.</b> Секрет в Vercel и секрет, указанный при <code>setWebhook</code>, различаются, или переменной нет в окружении (после добавления переменной нужен новый деплой). <b>Написано <code>401</code>, но секрет верный.</b> Адрес ведёт на preview под защитой Vercel (раздел выше) или на сайт, где <code>proxy.ts</code> из урока 12 отправляет всех без входа на <code>/login</code>: исключите <code>/api/telegram</code> из защищаемых путей, ведь у вебхука своя защита. <b>Ошибка <code>404</code>.</b> Опечатка в адресе или файл лежит не в <code>app/api/telegram/route.ts</code>. <b>Бот не отвечает, ошибок нет.</b> Проверьте, что вы нажали <code>/start</code> именно у этого бота и что роут не падает: логи в Vercel, раздел Logs. Скопируйте в ИИ текст ошибки без токена.</p>
+      </div>
+
+      <article class="task" id="q-webhook">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Проверь себя: вебхук</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Вы поставили вебхук на <code>http://localhost:3000/api/telegram</code>, а бот молчит. В чём причина?</p>
+          <ol class="options">
+            <li>Telegram не умеет работать с Next.js</li>
+            <li>Нужно использовать метод <code>getUpdates</code> одновременно с вебхуком</li>
+            <li>Telegram стучится из интернета, а адрес localhost существует только на вашем компьютере; к тому же нужен HTTPS. Нужен публичный HTTPS-адрес: Vercel или туннель</li>
+            <li>Секретный токен должен быть длиннее 256 символов</li>
+          </ol>
+          <div class="explain"><p>Вебхук — это обратный звонок: Telegram звонит вам. Звонить на «адрес, который знает только ваш компьютер» нельзя. Туннель (ngrok, cloudflared) выдаёт временный публичный адрес, а Vercel — постоянный. Длина секрета, наоборот, ограничена: от 1 до 256 символов.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Роут получил запрос без заголовка <code>X-Telegram-Bot-Api-Secret-Token</code> (или с чужим значением). Что делать?</p>
+          <ol class="options">
+            <li>Обработать запрос как обычно: вдруг это всё-таки Telegram</li>
+            <li>Ответить 401 и ничего не выполнять</li>
+            <li>Записать в лог токен бота, чтобы сравнить</li>
+            <li>Ответить 200 и выполнить команду от имени админа</li>
+          </ol>
+          <div class="explain"><p>Адрес вебхука публичный, любой может отправить на него POST с красивым JSON. Секретный заголовок — единственное, что отличает Telegram от чужого. Токен в лог писать нельзя ни при каких условиях.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://core.telegram.org/bots/api#setwebhook" target="_blank" rel="noopener">Telegram Bot API: setWebhook</a>, <a href="https://core.telegram.org/bots/webhooks" target="_blank" rel="noopener">Telegram: Webhooks</a>, <a href="https://vercel.com/docs/deployment-protection" target="_blank" rel="noopener">Vercel: Deployment Protection</a>, <a href="https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/" target="_blank" rel="noopener">Cloudflare: quick tunnels</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · Уведомления и команды ============ -->
+    <section class="topic" id="notify-commands">
+      <h2 data-toc="Уведомления и команды"><span class="num">04</span> Уведомления о заявках и команды бота</h2>
+
+      <h3>Уведомление: сайт пишет в Telegram</h3>
+      <p>Для уведомления вебхук не нужен вообще: сайту достаточно вызвать <code>sendMessage</code>. Нужны два значения: <b>токен</b> и <b>chat id владельца</b> (<code>TELEGRAM_ADMIN_CHAT_ID</code>). Как узнать свой chat id: напишите боту <code>/start</code>, и в Update из задачи выше число из <code>message.chat.id</code> — это он. Проще всего временно вывести <code>msg.chat.id</code> в лог роута (сам id не секрет, но и публиковать его нет смысла).</p>
+
+<pre class="code" data-lang="ts" data-title="lib/notify.ts">
+export async function notifyOwner(text: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!token || !chatId) return; // бот не настроен: не мешаем основному делу
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: Number(chatId), text, parse_mode: "HTML" }),
+    });
+    if (!res.ok) console.error("telegram notify failed", res.status);
+  } catch {
+    console.error("telegram notify failed: network"); // сообщение ошибки может содержать адрес с токеном
+  }
+}
+</pre>
+
+      <p>Вызов ставится в серверное действие (урок 18), <b>после</b> успешной записи в базу: <code>await notifyOwner(…)</code>. Ошибка уведомления не должна ломать заявку: функция сама ловит ошибки и ничего не бросает. На Vercel серверная функция может завершиться сразу после ответа, поэтому уведомление дожидаются (<code>await</code>), а не запускают «в фоне».</p>
+
+      <h3>Как оформить сообщение</h3>
+      <p>Для текста можно включить <code>parse_mode: "HTML"</code>: тогда работают теги <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;code&gt;</code>. Но всё, что ввёл клиент (имя, комментарий), нужно <b>экранировать</b>: заменить <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, иначе клиент вставит в имя тег, сломает сообщение (Telegram ответит ошибкой 400) или подсунет ложную ссылку. Ещё одно ограничение: текст сообщения — до 4096 символов, длинный нужно обрезать.</p>
+
+      <article class="task" id="pg-payload">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Собери тело запроса sendMessage</h4><span class="level mid">средняя</span></header>
+        <p>Допишите две функции. <code>escapeHtml</code> заменяет <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code> на безопасные записи (начинайте с <code>&amp;</code>!). <code>clip</code> обрезает текст до <code>max</code> символов и ставит в конце «…» (итоговая длина равна <code>max</code>). Остальное собрано: <code>bookingText</code> строит текст заявки, <code>sendMessagePayload</code> — готовый JSON для <code>sendMessage</code>.</p>
+<pre class="code" data-run data-lang="js">
+function escapeHtml(s) {
+  // TODO 1: заменить &amp; на &amp;amp;, &lt; на &amp;lt;, &gt; на &amp;gt; (сначала &amp;)
+  return String(s);
+}
+
+function clip(s, max) {
+  // TODO 2: если длина не больше max, вернуть как есть, иначе первые max - 1 символов и "…"
+  return s;
+}
+
+function bookingText(b) {
+  return [
+    "&lt;b&gt;Новая заявка #" + b.id + "&lt;/b&gt;",
+    "Имя: " + escapeHtml(b.name),
+    "Телефон: " + escapeHtml(b.phone),
+    "Комментарий: " + escapeHtml(b.note || "—"),
+  ].join("\n");
+}
+
+function sendMessagePayload(chatId, text) {
+  return { chat_id: chatId, text: clip(text, 4096), parse_mode: "HTML" };
+}
+
+const b1 = { id: 12, name: "Фарзона", phone: "+992 900 00 00 01", note: "Стол на 4, 19:00" };
+const b2 = { id: 13, name: "&lt;b&gt;Хакер&lt;/b&gt; &amp; Ко", phone: "+992 900 00 00 02", note: "" };
+
+console.log(JSON.stringify(sendMessagePayload(555111, bookingText(b1))));
+console.log(bookingText(b2));
+const long = sendMessagePayload(555111, "а".repeat(5000));
+console.log(long.text.length, long.text.endsWith("…"));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>{"chat_id":555111,"text":"&lt;b&gt;Новая заявка #12&lt;/b&gt;\nИмя: Фарзона\nТелефон: +992 900 00 00 01\nКомментарий: Стол на 4, 19:00","parse_mode":"HTML"}
+&lt;b&gt;Новая заявка #13&lt;/b&gt;
+Имя: &amp;lt;b&amp;gt;Хакер&amp;lt;/b&amp;gt; &amp;amp; Ко
+Телефон: +992 900 00 00 02
+Комментарий: —
+4096 true</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Цепочка: <code>String(s).replaceAll("&amp;", "&amp;amp;").replaceAll("&lt;", "&amp;lt;").replaceAll("&gt;", "&amp;gt;")</code>. Если начать с <code>&lt;</code>, то символ <code>&amp;</code> в уже полученном <code>&amp;lt;</code> заменится второй раз, и выйдет <code>&amp;amp;lt;</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>return s.length &lt;= max ? s : s.slice(0, max - 1) + "…";</code></p></details>
+      </article>
+
+      <h3>Команды: роутер вместо кучи if</h3>
+      <p>Когда команд больше двух, цепочка <code>if (text.startsWith(…))</code> разрастается и в ней легко забыть проверку доступа. Аккуратнее держать <b>таблицу команд</b>: имя → функция, а доступ проверять <b>в одном месте</b>, до вызова любой функции. Так новая команда по умолчанию не получает особых прав, а список админских команд виден целиком.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Команда</th><th>Кому</th><th>Что отвечает</th></tr></thead>
+          <tbody>
+            <tr><td><code>/start</code></td><td>всем</td><td>приветствие и подсказка про <code>/help</code></td></tr>
+            <tr><td><code>/help</code></td><td>всем</td><td>список команд</td></tr>
+            <tr><td><code>/status</code></td><td>только админ</td><td>сервер жив, сколько новых заявок</td></tr>
+            <tr><td><code>/orders</code></td><td>только админ</td><td>число заказов (данные клиентов, поэтому закрыто)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <article class="task" id="pg-router">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Роутер команд со списком разрешённых chat id</h4><span class="level hard">сложная</span></header>
+        <p>Допишите <code>isAdmin</code> и проверку доступа в <code>route</code>. Админом считается тот, чей <code>chat.id</code> есть в списке <code>ADMIN_IDS</code> <b>и</b> чат личный (<code>type === "private"</code>): так админскую команду нельзя выполнить из группы, где её увидят посторонние. Правила ответа: нет текста — <code>null</code>; текст без <code>/</code> — подсказка; неизвестная команда — подсказка; админская команда от не-админа — «Эта команда недоступна»; иначе — ответ обработчика.</p>
+<pre class="code" data-run data-lang="js">
+const ADMIN_IDS = [555111, 222];
+const ADMIN_ONLY = ["status", "orders"];
+const stats = { newBookings: 3, totalOrders: 41 };
+
+const handlers = {
+  start: () => "Салом! Я бот магазина. Команды: /help",
+  help: () => "Команды: /start, /help. Админам: /status, /orders",
+  status: () => "Сервер работает. Новых заявок: " + stats.newBookings,
+  orders: () => "Всего заказов: " + stats.totalOrders,
+};
+
+function isAdmin(msg) {
+  // TODO 1: true, если чат личный (msg.chat.type === "private") и msg.chat.id есть в ADMIN_IDS
+  return false;
+}
+
+function route(update) {
+  const msg = update.message;
+  if (!msg || typeof msg.text !== "string") return null;
+  if (!msg.text.startsWith("/")) return "Напишите команду, например /help";
+  const name = msg.text.slice(1).split(/[\s@]/)[0].toLowerCase();
+  if (!(name in handlers)) return "Неизвестная команда. Попробуйте /help";
+  // TODO 2: если команда админская (ADMIN_ONLY) и отправитель не админ, вернуть "Эта команда недоступна"
+  return handlers[name]();
+}
+
+const mk = (id, text, type = "private") => ({ update_id: 1, message: { chat: { id, type }, text } });
+const updates = [
+  mk(777, "/start"),
+  mk(777, "/status"),
+  mk(555111, "/Status@MyShop_bot"),
+  mk(555111, "/orders"),
+  mk(555111, "/delete_all"),
+  mk(-100500, "/status", "supergroup"),
+  mk(777, "привет"),
+  { update_id: 2, edited_message: {} },
+];
+for (const u of updates) console.log(String(route(u)));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Салом! Я бот магазина. Команды: /help
+Эта команда недоступна
+Сервер работает. Новых заявок: 3
+Всего заказов: 41
+Неизвестная команда. Попробуйте /help
+Эта команда недоступна
+Напишите команду, например /help
+null</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p><code>return msg.chat.type === "private" &amp;&amp; ADMIN_IDS.includes(msg.chat.id);</code> Метод <code>includes</code> сравнивает строго: число <code>555111</code> и строка <code>"555111"</code> для него разные.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>if (ADMIN_ONLY.includes(name) &amp;&amp; !isAdmin(msg)) return "Эта команда недоступна";</code> ставится до строки <code>return handlers[name]();</code>.</p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Маршрутка с номерами: водителю не нужно знать каждого пассажира, у него есть таблица «номер маршрута → куда едем». Роутер команд такой же: пришло <code>/status</code>, ищем в таблице и едем. А список админов — это список тех, кому разрешено выходить у склада: остановка охраняется отдельно от самой маршрутки.</p>
+      </div>
+    </section>
+
+    <!-- ============ 05 · Безопасность бота ============ -->
+    <section class="topic" id="bot-security">
+      <h2 data-toc="Безопасность бота"><span class="num">05</span> Безопасность бота: секреты, проверка, лимиты</h2>
+
+      <p>Публичный адрес вебхука и публичный username бота — это открытая дверь, и ваш бот видят все пользователи Telegram: найти его можно по имени. Из урока 19 вы знаете, что ИИ пишет код, который «работает», но не защищает. Для бота защита состоит из пяти правил:</p>
+
+      <dl class="terms">
+        <dt>1. Токен и секрет — только в окружении</dt>
+        <dd><code>TELEGRAM_BOT_TOKEN</code> и <code>TELEGRAM_WEBHOOK_SECRET</code> лежат в <code>.env.local</code> и в переменных Vercel, без <code>NEXT_PUBLIC_</code>; в репозитории только <code>.env.example</code> без значений. Это тот же аудит, что в уроке 19 (<code>git grep</code> по шаблону токена: числа, двоеточие, длинная строка).</dd>
+        <dt>2. Токен не попадает в логи</dt>
+        <dd>В адресе запросов к API есть токен. Поэтому в <code>console.log</code> не печатают ни адрес запроса, ни весь объект ошибки <code>fetch</code>, ни целиком заголовки запроса (в них секрет вебхука). Печатают статус ответа и общее описание.</dd>
+        <dt>3. Проверка секретного заголовка</dt>
+        <dd>Первая строка роута — сравнение <code>X-Telegram-Bot-Api-Secret-Token</code> с вашим секретом. Не совпало: 401 и конец. Эта проверка стоит до чтения тела запроса.</dd>
+        <dt>4. Админские команды — только для разрешённых</dt>
+        <dd>Бота найдёт любой. Команды, которые показывают данные клиентов или что-то меняют, проверяют <code>chat.id</code> по списку (<code>TELEGRAM_ADMIN_IDS</code> в окружении, через запятую). Никаких «секретных команд», которые знают только свои: названия команд не защита.</dd>
+        <dt>5. Лимит запросов</dt>
+        <dd>Один пользователь, который шлёт боту сотни сообщений, нагружает ваш сервер и базу. Простейший лимит: не больше N сообщений от одного <code>chat.id</code> за минуту; остальные молча игнорируются (ответ 200 всё равно нужен, иначе Telegram будет повторять).</dd>
+      </dl>
+
+<pre class="code" data-lang="ts" data-title="Дополнение к route.ts: администраторы и лимит">
+const ADMIN_IDS = (process.env.TELEGRAM_ADMIN_IDS ?? "")
+  .split(",")
+  .map((s) => Number(s.trim()))
+  .filter((n) => Number.isInteger(n) &amp;&amp; n !== 0);
+
+const hits = new Map&lt;number, { count: number; resetAt: number }&gt;();
+
+// Не больше 10 сообщений в минуту от одного чата.
+// Память живёт, пока жив экземпляр функции: для обучения достаточно,
+// для настоящего продукта лимит хранят в общей базе (например, Upstash Redis или таблица в Supabase).
+function tooMany(chatId: number): boolean {
+  const now = Date.now();
+  const h = hits.get(chatId);
+  if (!h || h.resetAt &lt; now) {
+    hits.set(chatId, { count: 1, resetAt: now + 60_000 });
+    return false;
+  }
+  h.count += 1;
+  return h.count &gt; 10;
+}
+
+function isAdmin(msg: NonNullable&lt;Update["message"]&gt;): boolean {
+  return msg.chat.type === "private" &amp;&amp; ADMIN_IDS.includes(msg.chat.id);
+}
+// В POST после разбора update: if (tooMany(msg.chat.id)) return Response.json({ ok: true });
+// Админская команда: if (!isAdmin(msg)) { await sendMessage(msg.chat.id, "Эта команда недоступна"); return Response.json({ ok: true }); }
+</pre>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Проверять доступ по <code>username</code> или имени: их можно сменить, а <code>chat.id</code> — нет. <b>2.</b> Хранить список админов в коде и случайно залить в публичный репозиторий чужие номера: берите его из окружения. <b>3.</b> Отвечать на запрос без секрета «Неверный секрет, ожидалось …»: проговорились. <b>4.</b> Вернуть 500 при любой ошибке и получить лавину повторов: Telegram будет слать то же обновление, пока не получит 2xx. Ловите ошибку, пишите в лог безопасную строку и отвечайте 200. <b>5.</b> Забыть про дубликаты: одно обновление могло прийти дважды, а <code>update_id</code> у него одинаковый; для действий, которые нельзя повторять (списание, создание заказа), храните обработанные <code>update_id</code>. <b>6.</b> Присылать боту пароли и данные карт: переписка с ботом не шифруется сквозным шифрованием, и ваш сервер видит всё, что клиент написал.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Бозор вечером. Вход на склад: у сторожа есть список, кого пускать (chat id), и условное слово, которое произносит только свой грузчик (secret token). Сторож не записывает условное слово в журнал, не пускает «по просьбе знакомого» и не открывает чужим, сколько бы раз те ни стучали. И если человек пришёл в десятый раз за минуту, сторож просто не отвечает.</p>
+      </div>
+
+      <p>Ограничения самого Telegram тоже стоит знать: по документации в один чат бот не должен слать больше примерно одного сообщения в секунду, в группу не больше 20 сообщений в минуту, общий поток уведомлений — около 30 сообщений в секунду (дальше приходит ошибка 429). Для заявок маленького бизнеса это далеко от ваших цифр, но подсказывает, что «сообщение на каждый чих» — плохая идея: объединяйте события.</p>
+
+      <article class="task" id="q-security">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: безопасность бота</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1,2,4">
+          <p>Какие меры нужны публичному боту с админскими командами? Выберите все верные.</p>
+          <ol class="options">
+            <li>Проверка заголовка с секретным токеном вебхука до разбора тела запроса</li>
+            <li>Список разрешённых chat id, который берётся из переменных окружения</li>
+            <li>Держать названия админских команд в секрете: тогда проверки не нужны</li>
+            <li>Не печатать в лог адрес запроса к API и токен, а писать только статус ответа</li>
+          </ol>
+          <div class="explain"><p>Секретное название команды — не защита: оно видно в переписке, в подсказках и в любом скриншоте. Проверка секрета отсекает чужие запросы, проверка chat id — чужих пользователей, а чистые логи не дают токену утечь через панель Vercel или скриншот.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Ваш роут упал на необычном сообщении и вернул 500. Что сделает Telegram?</p>
+          <ol class="options">
+            <li>Сразу удалит вебхук</li>
+            <li>Ничего: ошибки его не интересуют</li>
+            <li>Будет повторять отправку того же обновления, пока не получит ответ 2xx или не прекратит попытки</li>
+            <li>Отправит пользователю сообщение об ошибке от вашего имени</li>
+          </ol>
+          <div class="explain"><p>Не-2xx — сигнал «не доставлено». Поэтому ошибки внутри обработки команды ловят, пишут в лог безопасную строку и отвечают 200.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://core.telegram.org/bots/faq" target="_blank" rel="noopener">Telegram Bots FAQ</a> (лимиты и вебхуки), <a href="https://vercel.com/docs/environment-variables" target="_blank" rel="noopener">Vercel: переменные окружения</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · n8n и Make ============ -->
+    <section class="topic" id="no-code">
+      <h2 data-toc="n8n и Make"><span class="num">06</span> Автоматизации без кода: n8n и Make</h2>
+
+      <p>Не всякая задача требует свой route handler. «Каждое утро в 9:00 присылай владельцу, сколько заявок пришло за сутки» — это не продукт, а цепочка из четырёх шагов. Для таких цепочек есть <b>конструкторы автоматизаций</b>: вы соединяете блоки (узлы, модули) стрелками, каждый блок делает одно действие, а результат одного идёт на вход следующему. Два популярных инструмента:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>n8n</th><th>Make</th></tr></thead>
+          <tbody>
+            <tr><td><b>Как запускается</b></td><td>Облако n8n (<code>n8n.io</code>) или у вас на компьютере командой <code>npx n8n</code>; открывается на <code>http://localhost:5678</code>. Нужен Node.js (по документации версии 20.19–24)</td><td>Только облако (<code>make.com</code>)</td></tr>
+            <tr><td><b>Бесплатно?</b></td><td>Облако: пробный период (на сайте при написании урока 14 дней, без карты; платные тарифы от €20 в месяц при оплате на год, проверьте актуальное на <code>n8n.io/pricing</code>). Локальный запуск через <code>npx n8n</code> бесплатен: версия для самостоятельного размещения</td><td>Есть бесплатный тариф: по странице тарифов 1000 кредитов в месяц (каждое действие блока тратит кредит), на бесплатном тарифе ограничены число активных сценариев и частота запуска (по сведениям на момент написания: 2 сценария, запуск не чаще раза в 15 минут; проверьте на странице тарифов)</td></tr>
+            <tr><td><b>Названия</b></td><td>Workflow из узлов (nodes), есть узлы Telegram, Supabase, HTTP Request, Schedule Trigger, If</td><td>Scenario из модулей, есть модули Telegram Bot, HTTP, Schedule, фильтры и роутеры</td></tr>
+            <tr><td><b>Когда выбрать</b></td><td>Нужен локальный запуск, больше гибкости и можно вставить немного JavaScript</td><td>Нужен самый простой старт без установки</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/21-telegram-bot/n8n.svg" alt="Упрощённая схема рабочего процесса в n8n: четыре узла слева направо, Schedule каждый день в 9 часов, Supabase выбирает новые заявки за сутки, If проверяет что заявок больше нуля, Telegram Send отправляет сообщение владельцу" width="720" height="360" loading="lazy" decoding="async">
+        <figcaption>Workflow «Утренняя сводка» на упрощённой схеме: четыре узла и стрелки между ними. Реальный экран n8n выглядит иначе, а Make рисует то же самое кружками-модулями</figcaption>
+      </figure>
+
+      <div class="yt" data-id="QmRYMHRbKwg" data-title="Как создать Telegram-бота с AI в N8N за 10 минут — канал Дмитрий Гончаров (смотрите часть про подключение Telegram; блок про ИИ можно пропустить, интерфейс n8n мог измениться)"></div>
+
+      <h3>Какие бывают узлы</h3>
+      <ul>
+        <li><b>Триггер</b> запускает цепочку: по расписанию (<code>Schedule Trigger</code>), по входящему вебхуку (<code>Webhook</code>), по новому сообщению в Telegram (<code>Telegram Trigger</code>).</li>
+        <li><b>Действие</b> что-то делает: прочитать строки из Supabase, отправить сообщение в Telegram, сделать HTTP-запрос.</li>
+        <li><b>Условие и преобразование</b>: <code>If</code>, <code>Set</code>, небольшой узел с кодом.</li>
+        <li><b>Учётные данные</b> (credentials): токен бота, ключ Supabase. Они хранятся в самом n8n или Make, а не в узле открытым текстом; всё равно не показывайте их на скриншотах.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Подводные камни</b>
+        <p><b>1. Триггеры, которым звонят снаружи, на локальном n8n не работают.</b> <code>Telegram Trigger</code> и <code>Webhook</code> требуют публичного HTTPS-адреса, как и ваш вебхук: локально нужен туннель (в документации n8n есть режим туннеля на cloudflared, только для разработки) или облачный n8n. Цепочка с <code>Schedule Trigger</code> сама ходит наружу и на <code>localhost</code> работает. <b>2.</b> Один бот — один вебхук: если вы поставили <code>Telegram Trigger</code> в n8n, ваш route handler на тот же токен перестаёт получать обновления (и наоборот). На учебной автоматизации используйте только отправку, либо второго бота. <b>3.</b> Ключ Supabase с правами «в обход RLS» (secret key, урок 19) в учётных данных n8n даёт полный доступ к базе: используйте отдельного пользователя или ограниченное правило, если делаете серьёзный проект, и не публикуйте экспорт workflow с ключами. <b>4.</b> Бесплатные тарифы меняются: прочитайте тариф сами перед тем, как обещать заказчику «без абонентской платы». <b>5.</b> Конструктор не заменяет код там, где нужны сложные проверки доступа, транзакции и тесты: у такой цепочки меньше контроля.</p>
+      </div>
+
+      <p><b>Когда что выбрать.</b> Уведомление «за один шаг» из серверного действия (раздел 4) проще и надёжнее конструктора: меньше звеньев, нет лишнего сервиса. Конструктор выигрывает там, где цепочка не про ваш сайт: расписания, склейка нескольких сервисов (Google Таблицы, почта, Telegram), прототип, который заказчик хочет менять сам.</p>
+
+      <article class="task" id="q-nocode">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь себя: конструктор или код</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Заказчик хочет: «каждый понедельник в 8:00 присылать в Telegram отчёт из Google Таблицы». Что разумнее всего?</p>
+          <ol class="options">
+            <li>Писать отдельный сервер с постоянным циклом, который проверяет время каждую секунду</li>
+            <li>Собрать автоматизацию в n8n или Make: триггер по расписанию, чтение таблицы, отправка в Telegram</li>
+            <li>Научить заказчика каждый понедельник писать боту команду вручную</li>
+            <li>Положить токен бота в таблицу, чтобы она сама отправляла сообщения</li>
+          </ol>
+          <div class="explain"><p>Расписание, чтение таблицы и отправка в Telegram — стандартные блоки конструктора. Токен в таблице — утечка, а цикл на сервере излишне сложен. Если те же шаги нужны внутри вашего сайта, выгоднее серверное действие.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Вы запустили n8n командой <code>npx n8n</code> на ноутбуке и добавили <code>Telegram Trigger</code>, но бот молчит. Почему?</p>
+          <ol class="options">
+            <li>Нужно выключить интернет на ноутбуке</li>
+            <li>Бесплатный n8n не умеет работать с Telegram</li>
+            <li>Токен бота слишком короткий</li>
+            <li>Telegram не может достучаться до <code>localhost</code>: нужен публичный HTTPS-адрес (облако, туннель) или схема, в которой n8n сам отправляет сообщения, например по расписанию</li>
+          </ol>
+          <div class="explain"><p>Тот же закон, что для вашего вебхука: входящий вызов требует публичного HTTPS-адреса. Цепочки, которые сами ходят наружу, на локальном n8n работают.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://docs.n8n.io/hosting/installation/npm/" target="_blank" rel="noopener">n8n Docs: установка через npm</a>, <a href="https://n8n.io/pricing/" target="_blank" rel="noopener">n8n: тарифы</a>, <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/" target="_blank" rel="noopener">n8n: узел Telegram</a>, <a href="https://www.make.com/en/pricing" target="_blank" rel="noopener">Make: тарифы</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 07 · ИИ ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: промпты"><span class="num">07</span> ИИ-блок: как просить бота у ИИ</h2>
+
+      <div class="callout ai">
+        <b>Правила работы с ИИ при написании бота</b>
+        <p><b>1.</b> Назовите версии и файлы: Next.js 16, App Router, <code>app/api/telegram/route.ts</code>, Bot API по документации Telegram, без библиотек-обёрток (Telegraf, grammY), пока вы не прочитали код: на старте хватает <code>fetch</code>. <b>2.</b> Перечислите проверки безопасности словами (секретный заголовок, список chat id, лимит, чистые логи): ИИ про них не вспомнит сам. <b>3.</b> ИИ любит прислать пример со вставленным токеном <code>"123456:ABC…"</code> прямо в коде: требуйте <code>process.env</code>. <b>4.</b> Он иногда выдумывает методы и поля Bot API: сверяйте с <code>core.telegram.org/bots/api</code>. <b>5.</b> Токен, адрес вебхука с токеном и реальные chat id клиентов в чат не вставляйте. <b>6.</b> Не вышло — присылайте текст ошибки и ответ <code>getWebhookInfo</code> (без токена) и правьте по шагам, а не начинайте заново.</p>
+      </div>
+
+      <div class="prompt bad-prompt">Сделай Telegram-бота для моего сайта</div>
+
+      <p>Шаг 1. Роут вебхука (режим Plan, затем Agent). Значения в квадратных скобках замените своими:</p>
+      <div class="prompt good-prompt">Контекст: выпускной проект Next.js 16 (App Router, TypeScript) с Supabase, сайт [описание, например «бронь столов в чойхоне»], деплой на Vercel, правила проекта в @AGENTS.md. Таблица [bookings] с полями [id, name, phone, note, created_at]. Бот создан в BotFather, переменные в .env.local: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, TELEGRAM_ADMIN_IDS (id через запятую).
+Цель: создать app/api/telegram/route.ts (POST), который принимает Update от Telegram Bot API и отвечает на команды /start, /help (всем) и /status, /orders (только админам). /status показывает число заявок за сегодня из Supabase.
+Ограничения: 1) без библиотек, только fetch; 2) первой строкой проверять заголовок x-telegram-bot-api-secret-token, не совпал: 401; 3) админ = личный чат и chat.id из TELEGRAM_ADMIN_IDS; 4) лимит 10 сообщений в минуту на chat.id; 5) токен и заголовки не писать в лог, при ошибках логировать только статус; 6) обновление без message.text принимать и отвечать 200; любые ошибки обработки тоже заканчиваются ответом 200; 7) команды держать в таблице «имя → функция»; 8) проверить, что proxy.ts не перенаправляет /api/telegram на /login.
+Проверка: перечисли изменённые файлы и как проверить руками (curl без заголовка должен дать 401).</div>
+
+      <p>Шаг 2. Уведомление о новой заявке:</p>
+      <div class="prompt good-prompt">Контекст: серверное действие [createBooking] в [путь файла] после успешной записи в Supabase. Переменные TELEGRAM_BOT_TOKEN и TELEGRAM_ADMIN_CHAT_ID уже есть.
+Цель: добавить lib/notify.ts с функцией notifyOwner(text) и вызвать её после записи заявки: сообщение с номером заявки, именем, телефоном и комментарием.
+Ограничения: 1) parse_mode HTML, все пользовательские поля экранировать (&amp;, &lt;, &gt;), текст не длиннее 4096 символов; 2) ошибка Telegram не должна ломать создание заявки; 3) в лог только статус ответа, без адреса запроса; 4) не добавлять библиотек.
+Проверка: покажи итоговый текст сообщения для имени «&lt;b&gt;Тест&lt;/b&gt; &amp; Ко».</div>
+
+      <p>Шаг 3. Постановка вебхука и отладка:</p>
+      <div class="prompt good-prompt">Контекст: сайт задеплоен на https://[проект].vercel.app, роут /api/telegram есть. Бот молчит. getWebhookInfo показывает: [вставьте ответ без токена].
+Цель: найти причину.
+Ограничения: 1) ничего не менять, пока не назовёшь причину; 2) перечисли возможные причины от самой вероятной (секрет, переменные окружения после деплоя, proxy.ts, защита Vercel, опечатка в адресе) и как проверить каждую; 3) не проси токен.
+Проверка: для каждой причины дай одну команду или один экран, где это видно.</div>
+
+      <div class="callout warn">
+        <b>Где ИИ ошибается с ботами</b>
+        <p><b>1.</b> Вставляет токен в код «для примера». <b>2.</b> Забывает секретный заголовок: «вебхук же и так принимает только от Telegram». <b>3.</b> Проверяет админа по <code>username</code> или без всякой проверки. <b>4.</b> Возвращает 500 на любое исключение. <b>5.</b> Использует <code>parse_mode: "Markdown"</code> с пользовательским текстом: любая подчёркнутая строка ломает сообщение; безопаснее HTML с экранированием. <b>6.</b> Предлагает <code>getUpdates</code> в цикле на Vercel: серверная функция не живёт вечно. <b>7.</b> Пишет <code>middleware.ts</code> вместо <code>proxy.ts</code> для Next.js 16.</p>
+      </div>
+    </section>
+
+    <!-- ============ 08 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: бот в проекте"><span class="num">08</span> Практика: подключаем бота к выпускному проекту</h2>
+
+      <p>Цель: новые заявки (заказы, брони) приходят владельцу в Telegram, бот отвечает на команды, админские команды закрыты, а в n8n или Make работает одна автоматизация. Работайте в отдельной ветке <code>telegram-bot</code> (урок 19): один шаг — один commit.</p>
+
+      <div class="callout warn">
+        <b>Правила безопасности практики</b>
+        <p>Токен бота и секрет вебхука только в <code>.env.local</code> и Vercel. Перед каждым commit смотрите <code>git status</code>: файл <code>.env.local</code> там быть не должен. Токен в чат с ИИ, на скриншоты, в отчёт и в сообщения группы не вставляйте. Если токен засветился, сразу перевыпустите его в BotFather.</p>
+      </div>
+
+      <h3>Часть A. Бот в проекте</h3>
+      <ol class="steps">
+        <li><b>Бот и токен.</b> Создайте бота в @BotFather (раздел 2). Проверьте токен командой <code>getMe</code> из терминала. Запишите в <code>.env.local</code> три переменные: <code>TELEGRAM_BOT_TOKEN</code>, <code>TELEGRAM_WEBHOOK_SECRET</code> (придумайте длинную случайную строку из букв, цифр, <code>_</code>, <code>-</code>) и <code>TELEGRAM_ADMIN_IDS</code> (пока пусто). В <code>.env.example</code> добавьте эти имена без значений.</li>
+        <li><b>План.</b> В Cursor включите режим Plan и вставьте промпт из раздела 7, шаг 1. Прочитайте план: есть ли в нём секретный заголовок, список админов, лимит и 200 на любую ошибку. Исправьте план словами, затем запускайте реализацию.</li>
+        <li><b>Роут.</b> Проверьте результат: файл <code>app/api/telegram/route.ts</code>, секрет читается из <code>process.env</code>, токен не напечатан нигде. Запустите <code>npm run build</code>.</li>
+        <li><b>Публичный адрес.</b> Сделайте commit и <code>git push</code>, дождитесь деплоя Vercel. Добавьте три переменные в Vercel (Settings → Environment Variables) <b>до</b> деплоя либо сделайте новый деплой после (старый их не видит). Альтернатива: запустите <code>npm run dev</code> и в соседнем терминале туннель (<code>cloudflared tunnel --url http://localhost:3000</code> или <code>ngrok http 3000</code>); адрес туннеля подходит вместо Vercel.</li>
+        <li><b>Вебхук.</b> Выполните <code>setWebhook</code> из раздела 3 с вашим адресом и секретом, затем <code>getWebhookInfo</code>: в <code>url</code> ваш адрес, <code>last_error_message</code> пусто.</li>
+        <li><b>Первая проверка.</b> Напишите боту <code>/start</code>. Получили ответ — вебхук работает. Нет — раздел «Если сломалось» в разделе 3. Проверьте защиту: <code>curl -X POST &lt;адрес&gt;</code> без заголовка должен вернуть 401.</li>
+        <li><b>Админ.</b> Узнайте свой chat id (раздел 4), впишите его в <code>TELEGRAM_ADMIN_IDS</code> в Vercel и в <code>.env.local</code>, перезапустите деплой. Проверьте: <code>/status</code> от вас отвечает, а от друга (или с другого аккаунта) — «Эта команда недоступна».</li>
+        <li><b>Уведомление.</b> Выполните промпт из раздела 7, шаг 2. Отправьте тестовую заявку с сайта: сообщение приходит владельцу. Отправьте заявку с именем вида <code>&lt;b&gt;Тест&lt;/b&gt; &amp; Ко</code>: сообщение не должно сломаться.</li>
+        <li><b>Лимит.</b> Отправьте боту 12 сообщений подряд: после десятого бот молчит. Подождите минуту, снова отвечает.</li>
+        <li><b>Мини-аудит.</b> Выполните <code>git grep -nE "[0-9]{8,10}:[A-Za-z0-9_-]{30,}"</code> по проекту (похоже на токен бота) и откройте логи Vercel: нет ли в них адреса запроса или токена. Если есть, исправьте и перевыпустите токен.</li>
+      </ol>
+
+      <article class="task" id="cl-bot">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: бот работает и защищён</h4><span class="level hard">сложная</span></header>
+        <p>Отмечайте пункт, когда проверили его руками.</p>
+        <ul class="checklist" id="cl-bot-list">
+          <li>Бот создан в BotFather, <code>getMe</code> возвращает его данные</li>
+          <li>Токен и секрет только в <code>.env.local</code> и Vercel, в <code>.env.example</code> имена без значений, <code>.env.local</code> не в репозитории</li>
+          <li>Вебхук поставлен на публичный HTTPS-адрес, <code>getWebhookInfo</code> без ошибок</li>
+          <li><code>/start</code> и <code>/help</code> отвечают любому пользователю</li>
+          <li>Запрос без секретного заголовка получает 401</li>
+          <li><code>/status</code> отвечает только вашему chat id; другому аккаунту — «Эта команда недоступна»</li>
+          <li>Новая заявка с сайта приходит владельцу в Telegram, пользовательский текст экранирован</li>
+          <li>Лимит сообщений работает, ответ Telegram всегда 200</li>
+          <li>В логах Vercel и в коде нет токена и адреса запроса с токеном</li>
+        </ul>
+      </article>
+
+      <h3>Часть B. Автоматизация в n8n (или Make)</h3>
+      <p>Соберите workflow «Утренняя сводка»: каждый день в 9:00 бот присылает владельцу число новых заявок за сутки (схема в разделе 6). Он только отправляет, поэтому работает и на локальном n8n.</p>
+      <ol class="steps">
+        <li><b>Запуск.</b> Вариант 1: бесплатный пробный период облака на <code>n8n.io</code>. Вариант 2: в терминале <code>npx n8n</code>, затем <code>http://localhost:5678</code> (нужен Node.js 20.19–24). Вариант 3: бесплатный аккаунт в Make и тот же сценарий из модулей.</li>
+        <li><b>Триггер.</b> Добавьте узел <code>Schedule Trigger</code>: раз в день в 09:00. Для проверки есть кнопка ручного запуска (Execute workflow), ждать утра не нужно.</li>
+        <li><b>Данные.</b> Добавьте узел Supabase (получить строки таблицы заявок с условием «создано за последние 24 часа») и учётные данные: адрес проекта и ключ из панели Supabase. Для прототипа допустим секретный ключ, но помните, что он обходит RLS; храните его только в учётных данных n8n и не публикуйте экспорт workflow. Если Supabase-узел не получается настроить, возьмите узел <code>HTTP Request</code> и адрес REST API вашего проекта (попросите ИИ собрать запрос по документации Supabase).</li>
+        <li><b>Условие.</b> Узел <code>If</code>: число строк больше 0. Иначе сообщение не отправляется.</li>
+        <li><b>Telegram.</b> Узел Telegram, действие «Send Message»: учётные данные с токеном бота, <code>chat_id</code> владельца, текст «Новых заявок за сутки: …» с числом из предыдущего узла.</li>
+        <li><b>Проверка.</b> Запустите вручную: сообщение пришло. Включите workflow (переключатель Active), чтобы работало по расписанию.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Если сломалось</b>
+        <p><b>Telegram: <code>Bad Request: chat not found</code>.</b> Владелец ни разу не нажимал <code>/start</code> у этого бота, либо chat id неверный (проверьте число и знак). <b>Telegram: <code>Unauthorized</code>.</b> Токен скопирован неполностью или перевыпущен: возьмите свежий. <b>Supabase возвращает пустой список, хотя заявки есть.</b> Правила RLS не пускают ключ типа publishable: возьмите ключ с правами для сервера и помните о риске, либо отфильтруйте данные на стороне вашего API. <b>Расписание не срабатывает.</b> Workflow не включён (Active) или n8n на ноутбуке был закрыт в 9:00: локальный n8n работает, пока работает ваш компьютер. <b>Не нашли узел или кнопку.</b> Интерфейсы n8n и Make обновляются: ищите узел по названию в поиске и пришлите ИИ скриншот экрана без ключей.</p>
+      </div>
+
+      <article class="task" id="cl-n8n">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Чек-лист: автоматизация в n8n или Make</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-n8n-list">
+          <li>Инструмент запущен (облако, <code>npx n8n</code> или Make) и выбрано, почему именно он</li>
+          <li>Есть триггер по расписанию и ручной запуск проходит</li>
+          <li>Данные берутся из вашего проекта (Supabase или HTTP-запрос)</li>
+          <li>Есть условие: при нулевом результате сообщение не отправляется</li>
+          <li>Сообщение приходит в Telegram</li>
+          <li>Токен и ключи лежат только в учётных данных инструмента, на скриншотах их нет</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ 09 · Фишка урока ============ -->
+    <section class="topic" id="bot-show">
+      <h2 data-toc="Бот-шоу"><span class="num">09</span> Фишка урока: «Бот-шоу»</h2>
+
+      <p>Каждый показывает своего бота группе в живом чате. Преподаватель создаёт общий чат в Telegram и пишет в него правила. Публичный username бота (<code>@choyxona_rudaki_bot</code>) не секрет, секрет только токен.</p>
+
+      <div class="table-wrap">
+        <table class="timer-tbl">
+          <thead><tr><th>Этап</th><th>Время</th><th>Что происходит</th></tr></thead>
+          <tbody>
+            <tr><td>Подготовка</td><td>5 минут</td><td>Все проверяют по чек-листу 8.1, что бот отвечает. Скопируйте ссылку на бота (<code>https://t.me/ваш_username</code>)</td></tr>
+            <tr><td>Показ</td><td>3 минуты на каждого</td><td>Участник пишет в общий чат ссылку на бота и коротко рассказывает «для какого заказчика». Группа жмёт <code>/start</code> и <code>/help</code></td></tr>
+            <tr><td>Живая заявка</td><td>1 минута</td><td>Участник демонстрирует экран: кто-то из группы отправляет заявку через его сайт, и в Telegram приходит уведомление</td></tr>
+            <tr><td>Проверка защиты</td><td>1 минута</td><td>Группа пробует <code>/status</code>: бот должен ответить «Эта команда недоступна». Показать запрос без секретного заголовка в терминале: ответ 401</td></tr>
+            <tr><td>Голосование</td><td>5 минут</td><td>Каждый отдаёт один голос за самого полезного бота для реального заказчика</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Очки</h3>
+      <ul>
+        <li>+1 бот отвечает на <code>/start</code> и <code>/help</code> любому в группе</li>
+        <li>+2 живая заявка с сайта приходит уведомлением владельцу</li>
+        <li>+2 админская команда не работает у посторонних, а у владельца работает</li>
+        <li>+1 запрос без секретного заголовка получает 401 (показано на экране)</li>
+        <li>+1 автоматизация в n8n или Make показана работающей</li>
+        <li>+1 в показе нигде не мелькнул токен (штраф: токен на экране — сразу перевыпустить в BotFather, этот пункт 0)</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Правила честной игры</b>
+        <p>Проверять защиту можно только на показе и с разрешения автора бота: один безобидный запрос <code>curl</code> без секрета. Не пытайтесь «взломать» чужого бота, подбирать токены и спамить сообщениями: это нарушает правила Telegram и курса. Токены и ссылки с токенами в общий чат не вставляйте никогда.</p>
+      </div>
+    </section>
+
+    <!-- ============ 10 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">10</span> Домашнее задание: Telegram-бот или автоматизация в проекте (ДЗ-21)</h2>
+
+      <p>Доведите практику до конца: в выпускном проекте работает Telegram-бот (уведомления и команды) или автоматизация в n8n / Make, защита проверена. Сдача: ссылка на репозиторий (или pull request) на GitHub и ссылка на сайт на Vercel. Бот находите по <code>@username</code>, его укажите в описании репозитория или в README.</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Бот:</b> роут <code>app/api/telegram/route.ts</code>, вебхук на публичном HTTPS-адресе, команды <code>/start</code>, <code>/help</code> и минимум одна админская (<code>/status</code> или <code>/orders</code>).</li>
+        <li><b>Уведомление:</b> новая заявка или заказ приходит владельцу в Telegram; ошибка Telegram не ломает основное действие; пользовательский текст экранирован.</li>
+        <li><b>Защита:</b> проверка <code>secret_token</code> (401 без заголовка), список админов из переменной окружения, лимит сообщений, ответ 200 на любые обновления, в логах нет токена.</li>
+        <li><b>Секреты:</b> токен и секрет вебхука только в <code>.env.local</code> и Vercel; <code>.env.example</code> с именами; в репозитории и истории токена нет.</li>
+        <li><b>Автоматизация (альтернатива или бонус):</b> workflow в n8n или Make: триггер, данные из проекта, условие, сообщение в Telegram; в репозитории скриншот без ключей или короткое описание в README.</li>
+        <li><b>README:</b> раздел «Бот»: username, список команд, какие команды админские, какие переменные окружения нужны (без значений).</li>
+        <li><b>Качество:</b> <code>npm run build</code> без ошибок, сайт на Vercel работает.</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li>Завершите чек-листы 8.1 (бот) и 8.2 (автоматизация) — достаточно одного, но лучше оба.</li>
+        <li>Проверьте, что <code>.env.local</code> не в репозитории и токена нет в истории (<code>git log --all -S "TELEGRAM_BOT_TOKEN="</code> не должен показывать значения).</li>
+        <li>Дополните README и влейте ветку через pull request.</li>
+        <li>Проверьте бота на продакшн-адресе Vercel с чужого аккаунта.</li>
+        <li>Отметьте чек-лист требований и вставьте ссылки ниже.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Вебхук стоит на адресе туннеля, который уже не работает: сдавайте продакшн-адрес Vercel. <b>2.</b> Токен остался в истории git: перевыпустите его. <b>3.</b> Нет проверки секретного заголовка: любой может отправить боту «команду» через curl. <b>4.</b> Админские команды отвечают всем. <b>5.</b> Уведомление не отправляется после деплоя: переменные добавлены в Vercel, но нового деплоя не было. <b>6.</b> Сообщение ломается от символа <code>&lt;</code> в имени клиента. <b>7.</b> Вместо ссылки на проект вставлена ссылка на бота.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Как проверяют</b>
+        <p>Проверяющий откроет репозиторий, прочитает роут и README, поищет токен в коде и истории, напишет боту с другого аккаунта (<code>/start</code>, <code>/help</code>, <code>/status</code>), отправит заявку на сайте и проверит, пришло ли уведомление, и отправит один запрос без секретного заголовка. Баллы: за работающую защиту, за аккуратные commit, за честный README и за рабочий сайт.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Чек-лист требований к ДЗ-21</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Роут вебхука работает на продакшн-адресе Vercel, <code>getWebhookInfo</code> без ошибок</li>
+          <li>Команды <code>/start</code>, <code>/help</code> и минимум одна админская работают как описано</li>
+          <li>Новая заявка приходит владельцу в Telegram, текст экранирован</li>
+          <li>Проверки: секретный заголовок, список админов, лимит, ответ 200 на любые обновления</li>
+          <li>Токена нет ни в коде, ни в истории, ни в логах, ни на скриншотах</li>
+          <li>Автоматизация в n8n или Make собрана и проверена (или явно решено, что сдаётся только бот)</li>
+          <li>В README описаны бот, команды и переменные окружения без значений</li>
+          <li>Сайт на Vercel собрался и работает</li>
+          <li>Ссылки на репозиторий и на Vercel вставлены ниже</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 10.2</span><h4>Ссылка на репозиторий или pull request</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий проекта или на pull request с ботом (адрес вида <code>https://github.com/…</code>).</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/graduation-project"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 10.3</span><h4>Ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на опубликованный сайт, где работает вебхук бота (адрес вида <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://graduation-project.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://core.telegram.org/bots/api" target="_blank" rel="noopener">Telegram Bot API</a>, <a href="https://docs.n8n.io/" target="_blank" rel="noopener">n8n Docs</a>, <a href="https://www.make.com/en/help/home" target="_blank" rel="noopener">Make Help Center</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Бот = второй интерфейс.</b> Данные остаются в базе; бот присылает уведомления и отвечает на команды. Бот не может написать тому, кто не нажал <code>/start</code>.</li>
+        <li><b>BotFather:</b> <code>/newbot</code>, имя, username на «bot», токен. Токен — пароль: только <code>.env.local</code> и Vercel, без <code>NEXT_PUBLIC_</code>, не в логах. Утёк — перевыпустить.</li>
+        <li><b>API:</b> <code>https://api.telegram.org/bot&lt;токен&gt;/&lt;метод&gt;</code>; <code>getMe</code>, <code>sendMessage</code> (<code>chat_id</code>, <code>text</code> до 4096 символов), <code>setWebhook</code>, <code>getWebhookInfo</code>, <code>deleteWebhook</code>. Ответ: <code>ok</code>, <code>result</code>.</li>
+        <li><b>Update:</b> <code>update_id</code> и одно поле-событие; текст: <code>message.text</code>, чат: <code>message.chat.id</code>, команда: <code>entities</code> с <code>bot_command</code>; в группе команда может быть <code>/cmd@имя_бота</code>. Нет <code>message</code> — игнорировать.</li>
+        <li><b>Вебхук:</b> публичный HTTPS (порты 443, 80, 88, 8443), без редиректов; <code>getUpdates</code> и вебхук взаимоисключающи; не-2xx ведёт к повторам. На localhost не работает: Vercel (продакшн) или туннель (<code>cloudflared tunnel --url …</code>, <code>ngrok http …</code>); preview на Vercel по умолчанию закрыт защитой.</li>
+        <li><b>secret_token:</b> 1–256 символов (<code>A-Z a-z 0-9 _ -</code>), приходит в заголовке <code>X-Telegram-Bot-Api-Secret-Token</code>; не совпал: 401.</li>
+        <li><b>Защита:</b> секрет, список админов по <code>chat.id</code> из окружения, лимит на чат, чистые логи, 200 на всё остальное, экранирование пользовательского текста для HTML, дубликаты по <code>update_id</code>.</li>
+        <li><b>Лимиты Telegram:</b> около 1 сообщения в секунду в чат, до 20 в минуту в группу, около 30 в секунду всего; дальше ошибка 429.</li>
+        <li><b>n8n и Make:</b> конструкторы цепочек (триггер → действие → условие). n8n: облако (пробный период) или <code>npx n8n</code> → <code>localhost:5678</code>; Make: бесплатный тариф с лимитом кредитов. Входящие триггеры локально требуют публичного адреса; расписание работает без него. Проверяйте тарифы на сайтах.</li>
+        <li><b>ИИ:</b> называйте версии и файлы, перечисляйте проверки безопасности, не вставляйте токен, сверяйте методы с документацией, ошибки присылайте с <code>getWebhookInfo</code>.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 11.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить заказчику, чем бот отличается от сайта и зачем нужен как второй интерфейс</li>
+          <li>Могу создать бота в BotFather, проверить токен и знаю, что делать при его утечке</li>
+          <li>Могу прочитать Update и достать из него chat id, текст и команду</li>
+          <li>Могу написать route handler вебхука и поставить вебхук командой <code>setWebhook</code></li>
+          <li>Знаю, почему вебхук не работает на localhost, и могу проверить его на Vercel или через туннель</li>
+          <li>Могу отправить уведомление о новой заявке и экранировать пользовательский текст</li>
+          <li>Могу защитить бота: секретный заголовок, список админов, лимит, чистые логи</li>
+          <li>Могу собрать простую автоматизацию в n8n или Make и сказать, когда лучше код</li>
+        </ul>
+      </article>
+    </section>
