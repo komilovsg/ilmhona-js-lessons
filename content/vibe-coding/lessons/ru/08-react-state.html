@@ -1,0 +1,1274 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 560px) { .cmp { grid-template-columns: 1fr; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 8 · Модуль 3. Современный Frontend</p>
+      <h1>Интерактив: state, события, формы</h1>
+      <p class="lead">К концу урока ваш сайт перестанет быть «картинкой» и станет приложением: в нём заработают бургер-меню, модальное окно, переключатель табов, тёмная тема и форма заявки, которая проверяет поля и показывает ошибки. Вы поймёте, как React «помнит» данные (state), как страница реагирует на клики и ввод, и ответите на частый вопрос после урока 7: что за строка <code>"use client"</code> стоит в начале файла и почему без неё <code>useState</code> и <code>onClick</code> в Next.js не работают.</p>
+      <ul class="goals">
+        <li>Объяснить, чем state отличается от обычной переменной, и написать счётчик через <code>useState</code></li>
+        <li>Подключать обработчики событий (<code>onClick</code>, <code>onChange</code>, <code>onSubmit</code>) и не путать «передать функцию» с «вызвать функцию»</li>
+        <li>Показывать и прятать элементы условным рендером: меню, модальное окно, вкладки, сообщения об ошибках</li>
+        <li>Собрать форму с проверкой полей и экраном состояний «загрузка, ошибка, успех»</li>
+        <li>Обновлять списки в state без мутаций: добавлять, удалять и фильтровать, и сделать на этой основе корзину магазина</li>
+        <li>Объяснить, зачем нужна директива <code>"use client"</code>, и поставить её в правильный файл Next.js-проекта</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: проект <code>dental-landing</code> из уроков 5 и 7 (компоненты в <code>components/</code>), Cursor, интернет и около 3–4 часов. Откройте урок в одной половине экрана, а Cursor — в другой. Теорию (разделы 1–4) читайте по частям: задачи с редактором выполняются прямо на странице, ничего ставить не нужно, но React загружается из интернета. Практику (раздел 6) делайте за один присест. После неё идут «Один час — один MVP» и домашнее задание: интернет-магазин одежды.</p>
+      <p>Если вы пропустили урок 7, сначала вернитесь к нему: здесь опираемся на компоненты, props, массивы и <code>map</code> без повторения.</p>
+    </div>
+
+    <!-- ============ 01 · State ============ -->
+    <section class="topic" id="state">
+      <h2 data-toc="State и useState"><span class="num">01</span> State: как React «помнит» данные между перерисовками</h2>
+
+      <p>Компоненты из урока 7 всегда показывали одно и то же. Но на реальном сайте всё меняется: счётчик в корзине растёт, меню открывается, в поле появляется текст. Данные, которые меняются со временем и влияют на то, что видно на экране, в React называются <b>state</b> (состояние). Хранит их специальная функция <b>хук</b> <code>useState</code>.</p>
+
+      <p>Почему нельзя взять обычную переменную <code>let count = 0</code> и увеличивать её? По двум причинам из документации React. Первая: при каждой перерисовке функция-компонент вызывается заново, и обычная переменная снова становится нулём. Вторая: изменение обычной переменной не сообщает React, что экран нужно обновить. Поэтому нужен «ящик», который переживает перерисовки и умеет будить React.</p>
+
+<pre class="code" data-lang="jsx" data-title="Самая короткая запись state">
+const [count, setCount] = useState(0);
+//     значение  функция    начальное
+//               для смены  значение
+</pre>
+
+      <p><code>useState(0)</code> возвращает пару: <b>текущее значение</b> и <b>функцию-«сеттер»</b>, которая его меняет. Запись со скобками <code>[ ]</code> — уже знакомая деструктуризация массива из урока 7. Имена любые, но по традиции пишут <code>[что, setЧто]</code>. Когда вы вызываете <code>setCount(5)</code>, React запоминает новое значение, вызывает компонент ещё раз, и <code>useState</code> на этот раз возвращает 5.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Схема цикла state: клик по кнопке запускает обработчик, обработчик вызывает setCount, React заново вызывает компонент, получает новый JSX и обновляет экран">
+          <rect class="fill-g" x="10" y="30" width="150" height="56" rx="10" /><text x="85" y="55" text-anchor="middle">Клик</text><text class="sub" x="85" y="73" text-anchor="middle">нажатие кнопки</text>
+          <rect class="box b" x="190" y="30" width="150" height="56" rx="10" /><text class="mono" x="265" y="55" text-anchor="middle">onClick</text><text class="sub" x="265" y="73" text-anchor="middle">вызван обработчик</text>
+          <rect class="fill-y" x="370" y="30" width="150" height="56" rx="10" /><text class="mono" x="445" y="55" text-anchor="middle">setCount(1)</text><text class="sub" x="445" y="73" text-anchor="middle">новое значение</text>
+          <rect class="box v" x="550" y="30" width="160" height="56" rx="10" /><text x="630" y="55" text-anchor="middle">React</text><text class="sub" x="630" y="73" text-anchor="middle">перерисовка</text>
+          <path class="arr" d="M160 58 H184 M340 58 H364 M520 58 H544" />
+          <path class="arr-head" d="M184 58 l-8 -5 v10 z M364 58 l-8 -5 v10 z M544 58 l-8 -5 v10 z" />
+          <path class="arr" d="M630 86 V130 H445 V146" />
+          <path class="arr-head" d="M445 146 l-5 -8 h10 z" />
+          <rect class="box o" x="330" y="146" width="230" height="56" rx="10" /><text class="mono t-o" x="445" y="170" text-anchor="middle">useState → 1</text><text class="sub" x="445" y="188" text-anchor="middle">возвращает уже новое значение</text>
+          <path class="arr" d="M330 174 H190" />
+          <path class="arr-head" d="M190 174 l8 -5 v10 z" />
+          <rect class="fill-g" x="30" y="146" width="160" height="56" rx="10" /><text x="110" y="170" text-anchor="middle">Экран</text><text class="sub" x="110" y="188" text-anchor="middle">«Нравится: 1»</text>
+          <text class="sub" x="12" y="236">Цикл: событие → setState → перерисовка → новый экран. Обычная переменная в этой цепочке не участвует.</text>
+        </svg>
+        <figcaption>Как работает state: сеттер не «правит экран», а сообщает React новое значение, и React сам перерисовывает компонент</figcaption>
+      </figure>
+
+      <div class="yt" data-id="6jAm8idCnEk" data-title="Для чего нужен useState в React, простым языком — канал Дмитрий Герасимов"></div>
+      <p class="muted">Короткий ролик на русском (около 3 минут): идея state на примере счётчика. Он записан в 2021 году, но сам useState с тех пор не менялся.</p>
+
+      <h3>Три правила, которые нужно знать наизусть</h3>
+      <ul>
+        <li><b>State меняют только сеттером.</b> Запись <code>count = count + 1</code> или <code>count++</code> экран не обновит. Нужно <code>setCount(count + 1)</code>.</li>
+        <li><b>Хуки вызывают только на верхнем уровне компонента:</b> не внутри <code>if</code>, циклов и вложенных функций. Хуки узнают по приставке <code>use</code>.</li>
+        <li><b>У каждой копии компонента свой state.</b> Две кнопки «Нравится» на странице считают лайки независимо друг от друга: это одно и то же описание, но разные «ящики».</li>
+      </ul>
+
+      <p>Попробуйте сами. Кнопка ниже пока ничего не считает. Объявите state <code>likes</code>, покажите его в тексте кнопки и увеличивайте по клику. Блок «ПРОВЕРКА» сам нажмёт на кнопки и напечатает, что получилось: первую кнопку три раза, вторую один раз.</p>
+
+      <article class="task" id="pg-counter">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Две независимые кнопки «Нравится»</h4><span class="level easy">лёгкая</span></header>
+        <p>Формат текста на кнопке <code>♥ Нравится: число</code> не меняйте: проверка читает его. Блок «ПРОВЕРКА» не трогайте.</p>
+        <div class="playground" data-mode="react" data-title="Счётчик лайков">
+<pre class="code" data-lang="jsx">
+import { useState, useEffect } from "react";
+
+function LikeButton() {
+  // TODO 1: создайте state likes с начальным значением 0
+  // TODO 2: по клику увеличивайте likes на 1 (onClick)
+  return (
+    &lt;button className="like" onClick={() =&gt; {}}&gt;
+      ♥ Нравится: 0
+    &lt;/button&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+    (async () =&gt; {
+      await wait(50);
+      const [a, b] = document.querySelectorAll(".like");
+      for (let i = 0; i &lt; 3; i++) { a.click(); await wait(20); }
+      b.click();
+      await wait(20);
+      console.log("Первая кнопка: " + a.textContent);
+      console.log("Вторая кнопка: " + b.textContent);
+    })();
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;div className="row"&gt;
+      &lt;LikeButton /&gt;
+      &lt;LikeButton /&gt;
+      &lt;Report /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.row { display: flex; gap: 10px; }
+.like { padding: 10px 16px; border: 2px solid #e11d48; border-radius: 999px; background: #fff1f2; color: #9f1239; font-weight: 700; cursor: pointer; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Первая кнопка: ♥ Нравится: 3
+Вторая кнопка: ♥ Нравится: 1</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Первая строка внутри <code>LikeButton</code>: <code>const [likes, setLikes] = useState(0);</code>. Число в тексте кнопки замените на <code>{likes}</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>В <code>onClick</code> поставьте стрелочную функцию: <code>onClick={() =&gt; setLikes(likes + 1)}</code>.</p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>State — как счёт в тетради продавца на бозоре. Обычная переменная — слова, которые продавец держит в голове: к вечеру он забыл. Тетрадь (state) переживает весь день, и каждый раз, когда продавец дописывает строку (сеттер), он заново пересчитывает итог на калькуляторе (перерисовка). Два продавца ведут две разные тетради: у одной кнопки «Нравится» свой счёт, у другой свой.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Менять state напрямую: <code>likes = likes + 1</code> или <code>likes++</code>. Экран не обновится. <b>2.</b> Забыть импорт: <code>useState is not defined</code>, нужна строка <code>import { useState } from "react"</code>. <b>3.</b> Вызвать хук внутри <code>if</code> или цикла. <b>4.</b> Ждать, что значение изменится сразу на следующей строке после сеттера: новое значение появится при следующей перерисовке, а в текущем вызове функции <code>likes</code> остаётся прежним. <b>5.</b> Хранить в state то, что можно вычислить из другого state (например, отдельно «цена» и «цена со скидкой»): вычисляйте на лету.</p>
+      </div>
+
+      <article class="task" id="q-state">
+        <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Проверь себя: state</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Разработчик написал в компоненте <code>let count = 0;</code> и в <code>onClick</code> делает <code>count = count + 1</code>. Почему число на экране не растёт?</p>
+          <ol class="options">
+            <li>Потому что кнопки в React не умеют реагировать на клик</li>
+            <li>Потому что <code>let</code> нельзя менять</li>
+            <li>Потому что React не знает об изменении обычной переменной и не перерисовывает компонент, а при перерисовке переменная снова была бы равна нулю</li>
+            <li>Потому что число нужно записать в кавычках</li>
+          </ol>
+          <div class="explain"><p>Обычная переменная не запускает перерисовку и не переживает её. Для данных, которые влияют на экран, нужен <code>useState</code>: сеттер и сообщает React об изменении, и сохраняет значение между вызовами компонента.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>На странице два одинаковых компонента <code>&lt;LikeButton /&gt;</code>. Пользователь нажал на первый три раза. Что покажет второй?</p>
+          <ol class="options">
+            <li>Тоже 3, потому что компонент один и тот же</li>
+            <li>Свой собственный счёт, то есть 0: у каждой копии компонента свой state</li>
+            <li>Ошибку: два одинаковых компонента на странице запрещены</li>
+            <li>Среднее арифметическое всех кнопок</li>
+          </ol>
+          <div class="explain"><p>Код компонента общий, а state у каждой копии свой. Если бы счёт был общим, его пришлось бы «поднять» в родителя: об этом узнаете, когда будете делать корзину.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Какая запись правильно увеличивает счётчик?</p>
+          <ol class="options">
+            <li><code>setCount(count + 1)</code></li>
+            <li><code>count = count + 1</code></li>
+            <li><code>count++</code></li>
+            <li><code>useState(count + 1)</code> внутри обработчика клика</li>
+          </ol>
+          <div class="explain"><p>Менять state нужно только через сеттер. Вызывать <code>useState</code> внутри обработчика нельзя: хук работает только на верхнем уровне компонента.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/state-a-components-memory" target="_blank" rel="noopener">React: state как память компонента</a> и <a href="https://react.dev/reference/react/useState" target="_blank" rel="noopener">справочник по useState</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 02 · События и условный рендер ============ -->
+    <section class="topic" id="events">
+      <h2 data-toc="События и условный рендер"><span class="num">02</span> События и условный рендер: меню, модальное окно, вкладки</h2>
+
+      <p>Почти любой интерактив на сайте — это сочетание двух приёмов. <b>Событие</b> («пользователь нажал») меняет state, а <b>условный рендер</b> («если state такой, покажи это») превращает state в картинку. Бургер-меню, модальное окно и вкладки — три вариации одного рецепта.</p>
+
+      <h3>Обработчики событий</h3>
+      <p>События в JSX записываются как атрибуты в camelCase: <code>onClick</code>, <code>onChange</code> (ввод в поле), <code>onSubmit</code> (отправка формы). Значение — <b>функция</b>, которую React вызовет, когда событие произойдёт. Названия своих функций принято начинать с <code>handle</code>: <code>handleClick</code>.</p>
+
+      <div class="cmp">
+        <div class="new">
+          <h5>Верно: передаём функцию</h5>
+          <ul>
+            <li><code>onClick={handleClick}</code></li>
+            <li><code>onClick={() =&gt; setOpen(true)}</code></li>
+          </ul>
+        </div>
+        <div>
+          <h5>Неверно: вызываем сразу</h5>
+          <ul>
+            <li><code>onClick={handleClick()}</code> — выполнится при отрисовке, а не при клике</li>
+            <li><code>onClick={setOpen(true)}</code> — то же самое, а ещё получится бесконечная перерисовка</li>
+          </ul>
+        </div>
+      </div>
+
+      <p>Разница в круглых скобках: <code>handleClick</code> — это «вот инструкция, выполни когда нужно», а <code>handleClick()</code> — «выполни прямо сейчас». Если нужна короткая логика, пишите стрелочную функцию прямо в атрибуте: <code>() =&gt; setOpen(!open)</code>.</p>
+
+      <p>Ещё два приёма, которые пригодятся: <code>e.preventDefault()</code> отменяет действие браузера по умолчанию (форма по умолчанию перезагружает страницу при отправке), а <code>e.stopPropagation()</code> не пускает событие «всплывать» к родителям (клик по окну не должен закрывать окно через клик по фону).</p>
+
+      <h3>Условный рендер</h3>
+      <p>Это обычный JavaScript внутри <code>{…}</code>. Два основных способа:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Способ</th><th>Когда использовать</th><th>Пример</th></tr></thead>
+          <tbody>
+            <tr><td>Логическое «и» <code>&amp;&amp;</code></td><td>Показать блок или ничего</td><td><code>{open &amp;&amp; &lt;Menu /&gt;}</code></td></tr>
+            <tr><td>Тернарный оператор <code>? :</code></td><td>Выбрать одно из двух</td><td><code>{open ? "✕" : "☰"}</code></td></tr>
+            <tr><td><code>if</code> до <code>return</code></td><td>Когда ветвей больше двух или нужен ранний выход</td><td><code>if (status === "loading") return &lt;p&gt;Загрузка…&lt;/p&gt;;</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>Ловушка с нулём</b>
+        <p>Не ставьте число слева от <code>&amp;&amp;</code>: если в корзине 0 товаров, запись <code>{count &amp;&amp; &lt;Badge /&gt;}</code> выведет на экран цифру 0. Пишите сравнение: <code>{count &gt; 0 &amp;&amp; &lt;Badge /&gt;}</code>.</p>
+      </div>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/08-react-state/ui-patterns.svg" alt="Схема четырёх интерактивных блоков: бургер-меню с кнопкой и списком ссылок, модальное окно поверх затемнённого фона, вкладки с одной активной панелью, переключатель светлой и тёмной темы" width="720" height="380" loading="lazy" decoding="async">
+        <figcaption>Четыре приёма из практики. В каждом есть state (открыто или закрыто, какая вкладка, какая тема) и условный рендер. Упрощённая схема</figcaption>
+      </figure>
+
+      <h3>Практика 1: бургер-меню</h3>
+      <p>Меню открывается и закрывается по кнопке. State один: <code>open</code> (правда или ложь). Кнопка переключает его, а список ссылок рисуется только когда <code>open</code> равно <code>true</code>. Иконка кнопки тоже зависит от state.</p>
+
+      <article class="task" id="pg-menu">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Бургер-меню</h4><span class="level easy">лёгкая</span></header>
+        <p>Сейчас меню видно всегда, а кнопка ничего не делает. Добавьте state <code>open</code>, переключение по клику и условный рендер. Пока меню закрыто, на кнопке должен быть значок ☰, когда открыто — ✕.</p>
+        <div class="playground" data-mode="react" data-title="Бургер-меню">
+<pre class="code" data-lang="jsx">
+import { useState, useEffect } from "react";
+
+function Header() {
+  // TODO 1: state open, сначала false
+  // TODO 2: кнопка .burger переключает open
+  // TODO 3: показывайте nav.menu только если open === true
+  // TODO 4: на кнопке ☰, а когда меню открыто — ✕
+  return (
+    &lt;header className="header"&gt;
+      &lt;b&gt;Улыбка&lt;/b&gt;
+      &lt;button className="burger" aria-label="Меню"&gt;☰&lt;/button&gt;
+      &lt;nav className="menu"&gt;
+        &lt;a href="#prices"&gt;Цены&lt;/a&gt;
+        &lt;a href="#doctors"&gt;Врачи&lt;/a&gt;
+        &lt;a href="#contacts"&gt;Контакты&lt;/a&gt;
+      &lt;/nav&gt;
+    &lt;/header&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+    const state = () =&gt; {
+      const menu = document.querySelector(".menu");
+      const btn = document.querySelector(".burger").textContent;
+      return menu ? "ссылок " + menu.querySelectorAll("a").length + ", кнопка " + btn : "скрыто, кнопка " + btn;
+    };
+    (async () =&gt; {
+      await wait(50);
+      console.log("В начале: " + state());
+      document.querySelector(".burger").click();
+      await wait(20);
+      console.log("После 1 клика: " + state());
+      document.querySelector(".burger").click();
+      await wait(20);
+      console.log("После 2 кликов: " + state());
+    })();
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;&gt;
+      &lt;Header /&gt;
+      &lt;Report /&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 2px solid #0284c7; }
+.burger { font-size: 20px; padding: 4px 12px; border: 2px solid #0284c7; border-radius: 8px; background: #e0f2fe; cursor: pointer; }
+.menu { flex-basis: 100%; display: flex; flex-direction: column; gap: 6px; padding: 8px 0; }
+.menu a { color: #0369a1; font-weight: 700; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>В начале: скрыто, кнопка ☰
+После 1 клика: ссылок 3, кнопка ✕
+После 2 кликов: скрыто, кнопка ☰</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Добавьте <code>const [open, setOpen] = useState(false);</code>, а на кнопку — <code>onClick={() =&gt; setOpen(!open)}</code>. Знак <code>!</code> означает «наоборот»: из <code>true</code> получится <code>false</code> и обратно.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Весь блок <code>&lt;nav className="menu"&gt;…&lt;/nav&gt;</code> оберните в <code>{open &amp;&amp; (…)}</code>. Содержимое кнопки: <code>{open ? "✕" : "☰"}</code>.</p></details>
+      </article>
+
+      <h3>Практика 2: модальное окно</h3>
+      <p>Модальное окно — это блок поверх страницы с затемнённым фоном. State снова один: <code>open</code>. Но здесь появляется новая тонкость: закрывать окно можно кнопкой «Закрыть» и кликом по тёмному фону, а клик внутри самого окна закрывать его не должен. Для этого событие нужно остановить на границе окна: <code>e.stopPropagation()</code>.</p>
+
+      <article class="task" id="pg-modal">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Модальное окно записи</h4><span class="level mid">средняя</span></header>
+        <p>Компонент <code>Modal</code> почти готов. Допишите state в <code>App</code> и остановите всплытие клика внутри окна (иначе клик по тексту закроет его через фон).</p>
+        <div class="playground" data-mode="react" data-title="Модальное окно">
+<pre class="code" data-lang="jsx">
+import { useState, useEffect } from "react";
+
+function Modal({ onClose }) {
+  // TODO 2: клик внутри окна не должен закрывать его:
+  // добавьте на div.modal обработчик onClick={(e) =&gt; e.stopPropagation()}
+  return (
+    &lt;div className="overlay" onClick={onClose}&gt;
+      &lt;div className="modal"&gt;
+        &lt;h3&gt;Запись на приём&lt;/h3&gt;
+        &lt;p&gt;Оставьте телефон, и администратор перезвонит.&lt;/p&gt;
+        &lt;button className="close" onClick={onClose}&gt;Закрыть&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  // TODO 1: state open (false); кнопка .open-modal открывает окно;
+  // окно &lt;Modal onClose={...} /&gt; показывается только при open === true
+  return (
+    &lt;div&gt;
+      &lt;button className="open-modal"&gt;Записаться&lt;/button&gt;
+      &lt;Report /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+    const state = () =&gt; (document.querySelector(".modal") ? "окно открыто" : "окна нет");
+    const click = async (sel) =&gt; { document.querySelector(sel).click(); await wait(20); };
+    (async () =&gt; {
+      await wait(50);
+      console.log("В начале: " + state());
+      await click(".open-modal");
+      console.log("После «Записаться»: " + state());
+      await click(".modal p");
+      console.log("Клик внутри окна: " + state());
+      await click(".close");
+      console.log("После «Закрыть»: " + state());
+      await click(".open-modal");
+      await click(".overlay");
+      console.log("Клик по фону: " + state());
+    })();
+  }, []);
+  return null;
+}
+</pre>
+<pre class="code" data-lang="css">
+.open-modal { padding: 10px 18px; border: 0; border-radius: 10px; background: #0284c7; color: #fff; font-weight: 700; cursor: pointer; }
+.overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .5); }
+.modal { width: min(320px, 90%); padding: 18px; border-radius: 14px; background: #fff; color: #111; }
+.modal h3 { margin: 0 0 6px; }
+.close { margin-top: 8px; padding: 8px 14px; border: 2px solid #0284c7; border-radius: 8px; background: #e0f2fe; cursor: pointer; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>В начале: окна нет
+После «Записаться»: окно открыто
+Клик внутри окна: окно открыто
+После «Закрыть»: окна нет
+Клик по фону: окна нет</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В <code>App</code>: <code>const [open, setOpen] = useState(false);</code>, на кнопку <code>onClick={() =&gt; setOpen(true)}</code>, а после кнопки: <code>{open &amp;&amp; &lt;Modal onClose={() =&gt; setOpen(false)} /&gt;}</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Клик по тексту внутри окна «всплывает» к <code>div.overlay</code> и закрывает окно. Остановите его: <code>&lt;div className="modal" onClick={(e) =&gt; e.stopPropagation()}&gt;</code>.</p></details>
+      </article>
+
+      <h3>Практика 3: переключатель табов</h3>
+      <p>Здесь state хранит <b>не правду и ложь, а выбор</b>: идентификатор активной вкладки. Кнопки-вкладки рисуются через <code>map</code> из массива (приём из урока 7), у активной меняется класс, а панель показывает текст выбранной вкладки.</p>
+
+      <article class="task" id="pg-tabs">
+        <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Вкладки «О клинике, Цены, Врачи»</h4><span class="level mid">средняя</span></header>
+        <p>Сейчас все вкладки выглядят одинаково, клики не работают, а панель всегда показывает первую. Заведите state <code>active</code> с начальным значением <code>"about"</code>, по клику записывайте в него <code>tab.id</code>, активной вкладке добавляйте класс <code>active</code> и показывайте текст выбранной вкладки.</p>
+        <div class="playground" data-mode="react" data-title="Вкладки">
+<pre class="code" data-lang="jsx">
+import { useState, useEffect } from "react";
+
+const tabs = [
+  { id: "about", title: "О клинике", text: "Работаем с 2019 года" },
+  { id: "prices", title: "Цены", text: "Чистка 200, пломба 350 сомони" },
+  { id: "doctors", title: "Врачи", text: "Трое врачей, стаж от 5 лет" },
+];
+
+function Tabs() {
+  // TODO 1: state active, начальное значение "about"
+  // TODO 2: onClick на вкладке записывает tab.id в active
+  // TODO 3: у активной вкладки className "tab active", у остальных "tab"
+  // TODO 4: в панели покажите text вкладки, id которой равен active
+  return (
+    &lt;div&gt;
+      &lt;div className="tabs"&gt;
+        {tabs.map((tab) =&gt; (
+          &lt;button key={tab.id} className="tab"&gt;
+            {tab.title}
+          &lt;/button&gt;
+        ))}
+      &lt;/div&gt;
+      &lt;div className="panel"&gt;{tabs[0].text}&lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+    const state = () =&gt; {
+      const a = document.querySelectorAll(".tab.active");
+      return a.length + " активн. | " + (a[0] ? a[0].textContent : "-") + " — " + document.querySelector(".panel").textContent;
+    };
+    (async () =&gt; {
+      await wait(50);
+      console.log("Старт: " + state());
+      document.querySelectorAll(".tab")[1].click();
+      await wait(20);
+      console.log("Клик «Цены»: " + state());
+      document.querySelectorAll(".tab")[2].click();
+      await wait(20);
+      console.log("Клик «Врачи»: " + state());
+    })();
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;&gt;
+      &lt;Tabs /&gt;
+      &lt;Report /&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.tab { padding: 8px 14px; border: 2px solid #0284c7; border-radius: 10px; background: #fff; color: #0369a1; font-weight: 700; cursor: pointer; }
+.tab.active { background: #0284c7; color: #fff; }
+.panel { padding: 14px; border-radius: 10px; background: #f0f9ff; color: #075985; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Старт: 1 активн. | О клинике — Работаем с 2019 года
+Клик «Цены»: 1 активн. | Цены — Чистка 200, пломба 350 сомони
+Клик «Врачи»: 1 активн. | Врачи — Трое врачей, стаж от 5 лет</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p><code>const [active, setActive] = useState("about");</code>, на кнопку <code>onClick={() =&gt; setActive(tab.id)}</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Класс: <code>className={active === tab.id ? "tab active" : "tab"}</code>. Текст панели: найдите нужную вкладку через <code>tabs.find((t) =&gt; t.id === active)</code> и выведите её <code>.text</code>.</p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Три практики — это три вида выключателей. Бургер-меню — тумблер «свет включён или выключен» (два положения). Модальное окно — то же, но с ширмой поверх комнаты. Табы — переключатель каналов на старом телевизоре: положений несколько, но включён всегда ровно один. Во всех случаях выключатель — это state, а лампочка и телевизионный экран — результат условного рендера.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Написать <code>onClick={setOpen(true)}</code> без стрелки: вызов произойдёт при отрисовке, а React ответит предупреждением про слишком много перерисовок («Too many re-renders»). <b>2.</b> Забыть <code>e.stopPropagation()</code> в модальном окне: оно закрывается при клике по собственному тексту. <b>3.</b> Хранить в state весь объект вкладки вместо её <code>id</code>: данные дублируются и расходятся. <b>4.</b> Прятать меню стилем <code>display: none</code> вместо условного рендера и потом удивляться, что ссылки остаются в коде страницы: иногда это нужно, но выбирайте осознанно. <b>5.</b> Забыть про <code>key</code> у кнопок-вкладок из <code>map</code>.</p>
+      </div>
+
+      <article class="task" id="q-events">
+        <header><span class="task-num">ЗАДАЧА 2.4</span><h4>Проверь себя: события и условный рендер</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Страница при открытии сразу показывает окно «Too many re-renders». В коде: <code>&lt;button onClick={setOpen(true)}&gt;</code>. В чём причина?</p>
+          <ol class="options">
+            <li>Нужно переименовать <code>onClick</code> в <code>onclick</code></li>
+            <li>Сеттер вызывается во время отрисовки вместо передачи функции; правильно <code>onClick={() =&gt; setOpen(true)}</code></li>
+            <li>Нужно добавить <code>key</code> к кнопке</li>
+            <li>Нужно написать <code>setOpen(true);</code> с точкой с запятой</li>
+          </ol>
+          <div class="explain"><p>Скобки после <code>setOpen</code> вызывают функцию сразу. Сеттер меняет state, React перерисовывает, снова вызывает сеттер, и так по кругу. В атрибут нужно передать функцию, а не её результат.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>В корзине 0 товаров. Что покажет запись <code>{count &amp;&amp; &lt;Badge /&gt;}</code>, где <code>count = 0</code>?</p>
+          <ol class="options">
+            <li>Ничего</li>
+            <li>Бейдж с нулём</li>
+            <li>Ошибку</li>
+            <li>На экране появится цифра 0, потому что ноль не считается «пустым» значением для React</li>
+          </ol>
+          <div class="explain"><p>React не выводит <code>false</code>, <code>null</code> и <code>undefined</code>, но число 0 выводит. Поэтому сравнивайте явно: <code>count &gt; 0 &amp;&amp; …</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Нужны вкладки «Цены», «Врачи», «Контакты», активна всегда ровно одна. Что лучше хранить в state?</p>
+          <ol class="options">
+            <li>Три отдельных значения <code>true/false</code>, по одному на вкладку</li>
+            <li>Весь текст всех вкладок</li>
+            <li>Идентификатор (или номер) активной вкладки в одном state</li>
+            <li>Ничего: вкладки можно переключать обычной переменной</li>
+          </ol>
+          <div class="explain"><p>Один state «какая вкладка активна» не может оказаться в противоречивом состоянии. Три отдельных флага легко рассинхронизировать: две вкладки окажутся активными сразу.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/responding-to-events" target="_blank" rel="noopener">React: обработка событий</a> и <a href="https://react.dev/learn/conditional-rendering" target="_blank" rel="noopener">условный рендеринг</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 03 · Списки, формы, загрузка ============ -->
+    <section class="topic" id="forms">
+      <h2 data-toc="Списки, формы, загрузка"><span class="num">03</span> Списки в state, формы с проверкой, загрузка и ошибки</h2>
+
+      <h3>Списки в state: не менять, а создавать новый массив</h3>
+      <p>Корзина магазина, список задач, избранное — это массив в state. Главное правило React: <b>массив в state нельзя менять «на месте»</b> (методы <code>push</code>, <code>splice</code>, запись <code>arr[0] = …</code>). Нужно создать <b>новый</b> массив и передать его в сеттер. Три рецепта на все случаи:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Действие</th><th>Как записать</th><th>Идея</th></tr></thead>
+          <tbody>
+            <tr><td>Добавить</td><td><code>setCart([...cart, product])</code></td><td>Три точки «высыпают» старые элементы в новый массив, новый кладётся в конец</td></tr>
+            <tr><td>Удалить</td><td><code>setCart(cart.filter((p) =&gt; p.id !== id))</code></td><td><code>filter</code> оставляет только те, для которых условие верно</td></tr>
+            <tr><td>Изменить один</td><td><code>setItems(items.map((p) =&gt; p.id === id ? { ...p, done: true } : p))</code></td><td><code>map</code> возвращает тот же элемент или обновлённую копию</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Фильтр по категории — это <b>не</b> удаление из state, а вычисление: список товаров остаётся целым, а на экран выводится <code>products.filter(…)</code> по выбранной категории. Так работает и каталог магазина из домашнего задания: в state лежат два значения (выбранная категория и корзина), а список для экрана вычисляется на лету.</p>
+
+      <article class="task" id="pg-shop">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Каталог с фильтром и корзиной</h4><span class="level mid">средняя</span></header>
+        <p>Мини-версия домашнего задания. Фильтр и корзина пока не работают: кнопки категорий ничего не меняют, а «В корзину» не добавляет товар. Допишите оба TODO. Сумму корзины считает готовый цикл.</p>
+        <div class="playground" data-mode="react" data-title="Мини-магазин">
+<pre class="code" data-lang="jsx">
+import { useState, useEffect } from "react";
+
+const products = [
+  { id: 1, title: "Футболка белая", price: 80, category: "Футболки" },
+  { id: 2, title: "Футболка чёрная", price: 90, category: "Футболки" },
+  { id: 3, title: "Куртка зимняя", price: 1200, category: "Куртки" },
+  { id: 4, title: "Куртка джинсовая", price: 600, category: "Куртки" },
+  { id: 5, title: "Кроссовки", price: 700, category: "Обувь" },
+  { id: 6, title: "Туфли", price: 950, category: "Обувь" },
+];
+const categories = ["Все", "Футболки", "Куртки", "Обувь"];
+
+function Shop() {
+  const [category, setCategory] = useState("Все");
+  const [cart, setCart] = useState([]);
+
+  // TODO 1: visible — все товары, если category === "Все",
+  // иначе только товары с p.category === category (filter)
+  const visible = products;
+
+  // TODO 2: добавьте товар в КОНЕЦ новой копии массива cart
+  function addToCart(product) {
+  }
+
+  let total = 0;
+  for (const p of cart) total += p.price;
+
+  return (
+    &lt;div&gt;
+      &lt;div className="cats"&gt;
+        {categories.map((c) =&gt; (
+          &lt;button key={c} className={c === category ? "cat active" : "cat"} onClick={() =&gt; setCategory(c)}&gt;
+            {c}
+          &lt;/button&gt;
+        ))}
+      &lt;/div&gt;
+      &lt;div className="grid"&gt;
+        {visible.map((p) =&gt; (
+          &lt;div key={p.id} className="item"&gt;
+            &lt;b&gt;{p.title}&lt;/b&gt;
+            &lt;span&gt;{p.price} сомони&lt;/span&gt;
+            &lt;button className="add" onClick={() =&gt; addToCart(p)}&gt;В корзину&lt;/button&gt;
+          &lt;/div&gt;
+        ))}
+      &lt;/div&gt;
+      &lt;p className="summary"&gt;В корзине: {cart.length} шт., {total} сомони&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+    const cat = async (name) =&gt; {
+      [...document.querySelectorAll(".cat")].find((b) =&gt; b.textContent === name).click();
+      await wait(20);
+    };
+    const count = () =&gt; document.querySelectorAll(".item").length;
+    (async () =&gt; {
+      await wait(50);
+      console.log("Все: " + count());
+      await cat("Куртки");
+      console.log("Куртки: " + count());
+      const adds = document.querySelectorAll(".add");
+      adds[0].click();
+      await wait(20);
+      document.querySelectorAll(".add")[1].click();
+      await wait(20);
+      console.log(document.querySelector(".summary").textContent);
+      await cat("Обувь");
+      console.log("Обувь: " + count());
+      console.log(document.querySelector(".summary").textContent);
+    })();
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;&gt;
+      &lt;Shop /&gt;
+      &lt;Report /&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.cats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.cat { padding: 6px 12px; border: 2px solid #7c3aed; border-radius: 999px; background: #fff; color: #5b21b6; font-weight: 700; cursor: pointer; }
+.cat.active { background: #7c3aed; color: #fff; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.item { display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 2px solid #ddd6fe; border-radius: 10px; background: #faf5ff; color: #111; font-size: 14px; }
+.add { margin-top: 4px; padding: 6px; border: 0; border-radius: 8px; background: #7c3aed; color: #fff; font-weight: 700; cursor: pointer; }
+.summary { margin: 10px 0 0; font-weight: 700; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Все: 6
+Куртки: 2
+В корзине: 2 шт., 1800 сомони
+Обувь: 2
+В корзине: 2 шт., 1800 сомони</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p><code>const visible = category === "Все" ? products : products.filter((p) =&gt; p.category === category);</code></p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Внутри <code>addToCart</code> одна строка: <code>setCart([...cart, product]);</code>. Корзина не сбрасывается при смене категории, потому что это отдельный state.</p></details>
+      </article>
+
+      <h3>Формы: поле «управляется» state</h3>
+      <p>Чтобы знать, что пользователь ввёл в поле, значение поля хранят в state. Такое поле называется <b>управляемым</b>: у <code>&lt;input&gt;</code> два атрибута — <code>value={name}</code> (что показать) и <code>onChange={(e) =&gt; setName(e.target.value)}</code> (что сделать при вводе). Для флажка вместо <code>value</code> используют <code>checked</code> и <code>e.target.checked</code>. Если указать <code>value</code> без <code>onChange</code>, поле «замёрзнет»: ввести текст будет нельзя, а React напишет об этом в консоли.</p>
+
+      <p>Проверка (валидация) выполняется при отправке формы: в обработчике <code>onSubmit</code> сначала вызывают <code>e.preventDefault()</code> (иначе страница перезагрузится), затем проверяют поля и собирают ошибки в объект. Если ошибок нет, форма считается отправленной. Тексты ошибок выводятся условным рендером под полями. Пользователю нужно понятно сказать, что исправить: «Введите имя», а не «Ошибка».</p>
+
+      <div class="yt" data-id="pofiCNm5-U4" data-title="Формы в React: управление вводом и простая валидация без сторонних библиотек — канал Friendly Frontend"></div>
+      <p class="muted">Ролик на русском (около 15 минут, 2025 год): те же приёмы, что в задаче ниже, подробнее. Смотрите по желанию, когда доделаете задачу.</p>
+
+      <article class="task" id="pg-form">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Форма записи с проверкой полей</h4><span class="level mid">средняя</span></header>
+        <p>Форма уже собирает ввод в state и умеет показывать ошибки и успех. Допишите функцию <code>validate</code>: имя после удаления пробелов по краям должно быть не короче двух символов, а телефон должен содержать ровно 9 цифр. Готовая строка <code>phone.replace(/\D/g, "")</code> выбрасывает из телефона всё, кроме цифр, так что «90 123-45-67» тоже подойдёт.</p>
+        <div class="playground" data-mode="react" data-title="Форма записи">
+<pre class="code" data-lang="jsx">
+import { useState, useEffect } from "react";
+
+function BookingForm() {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [errors, setErrors] = useState({});
+  const [sent, setSent] = useState(false);
+
+  function validate() {
+    const next = {};
+    const digits = phone.replace(/\D/g, ""); // только цифры телефона
+    // TODO 1: если name.trim().length меньше 2, то next.name = "Введите имя"
+    // TODO 2: если digits.length не равна 9, то next.phone = "Телефон: 9 цифр"
+    return next;
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const next = validate();
+    setErrors(next);
+    if (Object.keys(next).length === 0) setSent(true);
+  }
+
+  if (sent) {
+    return &lt;p className="ok"&gt;Спасибо, {name}! Администратор перезвонит.&lt;/p&gt;;
+  }
+
+  return (
+    &lt;form onSubmit={handleSubmit} noValidate&gt;
+      &lt;input className="name" placeholder="Имя" value={name} onChange={(e) =&gt; setName(e.target.value)} /&gt;
+      {errors.name &amp;&amp; &lt;p className="error"&gt;{errors.name}&lt;/p&gt;}
+      &lt;input className="phone" placeholder="Телефон" value={phone} onChange={(e) =&gt; setPhone(e.target.value)} /&gt;
+      {errors.phone &amp;&amp; &lt;p className="error"&gt;{errors.phone}&lt;/p&gt;}
+      &lt;button className="send" type="submit"&gt;Записаться&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+    const type = (sel, value) =&gt; {
+      const el = document.querySelector(sel);
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, value);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    const send = async () =&gt; { document.querySelector(".send").click(); await wait(30); };
+    const errs = () =&gt; [...document.querySelectorAll(".error")].map((e) =&gt; e.textContent).join(" | ") || "нет";
+    (async () =&gt; {
+      await wait(50);
+      await send();
+      console.log("Пустая форма: " + errs());
+      type(".name", " А ");
+      type(".phone", "12ab");
+      await wait(20);
+      await send();
+      console.log("Имя «А», телефон «12ab»: " + errs());
+      type(".name", "Фарзона");
+      type(".phone", "90 123-45-67");
+      await wait(20);
+      await send();
+      console.log("Итог: " + document.querySelector(".ok").textContent);
+    })();
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;&gt;
+      &lt;BookingForm /&gt;
+      &lt;Report /&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+form { display: flex; flex-direction: column; gap: 6px; max-width: 320px; }
+input { padding: 10px; border: 2px solid #0284c7; border-radius: 8px; font-size: 15px; }
+.error { margin: 0; color: #b91c1c; font-size: 13px; font-weight: 700; }
+.ok { padding: 12px; border-radius: 10px; background: #dcfce7; color: #166534; font-weight: 700; }
+.send { padding: 10px; border: 0; border-radius: 8px; background: #0284c7; color: #fff; font-weight: 700; cursor: pointer; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Пустая форма: Введите имя | Телефон: 9 цифр
+Имя «А», телефон «12ab»: Введите имя | Телефон: 9 цифр
+Итог: Спасибо, Фарзона! Администратор перезвонит.</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Первое условие: <code>if (name.trim().length &lt; 2) next.name = "Введите имя";</code>. Метод <code>trim()</code> убирает пробелы по краям, так что имя из одних пробелов не пройдёт.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Второе: <code>if (digits.length !== 9) next.phone = "Телефон: 9 цифр";</code>. Знак <code>!==</code> читается «не равно».</p></details>
+      </article>
+
+      <h3>Состояния «загрузка, ошибка, успех»</h3>
+      <p>Когда страница чего-то ждёт (ответ сервера, отправка заявки), у экрана есть не два состояния, а минимум четыре: ещё не начали, <b>идёт загрузка</b>, <b>ошибка</b>, <b>успех</b>. Новички показывают только «успех», а при сбое пользователь видит пустую страницу или бесконечное ожидание. Профессиональный подход: хранить в одном state строку <code>status</code> со значениями <code>"idle"</code>, <code>"loading"</code>, <code>"error"</code>, <code>"success"</code> и для каждого выводить свой экран. Во время загрузки кнопку отключают, чтобы не отправить заявку дважды; при ошибке показывают понятный текст и кнопку «Повторить».</p>
+
+      <div class="callout tip">
+        <b>Про async и await</b>
+        <p>В задаче ниже запрос к серверу имитирует функция с задержкой. Слово <code>await</code> значит «подожди, пока придёт ответ, и только потом иди дальше», а <code>async</code> у функции разрешает так писать. Конструкция <code>try { … } catch { … }</code> означает «попробуй, а если случится сбой, выполни другой блок». Писать такой код будет ИИ, ваша задача — прочитать его и правильно показать каждое состояние. Настоящие запросы к базе данных появятся в следующих уроках.</p>
+      </div>
+
+      <article class="task" id="pg-status">
+        <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Экраны загрузки и ошибки</h4><span class="level mid">средняя</span></header>
+        <p>Первая попытка загрузки услуг «падает», вторая проходит успешно. Логика загрузки готова. Допишите разметку: для статуса <code>loading</code> покажите <code>&lt;p className="info"&gt;Загрузка…&lt;/p&gt;</code>, для <code>error</code> — <code>&lt;p className="error"&gt;Не удалось загрузить&lt;/p&gt;</code> и кнопку <code>.retry</code> «Повторить», а при успехе — список услуг. Кнопка «Загрузить» во время загрузки должна быть отключена.</p>
+        <div class="playground" data-mode="react" data-title="Загрузка и ошибка">
+<pre class="code" data-lang="jsx">
+import { useState, useEffect } from "react";
+
+// имитация сервера: первый запрос падает, второй успешен
+let attempts = 0;
+function fakeRequest() {
+  attempts += 1;
+  return new Promise((resolve, reject) =&gt; {
+    setTimeout(() =&gt; {
+      if (attempts === 1) reject(new Error("fail"));
+      else resolve(["Чистка", "Пломба", "Осмотр"]);
+    }, 150);
+  });
+}
+
+function Services() {
+  const [status, setStatus] = useState("idle"); // idle | loading | error | success
+  const [items, setItems] = useState([]);
+
+  async function handleLoad() {
+    setStatus("loading");
+    try {
+      const data = await fakeRequest();
+      setItems(data);
+      setStatus("success");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  // TODO 1: кнопка .load вызывает handleLoad и disabled, когда status === "loading"
+  // TODO 2: loading — p.info «Загрузка…»;
+  //         error — p.error «Не удалось загрузить» + кнопка .retry «Повторить» (handleLoad);
+  //         success — ul со списком items
+  return (
+    &lt;div&gt;
+      &lt;button className="load"&gt;Загрузить услуги&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+    const text = () =&gt; {
+      const el = document.querySelector(".info, .error, ul");
+      return el ? (el.tagName === "UL" ? "услуг " + el.children.length : el.textContent) : "ничего";
+    };
+    (async () =&gt; {
+      await wait(50);
+      document.querySelector(".load").click();
+      await wait(30);
+      console.log("Сразу после клика: " + text());
+      console.log("Кнопка отключена: " + (document.querySelector(".load").disabled ? "да" : "нет"));
+      await wait(250);
+      console.log("Через 0,3 с: " + text());
+      document.querySelector(".retry").click();
+      await wait(30);
+      console.log("После повтора: " + text());
+      await wait(250);
+      console.log("В конце: " + text());
+    })();
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;&gt;
+      &lt;Services /&gt;
+      &lt;Report /&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+button { padding: 8px 14px; border: 2px solid #0284c7; border-radius: 8px; background: #e0f2fe; font-weight: 700; cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.info { color: #0369a1; font-weight: 700; }
+.error { color: #b91c1c; font-weight: 700; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Сразу после клика: Загрузка…
+Кнопка отключена: да
+Через 0,3 с: Не удалось загрузить
+После повтора: Загрузка…
+В конце: услуг 3</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Кнопка: <code>&lt;button className="load" onClick={handleLoad} disabled={status === "loading"}&gt;</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>После кнопки добавьте три строки: <code>{status === "loading" &amp;&amp; &lt;p className="info"&gt;Загрузка…&lt;/p&gt;}</code>, такую же для <code>error</code> с текстом и кнопкой <code>&lt;button className="retry" onClick={handleLoad}&gt;Повторить&lt;/button&gt;</code> и для <code>success</code> список <code>&lt;ul&gt;{items.map((s) =&gt; &lt;li key={s}&gt;{s}&lt;/li&gt;)}&lt;/ul&gt;</code>.</p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Загрузка и ошибка — как заказ в чойхоне. Пока повар готовит плов, официант не молчит, а говорит «ждите, готовится» (загрузка). Если плов закончился, он честно скажет «нет плова, принести лагман?» (ошибка и кнопка «повторить»). И только потом выносит блюдо (успех). Сайт, который при сбое показывает пустой стол, пугает клиентов.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Изменить массив на месте: <code>cart.push(item)</code> и затем <code>setCart(cart)</code>. React видит тот же самый массив и может не перерисовать экран. Используйте <code>[...cart, item]</code>. <b>2.</b> Забыть <code>e.preventDefault()</code> в <code>onSubmit</code>: страница перезагружается, и введённые данные пропадают. <b>3.</b> Поле с <code>value</code> без <code>onChange</code>: в него нельзя печатать. <b>4.</b> Показывать только успех и не обработать сбой: при ошибке сети пользователь видит пустую страницу. <b>5.</b> Не отключать кнопку отправки на время загрузки: двойной клик создаёт две заявки. <b>6.</b> Проверять поля только в браузере и считать это защитой: валидация на экране нужна для удобства, а настоящая проверка должна быть и на сервере (разберём в уроках про базу данных).</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/updating-arrays-in-state" target="_blank" rel="noopener">React: обновление массивов в state</a> и <a href="https://react.dev/reference/react-dom/components/input" target="_blank" rel="noopener">компонент input и управляемые поля</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · use client ============ -->
+    <section class="topic" id="use-client">
+      <h2 data-toc="Директива use client"><span class="num">04</span> Директива <code>"use client"</code>: почему state работает не везде</h2>
+
+      <p>В уроке 7 вы видели строку <code>"use client"</code> в верхней части файла с формой и получили обещание объяснить её позже. Пора. Дело в том, что в Next.js (App Router) компоненты бывают двух видов.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Серверный компонент (по умолчанию)</th><th>Клиентский компонент (<code>"use client"</code>)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Где выполняется</b></td><td>На сервере: в браузер приходит готовый результат</td><td>Сначала на сервере (первая отрисовка), затем «оживает» в браузере</td></tr>
+            <tr><td><b>Умеет</b></td><td>Брать данные из базы, использовать секретные ключи, не отправляет лишний JavaScript в браузер</td><td>State (<code>useState</code>), обработчики (<code>onClick</code>, <code>onChange</code>), эффекты, браузерные API (<code>localStorage</code>, <code>window</code>)</td></tr>
+            <tr><td><b>Не умеет</b></td><td>Хуки состояния и эффектов, обработчики событий, браузерные API</td><td>Безопасно хранить секреты (код уходит в браузер)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>По умолчанию страницы и макеты (<code>page.tsx</code>, <code>layout.tsx</code>) и всё, что в них подключено, — <b>серверные</b> компоненты. Это быстро и безопасно, но у такого компонента нет «жизни» в браузере: ему некому отреагировать на клик, потому что готовая HTML-страница пришла уже без этого кода. Чтобы кнопка заработала, её JavaScript нужно доставить в браузер. Именно это и делает директива.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 300" role="img" aria-label="Схема: сервер отдаёт страницу, состоящую из серверных компонентов Header, Hero и клиентских компонентов BurgerMenu и BookingForm с директивой use client; в браузер приходит HTML и JavaScript только клиентских компонентов">
+          <rect class="box" x="10" y="10" width="300" height="270" rx="12" /><text x="160" y="34" text-anchor="middle">Сервер (Next.js)</text>
+          <rect class="fill-g" x="28" y="52" width="264" height="38" rx="8" /><text class="mono" x="160" y="76" text-anchor="middle">page.tsx · серверный</text>
+          <rect class="fill-g" x="28" y="104" width="124" height="38" rx="8" /><text class="mono" x="90" y="128" text-anchor="middle">Hero</text>
+          <rect class="fill-g" x="168" y="104" width="124" height="38" rx="8" /><text class="mono" x="230" y="128" text-anchor="middle">Services</text>
+          <rect class="fill-y" x="28" y="156" width="124" height="52" rx="8" /><text class="mono" x="90" y="176" text-anchor="middle">BurgerMenu</text><text class="sub" x="90" y="196" text-anchor="middle">"use client"</text>
+          <rect class="fill-y" x="168" y="156" width="124" height="52" rx="8" /><text class="mono" x="230" y="176" text-anchor="middle">BookingForm</text><text class="sub" x="230" y="196" text-anchor="middle">"use client"</text>
+          <text class="sub" x="160" y="238" text-anchor="middle">зелёные: только HTML</text>
+          <text class="sub" x="160" y="258" text-anchor="middle">жёлтые: HTML + JavaScript</text>
+          <path class="arr" d="M310 120 H410" /><path class="arr-head" d="M410 120 l-8 -5 v10 z" />
+          <path class="arr" d="M310 182 H410" /><path class="arr-head" d="M410 182 l-8 -5 v10 z" />
+          <text class="sub" x="360" y="108" text-anchor="middle">HTML</text>
+          <text class="sub" x="360" y="170" text-anchor="middle">JS</text>
+          <rect class="box b" x="420" y="10" width="290" height="270" rx="12" /><text x="565" y="34" text-anchor="middle">Браузер</text>
+          <rect class="fill-g" x="438" y="52" width="254" height="60" rx="8" /><text x="565" y="76" text-anchor="middle">Готовая страница</text><text class="sub" x="565" y="96" text-anchor="middle">видна сразу, без ожидания</text>
+          <rect class="fill-y" x="438" y="130" width="254" height="78" rx="8" /><text x="565" y="154" text-anchor="middle">«Оживление» (hydration)</text><text class="sub" x="565" y="174" text-anchor="middle">React подключает onClick и state</text><text class="sub" x="565" y="192" text-anchor="middle">только к клиентским компонентам</text>
+          <text class="sub" x="565" y="238" text-anchor="middle">Серверный код в браузер не уходит,</text>
+          <text class="sub" x="565" y="258" text-anchor="middle">поэтому странице нужно меньше JS</text>
+        </svg>
+        <figcaption>Что делает директива: помечает «границу», с которой файл и всё, что он подключает, едут в браузер вместе со своим JavaScript</figcaption>
+      </figure>
+
+      <div class="yt" data-id="Qdkg_mrniLk" data-title="When &amp; Where to Add use client in React / Next.js — канал ByteGrad"></div>
+      <p class="muted">Ролик на английском, включите субтитры (около 10 минут, смотрите первые 5): как выбрать, куда поставить директиву. Записан в 2023 году, но правило «директива в файл с интерактивностью» не менялось.</p>
+
+      <h3>Куда ставить директиву</h3>
+      <ul>
+        <li><b>В самую первую строку файла</b>, до всех <code>import</code>. Внутрь компонента или функции её поставить нельзя.</li>
+        <li><b>Только в файлы, которые нужно подключать из серверных компонентов</b> и в которых есть state, события или браузерные API. Если файл <code>BookingForm.tsx</code> уже клиентский, то все компоненты, которые он подключает, тоже окажутся в браузере: ставить директиву в каждый из них не нужно.</li>
+        <li><b>Как можно глубже и мельче.</b> Не помечайте клиентской всю страницу из-за одного меню: вынесите меню в маленький компонент <code>BurgerMenu.tsx</code> с директивой, а страница останется серверной. Тогда в браузер едет меньше JavaScript.</li>
+      </ul>
+
+<pre class="code" data-lang="tsx" data-title="components/BurgerMenu.tsx">
+"use client";
+
+import { useState } from "react";
+
+export default function BurgerMenu() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setOpen(!open)}&gt;{open ? "✕" : "☰"}&lt;/button&gt;
+      {open &amp;&amp; &lt;nav&gt;…&lt;/nav&gt;}
+    &lt;/div&gt;
+  );
+}
+</pre>
+
+      <div class="callout tip">
+        <b>Серверный компонент можно вложить в клиентский через children</b>
+        <p>Если модальному окну нужно показать на сервере собранные данные, их кладут внутрь как <code>children</code>: <code>&lt;Modal&gt;&lt;Cart /&gt;&lt;/Modal&gt;</code> на странице. Окно (клиентский компонент) хранит state «открыто», а содержимое по-прежнему готовит сервер. Для курса достаточно запомнить, что такое возможно, и попросить ИИ сделать так, если содержимое окна большое.</p>
+      </div>
+
+      <h3>Что вы увидите, если директиву забыть</h3>
+      <p>Если в файле без <code>"use client"</code> вы подключили <code>useState</code> или повесили <code>onClick</code>, Next.js остановит сборку или покажет красный экран с текстом примерно такого вида: «You're importing a component that needs <code>useState</code>. This React Hook only works in a Client Component. To fix, mark the file (or its parent) with the <code>"use client"</code> directive.» Точная формулировка зависит от версии, но смысл один. Лечение — поставить директиву в первую строку нужного файла. Две родственные ошибки: «Event handlers cannot be passed to Client Component props» (серверный компонент передал функцию-обработчик клиентскому: обработчик нужно создавать внутри клиентского компонента) и <code>window is not defined</code> (код обращается к браузерным объектам во время серверной отрисовки: такой код должен быть в клиентском компоненте и выполняться уже после появления страницы в браузере).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Серверные компоненты — как плов, приготовленный на кухне чойхоны: к столу его приносят уже готовым, и гость ничего не варит. Клиентские — как самовар на столе: им должен управлять сам гость (подливать, закручивать кран), поэтому его нужно физически принести в зал. Директива <code>"use client"</code> — табличка «этот прибор отнести к столу». Чем меньше приборов на столе, тем легче зал: поэтому в зал несут только самовар, а не всю кухню.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Поставить директиву не в первую строку (после <code>import</code> или внутрь функции): она не сработает. <b>2.</b> Пометить клиентской всю страницу <code>app/page.tsx</code>, «чтобы ничего не ломалось»: сайт теряет преимущества серверной отрисовки. <b>3.</b> Класть секретный ключ или обращение к базе в клиентский компонент: код едет в браузер, и ключ увидит любой. Секреты живут только в серверном коде. <b>4.</b> Добавлять директиву в каждый файл подряд. <b>5.</b> Думать, что «клиентский» значит «выполняется только в браузере»: первая отрисовка всё равно проходит на сервере. <b>6.</b> Передавать из серверного компонента в клиентский функции: через props передают только простые данные (текст, числа, массивы, объекты).</p>
+      </div>
+
+      <article class="task" id="q-useclient">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: серверные и клиентские компоненты</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1">
+          <p>В файле <code>components/Counter.tsx</code> есть <code>useState</code> и <code>onClick</code>, а директивы нет. Страница с этим компонентом не собирается. Что нужно сделать?</p>
+          <ol class="options">
+            <li>Добавить <code>"use client"</code> первой строкой файла <code>Counter.tsx</code></li>
+            <li>Добавить <code>"use client"</code> внутрь функции <code>Counter</code></li>
+            <li>Удалить <code>useState</code> и использовать обычную переменную</li>
+            <li>Переименовать файл в <code>counter.client.tsx</code></li>
+          </ol>
+          <div class="explain"><p>Файл с состоянием и событиями должен быть клиентским, а директива ставится в самую первую строку файла. Внутри функции она не действует, а переименование ничего не меняет.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Страница магазина состоит из шапки, каталога и одной кнопки «В корзину», которой нужен state. Как правильнее всего поступить?</p>
+          <ol class="options">
+            <li>Пометить <code>"use client"</code> всю страницу</li>
+            <li>Пометить <code>"use client"</code> каждый файл проекта</li>
+            <li>Вынести кнопку в отдельный маленький компонент с <code>"use client"</code>, а страницу оставить серверной</li>
+            <li>Отказаться от кнопки</li>
+          </ol>
+          <div class="explain"><p>Директиву ставят на небольшие интерактивные «листья» дерева: в браузер едет только нужный JavaScript, а остальная страница остаётся лёгкой и быстрой.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что верно про компоненты в Next.js App Router по умолчанию?</p>
+          <ol class="options">
+            <li>Все компоненты клиентские, а серверными их делает директива <code>"use server"</code></li>
+            <li>Страницы и компоненты серверные, пока файл не помечен <code>"use client"</code> (или не подключён из такого файла)</li>
+            <li>Серверные компоненты умеют использовать <code>useState</code></li>
+            <li>Серверные компоненты работают только в браузере</li>
+          </ol>
+          <div class="explain"><p>Серверные компоненты — режим по умолчанию. Директива <code>"use client"</code> включает клиентский режим для файла и всего, что он подключает. У серверных компонентов нет state и обработчиков.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Разработчик положил секретный ключ API в клиентский компонент. Почему это опасно?</p>
+          <ol class="options">
+            <li>Потому что ключ будет работать медленнее</li>
+            <li>Потому что клиентские компоненты нельзя сохранить в Git</li>
+            <li>Потому что ключ сотрётся после перезагрузки страницы</li>
+            <li>Потому что код клиентского компонента отправляется в браузер, и ключ может увидеть любой посетитель сайта</li>
+          </ol>
+          <div class="explain"><p>Всё, что в клиентском компоненте, приезжает пользователю. Секреты хранятся только в серверном коде и переменных окружения, как в уроках про безопасность.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/api-reference/directives/use-client" target="_blank" rel="noopener">Next.js: директива use client</a> и <a href="https://nextjs.org/docs/app/getting-started/server-and-client-components" target="_blank" rel="noopener">серверные и клиентские компоненты</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · ИИ-блок ============ -->
+    <section class="topic" id="ai-prompt">
+      <h2 data-toc="ИИ: промпты"><span class="num">05</span> ИИ-блок: как просить интерактив и не получить «кашу»</h2>
+
+      <div class="callout ai">
+        <b>Правила для интерактива с ИИ</b>
+        <p><b>1.</b> <b>Один блок за раз.</b> Сначала меню, проверили в браузере, затем окно, потом вкладки. Если попросить всё сразу, ИИ перепишет полстраницы. <b>2.</b> <b>Называйте state словами.</b> «Состояние open: true/false» лучше, чем «сделай, чтобы открывалось». <b>3.</b> <b>Просите «use client» только там, где нужен state:</b> в маленьких компонентах, а не на всей странице. <b>4.</b> <b>Описывайте все состояния формы:</b> пустая, ошибка в поле, отправка, успех, сбой сети. ИИ по умолчанию рисует только счастливый путь. <b>5.</b> <b>Проверяйте руками:</b> нажмите каждую кнопку, введите плохие данные, откройте консоль (F12) и узкое окно 390 px. <b>6.</b> <b>Не принимайте код, который не можете объяснить:</b> просите пояснить, где state и что он управляет. <b>7.</b> Правим в том же чате, а не начинаем сначала.</p>
+      </div>
+
+      <p>Формула промпта та же: <b>контекст → цель → ограничения → примеры → проверка</b>.</p>
+
+      <div class="prompt bad-prompt">добавь меню, окно и тёмную тему</div>
+
+      <div class="prompt good-prompt">Контекст: проект Next.js (App Router, TypeScript) + Tailwind CSS v4. Лендинг стоматологии «Улыбка» уже разбит на компоненты в components/ (Header, Hero, Services, Pricing, Footer, Card), страница app/page.tsx серверная.
+Цель: добавить в Header бургер-меню для экранов уже md (ниже 768 px). State: open (true/false). Кнопка переключает open и меняет значок ☰ на ✕. При open === true под шапкой показывается список ссылок «Цены», «Врачи», «Контакты»; клик по ссылке закрывает меню.
+Ограничения: бургер вынеси в отдельный компонент components/BurgerMenu.tsx, и только в нём первой строкой "use client"; Header остаётся серверным. Только Tailwind-классы, без новых библиотек. Внешний вид остальной страницы не меняй. На экранах от md (768 px и шире) кнопка скрыта, ссылки видны сразу.
+Проверка: запусти npm run build; в конце перечисли изменённые файлы и скажи, в каких файлах стоит "use client" и почему.</div>
+
+      <h3>Короткие правки по одной</h3>
+      <div class="prompt">Сначала только план: какие компоненты ты создашь, где будет жить каждый state и в каких файлах нужна директива "use client". Код пока не пиши. Я отвечу «ок» или поправлю план.</div>
+      <div class="prompt">Добавь компонент components/BookingModal.tsx (первой строкой "use client"). State open управляет кнопка «Записаться» в Hero. Окно закрывается кнопкой «Закрыть», клавишей Escape и кликом по затемнённому фону, но не кликом внутри окна. Внутри окна пока заглушка с текстом. Остальное не меняй.</div>
+      <div class="prompt">В форме записи сделай проверку: имя не короче 2 символов, телефон ровно 9 цифр. Ошибки показывай красным под полем, сообщение должно подсказывать, что исправить. Состояния: ввод, отправка (кнопка отключена, текст «Отправляем…»), успех, ошибка с кнопкой «Повторить». Пока вместо сервера сделай функцию-заглушку с задержкой в 1 секунду, которая каждый второй раз выдаёт ошибку. Объясни по строкам, как работает status.</div>
+      <div class="prompt">Консоль браузера: Error: Hydration failed because the server rendered HTML didn't match the client. Найди причину в components/ThemeToggle.tsx и исправь: чтение localStorage должно происходить после появления компонента в браузере. Остальное не меняй.</div>
+
+      <div class="callout warn">
+        <b>За чем следить в ответах ИИ</b>
+        <p><b>1.</b> <code>"use client"</code> на <code>app/page.tsx</code> или <code>layout.tsx</code> «для надёжности»: попросите перенести директиву в маленькие компоненты. <b>2.</b> Любой код, который меняет state напрямую (<code>cart.push</code>, <code>items[0].done = true</code>). <b>3.</b> Новые библиотеки (форм, модальных окон, иконок), когда задачу решает десять строк. <b>4.</b> Только «успешный» сценарий формы: проверьте пустые поля, плохой телефон, сбой. <b>5.</b> Формы без <code>e.preventDefault()</code>: страница перезагружается. <b>6.</b> Секретные ключи в клиентских файлах.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://cursor.com/docs" target="_blank" rel="noopener">документация Cursor</a> и <a href="https://react.dev/learn/choosing-the-state-structure" target="_blank" rel="noopener">React: как выбирать структуру state</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: интерактивный лендинг"><span class="num">06</span> Практика: превращаем лендинг в интерактивное приложение</h2>
+
+      <p>Берём лендинг <code>dental-landing</code> из уроков 5 и 7 (или свой проект на компонентах). Добавим по порядку: бургер-меню, модальное окно записи, вкладки, форму с проверкой и тёмную тему. После каждого шага смотрите на страницу: ломать то, что уже работало, нельзя.</p>
+
+      <h3>Шаг 0. Подготовка</h3>
+      <ol class="steps">
+        <li><b>Откройте проект</b> в Cursor и запустите <code>npm run dev</code>. Страница на <code>localhost:3000</code> должна открываться.</li>
+        <li><b>Сохраните рабочую версию:</b>
+<pre class="code" data-title="Терминал">git add .
+git commit -m "before interactivity"</pre>
+          Если Git пишет «nothing to commit», изменений нет, всё уже сохранено.</li>
+        <li><b>Создайте ветку для урока</b> (по желанию, но удобно откатываться): <code>git switch -c interactive</code>.</li>
+      </ol>
+
+      <h3>Шаг за шагом</h3>
+      <ol class="steps">
+        <li><b>План.</b> Откройте чат Cursor в режиме Agent и отправьте промпт «Сначала только план» из раздела 5. Проверьте, что план называет файлы <code>BurgerMenu.tsx</code>, <code>BookingModal.tsx</code>, <code>Tabs.tsx</code>, <code>BookingForm.tsx</code>, <code>ThemeToggle.tsx</code> и что директива предлагается только для них. Если ИИ хочет пометить клиентской страницу целиком, поправьте план.</li>
+        <li><b>Бургер-меню.</b> Отправьте основной промпт из раздела 5. Откройте страницу, сузьте окно до 390 px (F12 → значок телефона, как в уроке 3), нажмите кнопку: меню открывается, значок меняется на ✕, клик по ссылке закрывает меню. На широком экране кнопки нет.</li>
+        <li><b>Модальное окно.</b> Отправьте промпт про <code>BookingModal</code>. Проверьте четыре способа закрытия: кнопка, Escape, фон. Клик внутри окна окно не закрывает.</li>
+        <li><b>Вкладки.</b> Попросите: «Добавь components/Tabs.tsx (use client): вкладки «О клинике», «Цены», «Врачи». State active хранит id активной вкладки, данные вкладок лежат массивом в data/tabs.ts, выводятся через map с key. Подключи в Hero или отдельной секцией». Проверьте, что активная вкладка подсвечена и панель меняется.</li>
+        <li><b>Форма внутри окна.</b> Отправьте промпт про форму с проверкой. Проверьте руками четыре сценария: пустая форма (две ошибки), короткое имя, телефон из букв, правильные данные (кнопка отключается, потом «Спасибо»). Нажмите отправку несколько раз: при втором запросе заглушка отвечает ошибкой, должна появиться кнопка «Повторить».</li>
+        <li><b>Тёмная тема.</b> Попросите: «Добавь переключатель темы. В app/globals.css после @import "tailwindcss" добавь строку @custom-variant dark (&amp;:where(.dark, .dark *)); — так класс dark на теге html включает стили dark:. Создай components/ThemeToggle.tsx (use client): state dark, по клику добавляй или убирай класс dark у document.documentElement и сохраняй выбор в localStorage; читай localStorage только после появления компонента в браузере. Расставь dark: классы для фона, текста, карточек и границ на всех секциях». Переключите тему и обновите страницу: выбор должен сохраниться.</li>
+        <li><b>Проверьте границы директивы.</b> Откройте файлы: <code>"use client"</code> стоит только в <code>BurgerMenu</code>, <code>BookingModal</code>, <code>Tabs</code>, <code>BookingForm</code>, <code>ThemeToggle</code> (и в компонентах, которые подключаются только из них, она не нужна). В <code>app/page.tsx</code> и <code>layout.tsx</code> её нет. Спросите ИИ: «Покажи, в каких файлах "use client" и почему там».</li>
+        <li><b>Финальные проверки:</b> консоль браузера без красных ошибок, окно 390 px без горизонтальной прокрутки, обе темы читаются, <code>npm run build</code> проходит.</li>
+        <li><b>Сохраните и отправьте на GitHub:</b>
+<pre class="code" data-title="Терминал">git add .
+git commit -m "add interactive blocks"
+git push</pre>
+          Через минуту-две Vercel обновит сайт: откройте ссылку <code>….vercel.app</code> и проверьте меню и тему на телефоне.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось на этом этапе</b>
+        <p><b>Ошибка сборки про хук <code>useState</code> (в тексте — «only works in a Client Component»).</b> В файле есть <code>useState</code>, но нет директивы. Поставьте <code>"use client"</code> первой строкой этого файла.</p>
+        <p><b><code>Too many re-renders</code>.</b> В <code>onClick</code> написан вызов вместо функции: <code>onClick={setOpen(true)}</code>. Нужно <code>onClick={() =&gt; setOpen(true)}</code>. Отправьте ИИ строку с ошибкой.</p>
+        <p><b><code>Hydration failed because the server rendered HTML didn't match the client</code>.</b> Компонент при первом показе читает то, чего нет на сервере (<code>localStorage</code>, <code>window</code>, время, случайное число). Попросите читать это после появления в браузере.</p>
+        <p><b>Тёмная тема не включается, хотя класс <code>dark</code> на теге html есть.</b> В <code>globals.css</code> нет строки <code>@custom-variant dark …</code> или написана с ошибкой: в Tailwind 4 без неё <code>dark:</code> реагирует только на системную тему.</p>
+        <p><b>Форма перезагружает страницу при отправке.</b> В <code>onSubmit</code> нет <code>e.preventDefault()</code>.</p>
+        <p><b>Окно закрывается при клике внутри.</b> Нет <code>e.stopPropagation()</code> на самом окне.</p>
+        <p><b>Страница выглядит иначе, чем раньше.</b> ИИ мог «заодно» переписать дизайн. Верните версию командой <code>git restore .</code> (она отменяет все несохранённые изменения, будьте осторожны) и повторите промпт с жёстким «остальное не менять».</p>
+      </div>
+
+      <article class="task" id="cl-practice-task">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Чек-лист: интерактивный лендинг</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-practice">
+          <li>Перед работой сделан commit рабочей версии</li>
+          <li>Бургер-меню открывается и закрывается, значок меняется, на широком экране кнопки нет</li>
+          <li>Модальное окно закрывается кнопкой, клавишей Escape и кликом по фону, но не кликом внутри</li>
+          <li>Вкладки переключаются, активная подсвечена, данные лежат в массиве</li>
+          <li>Форма проверяет имя и телефон, показывает ошибки под полями, а при отправке отключает кнопку и показывает успех или ошибку</li>
+          <li>Тёмная тема переключается и сохраняется после обновления страницы</li>
+          <li><code>"use client"</code> стоит только в маленьких интерактивных компонентах, а не в <code>page.tsx</code> и <code>layout.tsx</code></li>
+          <li>Консоль без красных ошибок, <code>npm run build</code> проходит, commit и push сделаны, сайт на Vercel обновился</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ 07 · Фишка ============ -->
+    <section class="topic" id="challenge">
+      <h2 data-toc="«Один час — один MVP»"><span class="num">07</span> Фишка урока: «Один час — один MVP»</h2>
+
+      <p>MVP (minimum viable product) — минимальная версия продукта, которой уже можно пользоваться. В этом челлендже участники за <b>60 минут</b> собирают интерактивный мини-сервис с нуля и показывают живую ссылку. Блок рассчитан на преподавателя и подходит для самостоятельного вечера: нужен таймер на проекторе.</p>
+
+      <div class="callout tip">
+        <b>Правила</b>
+        <p><b>1.</b> Каждый получает идею из списка ниже (по жребию или выбирает из двух). <b>2.</b> Таймер на 60 минут запускается одновременно. <b>3.</b> В MVP должны быть минимум <b>три интерактивных приёма</b> из урока: например, state, условный рендер и список через <code>map</code>, форма или фильтр. <b>4.</b> Код руками не пишете: описываете задачу ИИ и проверяете результат. <b>5.</b> Данные могут лежать массивом в коде, сервер и база не нужны. <b>6.</b> Результат — адрес <code>….vercel.app</code> с работающим сервисом. <b>7.</b> Не успел опубликовать за 60 минут — очки за публикацию не начисляются, поэтому заранее оставьте 10 минут на commit, push и проверку Vercel.</p>
+      </div>
+
+      <h3>Идеи для MVP (выбирайте или тяните жребий)</h3>
+      <ul>
+        <li><b>Список дел</b>: добавить, отметить выполненным, удалить, фильтр «все / сделанные / нет».</li>
+        <li><b>Калькулятор чаевых и разделения счёта</b> для чойхоны: сумма, процент, число гостей, результат на человека.</li>
+        <li><b>Мини-викторина</b> про Душанбе: вопрос, варианты, подсчёт баллов, экран результата и кнопка «Заново».</li>
+        <li><b>Меню кафе с заказом</b>: категории, добавить блюдо, итог в сомони.</li>
+        <li><b>Трекер привычек</b>: список привычек, отметка «сегодня сделано», счётчик серии.</li>
+        <li><b>Конвертер валют</b> (сомони, рубль, доллар) по курсам, записанным в массиве.</li>
+      </ul>
+
+      <h3>Расписание часа</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:05</td><td>Выбирают идею, записывают на листке: какие данные, какие state, какие кнопки</td></tr>
+            <tr><td>0:05–0:10</td><td>Пишут промпт по формуле: контекст, цель, ограничения, проверка. Просят сначала план</td></tr>
+            <tr><td>0:10–0:40</td><td>Сборка по шагам: сначала данные и вёрстка, потом state и события, потом проверка полей и пустые состояния</td></tr>
+            <tr><td>0:40–0:50</td><td>Проверка руками: все кнопки, плохой ввод, телефон (390 px), консоль без ошибок</td></tr>
+            <tr><td>0:50–1:00</td><td>Commit, push, проверка ссылки на Vercel</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Шаблон промпта для MVP</h3>
+      <div class="prompt good-prompt">Контекст: пустой проект Next.js (App Router, TypeScript) + Tailwind CSS. Делаем MVP «[ИДЕЯ]» за один час. Сервер и база не нужны, данные лежат массивом в data/.
+Цель: одна страница с [ПЕРЕЧИСЛИТЕ ЭКРАНЫ И ДЕЙСТВИЯ]. State: [ПЕРЕЧИСЛИТЕ, например список задач и выбранный фильтр]. Обязательно: пустое состояние («пока ничего нет»), проверка полей ввода с понятными ошибками.
+Ограничения: интерактивные части вынеси в небольшие компоненты в components/ с "use client" первой строкой; app/page.tsx остаётся серверным и только собирает страницу. Массивы в state не мутируй (spread, filter, map), у элементов списка key=id. Только Tailwind, без новых библиотек, адаптив от 390 px.
+Проверка: запусти npm run build; в конце перечисли файлы, state и где стоит "use client".</div>
+
+      <h3>Как считаем очки</h3>
+      <ul>
+        <li><b>+10</b> за работающую ссылку на Vercel в срок.</li>
+        <li><b>+3</b> за каждый интерактивный приём из урока (state, условный рендер, список, форма, фильтр), максимум 15.</li>
+        <li><b>+3</b> за понятное пустое состояние и понятную ошибку ввода.</li>
+        <li><b>+3</b> за аккуратную границу <code>"use client"</code>: директива только в небольших компонентах.</li>
+        <li><b>−3</b> за каждую красную ошибку в консоли браузера при показе.</li>
+        <li><b>+5</b> голос группы за самый полезный сервис.</li>
+      </ul>
+
+      <h3>Показ и оценка</h3>
+      <p>Каждый показывает сервис на проекторе за 2 минуты: открыть ссылку, пройти главный сценарий, один раз ввести плохие данные. Сосед справа заполняет мини-оценку.</p>
+      <ul class="checklist" id="cl-peer">
+        <li>Ссылка открывается без входа, сервис работает с телефона</li>
+        <li>Основной сценарий проходится за минуту без подсказок автора</li>
+        <li>Плохой ввод даёт понятную ошибку, а не пустой экран</li>
+        <li>Есть пустое состояние («пока ничего нет»)</li>
+        <li>В коде директива <code>"use client"</code> не стоит на <code>page.tsx</code></li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Для преподавателя</b>
+        <p>Включите таймер на проекторе и напоминайте об оставшемся времени на 30, 10 и 5 минутах. Не помогайте с кодом первые 20 минут: пусть участники учатся описывать задачу и читать ошибки. Если у кого-то сборка падает, попросите соседа прочитать ошибку вслух и найти в блоке «Если сломалось» подходящий случай. Победителя попросите рассказать, какой state был в его сервисе и сколько раз он переписывал промпт.</p>
+      </div>
+    </section>
+
+    <!-- ============ Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">08</span> Домашнее задание: интернет-магазин одежды (ДЗ-8)</h2>
+
+      <p>Соберите интернет-магазин одежды с каталогом, фильтром по категориям и корзиной. Результат сдаётся двумя ссылками: на репозиторий GitHub и на опубликованный сайт на Vercel. Мини-версия логики уже была в задаче 3.1 этого урока.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/08-react-state/shop-mock.svg" alt="Схема страницы магазина: сверху шапка с названием и значком корзины с числом 2, ниже кнопки категорий Все, Футболки, Куртки, Обувь, сетка из шести карточек товаров с кнопкой В корзину и панель корзины справа со списком и итоговой суммой" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Ориентир по структуре: шапка с корзиной, фильтр, сетка товаров, корзина с итогом. Упрощённая схема, оформление ваше</figcaption>
+      </figure>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Каталог:</b> минимум 8 товаров в массиве (<code>id</code>, название, цена в сомони, категория), минимум 3 категории. Карточки выводятся через <code>map</code> с <code>key</code>. Вместо фотографий можно использовать цветные блоки или свои картинки из <code>public/</code>.</li>
+        <li><b>Фильтр:</b> кнопки категорий плюс «Все». Выбранная категория подсвечена. Фильтр не удаляет товары из данных, а вычисляет список для экрана.</li>
+        <li><b>Корзина:</b> кнопка «В корзину» на каждой карточке, счётчик товаров в шапке, список выбранного, кнопка «Удалить» у позиции, итоговая сумма в сомони. Если корзина пуста, показывается понятный текст. Корзина не теряется при смене категории.</li>
+        <li><b>Интерактив:</b> корзина открывается как модальное окно или выезжающая панель (по кнопке в шапке), закрывается кнопкой и Escape.</li>
+        <li><b>Форма заказа:</b> в корзине форма с именем и телефоном, проверка полей, состояния «отправка», «успех» и «ошибка» (заглушка с задержкой вместо сервера).</li>
+        <li><b>Структура:</b> компоненты в <code>components/</code>, данные в <code>data/</code>. Директива <code>"use client"</code> — только в интерактивных компонентах, в <code>app/page.tsx</code> и <code>app/layout.tsx</code> её нет (допустимо, если страница остаётся серверной и подключает клиентский компонент магазина).</li>
+        <li><b>Порядок:</b> консоль браузера без красных ошибок и предупреждения про <code>key</code>, <code>npm run build</code> проходит, нормальный вид на 390 px.</li>
+        <li><b>Бонус:</b> количество у позиции корзины (плюс и минус), тёмная тема, сохранение корзины в <code>localStorage</code>.</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li><b>Создайте новый проект</b> командой <code>npx create-next-app@latest clothing-shop</code> (настройки как в уроке 5) и сделайте первый commit.</li>
+        <li><b>Опишите задачу ИИ по формуле промпта</b> и попросите сначала план: какие компоненты, где какой state, где нужна директива. Утвердите план.</li>
+        <li><b>Стройте по шагам</b>: данные и каталог, затем фильтр, затем корзина, затем окно корзины, затем форма заказа. После каждого шага проверка в браузере и commit.</li>
+        <li><b>Проверьте руками:</b> добавьте товар из одной категории, перейдите в другую, корзина сохранилась? Удалите позицию, сумма пересчиталась? Отправьте форму с пустыми полями.</li>
+        <li><b>Запустите <code>npm run build</code></b>, проверьте консоль и окно 390 px.</li>
+        <li><b>Опубликуйте</b> (push на GitHub, Vercel как в уроке 5), проверьте сайт на телефоне и сдайте две ссылки ниже.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Корзина хранится в обычной переменной или меняется через <code>push</code>: счётчик не обновляется. <b>2.</b> Фильтр удаляет товары из массива, и после смены категории они не возвращаются. <b>3.</b> Корзина лежит в компоненте-карточке, а не в общем родителе: у каждой карточки своя корзина, а в шапке пусто. Хранить корзину нужно в компоненте над карточками и шапкой. <b>4.</b> <code>"use client"</code> на всём проекте. <b>5.</b> Нет пустого состояния корзины и нет сообщений об ошибках формы. <b>6.</b> Нет <code>key</code> в списках. <b>7.</b> Ссылка на <code>localhost</code> или на профиль GitHub вместо репозитория, приватный репозиторий. <b>8.</b> Настоящие телефоны и адреса в данных.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист требований к ДЗ-8</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Не меньше 8 товаров в массиве и не меньше 3 категорий, карточки выводятся через <code>map</code> с <code>key</code></li>
+          <li>Фильтр по категории работает, «Все» возвращает полный каталог</li>
+          <li>Корзина: добавление, удаление, счётчик в шапке, итоговая сумма, понятный текст для пустой корзины</li>
+          <li>Корзина не сбрасывается при смене категории</li>
+          <li>Корзина открывается и закрывается окном или панелью</li>
+          <li>Форма заказа проверяет имя и телефон и показывает отправку, успех и ошибку</li>
+          <li><code>"use client"</code> стоит только в интерактивных компонентах</li>
+          <li>В консоли нет красных ошибок, <code>npm run build</code> проходит, вид на 390 px нормальный</li>
+          <li>Репозиторий на GitHub публичный, не меньше трёх commit, ссылка Vercel открывается в режиме инкогнито</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий вида <code>https://github.com/ваш-логин/clothing-shop</code>. Откройте её в режиме инкогнито: код и папка <code>components</code> должны быть видны.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/clothing-shop"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 8.3</span><h4>Сдача: ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте адрес опубликованного магазина вида <code>https://clothing-shop-….vercel.app</code>. Откройте его на телефоне и пройдите путь «фильтр, в корзину, удалить, заказ».</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://clothing-shop.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">React: мыслим компонентами</a> и <a href="https://react.dev/learn/sharing-state-between-components" target="_blank" rel="noopener">общий state для нескольких компонентов</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>State:</b> <code>const [x, setX] = useState(начальное);</code>. Меняем только сеттером. Обычная переменная экран не обновляет и не переживает перерисовку. У каждой копии компонента свой state. Хуки вызываются только на верхнем уровне.</li>
+        <li><b>События:</b> <code>onClick</code>, <code>onChange</code>, <code>onSubmit</code>. Передаём функцию: <code>onClick={() =&gt; setOpen(true)}</code>, а не вызов <code>setOpen(true)</code>. <code>e.preventDefault()</code> — отменить действие по умолчанию, <code>e.stopPropagation()</code> — остановить всплытие.</li>
+        <li><b>Условный рендер:</b> <code>{open &amp;&amp; &lt;Menu /&gt;}</code> — показать или ничего; <code>{open ? "✕" : "☰"}</code> — выбрать из двух; число слева от <code>&amp;&amp;</code> не ставим (<code>count &gt; 0 &amp;&amp; …</code>).</li>
+        <li><b>Списки в state:</b> добавить <code>[...arr, item]</code>, удалить <code>arr.filter(…)</code>, изменить <code>arr.map(…)</code>. Не <code>push</code> и не <code>splice</code>. Фильтр каталога — вычисление для экрана, а не удаление из данных.</li>
+        <li><b>Формы:</b> управляемое поле <code>value</code> + <code>onChange</code> (флажок — <code>checked</code>). Валидация в <code>onSubmit</code> после <code>e.preventDefault()</code>, ошибки — объектом в state, показ — условным рендером.</li>
+        <li><b>Загрузка и ошибка:</b> <code>status</code> = idle, loading, error, success. На каждый статус свой экран, во время загрузки кнопка отключена, при ошибке есть «Повторить».</li>
+        <li><b>"use client":</b> в Next.js компоненты по умолчанию серверные. Директива в первой строке файла включает клиентский режим: нужен для state, событий, эффектов и браузерных API. Ставим в маленькие интерактивные компоненты, не на всю страницу. Секреты в клиентском коде не хранить.</li>
+        <li><b>Типичные ошибки:</b> «Too many re-renders» (вызов вместо функции), «only works in a Client Component» (нет директивы), «Hydration failed» (чтение браузерных данных при первом показе), мутация массива, форма без <code>preventDefault</code>.</li>
+        <li><b>С ИИ:</b> один блок за раз, называть state, перечислять все состояния формы, просить директиву только в маленьких компонентах, проверять руками и в консоли.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, чем state отличается от обычной переменной, и написать счётчик через <code>useState</code></li>
+          <li>Могу подключить обработчик события и объяснить разницу между <code>onClick={f}</code> и <code>onClick={f()}</code></li>
+          <li>Могу показать и спрятать элемент условным рендером и сделать бургер-меню, модальное окно и вкладки</li>
+          <li>Могу добавить и удалить элемент в массиве в state, не мутируя его, и отфильтровать список по категории</li>
+          <li>Могу собрать форму с управляемыми полями, проверкой и сообщениями об ошибках</li>
+          <li>Могу показать состояния загрузки, ошибки и успеха</li>
+          <li>Могу объяснить, зачем нужна директива <code>"use client"</code>, куда её ставить и что будет, если забыть</li>
+          <li>Могу найти причину ошибок «Too many re-renders» и «only works in a Client Component» и отправить их ИИ</li>
+        </ul>
+      </article>
+    </section>
