@@ -711,7 +711,7 @@ export const LESSON_META: LessonMeta = {
 };
 
 /** Vibe Coding: slugs with content/vibe-coding/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const VC_AVAILABLE = ['intro', 'prompting', 'html-css', 'setup-git', 'first-project', 'cursor-agent', 'react-basics'] as const;
+export const VC_AVAILABLE = ['intro', 'prompting', 'html-css', 'setup-git', 'first-project', 'cursor-agent', 'react-basics', 'react-state'] as const;
 
 /** Vibe Coding task levels, keyed by progress key `vc-<slug>`. */
 export const VC_LESSON_META: LessonMeta = {
@@ -824,6 +824,23 @@ export const VC_LESSON_META: LessonMeta = {
     'map-console': 'm',
     'map-react': 'm',
     'q-components': 'm',
+    'cl-practice-task': 'm',
+    'hw-req': 'm',
+    'hw-github': 'm',
+    'hw-vercel': 'm',
+    't-understood': 'e',
+  },
+  'vc-react-state': {
+    'pg-counter': 'e',
+    'q-state': 'e',
+    'pg-menu': 'e',
+    'pg-modal': 'm',
+    'pg-tabs': 'm',
+    'q-events': 'm',
+    'pg-shop': 'm',
+    'pg-form': 'm',
+    'pg-status': 'm',
+    'q-useclient': 'm',
     'cl-practice-task': 'm',
     'hw-req': 'm',
     'hw-github': 'm',
