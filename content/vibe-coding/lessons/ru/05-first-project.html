@@ -1,0 +1,790 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 560px) { .cmp { grid-template-columns: 1fr; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 5 · Рабочая среда: Cursor</p>
+      <h1>Первый настоящий проект: Next.js + Tailwind + деплой</h1>
+      <p class="lead">К концу урока у вас будет первый проект на настоящем фреймворке, опубликованный в интернете: лендинг стоматологии с живой ссылкой вида <code>https://…vercel.app</code>, которую можно отправить маме, другу или первому клиенту. Проект создан командой в терминале, страницу почти целиком соберёт ИИ в Cursor, а код будет лежать на GitHub. Вы поймёте, что такое хостинг, домен и URL, из каких файлов состоит проект и как прочитать лог сборки, если публикация не удалась.</p>
+      <ul class="goals">
+        <li>Объяснять разницу между хостингом, доменом и URL и показывать, из чего состоит адрес сайта</li>
+        <li>Создать проект командой <code>npx create-next-app</code>, запустить его на <code>localhost</code> и назвать главные файлы проекта</li>
+        <li>Объяснить, что такое Tailwind CSS и почему ИИ пишет его так охотно, и прочитать строку классов вроде <code>bg-sky-600 px-8 py-3</code></li>
+        <li>Собрать через ИИ лендинг из пяти секций (hero, услуги, врачи, отзывы, форма заявки) с адаптивной вёрсткой</li>
+        <li>Опубликовать проект на Vercel из репозитория GitHub и обновлять сайт обычным <code>git push</code></li>
+        <li>Найти причину в логе сборки Vercel, если деплой упал, и отправить её ИИ для исправления</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: компьютер с установленными на 4-м уроке Cursor, Node.js, Git и аккаунтом GitHub, интернет и около 2,5 часов. Откройте урок в одной половине экрана, а Cursor — в другой. Теорию (разделы 1–4) читайте по частям, практику (раздел 6) делайте за один присест: так вы успеете увидеть живую ссылку. В конце — домашнее задание и «Клон-день».</p>
+      <p>Если что-то из урока 4 не работает (команда <code>node</code> не найдена, не получается сделать <code>git push</code>), сначала вернитесь к чек-листу установки: здесь на него опираемся без повторения.</p>
+    </div>
+
+    <!-- ============ 01 · Хостинг, домен, URL ============ -->
+    <section class="topic" id="hosting">
+      <h2 data-toc="Хостинг, домен, URL"><span class="num">01</span> Что такое хостинг, домен и URL</h2>
+
+      <p>До сих пор ваши страницы жили только на вашем компьютере: файл <code>index.html</code> или адрес <code>localhost</code>, который не открывается ни у кого, кроме вас. Чтобы страницу увидели другие, её нужно положить на компьютер, который <b>всегда включён и подключён к интернету</b>. Такие компьютеры называют <b>серверами</b>, а услугу «разместить свои файлы на чужом сервере» — <b>хостингом</b>.</p>
+
+      <dl class="terms">
+        <dt>Хостинг</dt><dd>Место на сервере, где хранится ваш сайт и откуда его отдают всем желающим. Как арендованный прилавок на бозоре: товар ваш, а место и охрана чужие.</dd>
+        <dt>Домен</dt><dd>Читаемое имя сайта, например <code>vercel.app</code> или <code>example.tj</code>. Компьютеры ищут друг друга по числовым адресам (IP), а имя нужно людям. Специальная «телефонная книга» интернета (DNS) переводит имя в адрес сервера.</dd>
+        <dt>URL</dt><dd>Полный адрес конкретной страницы: протокол, домен и путь. Домен — часть URL, а не синоним.</dd>
+      </dl>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 220" role="img" aria-label="Схема: браузер спрашивает у DNS адрес по домену, затем получает файлы сайта с сервера хостинга">
+          <rect class="box o" x="12" y="70" width="150" height="70" rx="12" /><text x="87" y="100" text-anchor="middle">Браузер</text><text class="sub" x="87" y="120" text-anchor="middle">телефон гостя</text>
+          <rect class="box b" x="285" y="14" width="150" height="62" rx="12" /><text x="360" y="42" text-anchor="middle">DNS</text><text class="sub" x="360" y="60" text-anchor="middle">«книга имён»</text>
+          <rect class="box g" x="558" y="70" width="150" height="70" rx="12" /><text x="633" y="100" text-anchor="middle">Сервер</text><text class="sub" x="633" y="120" text-anchor="middle">хостинг: ваши файлы</text>
+          <path class="arr" d="M162 88 L285 52" /><path class="arr-head" d="M279 44l12 6-10 9z" />
+          <text class="sub" x="150" y="46">1. где живёт</text><text class="sub" x="150" y="62">name.vercel.app?</text>
+          <path class="arr" d="M435 52 L560 88" /><path class="arr-head" d="M558 79l10 9-12 5z" />
+          <text class="sub" x="476" y="46">2. вот адрес</text><text class="sub" x="476" y="62">сервера</text>
+          <path class="arr" d="M162 122 H556" /><path class="arr-head" d="M552 116l12 6-12 6z" />
+          <text class="sub" x="360" y="116" text-anchor="middle">3. дай страницу</text>
+          <path class="arr" d="M556 136 H166" /><path class="arr-head" d="M170 130l-12 6 12 6z" />
+          <text class="sub" x="360" y="160" text-anchor="middle">4. файлы сайта: HTML, CSS, картинки</text>
+          <text class="sub" x="12" y="204">Хостинг — это сервер с вашими файлами; домен — имя, по которому его находят.</text>
+        </svg>
+        <figcaption>Что происходит, когда вы вводите адрес сайта: браузер узнаёт у DNS адрес сервера и забирает с него файлы</figcaption>
+      </figure>
+
+      <h3>Из чего состоит URL</h3>
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 196" role="img" aria-label="Разбор адреса: протокол https, поддомен dental-landing, домен vercel.app, путь /prices">
+          <text class="mono" x="360" y="50" text-anchor="middle" style="font-size:22px">https://dental-landing.vercel.app/prices</text>
+          <rect class="fill-g" x="118" y="66" width="82" height="6" rx="3" />
+          <rect class="fill-y" x="214" y="66" width="192" height="6" rx="3" />
+          <rect class="fill-r" x="410" y="66" width="122" height="6" rx="3" />
+          <text class="sub t-g" x="159" y="96" text-anchor="middle">протокол</text>
+          <text class="sub" x="159" y="114" text-anchor="middle">https — безопасное</text>
+          <text class="sub" x="159" y="130" text-anchor="middle">соединение (замок)</text>
+          <text class="sub t-o" x="310" y="96" text-anchor="middle">имя проекта (поддомен)</text>
+          <text class="sub" x="310" y="114" text-anchor="middle">его даёт Vercel</text>
+          <text class="sub t-r" x="471" y="96" text-anchor="middle">домен</text>
+          <text class="sub" x="471" y="114" text-anchor="middle">бесплатный, общий</text>
+          <text class="sub t-b" x="610" y="96" text-anchor="middle">путь</text>
+          <text class="sub" x="610" y="114" text-anchor="middle">какая страница</text>
+          <text class="sub" x="12" y="164">Свой короткий домен (например, с зоной .tj) покупают отдельно у регистратора</text>
+          <text class="sub" x="12" y="182">и подключают позже: это платно и ежегодно.</text>
+        </svg>
+        <figcaption>Бесплатный адрес <code>…vercel.app</code> — уже настоящий публичный сайт. Свой домен нужен для красоты и доверия, но не для работы</figcaption>
+      </figure>
+
+      <div class="yt" data-id="jKSPWTMLLsk" data-title="Что такое сервер, хостинг и домен. Простыми словами — Николай Коротков"></div>
+      <p class="muted">Короткий ролик на русском (2,5 минуты): те же понятия на другом примере. Видео записано давно, но идея не устарела.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Представьте лавку на бозоре в Душанбе. <b>Хостинг</b> — ваш прилавок: место, где лежит товар и куда приходят покупатели. <b>Домен</b> — вывеска и название, по которому вас находят: «Улыбка, ряд 5». <b>URL</b> — полный маршрут «ряд 5, прилавок 12, левая полка»: он ведёт не просто на бозор, а к конкретному товару. А <code>localhost</code> — это товар, разложенный у вас дома на кухне: удобно проверять, но покупатели его не увидят.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Пытаться отправить другу ссылку <code>http://localhost:3000</code>: она работает только на вашем компьютере. <b>2.</b> Думать, что без покупки домена сайта «нет». Адрес <code>…vercel.app</code> доступен всем в мире. <b>3.</b> Путать «хостинг» и «домен»: можно купить домен и не иметь хостинга, и наоборот. <b>4.</b> Публиковать вместе с сайтом личные данные: сайт в интернете видят все.</p>
+      </div>
+
+      <article class="task" id="q-hosting">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: хостинг, домен, URL</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Друг просит ссылку на ваш лендинг, а он открыт у вас по адресу <code>http://localhost:3000</code>. Почему друг его не увидит?</p>
+          <ol class="options">
+            <li>Потому что в адресе нет буквы «s» после http</li>
+            <li>Потому что localhost — это ваш собственный компьютер, а не сервер в интернете</li>
+            <li>Потому что порт 3000 закрыт для друзей</li>
+            <li>Потому что нужно купить домен</li>
+          </ol>
+          <div class="explain"><p>Слово localhost означает «этот же компьютер». У друга оно приведёт на его собственный компьютер. Чтобы сайт увидели все, его нужно разместить на сервере в интернете: хостинге.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В адресе <code>https://dental-landing.vercel.app/prices</code> частью <b>пути</b> (какая именно страница) является…</p>
+          <ol class="options">
+            <li><code>https</code></li>
+            <li><code>vercel.app</code></li>
+            <li><code>/prices</code></li>
+            <li><code>dental-landing</code></li>
+          </ol>
+          <div class="explain"><p><code>https</code> — протокол, <code>vercel.app</code> — домен, <code>dental-landing</code> — имя проекта (поддомен), а <code>/prices</code> — путь к конкретной странице сайта.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/ru/docs/Learn_web_development/Howto/Web_mechanics/What_is_a_URL" target="_blank" rel="noopener">MDN: что такое URL</a> и <a href="https://vercel.com/docs/domains" target="_blank" rel="noopener">Vercel: домены</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 02 · Next.js проект ============ -->
+    <section class="topic" id="nextjs">
+      <h2 data-toc="Проект Next.js"><span class="num">02</span> create-next-app: проект из одной команды</h2>
+
+      <p><b>Next.js</b> — популярный фреймворк на основе React: набор готовых правил и инструментов, из которых собирают современные сайты и приложения. На 1-м уроке вы создавали один файл <code>index.html</code>. Для настоящего проекта файлов десятки (страницы, стили, настройки, библиотеки), поэтому начинают не с пустой папки, а с <b>заготовки</b>. Её создаёт официальная команда:</p>
+
+      <pre class="code" data-title="Терминал">npx create-next-app@latest dental-landing</pre>
+
+      <p><code>npx</code> скачивает и запускает программу создания проекта (она ставится из интернета, поэтому нужен интернет), <code>create-next-app</code> — сама программа, <code>@latest</code> — «самая свежая версия», <code>dental-landing</code> — имя папки с новым проектом. Если терминал спросит, можно ли установить пакет <code>create-next-app</code>, ответьте <code>y</code>.</p>
+
+      <h3>Что спросит мастер установки</h3>
+      <p>Вопросы зависят от версии, поэтому не заучивайте их. По документации Next.js на сегодня первый вопрос — название проекта, второй — использовать ли рекомендуемые настройки. Вам нужен <b>первый вариант</b> («Yes, use recommended defaults»): стрелками выберите его и нажмите Enter.</p>
+
+      <pre class="code" data-title="Терминал">What is your project named? dental-landing
+Would you like to use the recommended Next.js defaults?
+  ❯ Yes, use recommended defaults
+    No, reuse previous settings
+    No, customize settings</pre>
+
+      <p>Рекомендуемые настройки включают всё, что нужно курсу: TypeScript, ESLint (проверка стиля кода), <b>Tailwind CSS</b>, App Router (современная система страниц), папку проекта без <code>src</code>, а также файл <code>AGENTS.md</code> с подсказками для ИИ-помощников. После ответа программа создаст папку и установит библиотеки: это занимает от одной до нескольких минут.</p>
+
+      <div class="callout tip">
+        <b>Быстрый способ без вопросов</b>
+        <p>Та же заготовка одной командой: <code>npx create-next-app@latest dental-landing --yes</code>. Флаг <code>--yes</code> пропускает вопросы и берёт сохранённые или стандартные настройки. Выбирайте этот способ, когда настройки уже знакомы.</p>
+      </div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 340" role="img" aria-label="Структура папки проекта Next.js: app, public, package.json, node_modules и другие файлы с пояснениями">
+          <rect class="box g" x="12" y="10" width="696" height="320" rx="14" />
+          <text class="mono t-g" x="30" y="38" style="font-size:15px">dental-landing/</text>
+          <rect class="fill-g" x="40" y="52" width="250" height="26" rx="6" /><text class="mono" x="52" y="70">app/page.tsx</text>
+          <text class="sub" x="310" y="70">← ГЛАВНАЯ СТРАНИЦА: здесь ваш лендинг</text>
+          <rect class="box" x="40" y="86" width="250" height="26" rx="6" /><text class="mono" x="52" y="104">app/layout.tsx</text>
+          <text class="sub" x="310" y="104">← общая «рамка»: язык страницы, заголовок вкладки</text>
+          <rect class="box" x="40" y="120" width="250" height="26" rx="6" /><text class="mono" x="52" y="138">app/globals.css</text>
+          <text class="sub" x="310" y="138">← общие стили, внутри подключён Tailwind</text>
+          <rect class="box" x="40" y="154" width="250" height="26" rx="6" /><text class="mono" x="52" y="172">public/</text>
+          <text class="sub" x="310" y="172">← картинки и иконки, они доступны по адресу /имя-файла</text>
+          <rect class="fill-y" x="40" y="188" width="250" height="26" rx="6" /><text class="mono" x="52" y="206">package.json</text>
+          <text class="sub" x="310" y="206">← паспорт проекта: библиотеки и команды (dev, build)</text>
+          <rect class="box" x="40" y="222" width="250" height="26" rx="6" /><text class="mono" x="52" y="240">AGENTS.md</text>
+          <text class="sub" x="310" y="240">← подсказки для ИИ-помощника, лежат в проекте</text>
+          <rect class="fill-r" x="40" y="256" width="250" height="26" rx="6" /><text class="mono" x="52" y="274">node_modules/</text>
+          <text class="sub" x="310" y="274">← скачанные библиотеки: не правим, в Git не кладём</text>
+          <text class="sub" x="40" y="306">Ещё есть .gitignore, next.config.ts, tsconfig.json — их трогает ИИ, когда это нужно.</text>
+        </svg>
+        <figcaption>Главные файлы проекта. 90% урока вы проведёте в <code>app/page.tsx</code></figcaption>
+      </figure>
+
+      <h3>Dev-сервер и package.json</h3>
+      <p>В папке проекта лежит <code>package.json</code>: в нём перечислены библиотеки и «кнопки» — короткие команды для работы. Главные три:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Команда</th><th>Что делает</th><th>Когда нужна</th></tr></thead>
+          <tbody>
+            <tr><td><code>npm run dev</code></td><td>Запускает <b>dev-сервер</b>: сайт открывается на <code>http://localhost:3000</code> и сам обновляется при каждом сохранении файла</td><td>Всё время, пока вы разрабатываете</td></tr>
+            <tr><td><code>npm run build</code></td><td>Собирает «боевую» версию и заодно проверяет код на ошибки. Именно её запускает Vercel</td><td>Перед публикацией: так вы найдёте ошибку раньше сервера</td></tr>
+            <tr><td><code>npm run lint</code></td><td>Проверяет стиль кода и частые ошибки</td><td>По желанию</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <pre class="code" data-title="Терминал">cd dental-landing
+npm run dev</pre>
+
+      <p>Откройте в браузере <code>http://localhost:3000</code>: вы увидите стартовую страницу Next.js. Остановить dev-сервер можно сочетанием Ctrl+C в терминале. Пока он работает, терминал «занят»: для других команд откройте второй терминал.</p>
+
+      <div class="callout tip">
+        <b>Файлы .tsx — что это?</b>
+        <p>Страница лежит в <code>page.tsx</code>. Расширение <code>.tsx</code> означает <b>TypeScript + JSX</b>: это язык React (компоненты, из которых строится интерфейс), к которому добавлена проверка типов. Подробно React, JSX и компоненты вы разберёте в уроке 7, а TypeScript встретится позже. Сейчас достаточно двух правил: <b>1)</b> код в таких файлах пишет ИИ, вы его запускаете и проверяете глазами; <b>2)</b> если в терминале или логе сборки появляется «ошибка типов» (type error), скопируйте её целиком и отправьте ИИ — так это и разбираем.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Создать проект через <code>create-next-app</code> — как арендовать готовое кафе вместо стройки: стены, кухня, проводка и вывеска уже есть. Вам остаётся привезти своё меню (<code>page.tsx</code>) и покрасить стены (Tailwind). Строить фундамент заново каждому не нужно.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Создать проект внутри другого Git-репозитория (например, внутри папки прошлого урока): Git-репозиторий заготовки тогда не создаётся, и позже будет путаница. Создавайте проект в обычной папке, например на рабочем столе. <b>2.</b> Закрыть терминал и удивляться, что <code>localhost:3000</code> перестал открываться: dev-сервер остановился. <b>3.</b> Открывать в Cursor папку выше проекта: открывайте именно <code>dental-landing</code>. <b>4.</b> Лезть в <code>node_modules</code> и править там что-то.</p>
+      </div>
+
+      <article class="task" id="q-nextjs">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: проект Next.js</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="1">
+          <p>В каком файле лежит главная страница нового проекта, которую вы будете менять вместе с ИИ?</p>
+          <ol class="options">
+            <li><code>app/page.tsx</code></li>
+            <li><code>package.json</code></li>
+            <li><code>node_modules/index.html</code></li>
+            <li><code>public/</code></li>
+          </ol>
+          <div class="explain"><p>Главная страница сайта — <code>app/page.tsx</code>. В <code>package.json</code> хранятся библиотеки и команды, в <code>public</code> — картинки, а <code>node_modules</code> — чужие библиотеки, их не трогаем.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Вы сохранили изменения в <code>page.tsx</code>, а страница на <code>localhost:3000</code> не изменилась. Что проверить в первую очередь?</p>
+          <ol class="options">
+            <li>Купить домен</li>
+            <li>Запущен ли в терминале <code>npm run dev</code> и нет ли там красной ошибки</li>
+            <li>Удалить папку <code>app</code></li>
+            <li>Переустановить Cursor</li>
+          </ol>
+          <div class="explain"><p>Dev-сервер обновляет страницу при сохранении, пока он запущен. Если он остановлен или код сломан, в терминале видно красную ошибку — её и отправляют ИИ.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/installation" target="_blank" rel="noopener">Next.js: установка</a> и <a href="https://nextjs.org/docs/app/api-reference/cli/create-next-app" target="_blank" rel="noopener">справочник create-next-app</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 03 · Tailwind ============ -->
+    <section class="topic" id="tailwind">
+      <h2 data-toc="Tailwind CSS"><span class="num">03</span> Tailwind CSS: стили прямо в разметке</h2>
+
+      <p>На 3-м уроке вы читали CSS: правила в отдельном файле, где есть селектор и набор свойств. <b>Tailwind CSS</b> устроен иначе: готовые короткие классы-«кирпичики» вы пишете прямо на элементе. Один класс отвечает за одну мелочь: <code>px-8</code> — отступ по бокам, <code>bg-sky-600</code> — голубой фон, <code>font-semibold</code> — полужирный шрифт.</p>
+
+      <figure class="diagram">
+        <div class="cmp">
+          <div><h5>Обычный CSS (урок 3)</h5>
+            <pre class="code" data-lang="css" data-title="style.css">/* style.css */
+.btn {
+  background: #0284c7;
+  color: white;
+  padding: 12px 32px;
+  border-radius: 999px;
+}</pre>
+            <pre class="code" data-lang="html" data-title="HTML">&lt;button class="btn"&gt;Book&lt;/button&gt;</pre>
+          </div>
+          <div class="new"><h5>Tailwind</h5>
+            <pre class="code" data-lang="html" data-title="HTML + Tailwind">&lt;button class="bg-sky-600 text-white
+  px-8 py-3 rounded-full"&gt;
+  Book
+&lt;/button&gt;</pre>
+            <ul><li>+ не нужен отдельный файл стилей</li><li>+ видно, как выглядит элемент, не прыгая между файлами</li><li>+ <code>hover:</code>, <code>sm:</code>, <code>dark:</code> — состояния и адаптив прямо в классе</li></ul>
+          </div>
+        </div>
+        <figcaption>Один и тот же голубой круглый button: слева стиль живёт отдельно, справа — в самом элементе. В файлах <code>.tsx</code> слово <code>class</code> пишется как <code>className</code></figcaption>
+      </figure>
+
+      <h3>Почему Tailwind любит ИИ</h3>
+      <ul>
+        <li><b>Всё в одном месте.</b> Чтобы изменить кнопку, ИИ правит одну строку и не ищет правило в другом файле, не ломая соседние элементы.</li>
+        <li><b>Предсказуемый словарь.</b> Классы стандартные, и по ним написано очень много кода в открытом доступе: модель знает их наизусть.</li>
+        <li><b>Меньше ошибок.</b> Нет конфликтов имён и «каскада» из прошлого урока, где одно правило неожиданно перебивает другое.</li>
+        <li><b>Адаптив одним приёмом.</b> Приставка <code>sm:</code> или <code>md:</code> означает «начиная с такой ширины экрана»: <code>grid sm:grid-cols-3</code> — одна колонка на телефоне и три на экране побольше.</li>
+      </ul>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Класс</th><th>Что означает</th></tr></thead>
+          <tbody>
+            <tr><td><code>p-4</code>, <code>px-8</code>, <code>py-3</code>, <code>mt-6</code></td><td>Отступы: со всех сторон, по бокам, сверху и снизу, только сверху. Число — размер (4 ≈ 16 px)</td></tr>
+            <tr><td><code>text-lg</code>, <code>text-4xl</code>, <code>font-bold</code></td><td>Размер и жирность шрифта</td></tr>
+            <tr><td><code>bg-sky-600</code>, <code>text-white</code></td><td>Цвет фона и текста: название цвета и оттенок (50 — светлый, 900 — тёмный)</td></tr>
+            <tr><td><code>rounded-2xl</code>, <code>shadow-sm</code></td><td>Скругление углов и тень</td></tr>
+            <tr><td><code>flex</code>, <code>grid</code>, <code>gap-4</code></td><td>Расположение элементов в строку или сетку и расстояние между ними</td></tr>
+            <tr><td><code>hover:bg-sky-700</code></td><td>Изменение при наведении курсора</td></tr>
+            <tr><td><code>sm:grid-cols-3</code></td><td>На экранах от «small» и шире — три колонки</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Новый проект уже настроен: Tailwind подключён в файле <code>app/globals.css</code> одной строкой <code>@import "tailwindcss";</code>. Ничего ставить и настраивать не нужно, просто пишите классы.</p>
+
+      <div class="yt" data-id="2m83LZJTg2o" data-title="Выучи Tailwind CSS за 100 секунд — канал Фронтенд 18+"></div>
+      <p class="muted">Ролик на русском (2 минуты): идея Tailwind в самом сжатом виде. Подключать Tailwind по видео не нужно: в вашем проекте он уже подключён.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Обычный CSS — как заказ индивидуального костюма: портному объясняют каждую мерку отдельным письмом. Tailwind — как конструктор из готовых деталей на рынке тканей: «рукав короткий, воротник стойка, цвет синий». Деталей мало, названия у всех одинаковые, и любой помощник сразу понимает, что вы хотите.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Пугаться длинной строки классов: читайте её слева направо по одному слову, как предложение. <b>2.</b> Вписывать в классы выдуманные слова вроде <code>big-blue-button</code>: такого класса нет, и стиль не применится. Просите ИИ использовать только стандартные классы Tailwind. <b>3.</b> Следовать видео про Tailwind старых версий и заново «подключать» его: в вашем проекте всё уже готово. <b>4.</b> Смешивать оба подхода хаотично: договоритесь с ИИ, что стили только на Tailwind.</p>
+      </div>
+
+      <article class="task" id="q-tailwind">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Проверь себя: Tailwind</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что делает строка <code>className="grid gap-4 sm:grid-cols-3"</code> на блоке с карточками?</p>
+          <ol class="options">
+            <li>Скрывает карточки на телефоне</li>
+            <li>Раскладывает карточки сеткой с промежутками: на узком экране в одну колонку, на экранах от sm и шире в три</li>
+            <li>Делает три копии каждой карточки</li>
+            <li>Подключает три внешние библиотеки</li>
+          </ol>
+          <div class="explain"><p><code>grid</code> включает сетку, <code>gap-4</code> задаёт промежутки, а <code>sm:grid-cols-3</code> переключает сетку на три колонки, начиная с ширины sm. Без приставки класс действует всегда.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Какой из вариантов — настоящие классы Tailwind?</p>
+          <ol class="options">
+            <li><code>big-blue-button</code></li>
+            <li><code>make-it-pretty</code></li>
+            <li><code>bg-sky-600 px-8 py-3</code></li>
+            <li><code>color: blue;</code></li>
+          </ol>
+          <div class="explain"><p>Классы Tailwind собираются из стандартного словаря: <code>bg-…</code> — фон, <code>px-…</code> — горизонтальные отступы, <code>py-…</code> — вертикальные. Остальные варианты — выдуманные слова или обычный CSS.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://tailwindcss.com/docs/styling-with-utility-classes" target="_blank" rel="noopener">Tailwind: стилизация utility-классами</a> и <a href="https://tailwindcss.com/docs/responsive-design" target="_blank" rel="noopener">адаптивный дизайн</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · Деплой ============ -->
+    <section class="topic" id="deploy">
+      <h2 data-toc="Деплой на Vercel"><span class="num">04</span> Деплой: из GitHub на Vercel</h2>
+
+      <p><b>Деплой</b> (deploy) — выкладка проекта на сервер, чтобы его видели все. <b>Vercel</b> — хостинг, созданный командой Next.js; для учебных проектов хватает бесплатного тарифа Hobby (он предназначен для личных и некоммерческих проектов; условия смотрите на сайте сервиса). Схема простая: код лежит на GitHub, Vercel следит за репозиторием и при каждом изменении сам собирает и публикует сайт.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 200" role="img" aria-label="Схема деплоя: вы делаете git push в GitHub, Vercel собирает проект командой build и публикует сайт по ссылке vercel.app">
+          <rect class="box o" x="12" y="50" width="140" height="70" rx="12" /><text x="82" y="80" text-anchor="middle">Cursor</text><text class="sub" x="82" y="100" text-anchor="middle">ваш компьютер</text>
+          <rect class="box b" x="200" y="50" width="140" height="70" rx="12" /><text x="270" y="80" text-anchor="middle">GitHub</text><text class="sub" x="270" y="100" text-anchor="middle">хранит код</text>
+          <rect class="box v" x="388" y="50" width="140" height="70" rx="12" /><text x="458" y="80" text-anchor="middle">Vercel</text><text class="sub" x="458" y="100" text-anchor="middle">собирает: build</text>
+          <rect class="fill-g" x="576" y="50" width="132" height="70" rx="12" /><text x="642" y="80" text-anchor="middle">Сайт</text><text class="sub" x="642" y="100" text-anchor="middle">…vercel.app</text>
+          <path class="arr" d="M154 85h38" /><path class="arr-head" d="M192 79l10 6-10 6z" />
+          <path class="arr" d="M342 85h38" /><path class="arr-head" d="M380 79l10 6-10 6z" />
+          <path class="arr" d="M530 85h38" /><path class="arr-head" d="M568 79l10 6-10 6z" />
+          <text class="sub" x="176" y="42" text-anchor="middle">git push</text>
+          <text class="sub" x="364" y="42" text-anchor="middle">сам заметил</text>
+          <text class="sub" x="552" y="42" text-anchor="middle">1–2 минуты</text>
+          <path class="arr" d="M642 124 V170 H82 V126" /><path class="arr-head" d="M76 128l6-10 6 10z" />
+          <text class="sub" x="362" y="188" text-anchor="middle">каждая правка: ИИ изменил код → commit → push → сайт обновился сам</text>
+        </svg>
+        <figcaption>Один раз подключили репозиторий — и дальше публикация происходит сама после каждого <code>git push</code></figcaption>
+      </figure>
+
+      <h3>Как подключить репозиторий (по документации Vercel)</h3>
+      <ol class="steps">
+        <li><b>Зарегистрируйтесь на <a href="https://vercel.com/signup" target="_blank" rel="noopener">vercel.com/signup</a></b> через кнопку входа с GitHub: так аккаунты сразу связаны. Выберите бесплатный личный (Hobby) вариант.</li>
+        <li><b>Нажмите «Add New…» → «Project»</b> (или кнопку нового проекта на главной панели). Появится список ваших репозиториев GitHub. Если репозитория нет в списке, разрешите Vercel доступ к нему в настройках GitHub (кнопка настройки доступа на этом же экране).</li>
+        <li><b>Рядом с репозиторием нажмите «Import».</b> Откроется страница настройки: Vercel сам определяет фреймворк (Framework Preset: Next.js), корневую папку оставьте <code>./</code>. Переменные окружения и настройки сборки не трогайте: они понадобятся позже.</li>
+        <li><b>Нажмите «Deploy».</b> Идёт сборка, после неё появляется поздравление и миниатюра сайта. Кнопка «Visit» открывает ваш сайт, а адрес вида <code>название.vercel.app</code> можно отправлять кому угодно.</li>
+        <li><b>Дальше — только <code>git push</code>.</b> Каждый push в главную ветку (<code>main</code>) обновляет сайт, а push в другие ветки создаёт отдельный пробный адрес (preview). Публиковать вручную больше не нужно.</li>
+      </ol>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/05-first-project/vercel-import.svg" alt="Схема окна Vercel: слева список репозиториев GitHub с кнопкой Import, справа настройка проекта с определившимся Next.js и большой кнопкой Deploy" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Упрощённая схема импорта проекта. Внешний вид сервиса со временем меняется, но шаги те же: выбрать репозиторий, проверить настройки, нажать Deploy</figcaption>
+      </figure>
+
+      <div class="yt" data-id="kXtWjQowvVw" data-title="How To Deploy A NextJS App To Vercel (Simple) — канал PedroTech" data-start="0"></div>
+      <p class="muted">Видео на английском, включите субтитры: те же шаги на живом примере (4,5 минуты). Если интерфейс отличается от схемы выше, ориентируйтесь на названия кнопок «Import» и «Deploy».</p>
+
+      <h3>Как читать лог сборки, если деплой упал</h3>
+      <p>Бывает, что у вас на компьютере всё работает, а на Vercel рядом с проектом красный статус <b>Error</b>. Это нормально: сервер собирает проект строже, чем dev-сервер. Причина всегда написана в <b>логе сборки</b> (build log) — подробной записи того, что сервер делал по шагам.</p>
+      <ol class="steps">
+        <li><b>Откройте проект на Vercel → вкладка «Deployments»</b> и нажмите на деплой с красным статусом.</li>
+        <li><b>В блоке «Deployment Details» раскройте «Building»</b> — там лог сборки.</li>
+        <li><b>Листайте до красных строк со словом «Error».</b> Не пугайтесь последней строки вроде «Command "npm run build" exited with 1»: она лишь говорит «сборка не удалась». Настоящая причина обычно на несколько строк выше: имя файла, номер строки и текст ошибки.</li>
+        <li><b>Скопируйте этот кусок целиком</b> (с именем файла) и отправьте ИИ в Cursor: «Деплой на Vercel упал, вот ошибка из лога. Объясни причину и исправь, остальное не меняй».</li>
+        <li><b>Проверьте исправление у себя:</b> запустите <code>npm run build</code> в терминале. Если локально сборка проходит, делайте commit и push — Vercel соберёт заново.</li>
+      </ol>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/05-first-project/build-log.svg" alt="Схема страницы упавшего деплоя на Vercel: статус Error, раскрытый блок Building с красными строками про ошибку типов в файле app/page.tsx и итоговой строкой exited with 1" width="720" height="360" loading="lazy" decoding="async">
+        <figcaption>Упрощённая схема лога. Причина — красные строки с файлом и номером строки, а не последняя строка «exited with 1»</figcaption>
+      </figure>
+
+      <p>Вот три самые частые ошибки новичков и что они значат (тексты взяты из реальной сборки проекта Next.js, у вас могут отличаться номера строк):</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что в логе</th><th>В чём причина</th><th>Что делать</th></tr></thead>
+          <tbody>
+            <tr><td><code>error TS2307: Cannot find module './components/Hero'</code></td><td>Страница подключает файл, которого нет (или он назван иначе: на Vercel важен регистр букв: <code>Hero.tsx</code> и <code>hero.tsx</code> — разные файлы)</td><td>Проверьте имя и регистр файла, закоммитьте новый файл: <code>git add .</code></td></tr>
+            <tr><td><code>error TS2339: Property 'toUpperCase' does not exist on type 'number'</code></td><td>Ошибка типов: код делает с данными то, что с ними сделать нельзя (число не строка)</td><td>Отправьте ошибку ИИ: он поправит данные или код. Подробно про типы — позже</td></tr>
+            <tr><td><code>Module not found: Can't resolve '…'</code></td><td>Библиотека используется, но не записана в проект</td><td>Попросите ИИ: «установи недостающую библиотеку командой npm install» и закоммитьте <code>package.json</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Лог сборки — как чек-список у приёмщика на складе: он по шагам отмечает, что принял, и на каком пункте остановился, потому что «не хватает коробки номер 7». Последняя запись «приёмка не завершена» ничего не объясняет, а вот строка «нет коробки 7» подсказывает, что искать.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Не выполнить <code>git push</code> после правок и недоумевать, почему сайт не обновился. <b>2.</b> Отправлять ИИ только последнюю строку лога «exited with 1»: нужен весь красный блок. <b>3.</b> Выкладывать проект с секретами внутри кода: ключи доступа в репозиторий не кладут. Правильное хранение секретов — в уроке 10, а пока в этом проекте их просто нет. <b>4.</b> Создать репозиторий с личными данными в открытом доступе: проверяйте, что в проекте нет телефонов и паспортных данных. <b>5.</b> Публиковать «сломанную» версию без <code>npm run build</code>.</p>
+      </div>
+
+      <article class="task" id="q-deploy">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: деплой</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Вы изменили <code>page.tsx</code> в Cursor, сохранили файл, но по ссылке <code>…vercel.app</code> старая версия. Что скорее всего пропущено?</p>
+          <ol class="options">
+            <li>Нужно заново регистрироваться на Vercel</li>
+            <li>Нужно купить домен</li>
+            <li>Не сделаны commit и push: Vercel обновляет сайт, когда в GitHub приходит новый код</li>
+            <li>Нужно перезапустить компьютер</li>
+          </ol>
+          <div class="explain"><p>Vercel следит за репозиторием на GitHub. Пока изменения лежат только в файле на вашем компьютере, сайт о них не знает. После commit и push сборка запускается сама.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="q-log">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Проверь себя: лог сборки</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>В логе упавшего деплоя последняя строка — <code>Error: Command "npm run build" exited with 1</code>, а выше красным: <code>app/page.tsx(39,57): error TS2339: Property 'toUpperCase' does not exist on type 'number'</code>. Что нужно отправить ИИ?</p>
+          <ol class="options">
+            <li>Только последнюю строку</li>
+            <li>Красный блок целиком: файл, номер строки и текст ошибки</li>
+            <li>Ничего: нужно просто нажать Redeploy ещё раз</li>
+            <li>Скриншот домашней страницы Vercel</li>
+          </ol>
+          <div class="explain"><p>Последняя строка лишь сообщает, что сборка не удалась. Причина — выше: в файле <code>app/page.tsx</code> на строке 39 у числа вызван метод строки. Повторный запуск без правки приведёт к той же ошибке.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Как проверить исправление до нового push, чтобы не ждать Vercel?</p>
+          <ol class="options">
+            <li>Выполнить в терминале <code>npm run build</code>: там выдаётся та же ошибка типов, если она осталась</li>
+            <li>Открыть <code>localhost:3000</code> и посмотреть, красиво ли</li>
+            <li>Удалить папку <code>.next</code> и надеяться</li>
+            <li>Никак, только через push</li>
+          </ol>
+          <div class="explain"><p>Команда <code>npm run build</code> делает ту же проверку, что и сервер Vercel. Если она проходит локально, шансов на удачный деплой гораздо больше. Dev-сервер бывает мягче: он может показать страницу, которую сборка отклонит.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vercel.com/docs/deployments/troubleshoot-a-build" target="_blank" rel="noopener">Vercel: разбор ошибок сборки</a> и <a href="https://vercel.com/docs/git" target="_blank" rel="noopener">Vercel: деплой из Git</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · ИИ-блок ============ -->
+    <section class="topic" id="ai-prompt">
+      <h2 data-toc="ИИ: промпт для лендинга"><span class="num">05</span> ИИ-блок: как попросить лендинг, а не «сделай сайт»</h2>
+
+      <div class="callout ai">
+        <b>Правила работы с ИИ в проекте</b>
+        <p><b>1.</b> Просите сначала одну секцию, потом следующую: небольшие шаги легче проверять. <b>2.</b> Всегда называйте стек: Next.js, Tailwind, один файл <code>app/page.tsx</code>. <b>3.</b> Каждую правку проверяйте глазами в браузере и на узком окне. <b>4.</b> Ошибки из терминала и лога сборки отправляйте целиком. <b>5.</b> Не просите ИИ добавлять ключи доступа и платные сервисы. <b>6.</b> Правим в том же чате, а не начинаем сначала.</p>
+      </div>
+
+      <p>В Cursor ИИ видит весь проект и сам правит файлы, поэтому промпт строится по знакомой формуле: <b>контекст → цель → ограничения → примеры → проверка</b>.</p>
+
+      <div class="prompt bad-prompt">сделай сайт для стоматологии</div>
+
+      <div class="prompt good-prompt">Контекст: учебный проект Next.js с Tailwind CSS (создан командой create-next-app, App Router, TypeScript). Нужен одностраничный лендинг вымышленной стоматологии «Улыбка» в Душанбе.
+Цель: заменить содержимое app/page.tsx на лендинг из 5 секций: 1) hero с заголовком, подзаголовком и кнопкой «Записаться на приём»; 2) «Услуги» — 3 карточки с названием и ценой в сомони; 3) «Врачи» — 3 карточки с именем и специализацией (вместо фото — круг с первой буквой); 4) «Отзывы» — 2 отзыва; 5) «Запись на приём» — форма с полями «Имя» и «Телефон» и кнопкой «Отправить заявку».
+Ограничения: только Tailwind-классы, без отдельных CSS-файлов и внешних библиотек; без картинок из интернета (эмодзи и цветные блоки допустимы); весь текст на русском; данные вымышленные; адаптивная вёрстка: на телефоне колонки друг под другом, на экранах от sm — три колонки; спокойная палитра с одним акцентным цветом (голубой), крупные заголовки.
+Форма пока ничего не отправляет: кнопка не должна перезагружать страницу. Никаких ключей, API и баз данных.
+Проверка: после правок запусти npm run build и исправь ошибки, если они есть. В конце коротко перечисли, какие секции добавлены.</div>
+
+      <p>Чем сильный промпт лучше: стек и файл названы, секции перечислены, адаптив описан словами, а проверка сборки сразу ловит ошибки типов. ИИ не придумывает лишнего и не подключает ненужные библиотеки.</p>
+
+      <h3>Правки: короткие, по одной</h3>
+      <div class="prompt">Сделай секцию «Услуги» заметнее: добавь иконку-эмодзи к каждой карточке, тень при наведении и скругление побольше. Остальные секции не меняй.</div>
+      <div class="prompt">Проверь адаптивность: на ширине 390 px ничего не должно вылезать за экран. Исправь, если что-то выходит за края, и скажи, что именно изменил.</div>
+      <div class="prompt">Объясни простыми словами, как для новичка: что делает функция Home в app/page.tsx, как работает список services.map и какую одну строку менять, чтобы поменять цвет кнопок. Код не переписывай.</div>
+
+      <div class="callout tip">
+        <b>Если ИИ в Cursor что-то сломал</b>
+        <p>Вы работали с Git, поэтому у вас есть «кнопка отмены»: до начала крупной правки делайте commit, а если результат не нравится, вернитесь к сохранённой версии командой <code>git restore .</code> (она отменяет все несохранённые изменения в файлах, будьте осторожны) или попросите ИИ откатить правку. Подробно откаты разберём в уроке 6.</p>
+      </div>
+
+      <article class="task" id="q-prompt">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: промпт для проекта</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Какое ограничение лучше всего убережёт проект от лишней сложности?</p>
+          <ol class="options">
+            <li>«Сделай красиво и по-современному»</li>
+            <li>«Только Tailwind-классы в app/page.tsx, без новых библиотек и картинок из интернета»</li>
+            <li>«Используй всё, что знаешь»</li>
+            <li>«Добавь побольше анимаций и библиотек»</li>
+          </ol>
+          <div class="explain"><p>Конкретные границы (какой файл, какие инструменты, чего не подключать) удерживают ИИ в рамках. «Красиво» и «используй всё» — это приглашение к хаосу.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://cursor.com/docs" target="_blank" rel="noopener">документация Cursor</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: лендинг"><span class="num">06</span> Практика: лендинг стоматологии от нуля до ссылки</h2>
+
+      <p>Время делать. Вы создадите проект командой, соберёте лендинг вместе с ИИ, отправите код на GitHub и опубликуете сайт на Vercel. Вот что должно получиться (ваш вариант будет другим: свои цвета, названия и цены):</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/05-first-project/dental-landing.webp" alt="Пример готового лендинга стоматологии: голубой hero с кнопкой, три карточки услуг, три врача, два отзыва и форма записи на приём на голубом фоне" width="720" height="1730" loading="lazy" decoding="async">
+        <figcaption>Пример результата в браузере: пять секций, адаптивная вёрстка. Ваша страница будет выглядеть иначе — и это хорошо</figcaption>
+      </figure>
+
+      <h3>Шаг 0. Подготовка</h3>
+      <article class="task" id="cl-prep-task">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Чек-лист: всё готово к работе</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте выполненное. Если команда не работает, вернитесь к уроку 4.</p>
+        <ul class="checklist" id="cl-prep">
+          <li>В терминале команда <code>node -v</code> показывает версию 20.9 или выше (требование Next.js на сегодня)</li>
+          <li>В терминале команда <code>git --version</code> показывает версию Git</li>
+          <li>Cursor запускается, вход в GitHub из редактора выполнен (или готов способ сделать push по инструкции урока 4)</li>
+          <li>Есть аккаунт на GitHub, и вы помните логин</li>
+          <li>Выбрана обычная папка для проектов (например, на рабочем столе), которая не находится внутри другого Git-репозитория</li>
+        </ul>
+      </article>
+
+      <h3>Шаг за шагом</h3>
+      <ol class="steps">
+        <li><b>Откройте Cursor и терминал.</b> Файл → Open Folder: откройте пустую папку для проектов или рабочий стол. Затем в меню выберите «Terminal → New Terminal» (в Cursor работает и сочетание Ctrl+` — обратный апостроф под Esc). Убедитесь, что терминал стоит в нужной папке, и при необходимости перейдите в неё командой <code>cd</code>.</li>
+        <li><b>Создайте проект.</b> Выполните команду и выберите рекомендуемые настройки (первый вариант), как в разделе 2:
+          <pre class="code" data-title="Терминал">npx create-next-app@latest dental-landing</pre>
+          Дождитесь надписи «Success! Created dental-landing». Появится папка <code>dental-landing</code>.</li>
+        <li><b>Откройте папку проекта в Cursor.</b> Файл → Open Folder → <code>dental-landing</code>. Слева в панели файлов вы увидите <code>app</code>, <code>public</code>, <code>package.json</code>. Если Cursor спросит, доверяете ли вы авторам файлов, это ваш проект: ответьте «Да, доверяю».</li>
+        <li><b>Запустите dev-сервер</b> в терминале Cursor (откройте новый терминал, он должен стоять в папке проекта):
+          <pre class="code" data-title="Терминал">npm run dev</pre>
+          Откройте <code>http://localhost:3000</code> — вы должны увидеть стартовую страницу Next.js. Терминал не закрывайте.</li>
+        <li><b>Откройте чат ИИ в Cursor</b> (панель чата справа, сочетание Ctrl+L или Cmd+L; если клавиши другие, найдите значок чата в верхней части окна) и выберите режим Agent, при котором ИИ сам правит файлы проекта. Режимы и правила проекта разберём подробно в уроке 6.</li>
+        <li><b>Отправьте промпт для лендинга</b> из раздела 5 (кнопка «Копировать» в углу блока). Замените название и данные на свои, если хотите. ИИ создаст секции и, скорее всего, сам запустит проверку сборки; если он просит разрешения запускать команды, прочитайте команду и разрешите только знакомые (<code>npm run build</code>).</li>
+        <li><b>Посмотрите результат</b> в браузере: вкладка <code>localhost:3000</code> обновится сама. Проверьте все пять секций. Нажмите F12 → значок «устройства» (Device Mode, урок 3) и убедитесь, что при ширине 390 px карточки встают друг под другом.</li>
+        <li><b>Сделайте минимум три правки</b> короткими промптами из раздела 5: усилить услуги, проверить адаптив, поменять акцентный цвет. После каждой правки смотрите на страницу. Если ИИ сломал страницу, скопируйте ошибку из терминала и отправьте ему.</li>
+        <li><b>Попросите объяснение:</b> «Объясни, из чего состоит app/page.tsx: что такое массив services и как он превращается в карточки». Это ваш шаг «от результата к пониманию».</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось на этом этапе</b>
+        <p><b>Команда <code>npx</code> не найдена или <code>node</code> не найден.</b> Node.js не установлен или терминал открыт до установки. Закройте и откройте терминал заново, проверьте <code>node -v</code>; если версия ниже 20.9, поставьте актуальную LTS-версию с сайта nodejs.org.</p>
+        <p><b>Порт 3000 занят: «Port 3000 is in use».</b> Другая программа или прошлый dev-сервер уже занимает порт. Закройте старый терминал (Ctrl+C) или согласитесь на предложенный Next.js другой порт, например 3001, и откройте адрес из терминала.</p>
+        <p><b>Красная ошибка «Module not found» или «Parsing ecmascript source code failed» в браузере.</b> ИИ допустил ошибку в коде. Скопируйте весь текст ошибки из терминала и отправьте ИИ: «Исправь эту ошибку, остальное не меняй».</p>
+        <p><b>Ошибка типов (Type error) в терминале.</b> Это ошибка проверки TypeScript. Копируйте всю ошибку с путём файла и номером строки и отправляйте ИИ: исправит он, а разобраться в типах вы сможете в следующих уроках.</p>
+        <p><b>Страница белая, в браузере только заголовок вкладки.</b> Проверьте терминал: чаще всего там красная ошибка после последней правки. Если ИИ слишком сильно всё поменял, вернитесь к последней рабочей версии (<code>git restore .</code>, если делали commit) или попросите откатить.</p>
+      </div>
+
+      <article class="task" id="cl-build">
+        <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Чек-лист: лендинг собран локально</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-built">
+          <li>Проект <code>dental-landing</code> создан командой <code>npx create-next-app@latest</code> и открывается в Cursor</li>
+          <li>Команда <code>npm run dev</code> запущена, страница открывается на <code>localhost:3000</code></li>
+          <li>В <code>app/page.tsx</code> пять секций: hero, услуги, врачи, отзывы, форма заявки</li>
+          <li>Сделаны минимум три правки, после каждой страница проверена</li>
+          <li>Страница проверена в узком окне (390 px): колонки встают друг под другом, ничего не вылезает</li>
+          <li>Команда <code>npm run build</code> в терминале завершается без красных ошибок</li>
+          <li>ИИ объяснил, из чего состоит <code>app/page.tsx</code>, и вы можете назвать хотя бы три части</li>
+        </ul>
+      </article>
+
+      <h3>Шаг 10. Отправка кода на GitHub</h3>
+      <ol class="steps">
+        <li><b>Создайте репозиторий на GitHub.</b> Откройте <a href="https://github.com/new" target="_blank" rel="noopener">github.com/new</a>, имя — <code>dental-landing</code>, доступ <b>Public</b> (так проще и бесплатно для Vercel Hobby). <b>Не ставьте галочки</b> «Add a README», «.gitignore» и «license»: репозиторий должен быть пустым. Нажмите «Create repository» и скопируйте адрес вида <code>https://github.com/ваш-логин/dental-landing.git</code> со страницы.</li>
+        <li><b>Остановите dev-сервер</b> (Ctrl+C) или откройте новый терминал в папке проекта. <code>create-next-app</code> уже создал в проекте репозиторий Git и первый commit, поэтому <code>git init</code> не нужен. Проверьте это командой <code>git status</code>.</li>
+        <li><b>Сохраните свои изменения и привяжите GitHub</b> (вместо <code>your-login</code> подставьте свой логин GitHub):
+          <pre class="code" data-title="Терминал">git add .
+git commit -m "first landing"
+git branch -M main
+git remote add origin https://github.com/your-login/dental-landing.git
+git push -u origin main</pre>
+        </li>
+        <li><b>Обновите страницу репозитория на GitHub:</b> там появятся папки <code>app</code>, <code>public</code> и файл <code>package.json</code>. Папки <code>node_modules</code> быть не должно: она исключена через <code>.gitignore</code>.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b><code>fatal: not a git repository</code>.</b> Терминал стоит не в папке проекта. Выполните <code>cd dental-landing</code> или проверьте путь в терминале. Если проект создан внутри другого репозитория, перенесите его в отдельную папку.</p>
+        <p><b><code>remote origin already exists</code>.</b> Адрес уже добавлен: исправьте его командой <code>git remote set-url origin https://github.com/ваш-логин/dental-landing.git</code>.</p>
+        <p><b>Push просит пароль или пишет «Authentication failed».</b> Пароль от GitHub для push не подходит. Войдите в GitHub из Cursor или через браузер, как на уроке 4, и повторите <code>git push</code>.</p>
+        <p><b><code>rejected … fetch first</code>.</b> В репозитории на GitHub что-то уже лежит (например, README). Проще создать новый пустой репозиторий и подключить его; либо попросите ИИ помочь аккуратно объединить историю, объяснив, что именно вывел терминал.</p>
+      </div>
+
+      <h3>Шаг 11. Публикация на Vercel</h3>
+      <ol class="steps">
+        <li>Выполните шаги из раздела 4: войдите на Vercel через GitHub, «Add New… → Project», найдите <code>dental-landing</code> и нажмите «Import».</li>
+        <li>Проверьте, что фреймворк определился как <b>Next.js</b>, остальное не меняйте и нажмите <b>«Deploy»</b>.</li>
+        <li>Дождитесь окончания сборки. Если появился красный статус Error, откройте лог по инструкции из раздела 4 и отправьте причину ИИ.</li>
+        <li>Нажмите «Visit», скопируйте адрес <code>….vercel.app</code> и откройте его <b>на телефоне</b>: это ваш первый настоящий сайт. Отправьте ссылку другу.</li>
+        <li><b>Проверьте автообновление.</b> В Cursor поменяйте заголовок в hero, затем: <code>git add .</code>, <code>git commit -m "update hero"</code>, <code>git push</code>. Через минуту-две обновите страницу на <code>vercel.app</code>.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если деплой упал</b>
+        <p><b>Вы видите «Error» и красные строки в логе.</b> Это не поломка вашего аккаунта, а ошибка в проекте. Раскройте «Building», найдите красные строки (раздел 4), скопируйте блок целиком и отправьте ИИ в Cursor. Затем выполните <code>npm run build</code> локально и, если сборка проходит, сделайте commit и push.</p>
+        <p><b>Vercel не видит репозиторий в списке.</b> Нажмите настройку доступа GitHub на экране импорта и разрешите доступ к репозиторию <code>dental-landing</code>. Для личного аккаунта вы должны быть владельцем (Owner) репозитория.</p>
+        <p><b>Сайт открылся, но выглядит иначе, чем локально.</b> Чаще всего не отправлена последняя версия. Сделайте <code>git status</code>: если там есть неотправленные изменения, выполните commit и push.</p>
+        <p><b>Картинка с вашего компьютера не показывается на сайте.</b> Она должна лежать в папке <code>public</code> и быть закоммичена. Проверьте путь и регистр букв в имени.</p>
+      </div>
+
+      <article class="task" id="cl-deployed">
+        <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Чек-лист: сайт опубликован</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-live">
+          <li>Репозиторий <code>dental-landing</code> создан на GitHub, на странице видны <code>app</code> и <code>package.json</code>, нет <code>node_modules</code></li>
+          <li>Проект импортирован в Vercel, деплой завершился со статусом Ready (без Error)</li>
+          <li>Адрес <code>….vercel.app</code> открывается на компьютере и на телефоне</li>
+          <li>Автообновление проверено: после <code>git push</code> заголовок на сайте изменился</li>
+          <li>Вы знаете, где открыть лог сборки (Deployments → деплой → Building)</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ 07 · Фишка ============ -->
+    <section class="topic" id="challenge">
+      <h2 data-toc="«Клон-день»"><span class="num">07</span> Фишка урока: «Клон-день»</h2>
+
+      <p>Лучший способ научиться — повторить то, что уже сделано хорошо. В «Клон-день» каждый выбирает сайт-референс (образец) и за один вечер пытается воспроизвести его <b>внешний вид</b> на своём проекте Next.js + Tailwind. Это не копия чужого кода, а тренировка: увидеть макет, описать его словами и добиться сходства с помощью ИИ. Блок рассчитан на преподавателя и подходит и для самостоятельного вечера.</p>
+
+      <div class="callout tip">
+        <b>Правила</b>
+        <p><b>1.</b> Референс — любая <b>одна страница</b> (лендинг кафе, мастерской, школы, приложения) из тех, что вам нравятся. Берите простые одностраничные сайты, не сложные сервисы. <b>2.</b> Повторяете <b>композицию, цвета, типографику и сетку</b>, а не логотипы, фирменные названия, тексты и фотографии: пишете свои вымышленные названия и берёте эмодзи или цветные блоки. <b>3.</b> Новый проект с новым репозиторием и публикацией на Vercel (или новая ветка в текущем проекте). <b>4.</b> Весь вечер вы только описываете и проверяете: код руками не пишете. <b>5.</b> Результат — живая ссылка <code>….vercel.app</code> и скриншот референса рядом с вашей версией.</p>
+      </div>
+
+      <h3>Расписание вечера (около 2 часов)</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:10</td><td>Выбирают референс, делают скриншот, выписывают 5 секций и 3 цвета</td></tr>
+            <tr><td>0:10–0:25</td><td>Описывают ИИ макет словами по формуле промпта (контекст, цель, ограничения)</td></tr>
+            <tr><td>0:25–1:20</td><td>Сборка и правки: сначала общая структура, затем цвета и шрифты, затем отступы, затем адаптив</td></tr>
+            <tr><td>1:20–1:40</td><td>Commit, push, деплой на Vercel, проверка на телефоне</td></tr>
+            <tr><td>1:40–2:10</td><td>«Галерея»: каждый показывает референс и свою версию, группа голосует</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Шаблон промпта для клона</h3>
+      <div class="prompt good-prompt">Контекст: учебный проект Next.js + Tailwind, один файл app/page.tsx. Нужно воспроизвести внешний вид референса: [ОПИШИТЕ ЛЕНДИНГ ИЗ СКРИНШОТА: секции сверху вниз, расположение блоков, цвета, тип шрифта].
+Цель: страница с теми же секциями, сеткой и настроением; название и тексты выдуманные, без логотипов и фотографий референса.
+Ограничения: только Tailwind-классы, без внешних библиотек; адаптивная вёрстка (на телефоне колонки друг под другом); акцентный цвет [ЦВЕТ], фон [ЦВЕТ].
+Проверка: после правок запусти npm run build и исправь ошибки; коротко перечисли секции.</div>
+      <p class="muted">Скриншот референса можно приложить к сообщению в чате Cursor, если выбранная модель принимает изображения. Если нет, описывайте макет словами.</p>
+
+      <h3>Как голосуем</h3>
+      <ul>
+        <li>У каждого три голоса: за сходство композиции, за аккуратность на телефоне и за «вау-деталь». За себя голосовать нельзя.</li>
+        <li>Показывайте сайт по живой ссылке с экрана и откройте его же на телефоне: так видно адаптив.</li>
+        <li>Победителя просят назвать один промпт, который дал самый большой скачок сходства.</li>
+        <li>Призы символические: бонусный балл, право выбрать референс следующего вечера.</li>
+      </ul>
+
+      <h3>Мини-оценка работы соседа</h3>
+      <ul class="checklist" id="cl-peer">
+        <li>Композиция узнаётся: те же секции в том же порядке</li>
+        <li>Цвета и шрифт передают настроение референса</li>
+        <li>На телефоне ничего не вылезает за край</li>
+        <li>Нет чужих логотипов, текстов и фотографий</li>
+        <li>Сайт открывается по ссылке <code>….vercel.app</code></li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Для преподавателя</b>
+        <p>Заранее предупредите: копируем идею, а не бренд. Если у кого-то не вышел деплой, не останавливайте таймер: пусть соседи вместе читают лог сборки, это отличная практика. Попросите победителя показать, как выглядел его промпт на старте и после трёх правок.</p>
+      </div>
+
+      <article class="task" id="cl-clone">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Чек-лист: я прошёл «Клон-день»</h4><span class="level easy">лёгкая</span></header>
+        <ul class="checklist" id="cl-clone-list">
+          <li>Выбран референс, сделан его скриншот</li>
+          <li>Клон собран с ИИ без ручного набора кода</li>
+          <li>Сайт опубликован на Vercel, ссылка открыта на телефоне</li>
+          <li>Работа показана группе, отдано три голоса</li>
+          <li>Записан один промпт, который дал лучший результат</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">08</span> Домашнее задание: лендинг стоматологии (ДЗ-5)</h2>
+
+      <p>Доработайте лендинг, собранный на уроке, до версии, которую не стыдно показать: пять секций, адаптивная вёрстка, форма. Результат сдаётся <b>двумя ссылками</b>: на репозиторий GitHub и на опубликованный сайт на Vercel. Ссылки отправляются в двух отдельных полях ниже.</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>5 секций:</b> hero (заголовок, подзаголовок, кнопка), услуги (минимум 4 карточки), врачи (минимум 3 карточки), отзывы (минимум 3), форма заявки (имя, телефон, кнопка «Отправить заявку»).</li>
+        <li><b>Адаптив:</b> на ширине 390 px нет горизонтальной прокрутки, карточки в одну колонку; на широком экране — сетка.</li>
+        <li><b>Форма:</b> поля подписаны (у каждого есть название), кнопка нажимается и не перезагружает страницу. Отправлять данные куда-либо пока не нужно, это будет позже в курсе.</li>
+        <li><b>Данные вымышленные:</b> никаких настоящих телефонов, адресов и фото людей.</li>
+        <li><b>Стек:</b> Next.js и Tailwind, стили только классами, без внешних библиотек.</li>
+        <li><b>Публикация:</b> сайт открывается по ссылке <code>….vercel.app</code>, в репозитории на GitHub видна история минимум из двух commit.</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li><b>Доведите проект</b> до требований выше: добавьте недостающие карточки и отзывы, проверьте узкое окно.</li>
+        <li><b>Запустите <code>npm run build</code></b> и убедитесь, что ошибок нет.</li>
+        <li><b>Сделайте commit и push</b> на GitHub, дождитесь обновления на Vercel и проверьте сайт на телефоне.</li>
+        <li><b>Сдайте две ссылки</b> в полях ниже: сначала GitHub, затем Vercel.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Как сдаются ДЗ дальше</b>
+        <p>Домашние задания сдаются ссылкой на репозиторий GitHub и опубликованный сайт на Vercel. Если проект не развёрнут, преподаватель не сможет его посмотреть, поэтому проверяйте ссылки в режиме инкогнито (окно браузера без вашего входа).</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Ссылка <code>localhost</code> вместо <code>vercel.app</code>: её открыть никто не сможет. <b>2.</b> Ссылка на личную страницу GitHub вместо репозитория проекта. <b>3.</b> Забытый последний push: на сайте старая версия. <b>4.</b> Приватный репозиторий: проверяющий его не увидит, пока вы не откроете доступ или не сделаете его публичным. <b>5.</b> Форма без подписей к полям и без реакции на кнопку. <b>6.</b> Настоящие телефоны и адреса в тексте лендинга.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист требований к ДЗ-5</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Пять секций на месте: hero, услуги, врачи, отзывы, форма заявки</li>
+          <li>Услуг не меньше четырёх, врачей не меньше трёх, отзывов не меньше трёх</li>
+          <li>На ширине 390 px нет горизонтальной прокрутки, карточки идут одна под другой</li>
+          <li>У полей формы есть подписи, кнопка нажимается и не перезагружает страницу</li>
+          <li>Все данные вымышленные, нет настоящих телефонов и адресов</li>
+          <li>Команда <code>npm run build</code> проходит без ошибок</li>
+          <li>На GitHub не меньше двух commit и нет папки <code>node_modules</code></li>
+          <li>Ссылка Vercel открывается в режиме инкогнито и показывает последнюю версию</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий проекта вида <code>https://github.com/ваш-логин/dental-landing</code>. Откройте её в режиме инкогнито: код должен быть виден.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dental-landing"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 8.3</span><h4>Сдача: ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте адрес опубликованного сайта вида <code>https://dental-landing-….vercel.app</code>. Откройте его на телефоне: лендинг должен открыться без ошибок.</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://dental-landing.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vercel.com/docs/deployments" target="_blank" rel="noopener">Vercel: деплои</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Хостинг</b> — сервер, где лежат файлы сайта. <b>Домен</b> — читаемое имя сайта. <b>URL</b> — полный адрес страницы: протокол + домен + путь. <code>localhost</code> видит только ваш компьютер.</li>
+        <li><b>Создание проекта:</b> <code>npx create-next-app@latest имя</code>, выбрать рекомендуемые настройки; быстро: <code>--yes</code>. Нужен Node.js 20.9+.</li>
+        <li><b>Файлы:</b> <code>app/page.tsx</code> — главная страница, <code>app/layout.tsx</code> — общая рамка, <code>app/globals.css</code> — общие стили с Tailwind, <code>public</code> — картинки, <code>package.json</code> — библиотеки и команды, <code>node_modules</code> — не трогаем.</li>
+        <li><b>Команды:</b> <code>npm run dev</code> — разработка на <code>localhost:3000</code>, <code>npm run build</code> — проверка боевой сборки, Ctrl+C — остановка.</li>
+        <li><b>.tsx</b> — TypeScript + JSX (React): подробно в уроке 7; ошибки типов копируем целиком и отправляем ИИ.</li>
+        <li><b>Tailwind:</b> готовые классы прямо на элементе (<code>px-8 bg-sky-600 rounded-full</code>); <code>sm:</code> и <code>hover:</code> — адаптив и состояния. ИИ знает его словарь и правит одну строку без побочных эффектов.</li>
+        <li><b>Деплой:</b> код на GitHub → импорт репозитория в Vercel → Deploy → ссылка <code>….vercel.app</code>; дальше каждый <code>git push</code> обновляет сайт сам.</li>
+        <li><b>Если деплой упал:</b> проект на Vercel → Deployments → деплой → Building → красные строки «Error» → скопировать блок целиком → отправить ИИ → проверить <code>npm run build</code> → commit и push.</li>
+        <li><b>Безопасность:</b> секреты и ключи не кладём в код и репозиторий, личные данные не публикуем; правильное хранение ключей — в уроке 10.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить разницу между хостингом, доменом и URL и показать их в адресе</li>
+          <li>Могу создать проект командой create-next-app и запустить его на localhost</li>
+          <li>Могу назвать, что лежит в <code>app/page.tsx</code>, <code>package.json</code> и <code>public</code></li>
+          <li>Могу прочитать строку классов Tailwind и объяснить, зачем нужны <code>sm:</code> и <code>hover:</code></li>
+          <li>Могу собрать с ИИ страницу из нескольких секций и проверить её на узком экране</li>
+          <li>Могу отправить проект на GitHub и опубликовать его на Vercel</li>
+          <li>Могу найти причину в логе сборки Vercel и отправить её ИИ</li>
+        </ul>
+      </article>
+    </section>
