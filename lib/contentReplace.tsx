@@ -6,9 +6,18 @@
  *
  * 1. Console block (default). Static when no `data-run`; live editor + console output with it.
  *      <pre class="code" data-run data-title="Optional header text" data-lang="js">…code…</pre>
- *    `data-lang` is optional: js (default) | jsx | html | css (syntax highlighting only).
+ *    `data-lang` is optional: js (default) | jsx | ts | html | css (syntax highlighting only, except ts).
  *    Console mode is async-aware: setTimeout / setInterval / Promise / fetch / async-await work,
  *    the run ends when nothing is pending (hard cap 8 s).
+ *    TypeScript block (needs data-run to be checked; also works inside <article class="task">):
+ *      <pre class="code" data-run data-lang="ts">const n: number = 'a';</pre>
+ *    On Run the snippet is type-checked with the real compiler (strict, ES2022 + DOM lib, always a module so top-level
+ *    await works), then transpiled and executed in the console runner exactly like a JS block. Diagnostics are
+ *    printed above the console output as `Строка 3, столбец 7: Type 'string' is not assignable to type 'number'.
+ *    (TS2322)` (English compiler text kept on purpose) and underlined in the editor. In a task any type error counts
+ *    like an uncaught error: the `.expected` comparison is skipped, so «исправь ошибку типов» tasks work. The compiler
+ *    (self-hosted /ts-lib/typescript.js + libs.json in a Web Worker, see lib/tscheck.ts) loads on the first Run of a ts
+ *    block only; pages without ts blocks never request it. react playgrounds stay strip-only (no type errors shown).
  *
  * 2. Playground: one editor with file tabs, a visible sandboxed preview and a console panel.
  *      <div class="playground" data-mode="dom" data-title="Карточки товаров">
@@ -54,7 +63,7 @@ import type { Lang } from '@/lib/highlight';
 
 export const hasClass = (el: Element, c: string) => (el.attribs.class ?? '').split(/\s+/).includes(c);
 
-const LANGS: Lang[] = ['js', 'jsx', 'html', 'css'];
+const LANGS: Lang[] = ['js', 'jsx', 'ts', 'html', 'css'];
 const preText = (el: Element) => textContent(el).replace(/^\n/, '').replace(/\s+$/, '');
 
 function playgroundFiles(node: Element, mode: 'dom' | 'react'): PlaygroundFile[] {

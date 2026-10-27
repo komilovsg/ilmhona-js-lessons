@@ -730,5 +730,6 @@ export const RN_LESSON_META: LessonMeta = {
   'rn-start': {
     'q1-1': 'e',
     'r1-1': 'm',
+    'ts1-1': 'e',
   },
 };

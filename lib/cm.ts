@@ -7,6 +7,7 @@ import { defaultKeymap, history, historyKeymap, indentLess, indentMore } from '@
 import { css } from '@codemirror/lang-css';
 import { html } from '@codemirror/lang-html';
 import { javascript } from '@codemirror/lang-javascript';
+import { diagnosticCount, setDiagnostics as setLint } from '@codemirror/lint';
 import { bracketMatching, HighlightStyle, indentUnit, syntaxHighlighting } from '@codemirror/language';
 import { EditorState, Prec } from '@codemirror/state';
 import { drawSelection, EditorView, keymap } from '@codemirror/view';
@@ -138,6 +139,8 @@ export type MountedEditor = {
   focus: () => void;
   /** Next Tab moves focus out instead of indenting (used when focus arrived via keyboard). */
   release: () => void;
+  /** Underline error ranges (offsets in the document); [] clears. */
+  setDiagnostics: (d: { from: number; to: number; message: string }[]) => void;
   destroy: () => void;
 };
 
@@ -156,7 +159,7 @@ export function mountEditor(o: MountOptions): MountedEditor {
     },
   });
 
-  const lang = o.lang === 'html' ? html() : o.lang === 'css' ? css() : javascript({ jsx: o.lang === 'jsx' });
+  const lang = o.lang === 'html' ? html() : o.lang === 'css' ? css() : javascript({ jsx: o.lang === 'jsx', typescript: o.lang === 'ts' });
 
   const view = new EditorView({
     parent: o.parent,
@@ -170,7 +173,7 @@ export function mountEditor(o: MountOptions): MountedEditor {
         EditorState.tabSize.of(2),
         indentUnit.of('  '),
         lang,
-        o.lang === 'js' || o.lang === 'jsx' ? autocompletion({ override: [jsSource(o.strings)], activateOnTyping: true }) : autocompletion(),
+        o.lang === 'js' || o.lang === 'jsx' || o.lang === 'ts' ? autocompletion({ override: [jsSource(o.strings)], activateOnTyping: true }) : autocompletion(),
         syntaxHighlighting(highlightStyle),
         theme,
         tabHandling,
@@ -213,6 +216,10 @@ export function mountEditor(o: MountOptions): MountedEditor {
           ]),
         ),
         keymap.of([...closeBracketsKeymap, ...completionKeymap, ...defaultKeymap, ...historyKeymap]),
+        // stale error underlines go away as soon as the student edits
+        EditorView.updateListener.of((u) => {
+          if (u.docChanged && diagnosticCount(u.state)) queueMicrotask(() => u.view.dispatch(setLint(u.view.state, [])));
+        }),
         EditorView.domEventHandlers({
           focus: () => (o.onFocus?.(), false),
           blur: (_e, v) => (o.onBlur(v.state.doc.toString()), false),
@@ -231,6 +238,13 @@ export function mountEditor(o: MountOptions): MountedEditor {
     release: () => {
       released = true;
     },
+    setDiagnostics: (d) =>
+      view.dispatch(
+        setLint(
+          view.state,
+          d.map((x) => ({ from: Math.min(x.from, view.state.doc.length), to: Math.min(Math.max(x.to, x.from + 1), view.state.doc.length), severity: 'error' as const, message: x.message })),
+        ),
+      ),
     destroy: () => view.destroy(),
   };
 }

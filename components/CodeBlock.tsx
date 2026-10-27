@@ -1,6 +1,7 @@
 'use client';
 
 import { useContext, useEffect, useRef, useState } from 'react';
+import { formatTsDiagnostic } from '@/lib/check';
 import type { Lang } from '@/lib/highlight';
 import { openMentor } from '@/lib/mentor-client';
 import { startRun, type Job, type OutLine } from '@/lib/runner';
@@ -33,14 +34,37 @@ export default function CodeBlock({ code, run: runnable = false, title, lang = '
     setVisible(true);
     setRunning(true);
     setFail(null);
-    const j = startRun({ mode: 'console', code: text }, { strings: { runner: t.runner, explain: t.explain }, onLines: (lines) => my === seq.current && setOut({ lines }) });
+    // ts: real type check first (worker, loaded once), diagnostics go above the console output
+    let code = text;
+    let head: OutLine[] = [];
+    if (lang === 'ts') {
+      setOut({ lines: [{ text: t.ts.loading, cls: 'warn-line' }] });
+      try {
+        const r = await (await import('@/lib/tscheck')).checkTs(text); // separate tiny chunk: JS-only pages never fetch it
+        if (my !== seq.current) return;
+        code = r.js;
+        head = r.diagnostics.map((d) => ({ text: formatTsDiagnostic(d, t.ts), cls: 'err' }));
+        editor.current?.setDiagnostics(r.diagnostics.map((d) => ({ from: d.start, to: d.start + d.length, message: `${d.message} (TS${d.code})` })));
+      } catch {
+        if (my !== seq.current) return;
+        const lines: OutLine[] = [{ text: t.ts.loadFail, cls: 'err' }];
+        setRunning(false);
+        setOut({ lines });
+        task?.onRunResult({ lines, hadError: true });
+        return;
+      }
+      setOut({ lines: head });
+    }
+    const j = startRun({ mode: 'console', code }, { strings: { runner: t.runner, explain: t.explain }, onLines: (lines) => my === seq.current && setOut({ lines: [...head, ...lines] }) });
     job.current = j;
     const res = await j.result;
     if (my !== seq.current) return;
+    const lines = [...head, ...res.lines.filter((l) => !(head.length && l.cls === 'empty'))];
+    const hadError = res.hadError || head.length > 0;
     setRunning(false);
-    setOut({ lines: res.lines });
-    setFail(res.hadError ? text : null);
-    task?.onRunResult(res);
+    setOut({ lines });
+    setFail(hadError ? text : null);
+    task?.onRunResult({ lines, hadError });
   };
 
   return (

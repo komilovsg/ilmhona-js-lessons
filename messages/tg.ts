@@ -222,6 +222,11 @@ export const tg: Messages = {
     noReact: 'React аз esm.sh бор карда нашуд. Пайвасти интернетро санҷед.',
     noApp: 'Компонентро содир кунед: export default function App() { … }',
   },
+  ts: {
+    loading: 'TypeScript бор мешавад…',
+    loadFail: 'TypeScript бор карда нашуд. Пайвасти интернетро санҷед ва аз нав иҷро кунед.',
+    at: (line: number, col: number) => `Сатри ${line}, сутуни ${col}`,
+  },
   explain: {
     network: 'Хатои шабака: нишонӣ, интернет ё CORS-и API-ро санҷед.',
     notDefined: (name: string) => `Тағйирёбандаи «${name}» ёфт нашуд: он эълон нашудааст ё дар ин ҷо намоён нест (соҳаи намоӣ).`,
