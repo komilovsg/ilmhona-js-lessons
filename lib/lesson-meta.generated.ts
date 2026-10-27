@@ -716,8 +716,19 @@ export const VC_AVAILABLE = ['intro'] as const;
 /** Vibe Coding task levels, keyed by progress key `vc-<slug>`. */
 export const VC_LESSON_META: LessonMeta = {
   'vc-intro': {
-    'q1-1': 'e',
-    'c1-1': 'e',
-    'h1-1': 'm',
+    'q-llm': 'e',
+    'q-tools': 'e',
+    'q-profession': 'e',
+    'q-vibe': 'm',
+    'q-editor': 'e',
+    'q-pipeline': 'e',
+    'q-prompt': 'e',
+    'cl-setup': 'e',
+    'cl-build': 'm',
+    'q-fix': 'm',
+    'cl-challenge': 'e',
+    'hw-req': 'm',
+    'hw-bonus': 'h',
+    't-understood': 'e',
   },
 };
