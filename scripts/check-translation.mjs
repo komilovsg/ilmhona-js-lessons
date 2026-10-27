@@ -1,10 +1,15 @@
 // Guards a lesson translation: everything that affects running code or auto-check must be identical.
-// Usage: node scripts/check-translation.mjs [tg] [NN-slug.html ...]   (default: all files present in content/lessons/<locale>)
+// Usage: node scripts/check-translation.mjs [tg] [--course vibe-coding] [NN-slug.html ...]
+// Default: all files present in content/lessons/<locale> (or content/vibe-coding/lessons/<locale> with --course vibe-coding).
 import fs from 'node:fs';
 
-const locale = process.argv[2] && !process.argv[2].endsWith('.html') ? process.argv[2] : 'tg';
-const files = process.argv.slice(2).filter((a) => a.endsWith('.html'));
-const dir = (l) => new URL(`../content/lessons/${l}/`, import.meta.url);
+const args = process.argv.slice(2);
+const ci = args.indexOf('--course');
+const course = ci >= 0 ? args.splice(ci, 2)[1] : 'frontend';
+const base = course === 'vibe-coding' ? 'content/vibe-coding/lessons' : 'content/lessons';
+const locale = args[0] && !args[0].endsWith('.html') ? args[0] : 'tg';
+const files = args.filter((a) => a.endsWith('.html'));
+const dir = (l) => new URL(`../${base}/${l}/`, import.meta.url);
 const list = files.length ? files : fs.readdirSync(dir(locale)).filter((f) => f.endsWith('.html'));
 
 // comments are translatable; everything else inside <pre> must match
@@ -23,6 +28,11 @@ const grab = (html) => ({
   hrefs: [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]),
   hints: (html.match(/<details class="hint"/g) || []).length,
   playgrounds: [...html.matchAll(/class="playground" data-mode="(\w+)"/g)].map((m) => m[1]),
+  imgs: [...html.matchAll(/<img\b[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]),
+  yt: [...html.matchAll(/<div class="yt"[^>]*\sdata-id="([^"]+)"/g)].map((m) => m[1]),
+  quizzes: [...html.matchAll(/<div class="quiz" data-answer="([^"]+)">/g)].map((m) => m[1]),
+  checklists: [...html.matchAll(/<ul class="checklist" id="([^"]+)">([\s\S]*?)<\/ul>/g)].map((m) => `${m[1]}:${(m[2].match(/<li>/g) || []).length}`),
+  hosts: [...html.matchAll(/<div class="submit-link"[^>]*\sdata-hosts="([^"]*)"/g)].map((m) => m[1]),
 });
 
 let bad = 0;
@@ -32,7 +42,7 @@ for (const f of list) {
   const a = grab(fs.readFileSync(ruPath, 'utf8'));
   const b = grab(fs.readFileSync(new URL(f, dir(locale)), 'utf8'));
   const errs = [];
-  for (const k of ['tasks', 'levels', 'sections', 'hrefs', 'playgrounds', 'expected']) {
+  for (const k of ['tasks', 'levels', 'sections', 'hrefs', 'playgrounds', 'expected', 'imgs', 'yt', 'quizzes', 'checklists', 'hosts']) {
     if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) {
       const i = a[k].findIndex((v, j) => JSON.stringify(v) !== JSON.stringify(b[k][j]));
       errs.push(`${k} differ (ru ${a[k].length} vs ${locale} ${b[k].length}; first at #${i}: ${JSON.stringify(a[k][i])?.slice(0, 80)} ≠ ${JSON.stringify(b[k][i])?.slice(0, 80)})`);

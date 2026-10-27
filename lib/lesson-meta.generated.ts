@@ -711,9 +711,13 @@ export const LESSON_META: LessonMeta = {
 };
 
 /** Vibe Coding: slugs with content/vibe-coding/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const VC_AVAILABLE = [] as readonly string[];
+export const VC_AVAILABLE = ['intro'] as const;
 
 /** Vibe Coding task levels, keyed by progress key `vc-<slug>`. */
 export const VC_LESSON_META: LessonMeta = {
-
+  'vc-intro': {
+    'q1-1': 'e',
+    'c1-1': 'e',
+    'h1-1': 'm',
+  },
 };
