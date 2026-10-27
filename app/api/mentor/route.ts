@@ -95,6 +95,12 @@ const COURSE_PROMPT: Record<CourseId, { intro: string; topics: string; formula: 
     formula: 'context -> goal -> constraints -> examples -> verification',
     extra: '\n- When you mention a tool or AI service, never use first person in the same sentence.',
   },
+  'react-next': {
+    intro: 'the course «React Pro + Next.js» (platform MakeFirstStep, Level 3): professional React and Next.js for students who already know JavaScript and React basics.',
+    topics: 'React and Next.js and the course: TypeScript for React, components and rendering, hooks, forms (React Hook Form, Zod), styling, Context, Redux Toolkit, RTK Query/TanStack Query, React Router, performance and patterns, testing (Vitest, Testing Library, Playwright), Next.js App Router, Server/Client Components, data fetching/streaming/caching, Server Functions, auth and roles, SWR/optimistic UI, metadata/SEO, optimization and deploy, AI SDK, working with AI agents, and the current lesson/task.',
+    formula: 'context -> task -> constraints -> answer format -> verification',
+    extra: '',
+  },
 };
 
 const systemFor = (id: CourseId) => {
