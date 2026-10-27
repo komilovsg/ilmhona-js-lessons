@@ -711,7 +711,7 @@ export const LESSON_META: LessonMeta = {
 };
 
 /** Vibe Coding: slugs with content/vibe-coding/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const VC_AVAILABLE = ['intro'] as const;
+export const VC_AVAILABLE = ['intro', 'prompting', 'html-css'] as const;
 
 /** Vibe Coding task levels, keyed by progress key `vc-<slug>`. */
 export const VC_LESSON_META: LessonMeta = {
@@ -727,6 +727,39 @@ export const VC_LESSON_META: LessonMeta = {
     'cl-build': 'm',
     'q-fix': 'm',
     'cl-challenge': 'e',
+    'hw-req': 'm',
+    'hw-bonus': 'h',
+    't-understood': 'e',
+  },
+  'vc-prompting': {
+    'q-why': 'e',
+    'q-formula': 'e',
+    'q-role': 'e',
+    'q-iterate': 'm',
+    'q-mistakes': 'm',
+    'q-adaptive': 'e',
+    'cl-prep': 'e',
+    'cl-iter': 'm',
+    'cl-library': 'e',
+    'q-fix': 'm',
+    'cl-golf': 'e',
+    'hw-req': 'm',
+    'hw-bonus': 'h',
+    't-understood': 'e',
+  },
+  'vc-html-css': {
+    't-tags': 'e',
+    'q-tags': 'e',
+    't-css': 'e',
+    'q-css': 'e',
+    't-flex': 'm',
+    't-grid': 'm',
+    'q-read': 'e',
+    'q-devtools': 'e',
+    'cl-devtools': 'm',
+    't-bughunt': 'h',
+    't-reorder': 'm',
+    'cl-ai': 'm',
     'hw-req': 'm',
     'hw-bonus': 'h',
     't-understood': 'e',
