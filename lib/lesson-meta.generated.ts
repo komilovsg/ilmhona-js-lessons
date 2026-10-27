@@ -711,7 +711,7 @@ export const LESSON_META: LessonMeta = {
 };
 
 /** Vibe Coding: slugs with content/vibe-coding/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const VC_AVAILABLE = ['intro', 'prompting', 'html-css', 'setup-git', 'first-project', 'cursor-agent', 'react-basics', 'react-state', 'nextjs-routing', 'web-api'] as const;
+export const VC_AVAILABLE = ['intro', 'prompting', 'html-css', 'setup-git', 'first-project', 'cursor-agent', 'react-basics', 'react-state', 'nextjs-routing'] as const;
 
 /** Vibe Coding task levels, keyed by progress key `vc-<slug>`. */
 export const VC_LESSON_META: LessonMeta = {
@@ -864,33 +864,12 @@ export const VC_LESSON_META: LessonMeta = {
     'hw-vercel': 'm',
     't-understood': 'e',
   },
-  'vc-web-api': {
-    'q-http': 'e',
-    'pg-json': 'e',
-    'q-json-api': 'm',
-    'pg-fetch': 'm',
-    'pg-errors': 'm',
-    'pg-post': 'm',
-    'q-async': 'm',
-    'pg-status': 'm',
-    'q-next': 'm',
-    'q-env': 'm',
-    'cl-practice-task': 'm',
-    'hw-req': 'm',
-    'hw-github': 'm',
-    'hw-vercel': 'm',
-    't-understood': 'e',
-  },
 };
 
 /** React Pro + Next.js: slugs with content/react-next/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const RN_AVAILABLE = ['start'] as const;
+export const RN_AVAILABLE = [] as readonly string[];
 
 /** React Pro + Next.js task levels, keyed by progress key `rn-<slug>`. */
 export const RN_LESSON_META: LessonMeta = {
-  'rn-start': {
-    'q1-1': 'e',
-    'r1-1': 'm',
-    'ts1-1': 'e',
-  },
+
 };
