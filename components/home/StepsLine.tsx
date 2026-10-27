@@ -94,7 +94,7 @@ export default function StepsLine(props: HeroProps) {
       trail.style.strokeDasharray = `0 ${LEN * 2}`;
 
       // ---- overlay (HTML) positioned in % of the fixed viewBox ----
-      const items: { pos: HTMLElement; x: number; y: number; chip?: HTMLElement }[] = [];
+      const items: { pos: HTMLElement; x: number; y: number; chip?: HTMLElement; maxX?: number }[] = [];
       const addOv = (cls: string, x: number, y: number) => {
         const pos = h('div', 'hx-pos ' + cls, ov);
         items.push({ pos, x, y });
@@ -106,6 +106,12 @@ export default function StepsLine(props: HeroProps) {
           const left = ((it.x - VB[0]) / VB[2]) * 100;
           it.pos.style.left = left + '%';
           it.pos.style.top = ((it.y - VB[1]) / VB[3]) * 100 + '%';
+          if (it.maxX !== undefined) {
+            // phones: a card that is wider than its slot slides left so it never covers the stair line
+            const card = it.pos.firstElementChild as HTMLElement;
+            const over = (left / 100) * bw + card.offsetWidth - ((it.maxX - VB[0]) / VB[2]) * bw + 8;
+            if (bw < 480 && over > 0) it.pos.style.left = `max(4px, calc(${left}% - ${over}px))`;
+          }
           if (it.chip) it.pos.style.setProperty('--dx', chipShift(bw, (left / 100) * bw, it.chip.offsetWidth) + 'px');
         }
       };
@@ -132,6 +138,7 @@ export default function StepsLine(props: HeroProps) {
           el('line', { class: 'stem', id: `stem-${k}`, x1: sx, y1: y + CARD.h - 14, x2: sx, y2: ty - 12 }, stems);
           el('circle', { class: 'stem-dot', id: `stemdot-${k}`, cx: sx, cy: ty - 12, r: 2.6 }, stems);
           const pos = addOv('hb-cardpos', x, y + CARD.h);
+          if (k < 2) items[items.length - 1].maxX = PATH.P[k * 2 + 1][0]; // the riser right of the card
           const card = h('div', 'hb-card', pos);
           card.id = `card-${k}`;
           const tile = h('div', 'hb-tile', card);

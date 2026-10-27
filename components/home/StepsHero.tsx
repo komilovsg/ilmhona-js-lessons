@@ -68,7 +68,7 @@ const G = {
 };
 /** Config: timing (seconds). */
 const TIME = { intro: 1.1, speed: 66, s0: 16, settle: 0.5, rewardDelay: -0.1, hold: 2.2, out: 0.6, sEnd: 0, sLin: 0 };
-const VB = { desktop: [36, 70, 664, 580], mobile: [-30, 70, 730, 580] } as const;
+const VB = { desktop: [36, 70, 664, 580] } as const;
 
 type P2 = [number, number];
 const C30 = Math.cos(Math.PI / 6);
@@ -131,8 +131,21 @@ export default function StepsHero(props: HeroProps) {
         }
       };
       const setVb = () => {
+        const bw = box.clientWidth;
         const mobile = (box.parentElement?.clientWidth ?? 999) < 480;
-        vb = mobile ? VB.mobile : VB.desktop;
+        vb = VB.desktop;
+        if (mobile) {
+          // phones: widen the left margin of the viewBox just enough that the widest course name fits left of its riser on one line
+          let m = 30;
+          for (const it of items) {
+            const n = it.pos.querySelector<HTMLElement>('.ha-name');
+            if (!n) continue;
+            const w = n.scrollWidth + 10; // (it.x + m) * bw / (700 + m) >= w
+            if (w < bw) m = Math.max(m, (w * 700 - it.x * bw) / (bw - w));
+          }
+          m = Math.min(260, m);
+          vb = [-m, 70, 700 + m, 580];
+        }
         svg.setAttribute('viewBox', vb.join(' '));
         box.style.setProperty('--r', String(vb[2] / vb[3]));
         box.style.setProperty('--u', `calc(100cqw / ${vb[2]})`);
@@ -607,7 +620,7 @@ export default function StepsHero(props: HeroProps) {
       });
       const ro = new ResizeObserver(() => setVb());
       ro.observe(box.parentElement ?? box);
-      document.fonts?.ready.then(place);
+      document.fonts?.ready.then(setVb);
       vis.sync();
       return () => {
         ro.disconnect();
