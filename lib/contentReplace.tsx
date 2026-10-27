@@ -26,6 +26,17 @@
  *    browser (sucrase); React 19 + react-dom come from esm.sh (pinned) so it needs internet.
  *    The preview is a sandbox="allow-scripts" iframe (no same-origin): fetch to CORS-enabled
  *    public APIs works, localStorage/cookies of the host are unreachable.
+ *
+ * 3. Vibe Coding practice blocks (content/vibe-coding/lessons). Graded ones sit inside <article class="task">.
+ *    - Video, click-to-load (youtube-nocookie): <div class="yt" data-id="11-char id" data-title="…" data-start="90"></div>
+ *    - Checklist (state in localStorage, all ticked inside a task = solved, half XP):
+ *        <ul class="checklist" id="cl-x"><li>…</li></ul>
+ *    - Quiz, data-answer is 1-based ("2" = one answer, "1,3" = several; all quizzes of a task solved = solved):
+ *        <div class="quiz" data-answer="2"><p>Question</p><ol class="options"><li>…</li></ol><div class="explain">…</div></div>
+ *    - Homework link (https, host must equal / be a subdomain of one of data-hosts; saved = solved, half XP):
+ *        <div class="submit-link" data-hosts="vercel.app github.com" data-placeholder="https://…"></div>
+ *    - Copyable prompt: existing <div class="prompt good-prompt">. Screenshot: <figure class="shot"><img …><figcaption>.
+ *      Diagram: inline <figure class="diagram"><svg>.
  * ---------------------------------------------------------------------------------------------
  */
 import { isTag } from 'domhandler';
@@ -33,8 +44,12 @@ import { findOne, textContent } from 'domutils';
 import { domToReact, Element, type DOMNode, type HTMLReactParserOptions } from 'html-react-parser';
 import CodeBlock from '@/components/CodeBlock';
 import Playground, { type PlaygroundFile } from '@/components/Playground';
+import Checklist from '@/components/Checklist';
 import Prompt from '@/components/Prompt';
+import Quiz from '@/components/Quiz';
+import SubmitLink from '@/components/SubmitLink';
 import Task from '@/components/Task';
+import YouTube from '@/components/YouTube';
 import type { Lang } from '@/lib/highlight';
 
 export const hasClass = (el: Element, c: string) => (el.attribs.class ?? '').split(/\s+/).includes(c);
@@ -64,6 +79,35 @@ export function makeReplaceOptions(lessonSlug: string): HTMLReactParserOptions {
         const mode = node.attribs['data-mode'] === 'react' ? 'react' : 'dom';
         const files = playgroundFiles(node, mode);
         if (files.length) return <Playground mode={mode} title={node.attribs['data-title']} files={files} />;
+      }
+      if (node.name === 'div' && hasClass(node, 'yt')) {
+        const start = Number(node.attribs['data-start']);
+        return <YouTube id={node.attribs['data-id'] ?? ''} title={node.attribs['data-title']} start={start > 0 ? start : undefined} />;
+      }
+      if (node.name === 'ul' && hasClass(node, 'checklist') && node.attribs.id) {
+        const items = node.children.filter((c): c is Element => isTag(c) && c.name === 'li');
+        return <Checklist id={node.attribs.id} lessonKey={lessonSlug} items={items.map((li) => domToReact(li.children as DOMNode[], options))} />;
+      }
+      if (node.name === 'div' && hasClass(node, 'quiz')) {
+        const kids = node.children;
+        const list = kids.find((c): c is Element => isTag(c) && c.name === 'ol' && hasClass(c, 'options'));
+        const explain = kids.find((c): c is Element => isTag(c) && hasClass(c, 'explain'));
+        const answer = (node.attribs['data-answer'] ?? '').split(',').map(Number).filter((n) => n > 0);
+        if (list && answer.length) {
+          const lis = list.children.filter((c): c is Element => isTag(c) && c.name === 'li');
+          return (
+            <Quiz
+              answer={answer}
+              question={domToReact(kids.filter((c) => c !== list && c !== explain) as DOMNode[], options)}
+              options={lis.map((li) => domToReact(li.children as DOMNode[], options))}
+              explain={explain && <div className="explain">{domToReact(explain.children as DOMNode[], options)}</div>}
+            />
+          );
+        }
+      }
+      if (node.name === 'div' && hasClass(node, 'submit-link')) {
+        const hosts = (node.attribs['data-hosts'] ?? '').split(/\s+/).filter(Boolean);
+        return <SubmitLink lessonKey={lessonSlug} hosts={hosts} placeholder={node.attribs['data-placeholder']} />;
       }
       if (node.name === 'pre' && hasClass(node, 'code')) {
         const l = node.attribs['data-lang'] as Lang;

@@ -77,9 +77,16 @@ export default function Task({ id, lessonSlug, level, children }: Props) {
     [award, key, t],
   );
 
+  const solve = useCallback<TaskContextValue['solve']>(
+    (auto, anchor) => {
+      if (!getSnapshot().solved[key]) award(auto, anchor);
+    },
+    [award, key],
+  );
+
   const ctx = useMemo<TaskContextValue>(
-    () => ({ taskId: id, lessonSlug, level, onRunResult }),
-    [id, lessonSlug, level, onRunResult],
+    () => ({ taskId: id, lessonSlug, level, onRunResult, done, solve }),
+    [id, lessonSlug, level, onRunResult, done, solve],
   );
 
   // Feedback line goes right after the task's first runnable (non-hint) code block.

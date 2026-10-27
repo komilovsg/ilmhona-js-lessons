@@ -12,6 +12,10 @@ export type TaskContextValue = {
    * No-op for now; future auto-check / XP logic plugs in here.
    */
   onRunResult: (r: { lines: OutLine[]; hadError: boolean }) => void;
+  /** Task already solved. */
+  done: boolean;
+  /** Mark the task solved (auto = full XP, else half) unless it already is; `anchor` positions the XP chip. */
+  solve: (auto: boolean, anchor: Element | null) => void;
 };
 
 export const TaskContext = createContext<TaskContextValue | null>(null);
