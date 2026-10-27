@@ -709,3 +709,11 @@ export const LESSON_META: LessonMeta = {
     't9-1': 'e',
   },
 };
+
+/** Vibe Coding: slugs with content/vibe-coding/lessons/ru/NN-slug.html (plain slugs, course order). */
+export const VC_AVAILABLE = [] as readonly string[];
+
+/** Vibe Coding task levels, keyed by progress key `vc-<slug>`. */
+export const VC_LESSON_META: LessonMeta = {
+
+};
