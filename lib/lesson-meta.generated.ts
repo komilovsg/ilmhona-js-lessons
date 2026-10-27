@@ -711,7 +711,7 @@ export const LESSON_META: LessonMeta = {
 };
 
 /** Vibe Coding: slugs with content/vibe-coding/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const VC_AVAILABLE = ['intro', 'prompting', 'html-css'] as const;
+export const VC_AVAILABLE = ['intro', 'prompting', 'html-css', 'setup-git', 'first-project'] as const;
 
 /** Vibe Coding task levels, keyed by progress key `vc-<slug>`. */
 export const VC_LESSON_META: LessonMeta = {
@@ -762,6 +762,38 @@ export const VC_LESSON_META: LessonMeta = {
     'cl-ai': 'm',
     'hw-req': 'm',
     'hw-bonus': 'h',
+    't-understood': 'e',
+  },
+  'vc-setup-git': {
+    'cl-home': 'e',
+    'q-tools': 'e',
+    'q-cursor': 'e',
+    'q-terminal': 'e',
+    'q-localhost': 'm',
+    'q-git': 'm',
+    'q-ai': 'e',
+    'cl-accounts': 'e',
+    'cl-first': 'm',
+    'q-fix': 'm',
+    'cl-bingo': 'm',
+    'hw-req': 'm',
+    'hw-link': 'm',
+    't-understood': 'e',
+  },
+  'vc-first-project': {
+    'q-hosting': 'e',
+    'q-nextjs': 'e',
+    'q-tailwind': 'e',
+    'q-deploy': 'e',
+    'q-log': 'm',
+    'q-prompt': 'e',
+    'cl-prep-task': 'e',
+    'cl-build': 'm',
+    'cl-deployed': 'm',
+    'cl-clone': 'e',
+    'hw-req': 'm',
+    'hw-github': 'm',
+    'hw-vercel': 'm',
     't-understood': 'e',
   },
 };
