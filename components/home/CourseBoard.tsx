@@ -9,7 +9,7 @@ import { useProgress } from '@/lib/progress';
 import { courseName } from '@/lib/site';
 import { useT } from '../I18nProvider';
 
-/** Block 3: the three courses as a ladder (offset up step by step on desktop, a plain list on phones). */
+/** Block 3: the three independent courses side by side (a plain list on phones). */
 export default function CourseBoard({ picked }: { picked: string | null }) {
   const { t, locale } = useT();
   const progress = useProgress();
@@ -19,7 +19,7 @@ export default function CourseBoard({ picked }: { picked: string | null }) {
       <h2 id="hm-courses-t">{T.title}</h2>
       <p className="hm-sec-lead">{T.lead}</p>
       <ol className="hm-ladder">
-        {LADDER.map((id, i) => {
+        {LADDER.map((id) => {
           const c = COURSES[id];
           const bt = boardTexts[id];
           const name = c.texts?.[locale].name ?? courseName[locale];
@@ -27,11 +27,12 @@ export default function CourseBoard({ picked }: { picked: string | null }) {
           const started = solved > 0;
           const pct = total ? Math.max(started ? 1 : 0, Math.round((solved / total) * 100)) : 0;
           return (
-            <li key={id} className={`hm-card hm-step-${i}${picked === id ? ' is-picked' : ''}`} id={`course-${id}`}>
-              <div className="hm-card-top">
-                <span className="hm-level">{t.home.levels[i]}</span>
-                {picked === id && <span className="hm-pick">{T.picked}</span>}
-              </div>
+            <li key={id} className={`hm-card${picked === id ? ' is-picked' : ''}`} id={`course-${id}`}>
+              {picked === id && (
+                <div className="hm-card-top">
+                  <span className="hm-pick">{T.picked}</span>
+                </div>
+              )}
               <h3>{name}</h3>
               <dl className="hm-facts">
                 <dt>{T.forWhom}</dt>
