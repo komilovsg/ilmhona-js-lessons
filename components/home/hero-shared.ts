@@ -27,6 +27,8 @@ export type HeroProps = {
   xpLabel: string;
   title: string;
   desc: string;
+  /** Drag hint of the 3D variant. */
+  hint?: string;
   /** Called at the end of every loop (the parent decides whether to switch variant). */
   onLoop: () => void;
 };
