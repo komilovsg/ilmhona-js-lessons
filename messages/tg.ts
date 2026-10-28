@@ -117,7 +117,7 @@ export const tg: Messages = {
     artDesc: 'Се курси мустақил: Vibe Coding, Frontend + зеҳни сунъӣ ва React Pro + Next.js. Ҳар кадомашро интихоб кунед ва қадами аввалро гузоред — ҳар қадам таҷриба меафзояд, дар пеш нишони «Ту дар касб» аст.',
     artXp: 'Таҷриба',
     artGoal: 'Ту дар касб',
-    tags: ['Маҳсулот бо AI', 'Фронтенд', 'React ва Next.js'],
+    tags: ['Маҳсулоти AI', 'Фронтенд', 'React + TS'],
     cont: {
       title: 'Аз ҷои қатъшуда идома диҳед',
       lesson: 'Дарси {num} · {title}',

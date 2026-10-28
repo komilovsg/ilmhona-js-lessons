@@ -180,9 +180,6 @@ export default function StepsHero(props: HeroProps) {
           el('polygon', { points: pts([[W, f, z], [W, b, z], [W, b, 0], [W, f, 0]]), fill: 'url(#gRight)' }, g);
           el('polygon', { points: pts([[0, f, z], [W, f, z], [W, b, z], [0, b, z]]), fill: 'url(#gTop)' }, g);
           el('polygon', { id: `lit-${k}`, points: pts([[0, f, z], [W, f, z], [W, b, z], [0, b, z]]), fill: 'url(#gLit)', opacity: 0 }, g);
-          const o = iso(16, f, k * H + 11);
-          const t = el('text', { class: 'riser-num', transform: `matrix(${C30},.5,0,1,${o[0].toFixed(2)},${o[1].toFixed(2)})` }, g);
-          t.textContent = String(k + 1).padStart(2, '0');
           const edge = [[0, b, z], [0, f, z], [W, f, z], [W, b, z]];
           el('polyline', { class: 'edge-hi', points: pts(edge) }, g);
           el('polyline', { class: 'edge-glow', id: `glow-${k}`, points: pts([[0, b, z], [0, f, z], [W, f, z], [W, b, z], [0, b, z]]), filter: 'url(#fGlow)' }, g);
