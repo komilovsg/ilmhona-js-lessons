@@ -64,7 +64,7 @@ export default function HeroArt() {
 
   const props: HeroProps = {
     names: [COURSES['vibe-coding'].texts![locale].name, courseName[locale], COURSES['react-next'].texts![locale].name],
-    caps: [...t.home.levels] as [string, string, string],
+    caps: [...t.home.tags] as [string, string, string],
     goal: t.home.artGoal,
     xpLabel: t.home.artXp,
     title: t.home.artTitle,

@@ -1,6 +1,6 @@
 // tg: review by a native speaker pending
 // Board card copy of the three courses (the home page). Names come from each course's `texts`
-// (the old course: lib/site `courseName`); level badges are `messages.home.levels`.
+// (the old course: lib/site `courseName`); hero step captions are `messages.home.tags`.
 import type { L10n } from '@/content/course';
 
 export type BoardCourseText = { forWhom: L10n; outcome: L10n; weeks: number };

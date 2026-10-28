@@ -38,7 +38,7 @@ const moduleTitles: { id: number; title: L10n }[] = [
 ];
 
 export const destination = {
-  title: { ru: 'Уровень 3 — React Pro + Next.js', tg: 'Сатҳи 3 — React Pro + Next.js' } as L10n,
+  title: { ru: 'Дальше по желанию: React Pro + Next.js', tg: 'Минбаъд бо хоҳиш: React Pro + Next.js' } as L10n,
 };
 
 const l = (ru: string, tg: string): L10n => ({ ru, tg });
@@ -406,10 +406,10 @@ export const course: CourseEntry[] = [
       'Чӣ тавр промпт барои компоненти React таҳия кардан: props, ҳолат, ҳолатҳои канорӣ — бо амалисозии дастӣ муқоиса мекунем'),
     classwork: l('Переносим приложение на API из уроков 15–16 в React, итоги курса, разбор дорожной карты',
       'Барномаи API-и дарсҳои 15–16-ро ба React мегузаронем, натиҷаҳои курс, таҳлили харитаи роҳ'),
-    homework: l('Доделать React-приложение на API, залить на GitHub + план подготовки к Уровню 3',
-      'Барномаи React-ро бар пояи API анҷом диҳед, ба GitHub бор кунед + нақшаи омодагӣ ба Сатҳи 3'),
-    result: l('Мини-приложение на React с fetch + дорожная карта к Уровню 3 (React Pro + Next.js)',
-      'Барномаи хурд бо React ва fetch + харитаи роҳ ба Сатҳи 3 (React Pro + Next.js)'),
+    homework: l('Доделать React-приложение на API, залить на GitHub + план подготовки к курсу «React Pro + Next.js»',
+      'Барномаи React-ро бар пояи API анҷом диҳед, ба GitHub бор кунед + нақшаи омодагӣ ба курси «React Pro + Next.js»'),
+    result: l('Мини-приложение на React с fetch + дорожная карта к курсу «React Pro + Next.js»',
+      'Барномаи хурд бо React ва fetch + харитаи роҳ ба курси «React Pro + Next.js»'),
   },
 ];
 
