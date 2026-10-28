@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import { COURSES } from '@/lib/courses';
 import { courseName } from '@/lib/site';
 import { useT } from '../I18nProvider';
@@ -10,6 +10,49 @@ import type { HeroProps } from './hero-shared';
 // Each variant is its own chunk: only the chosen one is downloaded and mounted.
 const StepsHero = dynamic(() => import('./StepsHero'), { ssr: false });
 const StepsLine = dynamic(() => import('./StepsLine'), { ssr: false });
+
+type Props3D = HeroProps & { onReady?: () => void; onFail?: () => void };
+
+/**
+ * Variant A: the SVG stairs show immediately; the 3D version (three.js, its own lazy chunk) is imported after mount and
+ * crossfades in over it once its first frame is rendered. No WebGL or an error keeps the SVG.
+ */
+function StairsHero(props: HeroProps) {
+  const [Three, setThree] = useState<ComponentType<Props3D> | null>(null);
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [svgGone, setSvgGone] = useState(false);
+  useEffect(() => {
+    let on = true;
+    import('./Steps3D')
+      .then((m) => on && setThree(() => m.default))
+      .catch(() => on && setFailed(true));
+    return () => {
+      on = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    const id = setTimeout(() => setSvgGone(true), 700);
+    return () => clearTimeout(id);
+  }, [ready]);
+  const onFail = useCallback(() => {
+    setFailed(true);
+    setReady(false);
+    setSvgGone(false);
+  }, []);
+  const onReady = useCallback(() => setReady(true), []);
+  return (
+    <>
+      {(!svgGone || failed) && <StepsHero {...props} />}
+      {Three && !failed && (
+        <div style={{ position: 'absolute', inset: 0, opacity: ready ? 1 : 0, transition: 'opacity .6s ease' }}>
+          <Three {...props} onReady={onReady} onFail={onFail} />
+        </div>
+      )}
+    </>
+  );
+}
 
 type Variant = 'a' | 'b';
 type Layer = { id: number; v: Variant; show: boolean };
@@ -69,6 +112,7 @@ export default function HeroArt() {
     xpLabel: t.home.artXp,
     title: t.home.artTitle,
     desc: t.home.artDesc,
+    hint: t.home.artHint,
     onLoop: check,
   };
 
@@ -76,7 +120,7 @@ export default function HeroArt() {
     <div className="hm-art">
       {layers.map((l) => (
         <div key={l.id} className={`hm-art-layer${l.show ? ' is-in' : ''}`}>
-          {l.v === 'a' ? <StepsHero {...props} /> : <StepsLine {...props} />}
+          {l.v === 'a' ? <StairsHero {...props} /> : <StepsLine {...props} />}
         </div>
       ))}
     </div>
