@@ -8,6 +8,7 @@ import CourseBoard from './CourseBoard';
 import CoursePicker from './CoursePicker';
 import HeroArt from './HeroArt';
 import HowItWorks from './HowItWorks';
+import HowVideo from './HowVideo';
 import MiniLeaderboard from './MiniLeaderboard';
 import YourStats from './YourStats';
 
@@ -50,6 +51,7 @@ export default function HomeView() {
       <CourseBoard picked={picked} />
       <CoursePicker onPick={onPick} />
       <HowItWorks />
+      <HowVideo />
       <div className="hm-duo">
         <MiniLeaderboard />
         <YourStats />
