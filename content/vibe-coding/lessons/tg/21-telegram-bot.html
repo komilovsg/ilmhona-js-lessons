@@ -1,0 +1,946 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+</style>
+
+
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 21 · Модули 7. Эътимоднокӣ: амният, тестҳо, ботҳо</p>
+      <h1>Telegram-бот ва худкорсозӣ</h1>
+      <p class="lead">То охири дарс лоиҳаи хатмии шумо интерфейси дуюм пайдо мекунад: Telegram-бот. Аризаҳои нав ё фармоишҳо ба соҳиб дар Telegram меоянд, бот ба фармонҳое монанди <code>/status</code> ҷавоб медиҳад, ва одамони бегона на дархостро ба бот дурӯғ карда метавонанд, на фармонҳои маъмуриро иҷро кунанд. Илова бар ин, шумо як худкорсозиро дар n8n (ё дар Make) бе як сатр код месозед.</p>
+      <ul class="goals">
+        <li>Ботро тавассути BotFather эҷод кунед, токенро танҳо дар тағйирёбандаҳои муҳит нигоҳ доред ва шарҳ диҳед, ки ҳангоми ошкор шудани он чаро хатарнок аст</li>
+        <li>Объекти JSON-и навсозиро (Update) аз Telegram хонед ва аз он рақами чат, матн ва фармонро ҷудо кунед</li>
+        <li>Вебхукро ба route handler-и Next.js пайваст кунед, сарлавҳаи <code>secret_token</code>-ро санҷед ва ба фармонҳо ҷавоб диҳед</li>
+        <li>Ҳангоми аризаи нав ба Telegram огоҳинома фиристед ва фармонҳои маъмуриро бо рӯйхати chat id-ҳои иҷозатдода ва ҳадди дархостҳо ҳифз кунед</li>
+        <li>Вебхукро дар суроғаи ҷамъиятии HTTPS санҷед: дар Vercel ё тавассути туннел (ngrok, cloudflared)</li>
+        <li>Худкорсозиро дар n8n ё Make созед ва шарҳ диҳед, кай конструктор кифоя аст ва кай код лозим</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Ин дарсро чӣ тавр гузаштан лозим</b>
+      <p>Лозим мешавад: лоиҳаи хатмӣ аз дарсҳои 17–19 (репозиторий дар GitHub, сайт дар Vercel, Supabase), Cursor, барномаи Telegram дар телефон ё компютер. Вақт: 4–5 соат, беҳтараш дар ду нишаст: назария (бахшҳои 1–6) ва амалиёт (бахшҳои 7–9). Дарсро дар нимаи экран кушоед, Cursor-ро дар нимаи дигар. Токени бот ва ҳама калидҳо ба чатҳо, скриншотҳо ва репозиторий намераванд: ин қоида аз дарсҳои 10 ва 19 дар ин ҷо низ амал мекунад. Дар охири дарс «Бот-шоу» шуморо интизор аст: ҳар кас боти худро ба гурӯҳ дар чати зинда нишон медиҳад.</p>
+    </div>
+
+    <!-- ============ 01 · Бот как второй интерфейс ============ -->
+    <section class="topic" id="why-bot">
+      <h2 data-toc="Бот ҳамчун интерфейс"><span class="num">01</span> Чаро маҳсулот бот лозим дорад: Telegram ҳамчун интерфейси дуюм</h2>
+
+      <p>Фармоиши воқеиро дар фриланс тасаввур кунед. Соҳиби чойхонаи душанбегӣ мегӯяд: «Аризаҳо барои мизҳо ба сайт меоянд, вале ман дар ошхона нишастаам ва сайтро намекушоям. Мехоҳам, ки ба Telegram хабар расад: кӣ, барои чанд нафар, ба кадом вақт. Ва ман ба бот <code>/status</code> нависам ва донам, имрӯз чанд ариза ҳаст». Ин фармоиши хеле маъмулист: дар Тоҷикистон Telegram паёмрасони асосии муштариён, таъминкунандагон ва кормандон аст. Одамон «боз як барнома»-и мағозаи шуморо насб намекунанд, вале Telegram барояшон ҳамеша кушода аст.</p>
+
+      <p>Бот ҳамчун <b>интерфейси дуюм</b>-и ҳамон маҳсулот кор мекунад. Сайт ҷои асосӣ мемонад, ки маълумот дар он сохта ва нигоҳ дошта мешавад (Supabase, дарси 11). Бот сайтро иваз намекунад, балки роҳи дигари гуфтугӯ бо ҳамон маълумотро медиҳад:</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Нақша: муштарӣ дар сайт ариза месозад, сайт дар Vercel онро дар Supabase нигоҳ медорад ва ба боти Telegram огоҳинома мефиристад, соҳиб паёмро дар Telegram мебинад ва ба бот фармони /status менависад, бот маълумотро аз Supabase мехонад ва ҷавоб медиҳад">
+          <rect class="box b" x="8" y="20" width="130" height="70" rx="12" />
+          <text x="73" y="50" text-anchor="middle">Муштарӣ</text><text class="sub" x="73" y="70" text-anchor="middle">шаклро пур мекунад</text>
+          <rect class="box g" x="200" y="20" width="150" height="70" rx="12" />
+          <text x="275" y="50" text-anchor="middle">Сайт дар Vercel</text><text class="sub" x="275" y="70" text-anchor="middle">route handler / action</text>
+          <rect class="box o" x="412" y="20" width="130" height="70" rx="12" />
+          <text x="477" y="50" text-anchor="middle">Supabase</text><text class="sub" x="477" y="70" text-anchor="middle">ҷадвали аризаҳо</text>
+          <rect class="box v" x="584" y="20" width="128" height="70" rx="12" />
+          <text x="648" y="50" text-anchor="middle">Telegram</text><text class="sub" x="648" y="70" text-anchor="middle">бот ва чатҳо</text>
+          <path class="arr" d="M138 55H194" /><path class="arr-head" d="M194 49l9 6-9 6z" />
+          <path class="arr" d="M350 55H406" /><path class="arr-head" d="M406 49l9 6-9 6z" />
+          <path class="arr" d="M275 90V150H640V96" /><path class="arr-head" d="M634 100l6-10 6 10z" />
+          <text class="sub t-v" x="458" y="144" text-anchor="middle">1. sendMessage: «ариза нав»</text>
+          <rect class="fill-g" x="440" y="190" width="272" height="60" rx="12" />
+          <text x="576" y="216" text-anchor="middle">Соҳиб дар Telegram</text><text class="sub" x="576" y="236" text-anchor="middle">огоҳинома мехонад, /status менависад</text>
+          <path class="arr" d="M648 96V186" /><path class="arr-head" d="M642 180l6 10 6-10z" />
+          <path class="arr" d="M440 220H300" /><path class="arr-head" d="M306 214l-10 6 10 6z" />
+          <rect class="fill-y" x="60" y="190" width="240" height="60" rx="12" />
+          <text x="180" y="216" text-anchor="middle">Вебхук дар сайти шумо</text><text class="sub" x="180" y="236" text-anchor="middle">2. Telegram фармонро мефиристад</text>
+        </svg>
+        <figcaption>Бот ба ду самт кор мекунад: сайти шумо ба Telegram менависад (огоҳиномаҳо), ва Telegram ба сайти шумо менависад (фармонҳои соҳиб)</figcaption>
+      </figure>
+
+      <p>Дар фармоишҳои воқеӣ аз бот одатан чиро мепурсанд:</p>
+      <ul>
+        <li><b>Огоҳиномаҳо</b>: ариза нав, фармоиши нав, пардохт гузашт, боқимондаи мол тамом шуд. Як паём ба соҳиб.</li>
+        <li><b>Фармонҳои оддӣ</b>: <code>/status</code> (имрӯз чанд ариза), <code>/orders</code> (фармоишҳои охирин), <code>/help</code> (бот чӣ карда метавонад).</li>
+        <li><b>Қабули аризаҳо мустақиман дар чат</b> (муштарӣ ба ҷои шакл ба бот менависад). Ин сатҳи баландтар аст, дар дарс ҳамчун ғояи бонус мемонад.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Чойхона. Толори асосӣ — ин сайт: дар он меҳмононро қабул мекунанд ва фармоишҳоро ба китоби сабт менависанд (Supabase). Бот — ин занг ба ошхона ва телефони шахсии соҳиб аст. Вақте дар толор фармоиши нав пайдо мешавад, официант (сайт) ба соҳиб занг мезанад: «Мизи чортанҳа барои соати ҳафти бегоҳ». Ва соҳиб худаш ба официант занг зада пурсида метавонад: «Имрӯз чанд миз банд аст?». Аммо агар рақами телефони соҳибро тамоми шаҳр донад, ҳама пайваста занг мезананд. Барои ҳамин бот парол ва рӯйхати касоне дорад, ки ба онҳо ҷавоб медиҳад: дар ин бораи бахши 5.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Фикр кардан, ки бот сайтро иваз мекунад: маълумот боз дар пойгоҳ зиндагӣ мекунад, бот танҳо онро нишон медиҳад ва фармон қабул мекунад. <b>2.</b> Интизор шудан, ки бот аввал ба соҳиб менависад: Telegram ба бот иҷозат намедиҳад ба одаме нависад, ки ягон бор <code>/start</code>-ро пахш накардааст. <b>3.</b> «Боти ҳама» сохтан бо фармонҳое, ки ҳама мебинанд: <code>/orders</code> маълумоти муштариёнро нишон медиҳад. <b>4.</b> Фаромӯш кардан, ки огоҳинома набояд амали асосиро вайрон кунад: агар Telegram дастнорас бошад, аризаи муштарӣ ба ҳар ҳол бояд сабт шавад.</p>
+      </div>
+
+      <article class="task" id="q-why">
+        <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Худро санҷед: нақши бот дар маҳсулот</h4><span class="level easy">осон</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Фармоишгар мепурсад: «Лозим аст, ки ҳар ариза нав аз сайт ба Telegram биёяд». Худи аризаҳо бояд дар куҷо нигоҳ дошта шаванд?</p>
+          <ol class="options">
+            <li>Танҳо дар мукотиба бо бот: Telegram худи пойгоҳи додаҳост</li>
+            <li>Дар пойгоҳи додаҳои лоиҳа (Supabase), бот бошад танҳо огоҳинома мефиристад ва маълумотро бо фармон нишон медиҳад</li>
+            <li>Дар тағйирёбандаи дохили коди бот: ин зудтар аст</li>
+            <li>Дар токени бот, ки он ҳам нодир аст</li>
+          </ol>
+          <div class="explain"><p>Бот — интерфейс аст, на анбор. Паёмҳоро дар чат ҷустуҷӯ кардан, филтр кардан ва бо қоидаҳои RLS муҳофизат кардан мумкин нест. Додаҳо дар Supabase мемонанд, ба Telegram бошад нусхаи-огоҳинома меравад.</p></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============ 02 · Bot API ============ -->
+    <section class="topic" id="bot-api">
+      <h2 data-toc="Bot API ва BotFather"><span class="num">02</span> Telegram Bot API: BotFather, токен, Update</h2>
+
+      <p>Telegram ба ботҳо HTTP API-и оддӣ медиҳад, яъне ҳамон чизе, ки шумо аз дарси 10 медонед: дархост ба суроға, JSON ба он ҷо, JSON ба ин ҷо. «Барномасозии бот»-и ҳақиқӣ лозим нест: бот — ин сервери шумост, ки ба дархостҳои Telegram ҷавоб медиҳад ва худаш усулҳои Telegram-ро мехонад.</p>
+
+      <h3>Қадами 1. Ботро дар BotFather сабт мекунем</h3>
+      <p>Ягона роҳи расмии эҷоди бот: ба <b>@BotFather</b> дар худи Telegram навиштан (дар паҳлӯи ном аломати кабуд ҳаст; бо номи монанд қалбакиҳо бисёранд). Мукотиба чунин менамояд:</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/21-telegram-bot/botfather.svg" alt="Нақшаи чат бо BotFather: корбар /newbot мефиристад, BotFather ном ва баъд username мепурсад, ки бояд бо bot тамом шавад, ва дар охир токени дастрасӣ ба HTTP API-ро мефиристад; токен ҳамчун асрор сурх ранг карда шудааст" width="720" height="420" loading="lazy" decoding="async">
+        <figcaption>Мукотиба бо BotFather дар нақшаи соддакардашуда: фармони <code>/newbot</code>, ном, username бо «bot» ва токен. Матнҳои воқеии BotFather метавонанд фарқ кунанд</figcaption>
+      </figure>
+
+      <div class="yt" data-id="miiZ_wSaA0g" data-title="Как создать чат бота в телеграм BotFather и получить токен для бота — канал Антон Медведев IT"></div>
+
+      <ol class="steps">
+        <li>@BotFather-ро кушоед ва <code>/newbot</code> фиристед.</li>
+        <li><b>Ном</b>-ро ворид кунед (одамон онро мебинанд, бо русӣ ҳам мешавад: «Чойхона Рудаки») ва <b>username</b> (нодир, бо ҳарфҳои лотинӣ, ҳатман бо <code>bot</code> тамом мешавад, масалан <code>choyxona_rudaki_bot</code>).</li>
+        <li>BotFather <b>токен</b> мефиристад: сатри намуди <code>рақамҳо:ҳарфу-рақамҳо</code>. Ин калиди бот аст.</li>
+        <li>Токенро фавран ба <code>.env.local</code> ҳамчун <code>TELEGRAM_BOT_TOKEN</code> нусха кунед ва дигар ҷое нишон надиҳед.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Токен — ин пароли бот аст</b>
+        <p>Касе ки токенро медонад, метавонад аз номи бот паём фиристад, он чиро, ки ба бот менависанд, бихонад ва вебхукро иваз кунад. Қоидаҳо ҳамон, ки барои калиди Gemini дар дарси 13: танҳо <code>.env.local</code> ва тағйирёбандаҳои Vercel, бе префикси <code>NEXT_PUBLIC_</code>, на дар код, на дар чат бо AI, на дар скриншот, <b>на дар логҳо</b>. Агар токен ошкор шуд, дар BotFather боти худро кушоед (фармони <code>/mybots</code>) ва токенро аз нав содир кунед (дар менюи API Token бандӣ барои бекор кардани токени ҷорӣ ҳаст), баъд <code>.env.local</code> ва Vercel-ро нав кунед. Номҳои дақиқи бандҳо метавонанд тағйир ёбанд.</p>
+      </div>
+
+      <h3>Қадами 2. Дархост ба API чӣ гуна менамояд</h3>
+      <p>Ҳамаи усулҳо аз рӯи як қолаб даъват мешаванд: <code>https://api.telegram.org/bot&lt;ТОКЕН&gt;/&lt;УСУЛ&gt;</code>. Диққат диҳед: <b>токен ба суроға дохил аст</b>. Барои ҳамин суроғаи дархост ё хатогиеро, ки онро дар бар мегирад, ба лог чоп кардан мумкин нест. Ҷавоб ҳамеша JSON аст: <code>{"ok": true, "result": …}</code> ҳангоми муваффақият ё <code>{"ok": false, "description": "…"}</code> ҳангоми хатогӣ.</p>
+
+<pre class="code" data-title="Терминал: токенро санҷидан (усули getMe)">
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getMe"
+</pre>
+
+      <p>Ҷавоби <code>getMe</code> ном ва username-и ботро нишон медиҳад: бо ҳамин санҷида мешавад, ки токен корист. Се усуле, ки дар ин дарс лозиманд:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Усул</th><th>Чӣ мекунад</th><th>Майдонҳои асосӣ</th></tr></thead>
+          <tbody>
+            <tr><td><code>getMe</code></td><td>Санҷиши токен, маълумоти бот</td><td>майдон нест</td></tr>
+            <tr><td><code>sendMessage</code></td><td>Матнро ба чат фиристодан</td><td><code>chat_id</code>, <code>text</code>, ихтиёрӣ <code>parse_mode</code></td></tr>
+            <tr><td><code>setWebhook</code></td><td>Ба Telegram гуфтан, ки паёмҳоро ба куҷо фиристад</td><td><code>url</code>, <code>secret_token</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Қадами 3. Аз Telegram чӣ меояд: объекти Update</h3>
+      <p>Вақте одам ба бот менависад, Telegram объекти JSON-и <b>Update</b> («навсозӣ») месозад. Он рақами <code>update_id</code> ва дақиқан як майдони-рӯйдод дорад. Барои паёми матнӣ ин майдони <code>message</code> аст: дар дохилаш <code>chat</code> (чате, ки паём дар он омад, бо <code>id</code>-и рақамӣ), <code>from</code> (кӣ навишт), <code>text</code> ва, агар ин фармон бошад, массиви <code>entities</code> бо сабти намуди <code>bot_command</code>. Дар чати шахсӣ <code>chat.id</code> бо рақами корбар мувофиқат мекунад; дар гурӯҳ ин рақами алоҳида (манфӣ) аст.</p>
+
+<pre class="code" data-title="Намунаи Update (омӯзишӣ)">
+{
+  "update_id": 900001,
+  "message": {
+    "message_id": 17,
+    "from": { "id": 555111, "is_bot": false, "first_name": "Фарзона" },
+    "chat": { "id": 555111, "type": "private", "first_name": "Фарзона" },
+    "date": 1767225600,
+    "text": "/status",
+    "entities": [{ "offset": 0, "length": 7, "type": "bot_command" }]
+  }
+}
+</pre>
+
+      <p>Ҳар навсозӣ паём нест: паёмҳои таҳриршуда, пахшҳои тугмаҳо, илова шудани бот ба гурӯҳ низ ҳастанд. Барои ҳамин код ҳамеша бо саволи «оё дар ин ҷо <code>message.text</code> ҳаст?» оғоз мешавад. Фармон дар гурӯҳ метавонад бо номи бот ояд: <code>/status@choyxona_rudaki_bot</code>, инро низ бояд тавонист таҳлил кард.</p>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> <code>update.text</code>-ро ба ҷои <code>update.message.text</code> гирифтан: дар сатҳи боло танҳо <code>update_id</code> ва намуди рӯйдод ҳаст. <b>2.</b> Бо навсозии бе <code>message</code> (масалан, <code>edited_message</code>) афтидан: сервер хатогӣ бармегардонад, ва Telegram ҳамон навсозиро аз нав мефиристад. <b>3.</b> <code>chat.id</code>-ро ҳамчун сатр нигоҳ доштан ва бо рақам муқоиса кардан: <code>"555111" === 555111</code> <code>false</code> медиҳад. <b>4.</b> Намунаи Update-ро бо токени воқеӣ ё рақами телефони бегона ба чат бо AI гузоштан.</p>
+      </div>
+
+      <article class="task" id="pg-update">
+        <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Таҳлили Update: chat id, матн, фармон</h4><span class="level mid">миёна</span></header>
+        <p>Дар поён се навсозии омӯзишӣ (сатрҳои JSON) ҳаст. Функсияи <code>extract</code>-ро анҷом диҳед: он объекти <code>{ chatId, text, command, args }</code>-ро бармегардонад ё <code>null</code>, агар дар навсозӣ паёми матнӣ набошад. Фармон аз сабти <code>entities</code>-и намуди <code>bot_command</code> бо <code>offset: 0</code> гирифта мешавад: ном — ин матн бе <code>/</code> ва бе <code>@номи_бот</code>, бо ҳарфҳои хурд; <code>args</code> — ҳар чизе, ки баъди фармон меояд, бе фосилаҳои канорӣ. Барои матни оддӣ <code>command</code> ба <code>null</code> баробар аст, <code>args</code> бошад — сатри холӣ.</p>
+<pre class="code" data-run data-lang="js">
+const raw1 = `{ "update_id": 900001, "message": { "message_id": 17,
+  "from": { "id": 555111, "is_bot": false, "first_name": "Фарзона" },
+  "chat": { "id": 555111, "type": "private" }, "date": 1767225600,
+  "text": "/Status@MyShop_bot today",
+  "entities": [{ "offset": 0, "length": 18, "type": "bot_command" }] } }`;
+const raw2 = `{ "update_id": 900002, "message": { "message_id": 18,
+  "from": { "id": 777, "is_bot": false, "first_name": "Мирзо" },
+  "chat": { "id": 777, "type": "private" }, "date": 1767225700,
+  "text": "Салом, нарх чанд сомонӣ?" } }`;
+const raw3 = `{ "update_id": 900003, "edited_message": { "message_id": 19,
+  "chat": { "id": 777, "type": "private" }, "text": "поправил" } }`;
+
+function extract(update) {
+  const msg = update.message;
+  // TODO 1: агар паём нест ё text сатр нест, null баргардонед
+  const chatId = msg.chat.id;
+  const text = msg.text;
+  let command = null;
+  let args = "";
+  const entity = (msg.entities || []).find((e) => e.type === "bot_command" &amp;&amp; e.offset === 0);
+  if (entity) {
+    // TODO 2: command = калима аз аломати 1-ум то entity.length, бе "@номи_бот", бо ҳарфҳои хурд
+    // TODO 3: args = боқимондаи матн баъди фармон, бе фосилаҳои канорӣ
+  }
+  return { chatId, text, command, args };
+}
+
+for (const raw of [raw1, raw2, raw3]) {
+  console.log(JSON.stringify(extract(JSON.parse(raw))));
+}
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>{"chatId":555111,"text":"/Status@MyShop_bot today","command":"status","args":"today"}
+{"chatId":777,"text":"Салом, нарх чанд сомонӣ?","command":null,"args":""}
+null</pre></div>
+        <details class="hint"><summary>Ишораи 1</summary><p>Шарт барои TODO 1: <code>if (!msg || typeof msg.text !== "string") return null;</code> — он пеш аз хондани <code>msg.chat</code> гузошта мешавад.</p></details>
+        <details class="hint"><summary>Ишораи 2</summary><p>Матни фармон: <code>text.slice(1, entity.length)</code> <code>Status@MyShop_bot</code> медиҳад. Онро аз рӯи <code>"@"</code> ҷудо кунед (<code>.split("@")[0]</code>) ва ба ҳарфҳои хурд гузаронед (<code>.toLowerCase()</code>). Боқимонда: <code>text.slice(entity.length).trim()</code>.</p></details>
+      </article>
+
+      <article class="task" id="q-botapi">
+        <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Худро санҷед: токен ва Update</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1,3">
+          <p>Ҳамаи изҳороти дурустро интихоб кунед.</p>
+          <ol class="options">
+            <li>Токени ботро дар тағйирёбандаҳои муҳит нигоҳ доштан ва ба лог чоп накардан лозим аст, чунки он ба суроғаи дархостҳо ба API дохил аст</li>
+            <li>Токенро ба тағйирёбандаи бо префикси <code>NEXT_PUBLIC_</code> гузоштан мумкин аст: он ба браузер ҳам лозим аст</li>
+            <li>Дар Update матни паём дар <code>message.text</code> аст, рақами чат бошад дар <code>message.chat.id</code></li>
+            <li>Агар навсозӣ бе <code>message</code> омад, сервер бояд хатогии 500 баргардонад</li>
+          </ol>
+          <div class="explain"><p>Префикси <code>NEXT_PUBLIC_</code> қимматро ба браузер мефиристад, яъне токенро барои ҳама ошкор мекунад. Навсозии бе <code>message</code>-ро бошад бояд оромона нодида гирифт ва бо 200 ҷавоб дод: ба хатогӣ Telegram бо фиристодани дубораи ҳамон навсозӣ ҷавоб медиҳад.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://core.telegram.org/bots/tutorial" target="_blank" rel="noopener">Telegram: Bot tutorial</a>, <a href="https://core.telegram.org/bots/api" target="_blank" rel="noopener">Telegram Bot API</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 03 · Вебхук ============ -->
+    <section class="topic" id="webhook">
+      <h2 data-toc="Вебхук"><span class="num">03</span> Вебхук дар route handler-и Next.js ва суроғаи ҷамъиятӣ</h2>
+
+      <p>Бот аз куҷо мефаҳмад, ки ба ӯ навиштанд? Ду роҳ ҳаст ва онҳо <b>ҳамдигарро истисно мекунанд</b>: ё бот худаш пайваста аз Telegram мепурсад «чӣ нав?» (усули <code>getUpdates</code>, «пурсиш»), ё шумо як маротиба ба Telegram мегӯед «хабарҳоро ба ин суроға фирист» (<code>setWebhook</code>, «вебхук»). То вақте ки вебхук насб аст, <code>getUpdates</code> кор намекунад. Барои сайт дар Vercel вебхук мувофиқ аст: шумо барномаи доимо корандае надоред, ки пурсиш кунад, вале route handler (дарси 10) доред, ки бо дархост бедор мешавад.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 280" role="img" aria-label="Роҳи вебхук: одам ба бот менависад, Telegram HTTPS POST бо JSON-и Update ва сарлавҳаи токени махфӣ ба суроғаи сайт мефиристад, route handler сарлавҳа ва chat id-ро месанҷад, фармонро иҷро мекунад, sendMessage-ро даъват мекунад, Telegram ҷавобро ба одам мерасонад; сервер бояд бо рамзи 200 ҷавоб диҳад">
+          <rect class="box b" x="8" y="20" width="120" height="70" rx="12" />
+          <text x="68" y="50" text-anchor="middle">Одам</text><text class="sub" x="68" y="70" text-anchor="middle">/status менависад</text>
+          <rect class="box v" x="168" y="20" width="130" height="70" rx="12" />
+          <text x="233" y="50" text-anchor="middle">Telegram</text><text class="sub" x="233" y="70" text-anchor="middle">паёмрасон</text>
+          <rect class="box g" x="364" y="20" width="200" height="70" rx="12" />
+          <text x="464" y="50" text-anchor="middle">/api/telegram/route.ts</text><text class="sub" x="464" y="70" text-anchor="middle">сайти шумо, HTTPS-и ҷамъиятӣ</text>
+          <rect class="box o" x="610" y="20" width="102" height="70" rx="12" />
+          <text x="661" y="50" text-anchor="middle">Supabase</text><text class="sub" x="661" y="70" text-anchor="middle">додаҳо</text>
+          <path class="arr" d="M128 55H162" /><path class="arr-head" d="M162 49l9 6-9 6z" />
+          <path class="arr" d="M298 55H358" /><path class="arr-head" d="M358 49l9 6-9 6z" />
+          <path class="arr" d="M564 55H604" /><path class="arr-head" d="M604 49l9 6-9 6z" />
+          <text class="sub t-v mono" x="330" y="44" text-anchor="middle">POST</text>
+          <rect class="fill-y" x="168" y="124" width="396" height="52" rx="10" />
+          <text class="sub mono" x="366" y="146" text-anchor="middle">сарлавҳаи X-Telegram-Bot-Api-Secret-Token</text><text class="sub" x="366" y="164" text-anchor="middle">бо асрори шумо мувофиқ аст? не: 401, дигар намеравем</text>
+          <path class="arr" d="M464 90V120" /><path class="arr-head" d="M458 114l6 10 6-10z" />
+          <rect class="fill-g" x="168" y="206" width="396" height="52" rx="10" />
+          <text class="sub" x="366" y="228" text-anchor="middle">chat id аз рӯйхат? фармон → ҷавоб тавассути sendMessage</text><text class="sub" x="366" y="246" text-anchor="middle">ва ҳатман ҷавоби зуд бо 200</text>
+          <path class="arr" d="M464 176V202" /><path class="arr-head" d="M458 196l6 10 6-10z" />
+          <path class="arr" d="M168 232H68V96" /><path class="arr-head" d="M62 102l6-10 6 10z" />
+          <text class="sub t-b" x="118" y="222" text-anchor="middle">ҷавоб</text>
+        </svg>
+        <figcaption>Вебхук: Telegram худаш ба суроғаи шумо мезанад. Сайт вазифадор аст сарлавҳаро бо асрор санҷад, санҷад, ки кӣ менависад, ва зуд бо рамзи 200 ҷавоб диҳад</figcaption>
+      </figure>
+
+      <h3>Талаботи Telegram ба суроғаи вебхук</h3>
+      <ul>
+        <li><b>Танҳо HTTPS</b> бо сертификати воқеӣ. Портҳо мувофиқи ҳуҷҷат: 443, 80, 88 ё 8443.</li>
+        <li>Суроға бояд <b>ҷамъиятӣ</b> бошад: серверҳои Telegram аз интернет мезананд. <code>http://localhost:3000</code> барои онҳо вуҷуд надорад.</li>
+        <li>Редиректҳо дастгирӣ намешаванд: суроға бояд худаш ҷавоб диҳад, на ин ки роҳнамоӣ кунад.</li>
+        <li>Telegram дархостро бо усули <b>POST</b> бо бадани JSON мефиристад. Агар ҷавоб 2xx набошад, Telegram фиристодани такрориро чанд маротиба иҷро мекунад ва дар охир бас мекунад, пас ҷавоби 500 «ҳар эҳтимол» такрорҳо ва нусхаҳои дубораро меорад.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>«Вебхук дар localhost кор намекунад» — ва бо ин чӣ кор кардан</b>
+        <p>Се роҳ ҳаст. <b>1. Продакшн дар Vercel:</b> роутро ҷойгир кунед ва вебхукро ба <code>https://лоиҳаи-шумо.vercel.app/api/telegram</code> гузоред. Ин роҳи аз ҳама соддатарин аст ва он барои боти воқеӣ ба ҳар ҳол лозим аст. <b>2. Preview дар Vercel:</b> шохаҳо суроғаҳои худро доранд, вале Vercel бо пешфарз суроғаҳои preview-ро бо муҳофизат мепӯшонад (Deployment Protection: Standard Protection ҳамаи суроғаҳоро, ба истиснои доменҳои продакшн, мепӯшонад). Дархости Telegram ба саҳифаи воридшавӣ мерасад ва на JSON-и шуморо мегирад. Барои ҳамин барои санҷиш дар preview бояд дар танзимоти лоиҳа дастрасии дархостҳои автоматиро алоҳида иҷозат диҳед (бахши «Protection Bypass for Automation» дар ҳуҷҷатҳои Vercel). Барои кори омӯзишӣ осонтар аст, ки муҳофизатро нагирифта, суроғаи продакшн ё туннелро истифода баред. <b>3. Туннел ба компютери маҳаллӣ:</b> барномае, ки суроғаи муваққатии ҷамъиятии HTTPS медиҳад ва дархостҳоро ба <code>localhost</code>-и шумо мефиристад.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Роҳ</th><th>Чӣ тавр</th><th>Мувофиқ барои</th></tr></thead>
+          <tbody>
+            <tr><td><b>Vercel (продакшн)</b></td><td><code>git push</code> ба <code>main</code>, суроға дар намуди <code>https://…vercel.app/api/telegram</code></td><td>Роҳи асосӣ барои супориши хонагӣ, суроға доимист</td></tr>
+            <tr><td><b>cloudflared</b></td><td><code>cloudflared tunnel --url http://localhost:3000</code>: суроғаи муваққатӣ дар <code>trycloudflare.com</code>, аккаунт лозим нест (мувофиқи ҳуҷҷатҳои Cloudflare)</td><td>Санҷиши зуди маҳаллӣ; суроға ҳар бор тағйир меёбад ва вебхукро аз нав гузоштан лозим мешавад</td></tr>
+            <tr><td><b>ngrok</b></td><td><code>ngrok http 3000</code>: суроғаи ҷамъиятии HTTPS медиҳад; аккаунти ройгон ва токени иҷозат лозим аст (шартҳоро дар ngrok.com санҷед)</td><td>Ҳамон, асбоби одатӣ дар бисёр дастурҳо</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Route handler: қабули навсозиҳо</h3>
+      <p>Роут дар файли <code>app/api/telegram/route.ts</code> мехобад. Дар поён варианти асосӣ: санҷиши асрор, таҳлили Update, ҷавоб ба <code>/start</code>. Фармонҳои маъмурӣ, ҳад ва огоҳиномаҳоро дар бахшҳои оянда илова мекунем.</p>
+
+<pre class="code" data-lang="ts" data-title="app/api/telegram/route.ts">
+const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
+
+type Update = {
+  update_id: number;
+  message?: { chat: { id: number; type: string }; from?: { id: number }; text?: string };
+};
+
+async function sendMessage(chatId: number, text: string) {
+  const res = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text }),
+  });
+  // Ба лог танҳо статус, ҳеҷ гоҳ суроғаи дархост: дар он токен ҳаст
+  if (!res.ok) console.error("telegram sendMessage failed", res.status);
+}
+
+export async function POST(req: Request) {
+  // 1. Дархост дар ҳақиқат аз Telegram аст?
+  if (!SECRET || req.headers.get("x-telegram-bot-api-secret-token") !== SECRET) {
+    return new Response("unauthorized", { status: 401 });
+  }
+
+  // 2. Таҳлили навсозӣ
+  const update = (await req.json()) as Update;
+  const msg = update.message;
+  if (!msg?.text) return Response.json({ ok: true }); // матн нест: хомӯшона қабул мекунем
+
+  // 3. Фармонҳо
+  if (msg.text.startsWith("/start")) {
+    await sendMessage(msg.chat.id, "Салом! Я бот чойхоны. Команда /help покажет, что я умею.");
+  }
+
+  return Response.json({ ok: true }); // ҳамеша 200-и зуд
+}
+</pre>
+
+      <p>Дар ин ҷо чӣ муҳим аст. Сарлавҳаи <code>x-telegram-bot-api-secret-token</code>-ро Telegram ба ҳар дархост илова мекунад, агар шумо ҳангоми <code>setWebhook</code> <code>secret_token</code>-ро нишон дода бошед (1–256 аломат: ҳарфҳои лотинӣ, рақамҳо, <code>_</code> ва <code>-</code>, мувофиқи ҳуҷҷати Bot API). Агар сарлавҳа мувофиқат накунад — ин Telegram нест, балки шахси бегонае аст, ки суроғаи роутро фаҳмидааст. Асрорро худатон меандешед ва ба <code>TELEGRAM_WEBHOOK_SECRET</code> мегузоред: масалан, 32 аломати тасодуфӣ аз генератори паролҳо.</p>
+
+      <h3>Вебхукро мегузорем: як маротиба баъди деплой</h3>
+
+<pre class="code" data-title="Терминал: setWebhook (тағйирёбандаҳо дар терминал таъин шудаанд, қиматҳоро дар таърихи фармонҳои компютери умумӣ нанависед)">
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d "{\"url\": \"https://ваш-проект.vercel.app/api/telegram\", \"secret_token\": \"$TELEGRAM_WEBHOOK_SECRET\"}"
+
+
+curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo"
+</pre>
+
+      <p>Ҷавоби <code>getWebhookInfo</code> <code>url</code>, шумораи навсозиҳои мунтазир (<code>pending_update_count</code>) ва хатогии охиринро (<code>last_error_message</code>) нишон медиҳад. Ин асбоби асосии ёфтани хатогист. Вебхукро бо усули <code>deleteWebhook</code> бардоштан мумкин аст.</p>
+
+      <div class="callout tip">
+        <b>Агар вайрон шуд</b>
+        <p><b>Бот хомӯш аст, дар <code>getWebhookInfo</code> бошад навишта шудааст <code>Wrong response from the webhook: 401</code>.</b> Асрор дар Vercel ва асроре, ки ҳангоми <code>setWebhook</code> нишон дода шуд, фарқ мекунанд, ё тағйирёбанда дар муҳит нест (баъди иловаи тағйирёбанда деплойи нав лозим аст). <b>Навишта шудааст <code>401</code>, вале асрор дуруст аст.</b> Суроға ба preview-и зери муҳофизати Vercel мебарад (бахши боло) ё ба сайте, ки дар он <code>proxy.ts</code> аз дарси 12 ҳамаро бе воридшавӣ ба <code>/login</code> мефиристад: <code>/api/telegram</code>-ро аз роҳҳои муҳофизатшаванда хориҷ кунед, зеро вебхук муҳофизати худро дорад. <b>Хатогии <code>404</code>.</b> Хатои имло дар суроға ё файл на дар <code>app/api/telegram/route.ts</code> аст. <b>Бот ҷавоб намедиҳад, хатогӣ нест.</b> Санҷед, ки шумо <code>/start</code>-ро маҳз дар ҳамин бот пахш кардед ва роут намеафтад: логҳо дар Vercel, бахши Logs. Матни хатогиро бе токен ба AI нусха кунед.</p>
+      </div>
+
+      <article class="task" id="q-webhook">
+        <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Худро санҷед: вебхук</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Шумо вебхукро ба <code>http://localhost:3000/api/telegram</code> гузоштед, аммо бот хомӯш аст. Сабаб дар чист?</p>
+          <ol class="options">
+            <li>Telegram бо Next.js кор карда наметавонад</li>
+            <li>Бояд усули <code>getUpdates</code>-ро ҳамзамон бо вебхук истифода бурд</li>
+            <li>Telegram аз интернет мезанад, суроғаи localhost бошад танҳо дар компютери шумо вуҷуд дорад; илова бар ин HTTPS лозим аст. Суроғаи ҷамъиятии HTTPS лозим аст: Vercel ё туннел</li>
+            <li>Токени махфии вебхук бояд аз 256 аломат дарозтар бошад</li>
+          </ol>
+          <div class="explain"><p>Вебхук — занги баръакс аст: Telegram ба шумо занг мезанад. Ба «суроғае, ки танҳо компютери шумо медонад» занг задан мумкин нест. Туннел (ngrok, cloudflared) суроғаи муваққатии ҷамъиятӣ медиҳад, Vercel бошад доимӣ. Дарозии асрор баръакс маҳдуд аст: аз 1 то 256 аломат.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Роут дархостро бе сарлавҳаи <code>X-Telegram-Bot-Api-Secret-Token</code> (ё бо қимати бегона) гирифт. Чӣ кор кардан лозим?</p>
+          <ol class="options">
+            <li>Дархостро мисли ҳамеша коркард кунед: шояд ин ба ҳар ҳол Telegram бошад</li>
+            <li>Бо 401 ҷавоб диҳед ва чизеро иҷро накунед</li>
+            <li>Токени ботро ба лог нависед, то муқоиса кунем</li>
+            <li>Бо 200 ҷавоб диҳед ва фармонро аз номи маъмур иҷро кунед</li>
+          </ol>
+          <div class="explain"><p>Суроғаи вебхук ҷамъиятист, ҳар кас ба он POST бо JSON-и зебо фиристода метавонад. Сарлавҳаи махфӣ ягона чизест, ки Telegram-ро аз бегона фарқ мекунад. Токенро ба лог ҳеҷ гоҳ навиштан мумкин нест.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://core.telegram.org/bots/api#setwebhook" target="_blank" rel="noopener">Telegram Bot API: setWebhook</a>, <a href="https://core.telegram.org/bots/webhooks" target="_blank" rel="noopener">Telegram: Webhooks</a>, <a href="https://vercel.com/docs/deployment-protection" target="_blank" rel="noopener">Vercel: Deployment Protection</a>, <a href="https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/" target="_blank" rel="noopener">Cloudflare: quick tunnels</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 04 · Уведомления и команды ============ -->
+    <section class="topic" id="notify-commands">
+      <h2 data-toc="Огоҳиномаҳо ва фармонҳо"><span class="num">04</span> Огоҳиномаҳо дар бораи аризаҳо ва фармонҳои бот</h2>
+
+      <h3>Огоҳинома: сайт ба Telegram менависад</h3>
+      <p>Барои огоҳинома вебхук умуман лозим нест: сайт кифоя аст, ки <code>sendMessage</code>-ро даъват кунад. Ду қимат лозим аст: <b>токен</b> ва <b>chat id-и соҳиб</b> (<code>TELEGRAM_ADMIN_CHAT_ID</code>). Chat id-и худро чӣ тавр донистан: ба бот <code>/start</code> нависед, ва дар Update аз вазифаи боло рақами <code>message.chat.id</code> — ҳамон аст. Аз ҳама осон аст, ки <code>msg.chat.id</code>-ро муваққатан ба логи роут чоп кунед (худи id асрор нест, вале нашр кардани он маъное надорад).</p>
+
+<pre class="code" data-lang="ts" data-title="lib/notify.ts">
+export async function notifyOwner(text: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!token || !chatId) return; // бот танзим нашудааст: ба кори асосӣ халал намерасонем
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: Number(chatId), text, parse_mode: "HTML" }),
+    });
+    if (!res.ok) console.error("telegram notify failed", res.status);
+  } catch {
+    console.error("telegram notify failed: network"); // паёми хатогӣ метавонад суроғаро бо токен дошта бошад
+  }
+}
+</pre>
+
+      <p>Даъват ба амали сервер (дарси 18) гузошта мешавад, <b>баъди</b> сабти муваффақонаи пойгоҳ: <code>await notifyOwner(…)</code>. Хатогии огоҳинома набояд ариза вайрон кунад: функсия худаш хатогиҳоро мегирад ва чизеро намепартояд. Дар Vercel функсияи сервер метавонад фавран баъди ҷавоб тамом шавад, барои ҳамин огоҳиномаро интизор мешаванд (<code>await</code>), на ин ки «дар замина» оғоз кунанд.</p>
+
+      <h3>Паёмро чӣ тавр оро додан</h3>
+      <p>Барои матн <code>parse_mode: "HTML"</code>-ро фаъол кардан мумкин аст: он гоҳ тегҳои <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;code&gt;</code> кор мекунанд. Аммо ҳар чизе, ки муштарӣ ворид кардааст (ном, шарҳ), бояд <b>экранировка</b> шавад: <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>-ро иваз кунед, вагарна муштарӣ ба ном теги вайронкунанда мегузорад, паёмро вайрон мекунад (Telegram бо хатогии 400 ҷавоб медиҳад) ё истиноди қалбакӣ мечаспонад. Маҳдудияти дигар: матни паём то 4096 аломат, матни дароз бояд бурида шавад.</p>
+
+      <article class="task" id="pg-payload">
+        <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Бадани дархости sendMessage-ро ҷамъ кунед</h4><span class="level mid">миёна</span></header>
+        <p>Ду функсияро анҷом диҳед. <code>escapeHtml</code> <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>-ро ба навиштҳои бехатар иваз мекунад (аз <code>&amp;</code> оғоз кунед!). <code>clip</code> матнро то <code>max</code> аломат мебурад ва дар охир «…» мегузорад (дарозии ниҳоӣ ба <code>max</code> баробар аст). Боқимонда ҷамъ шудааст: <code>bookingText</code> матни аризаро месозад, <code>sendMessagePayload</code> — JSON-и тайёр барои <code>sendMessage</code>.</p>
+<pre class="code" data-run data-lang="js">
+function escapeHtml(s) {
+  // TODO 1: &amp;-ро ба &amp;amp;, &lt;-ро ба &amp;lt;, &gt;-ро ба &amp;gt; иваз кунед (аввал &amp;)
+  return String(s);
+}
+
+function clip(s, max) {
+  // TODO 2: агар дарозӣ аз max зиёд набошад, ҳамон тавр баргардонед, вагарна max - 1 аломати аввал ва "…"
+  return s;
+}
+
+function bookingText(b) {
+  return [
+    "&lt;b&gt;Новая заявка #" + b.id + "&lt;/b&gt;",
+    "Имя: " + escapeHtml(b.name),
+    "Телефон: " + escapeHtml(b.phone),
+    "Комментарий: " + escapeHtml(b.note || "—"),
+  ].join("\n");
+}
+
+function sendMessagePayload(chatId, text) {
+  return { chat_id: chatId, text: clip(text, 4096), parse_mode: "HTML" };
+}
+
+const b1 = { id: 12, name: "Фарзона", phone: "+992 900 00 00 01", note: "Стол на 4, 19:00" };
+const b2 = { id: 13, name: "&lt;b&gt;Хакер&lt;/b&gt; &amp; Ко", phone: "+992 900 00 00 02", note: "" };
+
+console.log(JSON.stringify(sendMessagePayload(555111, bookingText(b1))));
+console.log(bookingText(b2));
+const long = sendMessagePayload(555111, "а".repeat(5000));
+console.log(long.text.length, long.text.endsWith("…"));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>{"chat_id":555111,"text":"&lt;b&gt;Новая заявка #12&lt;/b&gt;\nИмя: Фарзона\nТелефон: +992 900 00 00 01\nКомментарий: Стол на 4, 19:00","parse_mode":"HTML"}
+&lt;b&gt;Новая заявка #13&lt;/b&gt;
+Имя: &amp;lt;b&amp;gt;Хакер&amp;lt;/b&amp;gt; &amp;amp; Ко
+Телефон: +992 900 00 00 02
+Комментарий: —
+4096 true</pre></div>
+        <details class="hint"><summary>Ишораи 1</summary><p>Занҷир: <code>String(s).replaceAll("&amp;", "&amp;amp;").replaceAll("&lt;", "&amp;lt;").replaceAll("&gt;", "&amp;gt;")</code>. Агар аз <code>&lt;</code> оғоз кунед, <code>&amp;</code> дар <code>&amp;lt;</code>-и ҳосилшуда бори дуюм иваз мешавад, ва <code>&amp;amp;lt;</code> мебарояд.</p></details>
+        <details class="hint"><summary>Ишораи 2</summary><p><code>return s.length &lt;= max ? s : s.slice(0, max - 1) + "…";</code></p></details>
+      </article>
+
+      <h3>Фармонҳо: роутер ба ҷои қатори if-ҳо</h3>
+      <p>Вақте фармонҳо аз дутоянд, занҷири <code>if (text.startsWith(…))</code> васеъ мешавад ва дар он санҷиши дастрасиро фаромӯш кардан осон аст. Беҳтар аст, ки <b>ҷадвали фармонҳо</b> нигоҳ дошта шавад: ном → функсия, дастрасиро бошад <b>дар як ҷой</b> санҷед, пеш аз даъвати ҳама функсия. Ин тавр фармони нав бо пешфарз ҳуқуқи махсус намегирад, рӯйхати фармонҳои маъмурӣ бошад пурра намоён аст.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Фармон</th><th>Барои кӣ</th><th>Чӣ ҷавоб медиҳад</th></tr></thead>
+          <tbody>
+            <tr><td><code>/start</code></td><td>ҳама</td><td>салом ва ишора ба <code>/help</code></td></tr>
+            <tr><td><code>/help</code></td><td>ҳама</td><td>рӯйхати фармонҳо</td></tr>
+            <tr><td><code>/status</code></td><td>танҳо маъмур</td><td>сервер зинда аст, чанд ариза нав</td></tr>
+            <tr><td><code>/orders</code></td><td>танҳо маъмур</td><td>шумораи фармоишҳо (маълумоти муштариён, барои ҳамин пӯшида)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <article class="task" id="pg-router">
+        <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Роутери фармонҳо бо рӯйхати chat id-ҳои иҷозатдода</h4><span class="level hard">душвор</span></header>
+        <p><code>isAdmin</code> ва санҷиши дастрасиро дар <code>route</code> анҷом диҳед. Маъмур касе ҳисобида мешавад, ки <code>chat.id</code>-аш дар рӯйхати <code>ADMIN_IDS</code> ҳаст <b>ва</b> чат шахсист (<code>type === "private"</code>): ин тавр фармони маъмуриро аз гурӯҳе, ки дар он бегонагон мебинанд, иҷро кардан мумкин нест. Қоидаҳои ҷавоб: матн нест — <code>null</code>; матн бе <code>/</code> — ишора; фармони номаълум — ишора; фармони маъмурӣ аз ғайримаъмур — «Эта команда недоступна»; вагарна — ҷавоби коркунанда.</p>
+<pre class="code" data-run data-lang="js">
+const ADMIN_IDS = [555111, 222];
+const ADMIN_ONLY = ["status", "orders"];
+const stats = { newBookings: 3, totalOrders: 41 };
+
+const handlers = {
+  start: () => "Салом! Я бот магазина. Команды: /help",
+  help: () => "Команды: /start, /help. Админам: /status, /orders",
+  status: () => "Сервер работает. Новых заявок: " + stats.newBookings,
+  orders: () => "Всего заказов: " + stats.totalOrders,
+};
+
+function isAdmin(msg) {
+  // TODO 1: true, агар чат шахсӣ бошад (msg.chat.type === "private") ва msg.chat.id дар ADMIN_IDS бошад
+  return false;
+}
+
+function route(update) {
+  const msg = update.message;
+  if (!msg || typeof msg.text !== "string") return null;
+  if (!msg.text.startsWith("/")) return "Напишите команду, например /help";
+  const name = msg.text.slice(1).split(/[\s@]/)[0].toLowerCase();
+  if (!(name in handlers)) return "Неизвестная команда. Попробуйте /help";
+  // TODO 2: агар фармон маъмурӣ бошад (ADMIN_ONLY) ва фиристанда маъмур набошад, "Эта команда недоступна" баргардонед
+  return handlers[name]();
+}
+
+const mk = (id, text, type = "private") => ({ update_id: 1, message: { chat: { id, type }, text } });
+const updates = [
+  mk(777, "/start"),
+  mk(777, "/status"),
+  mk(555111, "/Status@MyShop_bot"),
+  mk(555111, "/orders"),
+  mk(555111, "/delete_all"),
+  mk(-100500, "/status", "supergroup"),
+  mk(777, "привет"),
+  { update_id: 2, edited_message: {} },
+];
+for (const u of updates) console.log(String(route(u)));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Салом! Я бот магазина. Команды: /help
+Эта команда недоступна
+Сервер работает. Новых заявок: 3
+Всего заказов: 41
+Неизвестная команда. Попробуйте /help
+Эта команда недоступна
+Напишите команду, например /help
+null</pre></div>
+        <details class="hint"><summary>Ишораи 1</summary><p><code>return msg.chat.type === "private" &amp;&amp; ADMIN_IDS.includes(msg.chat.id);</code> Усули <code>includes</code> сахт муқоиса мекунад: рақами <code>555111</code> ва сатри <code>"555111"</code> барои он гуногунанд.</p></details>
+        <details class="hint"><summary>Ишораи 2</summary><p><code>if (ADMIN_ONLY.includes(name) &amp;&amp; !isAdmin(msg)) return "Эта команда недоступна";</code> пеш аз сатри <code>return handlers[name]();</code> гузошта мешавад.</p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Маршрутка бо рақамҳо: ронанда набояд ҳар мусофирро бишносад, ӯ ҷадвали «рақами хат → ба куҷо меравем» дорад. Роутери фармонҳо низ ҳамин тавр аст: <code>/status</code> омад, дар ҷадвал меҷӯем ва меравем. Рӯйхати маъмурон бошад — рӯйхати касонест, ки ба онҳо иҷозат аст назди анбор фуромаданд: истгоҳ аз худи маршрутка ҷудо посбонӣ мешавад.</p>
+      </div>
+    </section>
+
+    <!-- ============ 05 · Безопасность бота ============ -->
+    <section class="topic" id="bot-security">
+      <h2 data-toc="Амнияти бот"><span class="num">05</span> Амнияти бот: асрор, санҷиш, ҳадҳо</h2>
+
+      <p>Суроғаи ҷамъиятии вебхук ва username-и ҷамъиятии бот — ин дари кушода аст, ва боти шуморо ҳамаи корбарони Telegram мебинанд: онро бо ном ёфтан мумкин аст. Аз дарси 19 шумо медонед, ки AI коде менависад, ки «кор мекунад», вале ҳифз намекунад. Барои бот ҳифз аз панҷ қоида иборат аст:</p>
+
+      <dl class="terms">
+        <dt>1. Токен ва асрор — танҳо дар муҳит</dt>
+        <dd><code>TELEGRAM_BOT_TOKEN</code> ва <code>TELEGRAM_WEBHOOK_SECRET</code> дар <code>.env.local</code> ва дар тағйирёбандаҳои Vercel мехобанд, бе <code>NEXT_PUBLIC_</code>; дар репозиторий танҳо <code>.env.example</code> бе қиматҳо. Ин ҳамон аудит аст, ки дар дарси 19 (<code>git grep</code> аз рӯи қолаби токен: рақамҳо, дунуқта, сатри дароз).</dd>
+        <dt>2. Токен ба логҳо намеафтад</dt>
+        <dd>Дар суроғаи дархостҳо ба API токен ҳаст. Барои ҳамин дар <code>console.log</code> на суроғаи дархостро чоп мекунанд, на тамоми объекти хатогии <code>fetch</code>-ро, на пурра сарлавҳаҳои дархостро (дар онҳо асрори вебхук аст). Статуси ҷавоб ва тавсифи умумӣ чоп мешавад.</dd>
+        <dt>3. Санҷиши сарлавҳаи махфӣ</dt>
+        <dd>Сатри якуми роут — муқоисаи <code>X-Telegram-Bot-Api-Secret-Token</code> бо асрори шумо. Мувофиқ набуд: 401 ва тамом. Ин санҷиш пеш аз хондани бадани дархост меистад.</dd>
+        <dt>4. Фармонҳои маъмурӣ — танҳо барои иҷозатдодагон</dt>
+        <dd>Ботро ҳар кас меёбад. Фармонҳое, ки маълумоти муштариёнро нишон медиҳанд ё чизеро тағйир медиҳанд, <code>chat.id</code>-ро аз рӯи рӯйхат месанҷанд (<code>TELEGRAM_ADMIN_IDS</code> дар муҳит, бо вергул). «Фармонҳои махфӣ», ки танҳо худиҳо медонанд, нестанд: номи фармон ҳифз нест.</dd>
+        <dt>5. Ҳади дархостҳо</dt>
+        <dd>Як корбаре, ки ба бот садҳо паём мефиристад, сервер ва пойгоҳи шуморо бор мекунад. Соддатарин ҳад: на зиёда аз N паём аз як <code>chat.id</code> дар як дақиқа; боқимонда хомӯшона нодида гирифта мешавад (ҷавоби 200 ба ҳар ҳол лозим аст, вагарна Telegram такрор мекунад).</dd>
+      </dl>
+
+<pre class="code" data-lang="ts" data-title="Иловаи route.ts: маъмурон ва ҳад">
+const ADMIN_IDS = (process.env.TELEGRAM_ADMIN_IDS ?? "")
+  .split(",")
+  .map((s) => Number(s.trim()))
+  .filter((n) => Number.isInteger(n) &amp;&amp; n !== 0);
+
+const hits = new Map&lt;number, { count: number; resetAt: number }&gt;();
+
+// На зиёда аз 10 паём дар як дақиқа аз як чат.
+// Хотира то зиндагии нусхаи функсия мемонад: барои омӯзиш кифоя аст,
+// барои маҳсулоти воқеӣ ҳадро дар пойгоҳи умумӣ нигоҳ медоранд (масалан, Upstash Redis ё ҷадвал дар Supabase).
+function tooMany(chatId: number): boolean {
+  const now = Date.now();
+  const h = hits.get(chatId);
+  if (!h || h.resetAt &lt; now) {
+    hits.set(chatId, { count: 1, resetAt: now + 60_000 });
+    return false;
+  }
+  h.count += 1;
+  return h.count &gt; 10;
+}
+
+function isAdmin(msg: NonNullable&lt;Update["message"]&gt;): boolean {
+  return msg.chat.type === "private" &amp;&amp; ADMIN_IDS.includes(msg.chat.id);
+}
+// Дар POST баъди таҳлили update: if (tooMany(msg.chat.id)) return Response.json({ ok: true });
+// Фармони маъмурӣ: if (!isAdmin(msg)) { await sendMessage(msg.chat.id, "Эта команда недоступна"); return Response.json({ ok: true }); }
+</pre>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Дастрасиро аз рӯи <code>username</code> ё ном санҷидан: онҳоро иваз кардан мумкин аст, <code>chat.id</code>-ро не. <b>2.</b> Рӯйхати маъмуронро дар код нигоҳ доштан ва тасодуфан рақамҳои бегонаро ба репозиторийи ҷамъиятӣ бор кардан: онро аз муҳит гиред. <b>3.</b> Ба дархости бе асрор бо «Асрори нодуруст, интизор буд …» ҷавоб додан: роз гуфтед. <b>4.</b> Ба ҳар хатогӣ 500 баргардонда, тӯфони такрорҳоро гирифтан: Telegram ҳамон навсозиро мефиристад, то 2xx нагирад. Хатогиро бигиред, сатри бехатарро ба лог нависед ва бо 200 ҷавоб диҳед. <b>5.</b> Нусхаҳои дубораро фаромӯш кардан: як навсозӣ метавонист ду маротиба ояд, ва <code>update_id</code>-и он ҳамон аст; барои амалҳое, ки такрор кардан мумкин нест (кам кардани маблағ, сохтани фармоиш), <code>update_id</code>-ҳои коркардшударо нигоҳ доред. <b>6.</b> Ба бот паролҳо ва маълумоти корт фиристодан: мукотиба бо бот бо рамзгузории байнихаттӣ ҳифз намешавад, ва сервери шумо ҳар чизеро, ки муштарӣ навишт, мебинад.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Бозор бегоҳӣ. Даромадгоҳи анбор: посбон рӯйхати касонеро дорад, ки ба онҳо иҷозат аст (chat id), ва калимаи шартие, ки танҳо боркаши худӣ мегӯяд (secret token). Посбон калимаи шартиро ба журнал намебарад, «ба хоҳиши ошно» намегузарад ва ба бегонагон, ҳарчанд бор дарро кӯбанд, намекушояд. Ва агар одам дар як дақиқа бори даҳум омад, посбон оддӣ ҷавоб намедиҳад.</p>
+      </div>
+
+      <p>Маҳдудиятҳои худи Telegram-ро низ донистан лозим: мувофиқи ҳуҷҷат ба як чат бот набояд зиёда аз тақрибан як паём дар як сония фиристад, ба гурӯҳ на зиёда аз 20 паём дар як дақиқа, ҷараёни умумии огоҳиномаҳо — тақрибан 30 паём дар як сония (баъд хатогии 429 меояд). Барои аризаҳои тиҷорати хурд ин аз рақамҳои шумо хеле дур аст, вале ишора мекунад, ки «паём барои ҳар чиз» фикри бад аст: рӯйдодҳоро муттаҳид кунед.</p>
+
+      <article class="task" id="q-security">
+        <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Худро санҷед: амнияти бот</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1,2,4">
+          <p>Боти ҷамъиятӣ бо фармонҳои маъмурӣ кадом тадбирҳоро талаб мекунад? Ҳамаи дурустро интихоб кунед.</p>
+          <ol class="options">
+            <li>Санҷиши сарлавҳа бо токени махфии вебхук пеш аз таҳлили бадани дархост</li>
+            <li>Рӯйхати chat id-ҳои иҷозатдода, ки аз тағйирёбандаҳои муҳит гирифта мешавад</li>
+            <li>Номи фармонҳои маъмуриро пинҳон доштан: он гоҳ санҷишҳо лозим нестанд</li>
+            <li>Суроғаи дархост ба API ва токенро ба лог чоп накардан, танҳо статуси ҷавобро навиштан</li>
+          </ol>
+          <div class="explain"><p>Номи махфии фармон ҳифз нест: он дар мукотиба, дар ишораҳо ва дар ҳар скриншот намоён аст. Санҷиши асрор дархостҳои бегонаро бозмедорад, санҷиши chat id — корбарони бегонаро, логҳои тоза бошанд намегузоранд, ки токен тавассути панели Vercel ё скриншот ошкор шавад.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Роути шумо ба паёми ғайриодатӣ афтод ва 500 баргардонд. Telegram чӣ мекунад?</p>
+          <ol class="options">
+            <li>Фавран вебхукро нест мекунад</li>
+            <li>Ҳеҷ чиз: хатогиҳо ба ӯ аҳамият надоранд</li>
+            <li>Фиристодани ҳамон навсозиро такрор мекунад, то ҷавоби 2xx нагирад ё кӯшишҳоро қатъ накунад</li>
+            <li>Ба корбар аз номи шумо паёми хатогӣ мефиристад</li>
+          </ol>
+          <div class="explain"><p>На-2xx — ишораи «нарасид» аст. Барои ҳамин хатогиҳои дохили коркарди фармонро мегиранд, сатри бехатарро ба лог менависанд ва бо 200 ҷавоб медиҳанд.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://core.telegram.org/bots/faq" target="_blank" rel="noopener">Telegram Bots FAQ</a> (ҳадҳо ва вебхукҳо), <a href="https://vercel.com/docs/environment-variables" target="_blank" rel="noopener">Vercel: тағйирёбандаҳои муҳит</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 06 · n8n и Make ============ -->
+    <section class="topic" id="no-code">
+      <h2 data-toc="n8n ва Make"><span class="num">06</span> Худкорсозӣ бе код: n8n ва Make</h2>
+
+      <p>На ҳар вазифа route handler-и худро талаб мекунад. «Ҳар субҳ соати 9:00 ба соҳиб бифирист, ки дар як шабонарӯз чанд ариза омад» — ин маҳсулот нест, балки занҷири чор қадам аст. Барои чунин занҷирҳо <b>конструкторҳои худкорсозӣ</b> ҳастанд: шумо блокҳоро (гиреҳҳо, модулҳо) бо тирчаҳо пайваст мекунед, ҳар блок як амал мекунад, ва натиҷаи яке ба вуруди баъдӣ меравад. Ду асбоби маъмул:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>n8n</th><th>Make</th></tr></thead>
+          <tbody>
+            <tr><td><b>Чӣ тавр оғоз мешавад</b></td><td>Абри n8n (<code>n8n.io</code>) ё дар компютери шумо бо фармони <code>npx n8n</code>; дар <code>http://localhost:5678</code> кушода мешавад. Node.js лозим аст (мувофиқи ҳуҷҷат версияҳои 20.19–24)</td><td>Танҳо абр (<code>make.com</code>)</td></tr>
+            <tr><td><b>Ройгон?</b></td><td>Абр: давраи санҷишӣ (дар сайт ҳангоми навиштани дарс 14 рӯз, бе корт; тарифҳои пулакӣ аз €20 дар як моҳ ҳангоми пардохт барои як сол, маълумоти ҷориро дар <code>n8n.io/pricing</code> санҷед). Оғози маҳаллӣ тавассути <code>npx n8n</code> ройгон аст: версияи ҷойгиркунии мустақил</td><td>Тарифи ройгон ҳаст: аз рӯи саҳифаи тарифҳо 1000 кредит дар як моҳ (ҳар амали блок як кредит сарф мекунад), дар тарифи ройгон шумораи сенарияҳои фаъол ва басомади оғоз маҳдуд аст (мувофиқи маълумот ҳангоми навиштан: 2 сенария, оғоз на зудтар аз як маротиба дар 15 дақиқа; дар саҳифаи тарифҳо санҷед)</td></tr>
+            <tr><td><b>Номҳо</b></td><td>Workflow аз гиреҳҳо (nodes), гиреҳҳои Telegram, Supabase, HTTP Request, Schedule Trigger, If ҳастанд</td><td>Scenario аз модулҳо, модулҳои Telegram Bot, HTTP, Schedule, филтрҳо ва роутерҳо ҳастанд</td></tr>
+            <tr><td><b>Кай интихоб кардан</b></td><td>Оғози маҳаллӣ лозим аст, чандирии бештар ва метавон андаке JavaScript гузошт</td><td>Оғози аз ҳама сода бе насб лозим аст</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/21-telegram-bot/n8n.svg" alt="Нақшаи соддакардашудаи раванди кор дар n8n: чор гиреҳ аз чап ба рост, Schedule ҳар рӯз соати 9, Supabase аризаҳои нави як шабонарӯзро интихоб мекунад, If месанҷад, ки аризаҳо аз сифр зиёд ҳастанд, Telegram Send паёмро ба соҳиб мефиристад" width="720" height="360" loading="lazy" decoding="async">
+        <figcaption>Workflow-и «Хулосаи субҳ» дар нақшаи соддакардашуда: чор гиреҳ ва тирчаҳо байни онҳо. Экрани воқеии n8n дигар менамояд, Make бошад ҳамонро бо давраҳо-модулҳо мекашад</figcaption>
+      </figure>
+
+      <div class="yt" data-id="QmRYMHRbKwg" data-title="Как создать Telegram-бота с AI в N8N за 10 минут — канал Дмитрий Гончаров (бахши пайвастшавӣ ба Telegram-ро бинед; блоки AI-ро гузаштан мумкин аст, интерфейси n8n метавонист тағйир ёфта бошад)"></div>
+
+      <h3>Кадом гиреҳҳо мешаванд</h3>
+      <ul>
+        <li><b>Триггер</b> занҷирро оғоз мекунад: аз рӯи ҷадвал (<code>Schedule Trigger</code>), аз рӯи вебхуки воридотӣ (<code>Webhook</code>), аз рӯи паёми нав дар Telegram (<code>Telegram Trigger</code>).</li>
+        <li><b>Амал</b> чизеро иҷро мекунад: сатрҳоро аз Supabase хондан, паёмро ба Telegram фиристодан, дархости HTTP кардан.</li>
+        <li><b>Шарт ва табдил</b>: <code>If</code>, <code>Set</code>, гиреҳи хурд бо код.</li>
+        <li><b>Маълумоти воридшавӣ</b> (credentials): токени бот, калиди Supabase. Онҳо дар худи n8n ё Make нигоҳ дошта мешаванд, на дар гиреҳ бо матни кушода; ба ҳар ҳол онҳоро дар скриншотҳо нишон надиҳед.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Санг-панҷарҳо</b>
+        <p><b>1. Триггерҳое, ки аз беруна занг мезананд, дар n8n-и маҳаллӣ кор намекунанд.</b> <code>Telegram Trigger</code> ва <code>Webhook</code> суроғаи ҷамъиятии HTTPS-ро талаб мекунанд, мисли вебхуки шумо: дар маҳал туннел лозим аст (дар ҳуҷҷатҳои n8n реҷаи туннел бо cloudflared ҳаст, танҳо барои таҳия) ё n8n-и абрӣ. Занҷир бо <code>Schedule Trigger</code> худаш ба берун мезанад ва дар <code>localhost</code> кор мекунад. <b>2.</b> Як бот — як вебхук: агар шумо дар n8n <code>Telegram Trigger</code>-ро гузоштед, route handler-и шумо дар ҳамон токен навсозиҳоро қабул карданро бас мекунад (ва баръакс). Дар худкорсозии омӯзишӣ танҳо фиристодро истифода баред, ё боти дуюмро. <b>3.</b> Калиди Supabase бо ҳуқуқи «гузариш аз RLS» (secret key, дарси 19) дар маълумоти воридшавии n8n дастрасии пурра ба пойгоҳ медиҳад: барои лоиҳаи ҷиддӣ корбари алоҳида ё қоидаи маҳдудро истифода баред ва содироти workflow-ро бо калидҳо нашр накунед. <b>4.</b> Тарифҳои ройгон тағйир меёбанд: пеш аз ба фармоишгар ваъда додани «бе пардохти обунавӣ» тарифро худатон хонед. <b>5.</b> Конструктор код-ро дар ҷое, ки санҷишҳои мураккаби дастрасӣ, транзаксияҳо ва тестҳо лозиманд, иваз намекунад: назорат аз болои чунин занҷир камтар аст.</p>
+      </div>
+
+      <p><b>Кай чиро интихоб кардан.</b> Огоҳиномаи «дар як қадам» аз амали сервер (бахши 4) аз конструктор соддатар ва боэътимодтар аст: звенҳои камтар, хидмати изофӣ нест. Конструктор дар ҷое бартарӣ дорад, ки занҷир дар бораи сайти шумо нест: ҷадвалҳо, пайвасткунии якчанд хидмат (Ҷадвалҳои Google, почта, Telegram), прототипе, ки фармоишгар худаш тағйир доданӣ аст.</p>
+
+      <article class="task" id="q-nocode">
+        <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Худро санҷед: конструктор ё код</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Фармоишгар мехоҳад: «ҳар душанбе соати 8:00 ба Telegram ҳисобот аз Ҷадвали Google фиристода шавад». Чӣ аз ҳама оқилона аст?</p>
+          <ol class="options">
+            <li>Сервери алоҳида бо давраи доимӣ навиштан, ки вақтро ҳар сония месанҷад</li>
+            <li>Худкорсозиро дар n8n ё Make ҷамъ кардан: триггер аз рӯи ҷадвал, хондани ҷадвал, фиристодан ба Telegram</li>
+            <li>Фармоишгарро омӯхтан, ки ҳар душанбе ба бот фармонро дастӣ нависад</li>
+            <li>Токени ботро ба ҷадвал гузоштан, то ҷадвал худаш паём фиристад</li>
+          </ol>
+          <div class="explain"><p>Ҷадвал, хондани ҷадвал ва фиристодан ба Telegram — блокҳои стандартии конструктор. Токен дар ҷадвал — ошкор шудан аст, давра дар сервер бошад изофа мураккаб аст. Агар ҳамин қадамҳо дар дохили сайти шумо лозим бошанд, амали сервер судмандтар аст.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Шумо n8n-ро бо фармони <code>npx n8n</code> дар ноутбук оғоз кардед ва <code>Telegram Trigger</code>-ро илова кардед, аммо бот хомӯш аст. Чаро?</p>
+          <ol class="options">
+            <li>Бояд интернетро дар ноутбук хомӯш кард</li>
+            <li>n8n-и ройгон бо Telegram кор карда наметавонад</li>
+            <li>Токени бот хеле кӯтоҳ аст</li>
+            <li>Telegram ба <code>localhost</code> расида наметавонад: суроғаи ҷамъиятии HTTPS (абр, туннел) ё нақшае лозим аст, ки дар он n8n худаш паём мефиристад, масалан аз рӯи ҷадвал</li>
+          </ol>
+          <div class="explain"><p>Ҳамон қонун, ки барои вебхуки шумо: даъвати воридотӣ суроғаи ҷамъиятии HTTPS-ро талаб мекунад. Занҷирҳое, ки худашон ба берун мезананд, дар n8n-и маҳаллӣ кор мекунанд.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://docs.n8n.io/hosting/installation/npm/" target="_blank" rel="noopener">n8n Docs: насб тавассути npm</a>, <a href="https://n8n.io/pricing/" target="_blank" rel="noopener">n8n: тарифҳо</a>, <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/" target="_blank" rel="noopener">n8n: гиреҳи Telegram</a>, <a href="https://www.make.com/en/pricing" target="_blank" rel="noopener">Make: тарифҳо</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 07 · ИИ ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="AI: промптҳо"><span class="num">07</span> Бахши AI: ботро аз AI чӣ тавр хостан</h2>
+
+      <div class="callout ai">
+        <b>Қоидаҳои кор бо AI ҳангоми навиштани бот</b>
+        <p><b>1.</b> Версияҳо ва файлҳоро номбар кунед: Next.js 16, App Router, <code>app/api/telegram/route.ts</code>, Bot API аз рӯи ҳуҷҷати Telegram, бе китобхонаҳои-печонак (Telegraf, grammY), то ки шумо кодро нахонед: дар оғоз <code>fetch</code> кифоя аст. <b>2.</b> Санҷишҳои амниятро бо калимаҳо номбар кунед (сарлавҳаи махфӣ, рӯйхати chat id, ҳад, логҳои тоза): AI худаш онҳоро ба ёд намеорад. <b>3.</b> AI дӯст медорад мисоле фиристад, ки токени <code>"123456:ABC…"</code> мустақиман дар код гузошта шудааст: <code>process.env</code>-ро талаб кунед. <b>4.</b> Ӯ баъзан усулҳо ва майдонҳои Bot API-ро аз худ месозад: бо <code>core.telegram.org/bots/api</code> муқоиса кунед. <b>5.</b> Токен, суроғаи вебхук бо токен ва chat id-ҳои воқеии муштариёнро ба чат нагузоред. <b>6.</b> Нагузашт — матни хатогӣ ва ҷавоби <code>getWebhookInfo</code>-ро (бе токен) фиристед ва қадам ба қадам ислоҳ кунед, на ин ки аз нав оғоз кунед.</p>
+      </div>
+
+      <div class="prompt bad-prompt">Сделай Telegram-бота для моего сайта</div>
+
+      <p>Қадами 1. Роути вебхук (реҷаи Plan, баъд Agent). Қиматҳоро дар қавсҳои чоркунҷа бо қиматҳои худ иваз кунед:</p>
+      <div class="prompt good-prompt">Контекст: выпускной проект Next.js 16 (App Router, TypeScript) с Supabase, сайт [описание, например «бронь столов в чойхоне»], деплой на Vercel, правила проекта в @AGENTS.md. Таблица [bookings] с полями [id, name, phone, note, created_at]. Бот создан в BotFather, переменные в .env.local: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, TELEGRAM_ADMIN_IDS (id через запятую).
+Цель: создать app/api/telegram/route.ts (POST), который принимает Update от Telegram Bot API и отвечает на команды /start, /help (всем) и /status, /orders (только админам). /status показывает число заявок за сегодня из Supabase.
+Ограничения: 1) без библиотек, только fetch; 2) первой строкой проверять заголовок x-telegram-bot-api-secret-token, не совпал: 401; 3) админ = личный чат и chat.id из TELEGRAM_ADMIN_IDS; 4) лимит 10 сообщений в минуту на chat.id; 5) токен и заголовки не писать в лог, при ошибках логировать только статус; 6) обновление без message.text принимать и отвечать 200; любые ошибки обработки тоже заканчиваются ответом 200; 7) команды держать в таблице «имя → функция»; 8) проверить, что proxy.ts не перенаправляет /api/telegram на /login.
+Проверка: перечисли изменённые файлы и как проверить руками (curl без заголовка должен дать 401).</div>
+
+      <p>Қадами 2. Огоҳинома дар бораи ариза нав:</p>
+      <div class="prompt good-prompt">Контекст: серверное действие [createBooking] в [путь файла] после успешной записи в Supabase. Переменные TELEGRAM_BOT_TOKEN и TELEGRAM_ADMIN_CHAT_ID уже есть.
+Цель: добавить lib/notify.ts с функцией notifyOwner(text) и вызвать её после записи заявки: сообщение с номером заявки, именем, телефоном и комментарием.
+Ограничения: 1) parse_mode HTML, все пользовательские поля экранировать (&amp;, &lt;, &gt;), текст не длиннее 4096 символов; 2) ошибка Telegram не должна ломать создание заявки; 3) в лог только статус ответа, без адреса запроса; 4) не добавлять библиотек.
+Проверка: покажи итоговый текст сообщения для имени «&lt;b&gt;Тест&lt;/b&gt; &amp; Ко».</div>
+
+      <p>Қадами 3. Гузоштани вебхук ва ёфтани хатогӣ:</p>
+      <div class="prompt good-prompt">Контекст: сайт задеплоен на https://[проект].vercel.app, роут /api/telegram есть. Бот молчит. getWebhookInfo показывает: [вставьте ответ без токена].
+Цель: найти причину.
+Ограничения: 1) ничего не менять, пока не назовёшь причину; 2) перечисли возможные причины от самой вероятной (секрет, переменные окружения после деплоя, proxy.ts, защита Vercel, опечатка в адресе) и как проверить каждую; 3) не проси токен.
+Проверка: для каждой причины дай одну команду или один экран, где это видно.</div>
+
+      <div class="callout warn">
+        <b>AI бо ботҳо дар куҷо хато мекунад</b>
+        <p><b>1.</b> Токенро «барои мисол» ба код мегузорад. <b>2.</b> Сарлавҳаи махфиро фаромӯш мекунад: «вебхук ки ҳамин тавр танҳо аз Telegram қабул мекунад». <b>3.</b> Маъмурро аз рӯи <code>username</code> ё бе ҳеҷ санҷиш месанҷад. <b>4.</b> Ба ҳар истисно 500 бармегардонад. <b>5.</b> Бо матни корбар <code>parse_mode: "Markdown"</code>-ро истифода мебарад: ҳар сатри зеркашидашуда паёмро вайрон мекунад; HTML бо экранировка бехатартар аст. <b>6.</b> <code>getUpdates</code>-ро дар давра дар Vercel пешниҳод мекунад: функсияи сервер ҳамеша зинда намемонад. <b>7.</b> Барои Next.js 16 ба ҷои <code>proxy.ts</code> <code>middleware.ts</code> менависад.</p>
+      </div>
+    </section>
+
+    <!-- ============ 08 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Амалиёт: бот дар лоиҳа"><span class="num">08</span> Амалиёт: ботро ба лоиҳаи хатмӣ пайваст мекунем</h2>
+
+      <p>Мақсад: аризаҳои нав (фармоишҳо, брон) ба соҳиб дар Telegram меоянд, бот ба фармонҳо ҷавоб медиҳад, фармонҳои маъмурӣ пӯшидаанд, ва дар n8n ё Make як худкорсозӣ кор мекунад. Дар шохаи алоҳидаи <code>telegram-bot</code> кор кунед (дарси 19): як қадам — як commit.</p>
+
+      <div class="callout warn">
+        <b>Қоидаҳои амнияти амалиёт</b>
+        <p>Токени бот ва асрори вебхук танҳо дар <code>.env.local</code> ва Vercel. Пеш аз ҳар commit <code>git status</code>-ро бинед: файли <code>.env.local</code> дар он набояд бошад. Токенро ба чат бо AI, скриншотҳо, ҳисобот ва паёмҳои гурӯҳ нагузоред. Агар токен намоён шуд, фавран онро дар BotFather аз нав содир кунед.</p>
+      </div>
+
+      <h3>Қисми A. Бот дар лоиҳа</h3>
+      <ol class="steps">
+        <li><b>Бот ва токен.</b> Ботро дар @BotFather эҷод кунед (бахши 2). Токенро бо фармони <code>getMe</code> аз терминал санҷед. Дар <code>.env.local</code> се тағйирёбандаро нависед: <code>TELEGRAM_BOT_TOKEN</code>, <code>TELEGRAM_WEBHOOK_SECRET</code> (сатри дарози тасодуфиро аз ҳарфҳо, рақамҳо, <code>_</code>, <code>-</code> андешед) ва <code>TELEGRAM_ADMIN_IDS</code> (ҳоло холӣ). Ба <code>.env.example</code> ин номҳоро бе қиматҳо илова кунед.</li>
+        <li><b>Нақша.</b> Дар Cursor реҷаи Plan-ро фаъол кунед ва промпти бахши 7, қадами 1-ро гузоред. Нақшаро хонед: оё дар он сарлавҳаи махфӣ, рӯйхати маъмурон, ҳад ва 200 ба ҳар хатогӣ ҳаст. Нақшаро бо калимаҳо ислоҳ кунед, баъд татбиқро оғоз кунед.</li>
+        <li><b>Роут.</b> Натиҷаро санҷед: файли <code>app/api/telegram/route.ts</code>, асрор аз <code>process.env</code> хонда мешавад, токен дар ҳеҷ ҷо чоп нашудааст. <code>npm run build</code>-ро иҷро кунед.</li>
+        <li><b>Суроғаи ҷамъиятӣ.</b> commit кунед ва <code>git push</code>, деплойи Vercel-ро интизор шавед. Се тағйирёбандаро ба Vercel (Settings → Environment Variables) <b>пеш аз</b> деплой илова кунед ё баъд деплойи нав кунед (деплойи кӯҳна онҳоро намебинад). Алтернатива: <code>npm run dev</code>-ро оғоз кунед ва дар терминали ҳамсоя туннел (<code>cloudflared tunnel --url http://localhost:3000</code> ё <code>ngrok http 3000</code>); суроғаи туннел ба ҷои Vercel мувофиқ аст.</li>
+        <li><b>Вебхук.</b> <code>setWebhook</code>-ро аз бахши 3 бо суроға ва асрори худ иҷро кунед, баъд <code>getWebhookInfo</code>: дар <code>url</code> суроғаи шумо, <code>last_error_message</code> холӣ.</li>
+        <li><b>Санҷиши якум.</b> Ба бот <code>/start</code> нависед. Ҷавоб гирифтед — вебхук кор мекунад. Не — бахши «Агар вайрон шуд» дар бахши 3. Ҳифзро санҷед: <code>curl -X POST &lt;суроға&gt;</code> бе сарлавҳа бояд 401 баргардонад.</li>
+        <li><b>Маъмур.</b> Chat id-и худро донед (бахши 4), ба <code>TELEGRAM_ADMIN_IDS</code> дар Vercel ва дар <code>.env.local</code> ворид кунед, деплойро аз нав оғоз кунед. Санҷед: <code>/status</code> аз шумо ҷавоб медиҳад, аз дӯст (ё аз аккаунти дигар) — «Эта команда недоступна».</li>
+        <li><b>Огоҳинома.</b> Промпти бахши 7, қадами 2-ро иҷро кунед. Аризаи санҷишӣ аз сайт фиристед: паём ба соҳиб меояд. Аризаро бо номи намуди <code>&lt;b&gt;Тест&lt;/b&gt; &amp; Ко</code> фиристед: паём вайрон нашавад.</li>
+        <li><b>Ҳад.</b> Ба бот 12 паёми пайдарпай фиристед: баъд аз даҳум бот хомӯш мешавад. Як дақиқа интизор шавед, боз ҷавоб медиҳад.</li>
+        <li><b>Аудити хурд.</b> <code>git grep -nE "[0-9]{8,10}:[A-Za-z0-9_-]{30,}"</code>-ро дар лоиҳа иҷро кунед (ба токени бот монанд) ва логҳои Vercel-ро кушоед: суроғаи дархост ё токен дар онҳо нест? Агар ҳаст, ислоҳ кунед ва токенро аз нав содир кунед.</li>
+      </ol>
+
+      <article class="task" id="cl-bot">
+        <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Рӯйхати санҷиш: бот кор мекунад ва ҳифз шудааст</h4><span class="level hard">душвор</span></header>
+        <p>Банд онро аломат гузоред, вақте ки бо даст санҷидед.</p>
+        <ul class="checklist" id="cl-bot-list">
+          <li>Бот дар BotFather эҷод шудааст, <code>getMe</code> маълумоти ӯро бармегардонад</li>
+          <li>Токен ва асрор танҳо дар <code>.env.local</code> ва Vercel, дар <code>.env.example</code> номҳо бе қиматҳо, <code>.env.local</code> дар репозиторий нест</li>
+          <li>Вебхук ба суроғаи ҷамъиятии HTTPS гузошта шудааст, <code>getWebhookInfo</code> бе хатогӣ</li>
+          <li><code>/start</code> ва <code>/help</code> ба ҳар корбар ҷавоб медиҳанд</li>
+          <li>Дархост бе сарлавҳаи махфӣ 401 мегирад</li>
+          <li><code>/status</code> танҳо ба chat id-и шумо ҷавоб медиҳад; ба аккаунти дигар — «Эта команда недоступна»</li>
+          <li>Аризаи нав аз сайт ба соҳиб дар Telegram меояд, матни корбар экранировка шудааст</li>
+          <li>Ҳади паёмҳо кор мекунад, ҷавоби Telegram ҳамеша 200 аст</li>
+          <li>Дар логҳои Vercel ва дар код токен ва суроғаи дархост бо токен нест</li>
+        </ul>
+      </article>
+
+      <h3>Қисми B. Худкорсозӣ дар n8n (ё Make)</h3>
+      <p>Workflow-и «Хулосаи субҳ»-ро ҷамъ кунед: ҳар рӯз соати 9:00 бот ба соҳиб шумораи аризаҳои нави як шабонарӯзро мефиристад (нақша дар бахши 6). Он танҳо мефиристад, барои ҳамин дар n8n-и маҳаллӣ низ кор мекунад.</p>
+      <ol class="steps">
+        <li><b>Оғоз.</b> Варианти 1: давраи санҷишии ройгони абр дар <code>n8n.io</code>. Варианти 2: дар терминал <code>npx n8n</code>, баъд <code>http://localhost:5678</code> (Node.js 20.19–24 лозим аст). Варианти 3: аккаунти ройгон дар Make ва ҳамон сенария аз модулҳо.</li>
+        <li><b>Триггер.</b> Гиреҳи <code>Schedule Trigger</code>-ро илова кунед: як маротиба дар як рӯз соати 09:00. Барои санҷиш тугмаи оғози дастӣ ҳаст (Execute workflow), субҳро интизор шудан лозим нест.</li>
+        <li><b>Додаҳо.</b> Гиреҳи Supabase-ро илова кунед (сатрҳои ҷадвали аризаҳоро бо шарти «сохташуда дар 24 соати охир» гиред) ва маълумоти воридшавӣ: суроғаи лоиҳа ва калид аз панели Supabase. Барои прототип калиди махфӣ мешавад, вале дар хотир доред, ки он RLS-ро убур мекунад; онро танҳо дар маълумоти воридшавии n8n нигоҳ доред ва содироти workflow-ро нашр накунед. Агар гиреҳи Supabase танзим нашавад, гиреҳи <code>HTTP Request</code> ва суроғаи REST API-и лоиҳаи худро гиред (аз AI хоҳиш кунед, ки дархостро аз рӯи ҳуҷҷати Supabase ҷамъ кунад).</li>
+        <li><b>Шарт.</b> Гиреҳи <code>If</code>: шумораи сатрҳо аз 0 зиёд. Вагарна паём фиристода намешавад.</li>
+        <li><b>Telegram.</b> Гиреҳи Telegram, амали «Send Message»: маълумоти воридшавӣ бо токени бот, <code>chat_id</code>-и соҳиб, матни «Аризаҳои нави як шабонарӯз: …» бо рақам аз гиреҳи қаблӣ.</li>
+        <li><b>Санҷиш.</b> Дастӣ оғоз кунед: паём омад. Workflow-ро фаъол кунед (калиди Active), то аз рӯи ҷадвал кор кунад.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Агар вайрон шуд</b>
+        <p><b>Telegram: <code>Bad Request: chat not found</code>.</b> Соҳиб ягон бор дар ин бот <code>/start</code> пахш накардааст, ё chat id нодуруст аст (рақам ва аломатро санҷед). <b>Telegram: <code>Unauthorized</code>.</b> Токен нопурра нусха шудааст ё аз нав содир шудааст: навашро гиред. <b>Supabase рӯйхати холӣ медиҳад, ҳол он ки аризаҳо ҳастанд.</b> Қоидаҳои RLS калиди намуди publishable-ро намегузоранд: калидро бо ҳуқуқҳо барои сервер гиред ва хатарро дар хотир доред, ё маълумотро дар тарафи API-и худ филтр кунед. <b>Ҷадвал кор намекунад.</b> Workflow фаъол нест (Active) ё n8n дар ноутбук соати 9:00 пӯшида буд: n8n-и маҳаллӣ то кор мекунад, ки компютери шумо кор мекунад. <b>Гиреҳ ё тугма ёфт нашуд.</b> Интерфейсҳои n8n ва Make навсозӣ мешаванд: гиреҳро бо ном дар ҷустуҷӯ ҷӯед ва скриншоти экранро бе калидҳо ба AI фиристед.</p>
+      </div>
+
+      <article class="task" id="cl-n8n">
+        <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Рӯйхати санҷиш: худкорсозӣ дар n8n ё Make</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-n8n-list">
+          <li>Асбоб оғоз шудааст (абр, <code>npx n8n</code> ё Make) ва интихоб шудааст, ки чаро маҳз ҳамин</li>
+          <li>Триггер аз рӯи ҷадвал ҳаст ва оғози дастӣ мегузарад</li>
+          <li>Додаҳо аз лоиҳаи шумо гирифта мешаванд (Supabase ё дархости HTTP)</li>
+          <li>Шарт ҳаст: ҳангоми натиҷаи сифрӣ паём фиристода намешавад</li>
+          <li>Паём ба Telegram меояд</li>
+          <li>Токен ва калидҳо танҳо дар маълумоти воридшавии асбоб мехобанд, дар скриншотҳо нестанд</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ 09 · Фишка урока ============ -->
+    <section class="topic" id="bot-show">
+      <h2 data-toc="Бот-шоу"><span class="num">09</span> Лаззати дарс: «Бот-шоу»</h2>
+
+      <p>Ҳар кас боти худро ба гурӯҳ дар чати зинда нишон медиҳад. Омӯзгор чати умумиро дар Telegram месозад ва қоидаҳоро ба он менависад. Username-и ҷамъиятии бот (<code>@choyxona_rudaki_bot</code>) асрор нест, асрор танҳо токен аст.</p>
+
+      <div class="table-wrap">
+        <table class="timer-tbl">
+          <thead><tr><th>Марҳила</th><th>Вақт</th><th>Чӣ мешавад</th></tr></thead>
+          <tbody>
+            <tr><td>Омодагӣ</td><td>5 дақиқа</td><td>Ҳама аз рӯи рӯйхати санҷиши 8.1 месанҷанд, ки бот ҷавоб медиҳад. Истиноди ботро нусха кунед (<code>https://t.me/username_шумо</code>)</td></tr>
+            <tr><td>Намоиш</td><td>3 дақиқа барои ҳар кас</td><td>Иштирокчӣ ба чати умумӣ истиноди ботро менависад ва мухтасар нақл мекунад «барои кадом фармоишгар». Гурӯҳ <code>/start</code> ва <code>/help</code>-ро пахш мекунад</td></tr>
+            <tr><td>Аризаи зинда</td><td>1 дақиқа</td><td>Иштирокчӣ экранро нишон медиҳад: касе аз гурӯҳ тавассути сайти ӯ ариза мефиристад, ва ба Telegram огоҳинома меояд</td></tr>
+            <tr><td>Санҷиши ҳифз</td><td>1 дақиқа</td><td>Гурӯҳ <code>/status</code>-ро мекӯшад: бот бояд «Эта команда недоступна» ҷавоб диҳад. Дар терминал дархостро бе сарлавҳаи махфӣ нишон диҳед: ҷавоб 401</td></tr>
+            <tr><td>Овоздиҳӣ</td><td>5 дақиқа</td><td>Ҳар кас як овоз ба фоидаи мафиди ботро барои фармоишгари воқеӣ медиҳад</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Холҳо</h3>
+      <ul>
+        <li>+1 бот ба <code>/start</code> ва <code>/help</code> ба ҳар кас дар гурӯҳ ҷавоб медиҳад</li>
+        <li>+2 аризаи зинда аз сайт ҳамчун огоҳинома ба соҳиб меояд</li>
+        <li>+2 фармони маъмурӣ дар бегонагон кор намекунад, дар соҳиб кор мекунад</li>
+        <li>+1 дархост бе сарлавҳаи махфӣ 401 мегирад (дар экран нишон дода шуд)</li>
+        <li>+1 худкорсозӣ дар n8n ё Make кор карда нишон дода шуд</li>
+        <li>+1 дар намоиш токен ҳеҷ ҷо нагузашт (ҷарима: токен дар экран — фавран дар BotFather аз нав содир кунед, ин банд 0)</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Қоидаҳои бозии одилона</b>
+        <p>Ҳифзро танҳо дар намоиш ва бо иҷозати муаллифи бот санҷидан мумкин аст: як дархости безарари <code>curl</code> бе асрор. Кӯшиш накунед, ки боти бегонаро «шикаста», токенҳоро ҷустуҷӯ кунед ва паёмҳо фиристед: ин қоидаҳои Telegram ва курсро вайрон мекунад. Токенҳо ва истинодҳо бо токенро ба чати умумӣ ҳеҷ гоҳ нагузоред.</p>
+      </div>
+    </section>
+
+    <!-- ============ 10 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Супориши хонагӣ"><span class="num">10</span> Супориши хонагӣ: Telegram-бот ё худкорсозӣ дар лоиҳа (СХ-21)</h2>
+
+      <p>Амалиётро ба охир расонед: дар лоиҳаи хатмӣ Telegram-бот (огоҳиномаҳо ва фармонҳо) ё худкорсозӣ дар n8n / Make кор мекунад, ҳифз санҷида шудааст. Супоридан: истинод ба репозиторий (ё pull request) дар GitHub ва истинод ба сайт дар Vercel. Ботро аз рӯи <code>@username</code> меёбанд, онро дар тавсифи репозиторий ё дар README нишон диҳед.</p>
+
+      <h3>Талабот</h3>
+      <ul>
+        <li><b>Бот:</b> роути <code>app/api/telegram/route.ts</code>, вебхук дар суроғаи ҷамъиятии HTTPS, фармонҳои <code>/start</code>, <code>/help</code> ва ҳадди аққал як фармони маъмурӣ (<code>/status</code> ё <code>/orders</code>).</li>
+        <li><b>Огоҳинома:</b> ариза ё фармоиши нав ба соҳиб дар Telegram меояд; хатогии Telegram амали асосиро вайрон намекунад; матни корбар экранировка шудааст.</li>
+        <li><b>Ҳифз:</b> санҷиши <code>secret_token</code> (401 бе сарлавҳа), рӯйхати маъмурон аз тағйирёбандаи муҳит, ҳади паёмҳо, ҷавоби 200 ба ҳама навсозиҳо, дар логҳо токен нест.</li>
+        <li><b>Асрор:</b> токен ва асрори вебхук танҳо дар <code>.env.local</code> ва Vercel; <code>.env.example</code> бо номҳо; дар репозиторий ва таърих токен нест.</li>
+        <li><b>Худкорсозӣ (алтернатива ё бонус):</b> workflow дар n8n ё Make: триггер, додаҳо аз лоиҳа, шарт, паём ба Telegram; дар репозиторий скриншот бе калидҳо ё тавсифи кӯтоҳ дар README.</li>
+        <li><b>README:</b> бахши «Бот»: username, рӯйхати фармонҳо, кадом фармонҳо маъмурианд, кадом тағйирёбандаҳои муҳит лозиманд (бе қиматҳо).</li>
+        <li><b>Сифат:</b> <code>npm run build</code> бе хатогӣ, сайт дар Vercel кор мекунад.</li>
+      </ul>
+
+      <h3>Чӣ кор кардан лозим</h3>
+      <ol class="steps">
+        <li>Рӯйхатҳои санҷиши 8.1 (бот) ва 8.2 (худкорсозӣ)-ро ба охир расонед — як адад кифоя аст, вале беҳтараш ҳарду.</li>
+        <li>Санҷед, ки <code>.env.local</code> дар репозиторий нест ва токен дар таърих нест (<code>git log --all -S "TELEGRAM_BOT_TOKEN="</code> қиматҳоро набояд нишон диҳад).</li>
+        <li>README-ро пурра кунед ва шохаро тавассути pull request ворид кунед.</li>
+        <li>Ботро дар суроғаи продакшни Vercel аз аккаунти бегона санҷед.</li>
+        <li>Рӯйхати талаботро аломат гузоред ва истинодҳоро дар поён гузоред.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмул дар супориши хонагӣ</b>
+        <p><b>1.</b> Вебхук дар суроғаи туннеле меистад, ки аллакай кор намекунад: суроғаи продакшни Vercel-ро супоред. <b>2.</b> Токен дар таърихи git монд: онро аз нав содир кунед. <b>3.</b> Санҷиши сарлавҳаи махфӣ нест: ҳар кас тавассути curl ба бот «фармон» фиристода метавонад. <b>4.</b> Фармонҳои маъмурӣ ба ҳама ҷавоб медиҳанд. <b>5.</b> Огоҳинома баъди деплой фиристода намешавад: тағйирёбандаҳо ба Vercel илова шудаанд, вале деплойи нав набуд. <b>6.</b> Паём аз аломати <code>&lt;</code> дар номи муштарӣ вайрон мешавад. <b>7.</b> Ба ҷои истинод ба лоиҳа истинод ба бот гузошта шудааст.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Чӣ тавр месанҷанд</b>
+        <p>Санҷанда репозиторийро мекушояд, роут ва README-ро мехонад, токенро дар код ва таърих меҷӯяд, аз аккаунти дигар ба бот менависад (<code>/start</code>, <code>/help</code>, <code>/status</code>), дар сайт ариза мефиристад ва мебинад, ки огоҳинома омад ё не, ва як дархостро бе сарлавҳаи махфӣ мефиристад. Холҳо: барои ҳифзи кории бот, барои commit-ҳои саришта, барои README-и росткор ва барои сайти корӣ.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ВАЗИФАИ 10.1</span><h4>Рӯйхати талаботи СХ-21</h4><span class="level mid">миёна</span></header>
+        <p>Пеш аз супоридан банд ба банд санҷед.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Роути вебхук дар суроғаи продакшни Vercel кор мекунад, <code>getWebhookInfo</code> бе хатогӣ</li>
+          <li>Фармонҳои <code>/start</code>, <code>/help</code> ва ҳадди аққал як фармони маъмурӣ мувофиқи тавсиф кор мекунанд</li>
+          <li>Аризаи нав ба соҳиб дар Telegram меояд, матн экранировка шудааст</li>
+          <li>Санҷишҳо: сарлавҳаи махфӣ, рӯйхати маъмурон, ҳад, ҷавоби 200 ба ҳама навсозиҳо</li>
+          <li>Токен на дар код, на дар таърих, на дар логҳо, на дар скриншотҳо нест</li>
+          <li>Худкорсозӣ дар n8n ё Make ҷамъ ва санҷида шудааст (ё ошкоро қарор дода шудааст, ки танҳо бот супорида мешавад)</li>
+          <li>Дар README бот, фармонҳо ва тағйирёбандаҳои муҳит бе қиматҳо тавсиф шудаанд</li>
+          <li>Сайт дар Vercel сохта шуд ва кор мекунад</li>
+          <li>Истинодҳо ба репозиторий ва ба Vercel дар поён гузошта шудаанд</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ВАЗИФАИ 10.2</span><h4>Истинод ба репозиторий ё pull request</h4><span class="level mid">миёна</span></header>
+        <p>Истинод ба репозиторийи лоиҳа ё ба pull request бо бот гузоред (суроға дар намуди <code>https://github.com/…</code>).</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/логини-шумо/graduation-project"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ВАЗИФАИ 10.3</span><h4>Истинод ба сайт дар Vercel</h4><span class="level mid">миёна</span></header>
+        <p>Истинод ба сайти нашршударо гузоред, ки вебхуки бот дар он кор мекунад (суроға дар намуди <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://graduation-project.vercel.app"></div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://core.telegram.org/bots/api" target="_blank" rel="noopener">Telegram Bot API</a>, <a href="https://docs.n8n.io/" target="_blank" rel="noopener">n8n Docs</a>, <a href="https://www.make.com/en/help/home" target="_blank" rel="noopener">Make Help Center</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Хулоса"><span class="num">✓</span> Хулосаи дарс</h2>
+      <ul>
+        <li><b>Бот = интерфейси дуюм.</b> Додаҳо дар пойгоҳ мемонанд; бот огоҳиномаҳо мефиристад ва ба фармонҳо ҷавоб медиҳад. Бот ба касе, ки <code>/start</code>-ро пахш накардааст, навишта наметавонад.</li>
+        <li><b>BotFather:</b> <code>/newbot</code>, ном, username бо «bot», токен. Токен — парол: танҳо <code>.env.local</code> ва Vercel, бе <code>NEXT_PUBLIC_</code>, на дар логҳо. Ошкор шуд — аз нав содир кунед.</li>
+        <li><b>API:</b> <code>https://api.telegram.org/bot&lt;токен&gt;/&lt;усул&gt;</code>; <code>getMe</code>, <code>sendMessage</code> (<code>chat_id</code>, <code>text</code> то 4096 аломат), <code>setWebhook</code>, <code>getWebhookInfo</code>, <code>deleteWebhook</code>. Ҷавоб: <code>ok</code>, <code>result</code>.</li>
+        <li><b>Update:</b> <code>update_id</code> ва як майдони-рӯйдод; матн: <code>message.text</code>, чат: <code>message.chat.id</code>, фармон: <code>entities</code> бо <code>bot_command</code>; дар гурӯҳ фармон метавонад <code>/cmd@номи_бот</code> бошад. <code>message</code> нест — нодида гиред.</li>
+        <li><b>Вебхук:</b> HTTPS-и ҷамъиятӣ (портҳои 443, 80, 88, 8443), бе редиректҳо; <code>getUpdates</code> ва вебхук ҳамдигарро истисно мекунанд; на-2xx ба такрорҳо мебарад. Дар localhost кор намекунад: Vercel (продакшн) ё туннел (<code>cloudflared tunnel --url …</code>, <code>ngrok http …</code>); preview дар Vercel бо пешфарз бо муҳофизат пӯшида аст.</li>
+        <li><b>secret_token:</b> 1–256 аломат (<code>A-Z a-z 0-9 _ -</code>), дар сарлавҳаи <code>X-Telegram-Bot-Api-Secret-Token</code> меояд; мувофиқ набуд: 401.</li>
+        <li><b>Ҳифз:</b> асрор, рӯйхати маъмурон аз рӯи <code>chat.id</code> аз муҳит, ҳад барои чат, логҳои тоза, 200 ба ҳама чизи дигар, экранировкаи матни корбар барои HTML, нусхаҳои дубора аз рӯи <code>update_id</code>.</li>
+        <li><b>Ҳадҳои Telegram:</b> тақрибан 1 паём дар як сония ба чат, то 20 дар як дақиқа ба гурӯҳ, тақрибан 30 дар як сония ҳамагӣ; баъд хатогии 429.</li>
+        <li><b>n8n ва Make:</b> конструкторҳои занҷирҳо (триггер → амал → шарт). n8n: абр (давраи санҷишӣ) ё <code>npx n8n</code> → <code>localhost:5678</code>; Make: тарифи ройгон бо ҳади кредитҳо. Триггерҳои воридотӣ дар маҳал суроғаи ҷамъиятиро талаб мекунанд; ҷадвал бе он кор мекунад. Тарифҳоро дар сайтҳо санҷед.</li>
+        <li><b>AI:</b> версияҳо ва файлҳоро номбар кунед, санҷишҳои амниятро рӯйхат кунед, токенро нагузоред, усулҳоро бо ҳуҷҷат муқоиса кунед, хатогиҳоро бо <code>getWebhookInfo</code> фиристед.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ВАЗИФАИ 11.1</span><h4>Ман мавзӯъро воқеан фаҳмидам</h4><span class="level easy">осон</span></header>
+        <p>Танҳо он чиро аломат гузоред, ки бе ишора карда метавонед.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Метавонам ба фармоишгар шарҳ диҳам, ки бот аз сайт чӣ фарқ дорад ва чаро ҳамчун интерфейси дуюм лозим аст</li>
+          <li>Метавонам дар BotFather бот эҷод кунам, токенро санҷам ва медонам, ки ҳангоми ошкор шудани он чӣ кор кардан лозим</li>
+          <li>Метавонам Update-ро хонам ва аз он chat id, матн ва фармонро ҷудо кунам</li>
+          <li>Метавонам route handler-и вебхукро нависам ва вебхукро бо фармони <code>setWebhook</code> гузорам</li>
+          <li>Медонам, ки вебхук чаро дар localhost кор намекунад, ва метавонам онро дар Vercel ё тавассути туннел санҷам</li>
+          <li>Метавонам огоҳиномаро дар бораи ариза нав фиристам ва матни корбарро экранировка кунам</li>
+          <li>Метавонам ботро ҳифз кунам: сарлавҳаи махфӣ, рӯйхати маъмурон, ҳад, логҳои тоза</li>
+          <li>Метавонам худкорсозии оддиро дар n8n ё Make ҷамъ кунам ва бигӯям, кай код беҳтар аст</li>
+        </ul>
+      </article>
+    </section>

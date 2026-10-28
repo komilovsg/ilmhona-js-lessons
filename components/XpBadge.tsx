@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { availableCourse } from '@/content/course';
 import { confetti } from '@/lib/confetti';
+import { useCourseProgress } from '@/lib/course-status';
+import { availableEntries, COURSES, lessonKey, type CourseId } from '@/lib/courses';
 import { achievements, currentStreak, levelInfo, totalXp, type Achievement } from '@/lib/game';
-import { LESSON_META } from '@/lib/lesson-meta';
-import { useProgress } from '@/lib/progress';
 import { pushToast } from '@/lib/toast';
 import { useT } from './I18nProvider';
 import Toasts from './Toasts';
@@ -13,9 +12,10 @@ import Toasts from './Toasts';
 
 const unlockedIds = (list: Achievement[]) => new Set(list.filter((a) => a.unlocked).map((a) => a.id));
 
-export default function XpBadge() {
+export default function XpBadge({ courseId = 'frontend' }: { courseId?: CourseId }) {
   const { t, locale } = useT();
-  const progress = useProgress();
+  const c = COURSES[courseId];
+  const progress = useCourseProgress(c);
   const [now, setNow] = useState(0); // 0 until mounted: hydration-safe zero state
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -34,7 +34,7 @@ export default function XpBadge() {
   const xp = totalXp(progress);
   const lvl = levelInfo(xp, t.game.ranks);
   const streak = currentStreak(progress, now);
-  const ach = achievements(progress, LESSON_META, t.game);
+  const ach = achievements(progress, c.meta, t.game);
 
   // Diff before/after each state change: toast new achievements and level-ups.
   useEffect(() => {
@@ -130,9 +130,10 @@ export default function XpBadge() {
           </div>
           <p className="xp-h">{t.xp.lessons}</p>
           <ul className="xp-lessons">
-            {availableCourse().map((l) => {
-              const ids = Object.keys(LESSON_META[l.slug] ?? {});
-              const n = ids.filter((t) => progress.solved[`${l.slug}:${t}`]).length;
+            {availableEntries(c).map((l) => {
+              const key = lessonKey(c, l.slug);
+              const ids = Object.keys(c.meta[key] ?? {});
+              const n = ids.filter((t) => progress.solved[`${key}:${t}`]).length;
               return (
                 <li key={l.slug}>
                   <span>{`${l.num}. ${l.title[locale]}`}</span>

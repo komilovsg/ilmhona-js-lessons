@@ -1,0 +1,1091 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 560px) { .cmp { grid-template-columns: 1fr; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 7 · Модуль 3. Современный Frontend</p>
+      <h1>React без страха: компоненты и props</h1>
+      <p class="lead">К концу урока у вас будет лендинг, собранный не из одной длинной страницы, а из «кирпичей»: компонентов Header, Hero, Services, Pricing и Footer и одной универсальной карточки, которая сама подстраивается под данные. Чтобы поменять цену, название или целый блок, вам достаточно правки в одном месте, а не в десяти. По дороге вы выучите минимум JavaScript, нужный для чтения такого кода: переменные, массивы, объекты, функции и импорт. Самый частый вопрос после урока 5 — что значит <code>.tsx</code> — получит прямой ответ.</p>
+      <ul class="goals">
+        <li>Объяснять, зачем нужен React и что такое компонент, и показать «кирпичи» на любом сайте</li>
+        <li>Читать базовый JavaScript: <code>const</code>, строки и числа, массивы, объекты, функции, стрелочные функции, <code>import</code> и <code>export</code></li>
+        <li>Читать и править JSX: правила разметки, вставки <code>{…}</code>, вложенные компоненты</li>
+        <li>Передавать данные через props и сделать одну универсальную карточку вместо трёх копий</li>
+        <li>Выводить список карточек из массива через <code>map</code> и понимать, зачем нужен <code>key</code></li>
+        <li>Разложить лендинг на компоненты в папке <code>components</code> и подключить их в <code>app/page.tsx</code></li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: проект <code>dental-landing</code> из урока 5 (или любой другой лендинг на Next.js + Tailwind), Cursor, интернет и около 3 часов. Откройте урок в одной половине экрана, а Cursor — в другой. Теорию (разделы 1–6) читайте по частям: задачи с редактором выполняются прямо на странице, ничего устанавливать не нужно. Редакторы React на странице загружают React из интернета, поэтому нужно подключение к сети. Практику (раздел 8) делайте за один присест. В конце — «Компонентный конструктор» и домашнее задание.</p>
+      <p>Если вы пропустили урок 5 или проект не запускается, сначала вернитесь к нему: здесь опираемся на него без повторения.</p>
+    </div>
+
+    <!-- ============ 01 · Зачем React ============ -->
+    <section class="topic" id="why-react">
+      <h2 data-toc="Зачем нужен React"><span class="num">01</span> Зачем нужен React и что такое компонент</h2>
+
+      <p>Откройте файл <code>app/page.tsx</code> вашего лендинга из урока 5. Скорее всего, это одна длинная простыня на 200–400 строк: шапка, hero, три карточки услуг, три врача, отзывы и форма. Теперь представьте типичные просьбы клиента: «поменяйте цвет кнопок», «добавьте четвёртую услугу», «сделайте такой же сайт для моего брата-кофевара». В длинном файле одна и та же карточка скопирована по несколько раз, и правка превращается в поиск по тексту: легко пропустить копию и получить сайт, где три кнопки голубые, а четвёртая осталась зелёной. ИИ в таком файле тоже путается чаще.</p>
+
+      <p><b>React</b> решает это так: интерфейс собирается из <b>компонентов</b> — небольших независимых «кирпичей», каждый из которых отвечает за свой кусок экрана. Карточку услуги вы описываете один раз и потом используете сколько нужно, подставляя разные данные. React создан в Meta (Facebook) и сегодня остаётся самой популярной библиотекой для интерфейсов, поэтому и ИИ пишет на нём лучше всего. А <b>Next.js</b>, с которым вы работали на уроке 5, — это фреймворк <i>на основе</i> React: он добавляет страницы, маршруты и публикацию, а сами кирпичи интерфейса в нём — React-компоненты.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 330" role="img" aria-label="Схема: страница Home состоит из компонентов Header, Hero, Services, Pricing и Footer, а Services и Pricing используют одну и ту же карточку Card несколько раз">
+          <rect class="box g" x="262" y="10" width="196" height="40" rx="10" /><text class="mono" x="360" y="35" text-anchor="middle">app/page.tsx</text>
+          <text class="sub" x="470" y="35">страница собирает кирпичи</text>
+          <path class="arr" d="M360 50 V74 M60 74 H660 M60 74 V92 M210 74 V92 M360 74 V92 M510 74 V92 M660 74 V92" />
+          <rect class="fill-g" x="10" y="92" width="100" height="38" rx="8" /><text class="mono" x="60" y="116" text-anchor="middle">Header</text>
+          <rect class="fill-g" x="160" y="92" width="100" height="38" rx="8" /><text class="mono" x="210" y="116" text-anchor="middle">Hero</text>
+          <rect class="fill-y" x="310" y="92" width="100" height="38" rx="8" /><text class="mono" x="360" y="116" text-anchor="middle">Services</text>
+          <rect class="fill-y" x="460" y="92" width="100" height="38" rx="8" /><text class="mono" x="510" y="116" text-anchor="middle">Pricing</text>
+          <rect class="fill-g" x="610" y="92" width="100" height="38" rx="8" /><text class="mono" x="660" y="116" text-anchor="middle">Footer</text>
+          <path class="arr" d="M360 130 V150 M300 150 H420 M300 150 V168 M360 150 V168 M420 150 V168" />
+          <path class="arr" d="M510 130 V150 M480 150 H540 M480 150 V168 M540 150 V168" />
+          <rect class="box o" x="272" y="168" width="56" height="34" rx="8" /><text class="mono t-o" x="300" y="190" text-anchor="middle" style="font-size:11px">Card</text>
+          <rect class="box o" x="332" y="168" width="56" height="34" rx="8" /><text class="mono t-o" x="360" y="190" text-anchor="middle" style="font-size:11px">Card</text>
+          <rect class="box o" x="392" y="168" width="56" height="34" rx="8" /><text class="mono t-o" x="420" y="190" text-anchor="middle" style="font-size:11px">Card</text>
+          <rect class="box o" x="452" y="168" width="56" height="34" rx="8" /><text class="mono t-o" x="480" y="190" text-anchor="middle" style="font-size:11px">Card</text>
+          <rect class="box o" x="512" y="168" width="56" height="34" rx="8" /><text class="mono t-o" x="540" y="190" text-anchor="middle" style="font-size:11px">Card</text>
+          <text class="sub" x="12" y="236">Одна карточка Card описана один раз, а на странице появляется пять раз:</text>
+          <text class="sub" x="12" y="254">три раза в услугах и два раза в тарифах. Данные у каждой свои, шаблон общий.</text>
+          <text class="sub t-r" x="12" y="288">Без компонентов: пять копий одного кода. Поменять отступ значит найти все пять.</text>
+          <text class="sub t-g" x="12" y="308">С компонентами: одна правка в Card.tsx, и пять карточек обновились сразу.</text>
+        </svg>
+        <figcaption>Страница как дерево компонентов. Зелёные кирпичи — крупные блоки, жёлтые — блоки, внутри которых используется карточка</figcaption>
+      </figure>
+
+      <div class="yt" data-id="Tn6-PIqc4UM" data-title="React in 100 Seconds — канал Fireship"></div>
+      <p class="muted">Ролик на английском, включите субтитры (около 2 минут): идея React и компонентов в сжатом виде. Подробности про состояние и хуки из ролика пока пропустите: к ним мы вернёмся в уроке 8.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Компонент — это форма для печенья на кухне. Форма одна, а печенья можно сделать сколько угодно, и у каждого своя начинка. Захотели добавить в форме звёздочку на крышку — поправили форму один раз, и все следующие печенья уже со звёздочкой. Без формы вы лепите каждое печенье руками и каждое получается чуть-чуть по-разному.</p>
+      </div>
+
+      <h3>Файлы .tsx: ответ, обещанный в уроке 5</h3>
+      <p>В названии <code>page.tsx</code> две части. <b>JSX</b> — способ записывать разметку прямо внутри кода (разберём в разделе 3). <b>TS</b> — TypeScript: к JavaScript добавлены «подписи» к данным, чтобы редактор и сборка ловили ошибки заранее. Вам сейчас нужно только узнавать их в коде. Вот типичная строка, которую напишет ИИ:</p>
+
+<pre class="code" data-lang="tsx" data-title="Card.tsx (кусок)">
+export default function Card({ title, price }: { title: string; price: number }) {
+  // ...
+}
+</pre>
+
+      <p>Часть после двоеточия — <b>описание типов</b>: «в эту карточку приходит название (текст) и цена (число)». Читайте её как подпись на коробке: что внутри должно лежать. Если вы передадите цену словом, сборка остановится и напишет ошибку типов — её, как в уроке 5, целиком копируют и отправляют ИИ. В упражнениях на этой странице типов нет: мы пишем «чистый» React на JavaScript, а в проекте Cursor ИИ добавит подписи сам.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Путать React и Next.js: React строит кирпичи, Next.js делает из них сайт со страницами и публикацией. <b>2.</b> Думать, что нужно выучить весь JavaScript, прежде чем начать: для чтения кода достаточно небольшого набора из раздела 2. <b>3.</b> Считать, что «компонент» — это целая страница. Компонентом может быть и целая секция, и маленькая кнопка. <b>4.</b> Копировать одну и ту же карточку три раза вместо одного компонента: так и получается длинная простыня, от которой мы уходим.</p>
+      </div>
+
+      <article class="task" id="q-why">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: зачем React</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Клиент просит сделать все кнопки на сайте круглыми. Почему в проекте на компонентах это быстрее?</p>
+          <ol class="options">
+            <li>Потому что React сам определяет, какие кнопки нужно сделать круглыми</li>
+            <li>Потому что кнопка описана в одном компоненте, и правка в нём меняет все её копии на странице</li>
+            <li>Потому что в React не нужны стили</li>
+            <li>Потому что компоненты работают без браузера</li>
+          </ol>
+          <div class="explain"><p>Компонент — один шаблон, который используется много раз. Изменили шаблон, и поменялись все места, где его вызвали. В «простыне» без компонентов копий нужно искать и править вручную.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что означает расширение <code>.tsx</code> у файла <code>page.tsx</code>?</p>
+          <ol class="options">
+            <li>Это файл только со стилями Tailwind</li>
+            <li>Это старый формат HTML</li>
+            <li>Это React-разметка (JSX) плюс подписи типов TypeScript</li>
+            <li>Это папка с картинками</li>
+          </ol>
+          <div class="explain"><p>JSX позволяет писать разметку в коде, а TypeScript добавляет проверку типов. Ошибки типов копируют целиком и отправляют ИИ, как в уроке 5.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/your-first-component" target="_blank" rel="noopener">React: ваш первый компонент</a> и <a href="https://nextjs.org/docs/app/getting-started/project-structure" target="_blank" rel="noopener">Next.js: структура проекта</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 02 · JS-минимум ============ -->
+    <section class="topic" id="js-min">
+      <h2 data-toc="JavaScript-минимум"><span class="num">02</span> JavaScript-минимум: чтобы читать код компонентов</h2>
+
+      <p>Компоненты React — это обычный JavaScript плюс разметка. Писать его будет ИИ, а вот <b>читать</b> вам придётся самим: проверять, что он сделал, находить, где лежит цена, и просить правки точными словами. Для этого не нужен весь язык: хватит шести понятий. Каждое — короткий пример, который можно запустить кнопкой «Запустить» прямо здесь, и задача. После этого раздела массивы и объекты в коде перестанут выглядеть как шифр.</p>
+
+      <div class="callout tip">
+        <b>Как работают примеры</b>
+        <p>В блоках с кнопкой «Запустить» код выполняется в браузере, а результат появляется в консоли под ним. <code>console.log(…)</code> — это «напечатай значение в консоль». Меняйте числа и слова и запускайте снова: сломать ничего нельзя.</p>
+      </div>
+
+      <h3>1. Переменная: const</h3>
+      <p><b>Переменная</b> — подписанная коробка, в которую кладут значение, чтобы потом вернуться к нему по имени. Слово <code>const</code> (от constant, «постоянная») создаёт такую коробку; значение после знака <code>=</code> кладётся в неё один раз и дальше не переприсваивается. В коде ИИ вы увидите ещё <code>let</code> — коробку, которую можно переприсвоить, но в этом уроке достаточно <code>const</code>.</p>
+
+<pre class="code" data-run data-title="Переменная">
+const city = "Душанбе";
+const price = 200;
+
+console.log(city);
+console.log(price);
+</pre>
+
+      <h3>2. Строка и число</h3>
+      <p><b>Строка</b> — текст в кавычках: <code>"Чистка зубов"</code>. <b>Число</b> — без кавычек: <code>200</code>. Разница важна: числа можно складывать и вычитать, а строки — склеивать. Для склейки удобнее <b>шаблонная строка</b> в обратных кавычках: внутрь неё через <code>${…}</code> подставляют переменные и даже вычисления. Именно так в React-коде собирают подписи вроде «Чистка зубов: 150 сомони».</p>
+
+<pre class="code" data-run data-title="Строки, числа, шаблон">
+const title = "Пломба";
+const price = 350;
+const discount = 50;
+
+console.log(price - discount);              // число: 300
+console.log("Услуга: " + title);            // склейка: Услуга: Пломба
+console.log(`${title} стоит ${price - discount} сомони`);   // шаблонная строка
+console.log("350" + 50);                    // строка + число = строка: 35050
+</pre>
+
+      <article class="task" id="js-vars">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Цена со скидкой</h4><span class="level easy">лёгкая</span></header>
+        <p>Создайте три переменные через <code>const</code>: название услуги, цену и скидку. Выведите одну строку с названием и ценой со скидкой. Цена со скидкой должна считаться в коде, а не вписываться руками.</p>
+<pre class="code" data-run>
+// 1. const title — строка "Чистка зубов"
+// 2. const price = 200 и const discount = 50
+
+// 3. Выведите одну строку: Чистка зубов: 150 сомони
+
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Чистка зубов: 150 сомони</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Три строки вида <code>const имя = значение;</code>. Строки пишутся в кавычках, числа без них.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>console.log(`${title}: ${price - discount} сомони`);</code> — шаблонная строка в обратных кавычках, внутри <code>${…}</code> стоят переменные и вычитание.</p></details>
+      </article>
+
+      <h3>3. Массив: список значений</h3>
+      <p><b>Массив</b> — упорядоченный список в квадратных скобках: <code>[120, 200, 350]</code>. У каждого элемента есть номер (индекс), и считать нужно <b>с нуля</b>: первый элемент — <code>prices[0]</code>. Длина списка — <code>prices.length</code>. Когда на лендинге несколько услуг, врачей или отзывов, в коде они лежат именно в массиве.</p>
+
+      <h3>4. Объект: карточка из пар «ключ: значение»</h3>
+      <p><b>Объект</b> — набор подписанных значений в фигурных скобках: <code>{ name: "Зарина", experience: 7 }</code>. Значение берут по ключу через точку: <code>doctor.name</code>. Если вы уже видели JSON, это очень похоже, только ключи обычно без кавычек. Чаще всего в React встречаются <b>массивы объектов</b>: список, где каждый элемент — карточка с несколькими полями.</p>
+
+<pre class="code" data-run data-title="Массив и объект">
+const doctor = { name: "Зарина", role: "терапевт", experience: 7 };
+const prices = [120, 200, 350];
+
+console.log(doctor.name);          // Зарина
+console.log(prices[0]);            // 120 — счёт с нуля
+console.log(prices.length);        // 3
+
+// деструктуризация: достаём сразу несколько полей из объекта
+const { name, role } = doctor;
+console.log(`${name} — ${role}`);
+</pre>
+
+      <p>Строка <code>const { name, role } = doctor;</code> называется <b>деструктуризацией</b>: «возьми у объекта поля <code>name</code> и <code>role</code> и сделай из них переменные». Запомните её: именно так компоненты принимают данные в разделе 4.</p>
+
+      <article class="task" id="js-array">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Врач и список цен</h4><span class="level easy">лёгкая</span></header>
+        <p>Данные уже готовы. Выведите три строки, беря значения из объекта и массива, а не вписывая числа вручную.</p>
+<pre class="code" data-run>
+const doctor = { name: "Зарина", role: "терапевт", experience: 7 };
+const prices = [120, 200, 350];
+
+// 1. Зарина — терапевт, стаж 7 лет
+// 2. Цен в списке: 3
+// 3. Последняя цена: 350
+
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Зарина — терапевт, стаж 7 лет
+Цен в списке: 3
+Последняя цена: 350</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Значения объекта: <code>doctor.name</code>, <code>doctor.role</code>, <code>doctor.experience</code>. Количество элементов — <code>prices.length</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Индекс последнего элемента на один меньше длины: у массива из трёх элементов это <code>prices[2]</code>, а универсально — <code>prices[prices.length - 1]</code>.</p></details>
+      </article>
+
+      <h3>5. Функция и стрелочная функция</h3>
+      <p><b>Функция</b> — именованный набор действий: принимает значения на вход (параметры), что-то делает и отдаёт результат через <code>return</code>. Важно не путать: <code>console.log</code> только <i>печатает</i> значение, а <code>return</code> <i>возвращает</i> его тому, кто функцию вызвал. <b>Стрелочная функция</b> — короткая запись того же самого со стрелкой <code>=&gt;</code>. Если после стрелки идёт одно выражение, <code>return</code> можно не писать.</p>
+
+<pre class="code" data-run data-title="Два способа записать функцию">
+function formatPrice(value) {
+  return value + " сомони";
+}
+
+const formatPrice2 = (value) => value + " сомони";    // то же самое короче
+
+console.log(formatPrice(120));
+console.log(formatPrice2(200));
+</pre>
+
+      <p>Каждый React-компонент — тоже функция: на вход получает данные, а возвращает разметку. Поэтому понимание функций — главный кирпич раздела.</p>
+
+      <article class="task" id="js-func">
+        <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Форматируем цену</h4><span class="level mid">средняя</span></header>
+        <p>Напишите стрелочную функцию <code>formatPrice</code>, которая принимает число и возвращает строку с «сомони» (результат нужно <b>вернуть</b>, а не печатать внутри). Затем напишите функцию <code>sum</code> от двух чисел. Выведите цены <code>120</code>, <code>200</code> и их сумму, все через <code>formatPrice</code>.</p>
+<pre class="code" data-run>
+// const formatPrice = (value) => ...
+// const sum = (a, b) => ...
+
+// console.log(formatPrice(120));
+// console.log(formatPrice(200));
+// console.log(formatPrice(sum(120, 200)));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>120 сомони
+200 сомони
+320 сомони</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Схема: <code>const имя = (параметры) =&gt; выражение;</code>. Для <code>formatPrice</code> выражением будет шаблонная строка или склейка с <code>" сомони"</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const formatPrice = (value) =&gt; `${value} сомони`;</code> и <code>const sum = (a, b) =&gt; a + b;</code>. Затем раскомментируйте три вызова: результат одной функции можно сразу передать в другую.</p></details>
+      </article>
+
+      <h3>6. import и export: как файлы находят друг друга</h3>
+      <p>Проект состоит из многих файлов, и файлам нужно получать друг у друга кусочки кода. <b>export</b> — «выставить наружу» то, что файл готов отдать, <b>import</b> — «взять» это в другом файле. Без них компонент, лежащий в <code>components/Hero.tsx</code>, невозможно показать на странице.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Схема: файл components/Hero.tsx выставляет компонент через export default, а файл app/page.tsx берёт его через import; ниже именованный export массива services берётся через import в фигурных скобках">
+          <rect class="box g" x="12" y="14" width="300" height="86" rx="12" /><text class="mono t-g" x="28" y="38">components/Hero.tsx</text>
+          <text class="mono" x="28" y="64">export default function Hero() {…}</text>
+          <text class="sub" x="28" y="86">«отдаю один главный компонент»</text>
+          <rect class="box o" x="408" y="14" width="300" height="86" rx="12" /><text class="mono t-o" x="424" y="38">app/page.tsx</text>
+          <text class="mono" x="424" y="64" style="font-size:12px">import Hero from "@/components/Hero"</text>
+          <text class="sub" x="424" y="86">«беру его, имя выбираю сам»</text>
+          <path class="arr" d="M312 57 H404" /><path class="arr-head" d="M400 51l12 6-12 6z" />
+          <rect class="box b" x="12" y="130" width="300" height="86" rx="12" /><text class="mono t-b" x="28" y="154">data/services.ts</text>
+          <text class="mono" x="28" y="180">export const services = […]</text>
+          <text class="sub" x="28" y="202">«отдаю именованное значение»</text>
+          <rect class="box o" x="408" y="130" width="300" height="86" rx="12" /><text class="mono t-o" x="424" y="154">app/page.tsx</text>
+          <text class="mono" x="424" y="180" style="font-size:12px">import { services } from "@/data/services"</text>
+          <text class="sub" x="424" y="202">«имя в скобках — как в export»</text>
+          <path class="arr" d="M312 173 H404" /><path class="arr-head" d="M400 167l12 6-12 6z" />
+          <text class="sub" x="360" y="240" text-anchor="middle">символ @ в пути означает «от корня проекта» — так настроен проект из create-next-app</text>
+        </svg>
+        <figcaption>Два вида экспорта: главный (<code>default</code>) берут без скобок, именованный — в фигурных скобках с тем же именем</figcaption>
+      </figure>
+
+<pre class="code" data-lang="tsx" data-title="Два вида импорта">
+// главный экспорт файла: имя в импорте можно выбрать любое
+import Hero from "@/components/Hero";
+
+// именованный экспорт: имя в скобках должно совпасть с именем в export
+import { services } from "@/data/services";
+
+// встроенные кирпичи React / Next.js — из библиотек, а не из ваших файлов
+import Link from "next/link";
+</pre>
+
+      <p>Путь вида <code>"@/components/Hero"</code> означает «от корня проекта»: проект, созданный на уроке 5 командой <code>create-next-app</code>, настроен на такой псевдоним по умолчанию (<code>@/*</code>). Путь без точек и слэшей в начале, например <code>"next/link"</code>, ведёт в установленную библиотеку.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Представьте большой склад на бозоре. В каждой лавке на витрине написано, что она отдаёт в общий оборот: «<code>export</code>: сомса, лепёшка». Повар на кухне делает заявку: «<code>import</code>: беру сомсу из лавки номер три». Если лавка не выставила товар или повар написал название с ошибкой, заказ не пройдёт: JavaScript так же строго сверяет слова.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Путать <code>=</code> (положить значение в коробку) и <code>===</code> (сравнить два значения). <b>2.</b> Забыть, что счёт в массиве идёт с нуля, и ждать первый элемент по индексу 1. <b>3.</b> Писать <code>"200"</code> в кавычках, когда нужно число: тогда <code>"200" + 50</code> даст <code>"20050"</code>, а не 250. <b>4.</b> В импорте поставить фигурные скобки у <code>default</code>-экспорта или не поставить у именованного. <b>5.</b> Написать функцию, но не вызвать её: без скобок <code>formatPrice(120)</code> ничего не произойдёт. <b>6.</b> Использовать <code>console.log</code> там, где нужен <code>return</code>: результат тогда напечатан, но не передан дальше.</p>
+      </div>
+
+      <article class="task" id="q-js-read">
+        <header><span class="task-num">ЗАДАЧА 2.4</span><h4>Проверь себя: читаем код</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Дан код: <code>const services = [{ title: "Чистка", price: 200 }, { title: "Пломба", price: 350 }];</code>. Что вернёт <code>services[1].title</code>?</p>
+          <ol class="options">
+            <li><code>"Чистка"</code></li>
+            <li><code>"Пломба"</code></li>
+            <li><code>350</code></li>
+            <li>Ошибку: у массива нет элемента с номером 1</li>
+          </ol>
+          <div class="explain"><p>Индекс <code>1</code> — второй элемент массива (счёт с нуля), то есть объект <code>{ title: "Пломба", price: 350 }</code>. Через точку берём из него поле <code>title</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В файле <code>components/Hero.tsx</code> написано <code>export default function Hero() {…}</code>. Как правильно подключить его на странице?</p>
+          <ol class="options">
+            <li><code>import { Hero } from "@/components/Hero";</code></li>
+            <li><code>export Hero from "@/components/Hero";</code></li>
+            <li><code>import Hero from "@/components/Hero";</code></li>
+            <li><code>const Hero = "@/components/Hero";</code></li>
+          </ol>
+          <div class="explain"><p>Главный (<code>default</code>) экспорт берут без фигурных скобок. Скобки нужны только для именованных экспортов вроде <code>export const services</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Что делает строка <code>const { title, price } = service;</code>?</p>
+          <ol class="options">
+            <li>Достаёт из объекта <code>service</code> поля <code>title</code> и <code>price</code> и делает из них две переменные</li>
+            <li>Создаёт новый объект с пустыми полями</li>
+            <li>Меняет цену услуги на значение по умолчанию</li>
+            <li>Импортирует <code>title</code> и <code>price</code> из другого файла</li>
+          </ol>
+          <div class="explain"><p>Это деструктуризация: сокращённая запись вместо <code>const title = service.title; const price = service.price;</code>. Именно так компоненты забирают props.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.javascript.ru/variables" target="_blank" rel="noopener">learn.javascript.ru: переменные</a>, <a href="https://learn.javascript.ru/function-expressions" target="_blank" rel="noopener">функции</a> и <a href="https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Statements/import" target="_blank" rel="noopener">MDN: import</a>.</p>
+    </section>
+
+    <!-- ============ 03 · JSX и компонент ============ -->
+    <section class="topic" id="jsx">
+      <h2 data-toc="JSX и компонент"><span class="num">03</span> JSX и компонент: функция, которая возвращает разметку</h2>
+
+      <p><b>Компонент</b> в React — это обычная функция, имя которой начинается с <b>заглавной буквы</b> и которая возвращает разметку. Эта разметка записывается в виде <b>JSX</b>: она похожа на HTML, но живёт прямо внутри JavaScript. Готовый компонент вызывают как свой собственный HTML-тег: <code>&lt;Hero /&gt;</code>.</p>
+
+      <p>Нажмите «Запустить» ниже: здесь два компонента, а третья функция <code>App</code> собирает их вместе. Поменяйте город или год в <code>Hero</code> и запустите ещё раз.</p>
+
+      <div class="playground" data-mode="react" data-title="Первые компоненты">
+<pre class="code" data-lang="jsx">
+function Header() {
+  return (
+    &lt;header className="header"&gt;
+      &lt;b&gt;Улыбка&lt;/b&gt;
+      &lt;span&gt;Душанбе&lt;/span&gt;
+    &lt;/header&gt;
+  );
+}
+
+function Hero() {
+  const city = "Душанбе";
+  const since = 2019;
+  return (
+    &lt;section className="hero"&gt;
+      &lt;h1&gt;Стоматология в городе {city}&lt;/h1&gt;
+      &lt;p&gt;Лет на рынке: {2026 - since}&lt;/p&gt;
+    &lt;/section&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;&gt;
+      &lt;Header /&gt;
+      &lt;Hero /&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.header { display: flex; justify-content: space-between; padding: 10px 14px; border-bottom: 2px solid #0284c7; }
+.hero { padding: 24px 14px; background: #e0f2fe; border-radius: 10px; margin-top: 10px; }
+.hero h1 { margin: 0 0 6px; font-size: 22px; }
+.hero p { margin: 0; }
+</pre>
+      </div>
+
+      <h3>Четыре правила JSX</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Правило</th><th>Неверно</th><th>Верно</th></tr></thead>
+          <tbody>
+            <tr><td><b>1.</b> Один корневой элемент: всё оборачивается в один тег или в пустую обёртку <code>&lt;&gt;…&lt;/&gt;</code></td><td><code>&lt;h1&gt;…&lt;/h1&gt;&lt;p&gt;…&lt;/p&gt;</code></td><td><code>&lt;&gt;&lt;h1&gt;…&lt;/h1&gt;&lt;p&gt;…&lt;/p&gt;&lt;/&gt;</code></td></tr>
+            <tr><td><b>2.</b> Каждый тег закрыт: у «одиночных» тегов ставят слэш в конце</td><td><code>&lt;input&gt;</code>, <code>&lt;br&gt;</code></td><td><code>&lt;input /&gt;</code>, <code>&lt;br /&gt;</code></td></tr>
+            <tr><td><b>3.</b> Атрибуты пишутся иначе: <code>class</code> становится <code>className</code>, составные имена — через camelCase</td><td><code>class="btn"</code></td><td><code>className="btn"</code></td></tr>
+            <tr><td><b>4.</b> Значения из JavaScript вставляются в фигурных скобках <code>{…}</code></td><td><code>&lt;p&gt;city&lt;/p&gt;</code> (выведет слово «city»)</td><td><code>&lt;p&gt;{city}&lt;/p&gt;</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Внутри <code>{…}</code> можно писать любое выражение: переменную, расчёт <code>{2026 - since}</code>, вызов функции. А вот <b>имя компонента с маленькой буквы</b> — тоже ошибка: React решит, что <code>&lt;hero /&gt;</code> — это обычный HTML-тег, и ничего не покажет. Заглавная буква — это способ сказать «это мой компонент».</p>
+
+      <div class="callout tip">
+        <b>Где компонент должен жить</b>
+        <p>Объявляйте каждый компонент на «верхнем уровне» файла, а не внутри другого компонента: React предупреждает, что вложенное объявление работает медленно и приводит к странным багам. Если ИИ написал функцию-компонент внутри другой функции-компонента, попросите вынести её наружу.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Компонент — как кирпич из одной и той же формы на кирпичном заводе под Душанбе: у каждого одинаковый размер, поэтому из них можно строить любую стену. Страница — стена, а <code>&lt;Hero /&gt;</code> — слово на чертеже «положи сюда кирпич Hero». Чертёж короткий и читается за минуту, а сложность спрятана внутри кирпичей.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Вернуть из компонента два соседних тега без общей обёртки (ошибка «Adjacent JSX elements must be wrapped…»). <b>2.</b> Забыть слэш у <code>&lt;input&gt;</code>, <code>&lt;img&gt;</code>, <code>&lt;br&gt;</code>. <b>3.</b> Написать <code>class</code> вместо <code>className</code>: React в консоли браузера покажет предупреждение, а при сборке проекта строгий линтер может остановить публикацию. <b>4.</b> Назвать компонент с маленькой буквы или назвать файл <code>hero.tsx</code>, а импортировать <code>Hero.tsx</code>: на сервере Vercel регистр букв в именах файлов важен. <b>5.</b> Написать <code>{city}</code> без скобок или, наоборот, поставить скобки вокруг обычного текста.</p>
+      </div>
+
+      <article class="task" id="jsx-fix">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Починить разметку</h4><span class="level mid">средняя</span></header>
+        <p>В этом файле три ошибки JSX, как после неудачного ответа ИИ: компонент вернул два корня, у поля ввода нет закрывающего слэша, и один компонент подключён с маленькой буквы. Исправьте их и запустите. Блок «ПРОВЕРКА» внизу не трогайте: после отрисовки он печатает в консоль, что получилось на странице.</p>
+        <div class="playground" data-mode="react" data-title="Починить разметку">
+<pre class="code" data-lang="jsx">
+import { useEffect } from "react";
+
+function Header() {
+  return (
+    &lt;h1&gt;Стоматология «Улыбка»&lt;/h1&gt;
+    &lt;p&gt;Душанбе, проспект Рудаки&lt;/p&gt;
+  );
+}
+
+function Hero() {
+  return (
+    &lt;section&gt;
+      &lt;h2&gt;Запись на приём&lt;/h2&gt;
+      &lt;input placeholder="Телефон"&gt;
+    &lt;/section&gt;
+  );
+}
+
+function Contacts() {
+  return &lt;section&gt;Работаем ежедневно с 9:00 до 18:00&lt;/section&gt;;
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const root = document.getElementById("root");
+    console.log("Заголовок: " + root.querySelector("h1")?.textContent);
+    console.log("Полей ввода: " + root.querySelectorAll("input").length);
+    console.log("Секций: " + root.querySelectorAll("section").length);
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;&gt;
+      &lt;Header /&gt;
+      &lt;Hero /&gt;
+      &lt;contacts /&gt;
+      &lt;Report /&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Заголовок: Стоматология «Улыбка»
+Полей ввода: 1
+Секций: 2</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Сообщение об ошибке подскажет строку. Сначала исправьте <code>Header</code>: два соседних тега нужно обернуть, например в <code>&lt;&gt;…&lt;/&gt;</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Второй пункт: <code>&lt;input placeholder="Телефон" /&gt;</code>. Третий: компонент объявлен как <code>Contacts</code>, значит и вызывать его нужно <code>&lt;Contacts /&gt;</code>.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/writing-markup-with-jsx" target="_blank" rel="noopener">React: разметка в JSX</a> и <a href="https://react.dev/learn/javascript-in-jsx-with-curly-braces" target="_blank" rel="noopener">JavaScript в JSX с фигурными скобками</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · Props ============ -->
+    <section class="topic" id="props">
+      <h2 data-toc="Props"><span class="num">04</span> Props: как одна карточка показывает разные данные</h2>
+
+      <p>Пока ваши компоненты показывают всегда один и тот же текст. Чтобы одна карточка могла быть и «Чисткой зубов за 200», и «Пломбой за 350», ей нужно передавать данные. Эти данные называются <b>props</b> (от properties, «свойства»). Передают их так же, как атрибуты у HTML-тега, а внутри компонента они приходят как <b>входные параметры функции</b>, — вы уже умеете их читать из раздела 2.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Схема: родитель Services передаёт в карточку Card props title и price, а карточка Card рисует их в разметке; три вызова с разными данными дают три разные карточки">
+          <rect class="box o" x="12" y="14" width="330" height="108" rx="12" /><text class="mono t-o" x="28" y="38">Services (родитель)</text>
+          <text class="mono" x="28" y="62" style="font-size:12px">&lt;Card title="Чистка" price={200} /&gt;</text>
+          <text class="mono" x="28" y="82" style="font-size:12px">&lt;Card title="Пломба" price={350} /&gt;</text>
+          <text class="mono" x="28" y="102" style="font-size:12px">&lt;Card title="Отбеливание" price={900} /&gt;</text>
+          <path class="arr" d="M342 68 H398" /><path class="arr-head" d="M394 62l12 6-12 6z" />
+          <text class="sub" x="370" y="54" text-anchor="middle">props</text>
+          <rect class="box g" x="406" y="14" width="302" height="108" rx="12" /><text class="mono t-g" x="422" y="38">Card (один шаблон)</text>
+          <text class="mono" x="422" y="62" style="font-size:12px">function Card({ title, price }) {</text>
+          <text class="mono" x="422" y="82" style="font-size:12px">  return &lt;h3&gt;{title}&lt;/h3&gt;…{price}</text>
+          <text class="mono" x="422" y="102" style="font-size:12px">}</text>
+          <rect class="fill-y" x="40" y="160" width="190" height="66" rx="10" /><text x="135" y="188" text-anchor="middle">Чистка</text><text class="sub" x="135" y="208" text-anchor="middle">200 сомони</text>
+          <rect class="fill-y" x="266" y="160" width="190" height="66" rx="10" /><text x="361" y="188" text-anchor="middle">Пломба</text><text class="sub" x="361" y="208" text-anchor="middle">350 сомони</text>
+          <rect class="fill-y" x="492" y="160" width="190" height="66" rx="10" /><text x="587" y="188" text-anchor="middle">Отбеливание</text><text class="sub" x="587" y="208" text-anchor="middle">900 сомони</text>
+          <path class="arr" d="M557 122 V152" /><path class="arr-head" d="M551 148l6 12 6-12z" />
+          <text class="sub" x="360" y="252" text-anchor="middle">Один шаблон, разные данные: результат — три карточки на экране</text>
+        </svg>
+        <figcaption>Props летят сверху вниз: от родителя к дочернему компоненту</figcaption>
+      </figure>
+
+      <h3>Как это выглядит в коде</h3>
+<pre class="code" data-lang="jsx" data-title="Card и его вызов">
+function Card({ title, price }) {
+  return (
+    &lt;div className="card"&gt;
+      &lt;h3&gt;{title}&lt;/h3&gt;
+      &lt;p&gt;{price} сомони&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+&lt;Card title="Чистка зубов" price={200} /&gt;
+</pre>
+
+      <ul>
+        <li><b>Строку</b> передают в кавычках: <code>title="Пломба"</code>. <b>Число, массив, объект, функцию</b> — в фигурных скобках: <code>price={200}</code>. Если написать <code>price="200"</code>, вместо числа придёт строка.</li>
+        <li><code>{ title, price }</code> в скобках функции — та самая деструктуризация из раздела 2: «возьми из входящего объекта эти два поля».</li>
+        <li><b>Значение по умолчанию</b> задают знаком равно: <code>{ title, price = 0 }</code>. Оно сработает, если prop не передали.</li>
+        <li><b>Props только читают.</b> Менять их внутри компонента нельзя: данные принадлежат родителю. (Как менять данные, узнаем в уроке 8.)</li>
+        <li>Особый prop <b><code>children</code></b> — всё, что вы положили между открывающим и закрывающим тегом компонента: <code>&lt;Card&gt;любой текст или разметка&lt;/Card&gt;</code>. Так делают обёртки — например, рамку для любых блоков.</li>
+      </ul>
+
+<pre class="code" data-lang="jsx" data-title="children: карточка-обёртка">
+function Box({ children }) {
+  return &lt;div className="box"&gt;{children}&lt;/div&gt;;
+}
+
+&lt;Box&gt;
+  &lt;h3&gt;Акция&lt;/h3&gt;
+  &lt;p&gt;Скидка 10% до конца месяца&lt;/p&gt;
+&lt;/Box&gt;
+</pre>
+
+      <div class="yt" data-id="jtC_gyCIVdU" data-title="Props в React. Что такое пропсы и зачем нужен children — канал Friendly Frontend"></div>
+      <p class="muted">Ролик на русском: те же props на другом примере. Если встретите в нём состояние или хуки, пока пропускайте — вернёмся в уроке 8.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Props — как бланк заказа в чойхоне. Бланк одинаковый: «блюдо», «количество», «столик». Официант заполняет его по-разному для каждого гостя, а повар читает один и тот же формат и готовит нужное. Повар не вычёркивает и не переписывает чужой заказ: он его только читает, и поэтому в кухне нет путаницы. Так и props: родитель заполняет, компонент читает.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Опечатка в имени prop: передали <code>titel</code>, а читаете <code>title</code>, получаете пустое место, потому что значение <code>undefined</code>. <b>2.</b> Забыли фигурные скобки в параметрах: <code>function Card(title, price)</code> вместо <code>function Card({ title, price })</code>. <b>3.</b> Передали число строкой <code>price="200"</code>. <b>4.</b> Пытаетесь изменить prop внутри компонента. <b>5.</b> Передали целый объект и пытаетесь вывести его как текст: React ответит «Objects are not valid as a React child». Выводите поле: <code>{service.title}</code>. <b>6.</b> Копируете карточку три раза вместо того, чтобы вызвать один компонент с разными props.</p>
+      </div>
+
+      <article class="task" id="card-props">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Универсальная карточка</h4><span class="level mid">средняя</span></header>
+        <p>Сейчас карточка <code>ServiceCard</code> всегда показывает «Название» и «Цена», а на странице она вызвана трижды. Сделайте её универсальной: пусть принимает props <code>title</code> и <code>price</code> и показывает цену в виде «200 сомони». Передайте в три вызова: Чистка зубов — 200, Пломба — 350, Отбеливание — 900. Блок «ПРОВЕРКА» не меняйте.</p>
+        <div class="playground" data-mode="react" data-title="Универсальная карточка">
+<pre class="code" data-lang="jsx">
+import { useEffect } from "react";
+
+function ServiceCard() {
+  return (
+    &lt;div className="card"&gt;
+      &lt;h3&gt;Название&lt;/h3&gt;
+      &lt;p&gt;Цена&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    document.querySelectorAll(".card").forEach((card) =&gt; {
+      console.log(card.querySelector("h3").textContent + " | " + card.querySelector("p").textContent);
+    });
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;div className="grid"&gt;
+      &lt;ServiceCard /&gt;
+      &lt;ServiceCard /&gt;
+      &lt;ServiceCard /&gt;
+      &lt;Report /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.card { border: 2px solid #0284c7; border-radius: 12px; padding: 12px; background: #f0f9ff; }
+.card h3 { margin: 0 0 4px; font-size: 16px; }
+.card p { margin: 0; color: #075985; font-weight: 700; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Чистка зубов | 200 сомони
+Пломба | 350 сомони
+Отбеливание | 900 сомони</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Три шага: добавьте в параметры <code>{ title, price }</code>; вместо слов «Название» и «Цена» подставьте <code>{title}</code> и <code>{price} сомони</code>; в каждом вызове передайте значения.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;ServiceCard title="Чистка зубов" price={200} /&gt;</code>. Название — в кавычках, число — в фигурных скобках.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/passing-props-to-a-component" target="_blank" rel="noopener">React: передача props в компонент</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · Списки ============ -->
+    <section class="topic" id="lists">
+      <h2 data-toc="Списки и map"><span class="num">05</span> Данные в массиве и map: карточки сами появляются из списка</h2>
+
+      <p>Даже с props три вызова <code>&lt;ServiceCard … /&gt;</code> выглядят повторением. А если услуг десять, а завтра будет двенадцать? Ещё удобнее вынести данные в <b>массив объектов</b> и пусть React сам нарисует по карточке на каждый элемент. Данные отдельно, вёрстка отдельно: чтобы добавить услугу, вы добавляете одну строку в массив, а страница обновляется сама. Именно такой формат ИИ выберет по умолчанию, и именно его просит домашнее задание.</p>
+
+      <p>Нужный инструмент — метод массива <b><code>map</code></b>. Он берёт каждый элемент списка, превращает его с помощью вашей стрелочной функции во что-то новое и собирает результаты в новый массив той же длины. Сначала попробуем на обычных строках.</p>
+
+<pre class="code" data-run data-title="map превращает массив в массив">
+const services = [
+  { title: "Чистка", price: 200 },
+  { title: "Пломба", price: 350 },
+];
+
+const titles = services.map((service) => service.title);
+console.log(titles);                 // ["Чистка", "Пломба"]
+
+const lines = services.map((service) => `${service.title} — ${service.price} сомони`);
+console.log(lines.join("\n"));       // join склеивает элементы в одну строку
+</pre>
+
+      <article class="task" id="map-console">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>map: названия и подписи</h4><span class="level mid">средняя</span></header>
+        <p>Из массива <code>services</code> получите массив названий и выведите его через запятую. Затем получите массив подписей вида «Чистка — 200 сомони» и выведите их по строке.</p>
+<pre class="code" data-run>
+const services = [
+  { title: "Чистка", price: 200 },
+  { title: "Пломба", price: 350 },
+  { title: "Отбеливание", price: 900 },
+];
+
+// 1. titles — массив названий; выведите titles.join(", ")
+
+// 2. lines — массив подписей "Чистка — 200 сомони"; выведите lines.join("\n")
+
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Чистка, Пломба, Отбеливание
+Чистка — 200 сомони
+Пломба — 350 сомони
+Отбеливание — 900 сомони</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p><code>const titles = services.map((service) =&gt; service.title);</code>, а затем <code>console.log(titles.join(", "));</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Для подписей функция внутри <code>map</code> возвращает шаблонную строку: <code>`${service.title} — ${service.price} сомони`</code>. Разделитель в <code>join</code> для строк — символ переноса <code>"\n"</code>.</p></details>
+      </article>
+
+      <h3>map внутри JSX и ключ key</h3>
+      <p>В React <code>map</code> возвращает не строки, а <b>JSX</b>: на каждый элемент данных — один компонент. Результат вставляют в фигурные скобки прямо в разметке. К каждому элементу списка нужно добавить prop <b><code>key</code></b>: уникальную «метку», по которой React узнаёт, какая карточка какая, когда список меняется.</p>
+
+<pre class="code" data-lang="jsx" data-title="Список карточек из массива">
+const services = [
+  { id: 1, title: "Чистка зубов", price: 200 },
+  { id: 2, title: "Пломба", price: 350 },
+];
+
+export default function Services() {
+  return (
+    &lt;div className="grid"&gt;
+      {services.map((service) =&gt; (
+        &lt;ServiceCard key={service.id} title={service.title} price={service.price} /&gt;
+      ))}
+    &lt;/div&gt;
+  );
+}
+</pre>
+
+      <ul>
+        <li>Круглые скобки после стрелки <code>=&gt; (</code> — чтобы вернуть многострочную разметку. Если вместо них стоят фигурные скобки <code>=&gt; {</code>, слово <code>return</code> нужно написать самому.</li>
+        <li><code>key</code> ставят на <b>внешний элемент внутри <code>map</code></b>, то есть на сам <code>&lt;ServiceCard /&gt;</code>. Внутрь компонента он не передаётся, это служебная метка для React.</li>
+        <li>Ключ должен быть <b>уникальным среди соседей и стабильным</b>: идентификатор из данных (<code>id</code>) подходит; <code>Math.random()</code> — нет. Номер элемента (<code>index</code>) годится только для списка, который никогда не переставляют и не удаляют из него.</li>
+        <li>Без <code>key</code> React выводит в консоль браузера предупреждение «Each child in a list should have a unique "key" prop». Страница при этом может работать, но предупреждение нельзя оставлять: оно говорит о настоящей проблеме с порядком элементов.</li>
+      </ul>
+
+      <article class="task" id="map-react">
+        <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Карточки из массива</h4><span class="level mid">средняя</span></header>
+        <p>Замените единственную карточку, вписанную вручную, на вывод через <code>map</code> с <code>key</code>. Затем добавьте в массив пятую услугу «Брекеты» за 1500 и убедитесь, что карточка появилась <b>без правки разметки</b>: это и есть смысл данных в массиве.</p>
+        <div class="playground" data-mode="react" data-title="Карточки из массива">
+<pre class="code" data-lang="jsx">
+import { useEffect } from "react";
+
+const services = [
+  { id: 1, title: "Чистка зубов", price: 200 },
+  { id: 2, title: "Пломба", price: 350 },
+  { id: 3, title: "Отбеливание", price: 900 },
+  { id: 4, title: "Осмотр", price: 100 },
+  // TODO: добавьте { id: 5, title: "Брекеты", price: 1500 }
+];
+
+function ServiceCard({ title, price }) {
+  return (
+    &lt;div className="card"&gt;
+      &lt;h3&gt;{title}&lt;/h3&gt;
+      &lt;p&gt;{price} сомони&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const cards = document.querySelectorAll(".card");
+    console.log("Карточек: " + cards.length);
+    cards.forEach((card) =&gt; console.log(card.querySelector("h3").textContent));
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;div className="grid"&gt;
+      {/* TODO: замените эту карточку на services.map(...) с key */}
+      &lt;ServiceCard title="Чистка зубов" price={200} /&gt;
+      &lt;Report /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.card { border: 2px solid #0284c7; border-radius: 12px; padding: 12px; background: #f0f9ff; }
+.card h3 { margin: 0 0 4px; font-size: 16px; }
+.card p { margin: 0; color: #075985; font-weight: 700; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Карточек: 5
+Чистка зубов
+Пломба
+Отбеливание
+Осмотр
+Брекеты</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Внутри <code>&lt;div className="grid"&gt;</code> поставьте <code>{services.map((service) =&gt; ( … ))}</code>, а в скобках — <code>&lt;ServiceCard … /&gt;</code> с полями <code>service.title</code> и <code>service.price</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;ServiceCard key={service.id} title={service.title} price={service.price} /&gt;</code>. Не забудьте оставить <code>&lt;Report /&gt;</code> на своём месте и поставить запятую после четвёртого элемента массива.</p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Массив с <code>map</code> — как меню на стене чойхоны и один бланк-шаблон. Хозяин вписывает в список новое блюдо, и на каждый пункт списка автоматически появляется готовая табличка по одному и тому же образцу. Переписывать табличку руками не нужно. А <code>key</code> — номер блюда в меню: по нему официант понимает, что «плов» в списке — это тот же плов, даже если вы поменяли порядок блюд.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Забыть <code>key</code> или поставить его не на тот элемент (внутрь компонента). <b>2.</b> Использовать <code>Math.random()</code> как ключ: при каждой отрисовке все карточки считаются новыми. <b>3.</b> Написать в <code>map</code> фигурные скобки, но не написать <code>return</code>: список окажется пустым. <b>4.</b> Выводить объект целиком: <code>{service}</code> вместо <code>{service.title}</code>. <b>5.</b> Копировать данные внутрь каждой карточки вместо одного массива: так добавлять новую услугу снова придётся в нескольких местах.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/rendering-lists" target="_blank" rel="noopener">React: отрисовка списков</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · Структура ============ -->
+    <section class="topic" id="structure">
+      <h2 data-toc="Структура папок"><span class="num">06</span> Структура проекта: где что лежит</h2>
+
+      <p>Теперь у каждого компонента будет свой файл. Чтобы в проекте не было свалки, договоримся о простых правилах. Next.js не навязывает строгую схему (в документации прямо сказано, что файлы можно хранить и внутри <code>app</code>, и снаружи), но для курса мы выбираем самую понятную: общие кирпичи лежат в папке <code>components</code> рядом с <code>app</code>.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Папка или файл</th><th>Что там лежит</th><th>Правило</th></tr></thead>
+          <tbody>
+            <tr><td><code>app/page.tsx</code></td><td>Главная страница</td><td>Только собирает кирпичи в нужном порядке: <code>&lt;Header /&gt; &lt;Hero /&gt; …</code>. Если файл разросся — пора выносить блок в компонент</td></tr>
+            <tr><td><code>components/</code></td><td>Компоненты: <code>Header.tsx</code>, <code>Hero.tsx</code>, <code>Services.tsx</code>, <code>Pricing.tsx</code>, <code>Footer.tsx</code>, <code>Card.tsx</code></td><td>Один файл — один главный компонент; имя файла совпадает с именем компонента и пишется с заглавной буквы</td></tr>
+            <tr><td><code>data/</code></td><td>Массивы с содержимым: <code>services.ts</code>, <code>pricing.ts</code></td><td>Тексты, цены и списки лежат отдельно от вёрстки. Расширение <code>.ts</code>, а не <code>.tsx</code>, потому что в файле нет разметки</td></tr>
+            <tr><td><code>public/</code></td><td>Картинки и иконки</td><td>Как на уроке 5: доступны по адресу <code>/имя-файла</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/07-react-basics/editor-tree.svg" alt="Схема окна редактора: слева дерево файлов с папкой components и файлами Header, Hero, Services, Pricing, Footer, Card; справа файл app/page.tsx из импортов и короткого списка компонентов внутри main" width="720" height="380" loading="lazy" decoding="async">
+        <figcaption>Так выглядит проект после разбиения: страница короткая, а каждый кирпич живёт в своём файле. Упрощённая схема, внешний вид редактора со временем меняется</figcaption>
+      </figure>
+
+      <p>Когда файлов станет больше десяти, их обычно делят на подпапки, например <code>components/ui</code> для мелких универсальных кирпичей (кнопка, карточка) и <code>components/sections</code> для крупных секций страницы. Если ИИ предложит такую схему, это нормально: главное — единообразие внутри проекта.</p>
+
+      <div class="callout tip">
+        <b>Две заметки на вырост</b>
+        <p><b>1.</b> Сегодня все наши компоненты только показывают данные. Как только появится «живое» поведение (нажатие кнопки, ввод в поле), в верхней строке файла понадобится директива <code>"use client"</code>. Если ИИ уже вставил её в файл с формой, оставьте как есть: зачем она нужна, разберём в уроке 8. <b>2.</b> Как из файлов в <code>app</code> получаются отдельные страницы сайта (<code>/about</code>, <code>/prices</code>), разберём в уроке 9. А сейчас вся наша работа — внутри одной страницы <code>app/page.tsx</code>.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Проект — как склад на оптовом рынке. На стеллаже «Кирпичи» лежат готовые детали (<code>components</code>), на стеллаже «Накладные» — списки товаров и цен (<code>data</code>), а в кабинете у начальника (<code>app/page.tsx</code>) лежит один чертёж: что и в каком порядке ставить. Если всё свалить в одну кучу, никто не найдёт нужное, а ИИ потратит полчаса на поиск.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Положить компонент не в ту папку, а в импорте указать другой путь: <code>Module not found: Can't resolve '@/components/Hero'</code>. Проверьте путь и регистр букв в имени файла. <b>2.</b> Забыть <code>export default</code> в файле компонента. Тогда React ответит: «Element type is invalid… You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports». <b>3.</b> Забыть импорт: <code>Hero is not defined</code>. <b>4.</b> Разложить по пяти файлам каждую мелочь на три строки: компонент нужен, когда кусок повторяется или логически отделён. <b>5.</b> Править файл в <code>node_modules</code> вместо своего компонента.</p>
+      </div>
+
+      <article class="task" id="q-components">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь себя: props, список, структура</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Вы вызвали <code>&lt;Card titel="Пломба" price={350} /&gt;</code>, а компонент объявлен как <code>function Card({ title, price })</code>. Что вы увидите на странице?</p>
+          <ol class="options">
+            <li>Карточка появится, но название будет пустым, потому что prop <code>title</code> не передан: имя с опечаткой не совпало</li>
+            <li>React сам исправит опечатку</li>
+            <li>Появится слово «Пломба», но без цены</li>
+            <li>Страница полностью исчезнет без сообщений</li>
+          </ol>
+          <div class="explain"><p>Props передаются по имени. Prop <code>titel</code> компонент не читает, а <code>title</code> не пришёл, поэтому значение <code>undefined</code>, и React ничего не выводит. В проекте на TypeScript ошибку заметит сборка: она скажет, что обязательный prop не передан.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Вы выводите карточки через <code>services.map(…)</code>. Какой <code>key</code> лучше всего?</p>
+          <ol class="options">
+            <li><code>Math.random()</code></li>
+            <li>Одинаковое слово «card» для всех</li>
+            <li>Уникальный <code>service.id</code> из данных</li>
+            <li>Ключ не нужен вообще</li>
+          </ol>
+          <div class="explain"><p>Ключ должен быть уникальным среди соседей и стабильным между отрисовками. Идентификатор из данных подходит; случайное число каждый раз новое, одинаковое слово не различает карточки, а без <code>key</code> React предупредит об ошибке.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Цены услуг понадобились в двух разных компонентах. Где их лучше хранить?</p>
+          <ol class="options">
+            <li>Скопировать цены в оба компонента</li>
+            <li>В одном массиве в отдельном файле (например, <code>data/services.ts</code>) и импортировать оттуда</li>
+            <li>В файле <code>package.json</code></li>
+            <li>В папке <code>node_modules</code></li>
+          </ol>
+          <div class="explain"><p>Один источник данных: изменили цену в массиве, и она поменялась везде, где её показывают. Копии цен рано или поздно разойдутся.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Страница падает с сообщением «Element type is invalid: expected a string … but got: undefined. You likely forgot to export your component». Что проверить первым делом?</p>
+          <ol class="options">
+            <li>Купить новый домен</li>
+            <li>Удалить папку <code>.next</code> и надеяться</li>
+            <li>Переустановить Cursor</li>
+            <li>Есть ли в файле компонента <code>export default</code> и совпадает ли способ импорта (без скобок для default, со скобками для именованного)</li>
+          </ol>
+          <div class="explain"><p>Сообщение прямо подсказывает причину: компонент не экспортирован или импорт не соответствует экспорту. Это самая частая ошибка после разбиения кода по файлам.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/project-structure" target="_blank" rel="noopener">Next.js: структура проекта и организация файлов</a> и <a href="https://react.dev/learn/importing-and-exporting-components" target="_blank" rel="noopener">React: импорт и экспорт компонентов</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 07 · ИИ-блок ============ -->
+    <section class="topic" id="ai-prompt">
+      <h2 data-toc="ИИ: промпты"><span class="num">07</span> ИИ-блок: как попросить разбить код на компоненты</h2>
+
+      <div class="callout ai">
+        <b>Правила рефакторинга с ИИ</b>
+        <p><b>1.</b> <b>Сначала сохраните работающую версию</b> (commit), потому что ИИ будет менять много файлов сразу. <b>2.</b> Просите сохранить внешний вид: «рефакторинг» означает менять устройство кода, а не картинку. <b>3.</b> Называйте компоненты и папки сами: ИИ тогда не придумает лишнего. <b>4.</b> Просите сначала план, а потом код, если задача большая. <b>5.</b> После правки открывайте результат в браузере и запускайте <code>npm run build</code>. <b>6.</b> Не принимайте код, который не можете объяснить хотя бы в общих чертах: просите пояснить. <b>7.</b> Правим в том же чате, а не начинаем сначала.</p>
+      </div>
+
+      <p>Формула промпта та же: <b>контекст → цель → ограничения → примеры → проверка</b>.</p>
+
+      <div class="prompt bad-prompt">разбей код на компоненты</div>
+
+      <div class="prompt good-prompt">Контекст: проект Next.js (App Router, TypeScript) с Tailwind CSS. Весь лендинг стоматологии «Улыбка» лежит в app/page.tsx, и страница уже работает.
+Цель: разбить страницу на компоненты, не меняя внешний вид и тексты. Создай в папке components/ файлы Header.tsx, Hero.tsx, Services.tsx, Pricing.tsx, Footer.tsx (если секции Pricing ещё нет, добавь её: 3 тарифа «Базовый», «Стандарт», «Премиум» с ценами в сомони). Универсальную карточку вынеси в components/Card.tsx: она принимает props title, price (число) и необязательный description. Services и Pricing должны использовать именно её. Данные услуг и тарифов вынеси в массивы в data/services.ts и data/pricing.ts (поля id, title, price) и выводи карточки через map с key=id.
+Ограничения: один файл — один компонент, export default; импорты только через алиас @/; только Tailwind-классы, без новых библиотек; app/page.tsx должен только импортировать компоненты и расставлять их по порядку. Если в форме заявки есть обработчик события, оставь там первую строку "use client" и не добавляй её в остальные файлы.
+Проверка: запусти npm run build и исправь ошибки. В конце перечисли созданные файлы и коротко (по одной строке) скажи, что в каждом лежит.</div>
+
+      <p>Чем сильный промпт лучше: названы файлы и папки, указаны props и формат данных, зафиксировано, что внешний вид нельзя менять, а проверка сборки ловит забытые экспорты и импорты.</p>
+
+      <h3>Правки и вопросы: короткие, по одной</h3>
+      <div class="prompt">Сначала только план: какие компоненты и файлы ты создашь и какие props будет принимать каждый. Код пока не пиши и ничего не меняй. Я отвечу «ок» или поправлю план.</div>
+      <div class="prompt">Добавь в components/Card.tsx необязательный prop highlight (true/false): если true, у карточки жирная рамка акцентного цвета. Используй его в Pricing для карточки «Стандарт». Остальное не меняй.</div>
+      <div class="prompt">Объясни простыми словами, как для новичка: как components/Services.tsx получает массив services, как работает services.map и зачем нужен key. Код не переписывай.</div>
+      <div class="prompt">В консоли браузера предупреждение: Each child in a list should have a unique "key" prop. Найди, где это, и исправь. Остальное не меняй.</div>
+
+      <div class="callout warn">
+        <b>За чем следить в ответах ИИ</b>
+        <p><b>1.</b> Слишком мелкое дробление: двадцать файлов по три строки. Скажите: «объедини всё, что используется один раз, обратно». <b>2.</b> Компоненты, объявленные внутри других компонентов: просите вынести на верхний уровень файла. <b>3.</b> Ненужные библиотеки в <code>package.json</code>. <b>4.</b> Тип <code>any</code> в подписях: он отключает проверку. Если увидели, попросите описать типы точнее. <b>5.</b> «Заодно» переписанный дизайн: вы просили структуру, а не новые цвета.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://cursor.com/docs" target="_blank" rel="noopener">документация Cursor</a> и <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">React: мыслим компонентами</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 08 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: компоненты"><span class="num">08</span> Практика: превращаем лендинг в набор компонентов</h2>
+
+      <p>Берём лендинг стоматологии из урока 5 (или свой проект) и разбираем его на кирпичи вместе с ИИ. Делайте по шагам и после каждого смотрите на страницу: внешний вид <b>не должен</b> меняться, пока вы только переносите код.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/07-react-basics/constructor.svg" alt="Схема: три лендинга (стоматология, кофейня, курсы английского) собраны из одних и тех же блоков Header, Hero, Services, Pricing, Footer, отличаются только данные и цвет" width="720" height="340" loading="lazy" decoding="async">
+        <figcaption>К чему мы идём: набор кирпичей, из которого можно собрать несколько разных сайтов. Это пригодится в «Компонентном конструкторе» ниже</figcaption>
+      </figure>
+
+      <h3>Шаг 0. Подготовка</h3>
+      <ol class="steps">
+        <li><b>Откройте проект</b> <code>dental-landing</code> в Cursor и запустите <code>npm run dev</code> в терминале. Страница на <code>localhost:3000</code> должна открываться.</li>
+        <li><b>Сохраните рабочую версию.</b> Остановите dev-сервер или откройте второй терминал и выполните:
+<pre class="code" data-title="Терминал">git add .
+git commit -m "before components"</pre>
+          Если Git пишет «nothing to commit», изменений нет, всё уже сохранено.</li>
+        <li><b>Посчитайте «кирпичи» на своей странице глазами:</b> какие блоки повторяются (карточки услуг, врачей, отзывов) и какие целые секции есть. Запишите список в заметки: он пригодится для проверки.</li>
+      </ol>
+
+      <h3>Шаг за шагом</h3>
+      <ol class="steps">
+        <li><b>Запросите план.</b> Откройте чат Cursor в режиме Agent и отправьте промпт «Сначала только план» из раздела 7. Прочитайте список файлов и props. Если ИИ предлагает больше семи-восьми файлов, попросите объединить мелочь.</li>
+        <li><b>Отправьте основной промпт</b> из раздела 7 (кнопка «Копировать»). Названия компаний и услуг замените на свои, если проект другой. Если Cursor просит разрешения запустить команду, прочитайте её: нужны только знакомые <code>npm run build</code> и <code>npm run lint</code>.</li>
+        <li><b>Откройте папку <code>components</code> в панели файлов.</b> Там должны появиться <code>Header.tsx</code>, <code>Hero.tsx</code>, <code>Services.tsx</code>, <code>Pricing.tsx</code>, <code>Footer.tsx</code> и <code>Card.tsx</code>. В папке <code>data</code> — массивы с услугами и тарифами.</li>
+        <li><b>Откройте <code>app/page.tsx</code>.</b> Он стал коротким: несколько строк <code>import</code> и список компонентов внутри <code>&lt;main&gt;</code>. Если там всё ещё сотни строк вёрстки, напишите ИИ: «Вынеси оставшиеся блоки в компоненты, page.tsx должен только собирать».</li>
+        <li><b>Откройте <code>components/Card.tsx</code>.</b> Найдите в первой строке функции деструктуризацию <code>{ title, price, … }</code> и покажите пальцем, где prop используется в разметке. Если не получается, отправьте ИИ вопрос-объяснение из раздела 7.</li>
+        <li><b>Сравните страницу с версией «до».</b> Обновите <code>localhost:3000</code>: страница выглядит так же, как раньше? Проверьте узкое окно (390 px, как в уроках 3 и 5) и откройте консоль браузера (F12 → Console): нет ли красных ошибок и предупреждения про <code>key</code>.</li>
+        <li><b>Проверьте «кирпичность» руками.</b> Откройте <code>data/services.ts</code> и поменяйте цену и название одной услуги. Затем добавьте четвёртую (скопируйте строку, поменяйте <code>id</code>, текст и цену). Страница должна обновиться сама, а разметку вы не трогали. Теперь откройте <code>Card.tsx</code> и измените одно Tailwind-свойство, например <code>rounded-xl</code> на <code>rounded-3xl</code>: поменялись все карточки на странице.</li>
+        <li><b>Проверьте сборку:</b> <code>npm run build</code>. Если есть красные строки, скопируйте блок целиком и отправьте ИИ (как в уроке 5).</li>
+        <li><b>Сохраните и отправьте на GitHub:</b>
+<pre class="code" data-title="Терминал">git add .
+git commit -m "split landing into components"
+git push</pre>
+          Через минуту-две Vercel обновит сайт: откройте ссылку <code>….vercel.app</code> и убедитесь, что она выглядит так же.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось на этом этапе</b>
+        <p><b><code>Module not found: Can't resolve '@/components/Hero'</code>.</b> Файла нет по этому пути или он назван иначе, чем в импорте. Сравните имя файла и строку импорта буква в букву, включая регистр: на Vercel <code>Hero.tsx</code> и <code>hero.tsx</code> — разные файлы.</p>
+        <p><b><code>Element type is invalid: expected a string … but got: undefined</code>.</b> В файле компонента нет <code>export default</code> или импорт не соответствует экспорту. Отправьте ИИ имя файла и сообщение.</p>
+        <p><b><code>Each child in a list should have a unique "key" prop</code>.</b> В <code>map</code> не хватает <code>key={…}</code> на внешнем элементе. Попросите ИИ добавить <code>key</code> по <code>id</code>.</p>
+        <p><b><code>Objects are not valid as a React child</code>.</b> Вместо поля вы вывели объект целиком: в разметке должно быть <code>{service.title}</code>, а не <code>{service}</code>.</p>
+        <p><b>Ошибка типов, например «Property 'price' is missing in type …».</b> В вызове карточки не передан обязательный prop или передан не того типа. Скопируйте ошибку целиком вместе с путём файла и отправьте ИИ.</p>
+        <p><b>Страница выглядит иначе, чем до разбиения.</b> ИИ мог «заодно» поменять дизайн. Верните версию командой <code>git restore .</code> (она отменяет все несохранённые изменения, будьте осторожны) и повторите промпт с жёстким «внешний вид не менять».</p>
+      </div>
+
+      <article class="task" id="cl-practice-task">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: лендинг на компонентах</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-practice">
+          <li>Перед разбиением сделан commit рабочей версии</li>
+          <li>В папке <code>components</code> лежат Header, Hero, Services, Pricing, Footer и универсальная Card</li>
+          <li>Файл <code>app/page.tsx</code> только импортирует компоненты и расставляет их по порядку</li>
+          <li>Данные услуг и тарифов лежат в массивах (<code>data/</code>), а карточки выводятся через <code>map</code> с <code>key</code></li>
+          <li>Я могу показать в <code>Card.tsx</code>, где объявлены props и где они используются в разметке</li>
+          <li>Внешний вид страницы не изменился, в консоли браузера нет красных ошибок</li>
+          <li>После правки одной цены в массиве страница обновилась без правок разметки</li>
+          <li><code>npm run build</code> проходит, commit и push сделаны, сайт на Vercel обновился</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ 09 · Фишка ============ -->
+    <section class="topic" id="challenge">
+      <h2 data-toc="«Компонентный конструктор»"><span class="num">09</span> Фишка урока: «Компонентный конструктор»</h2>
+
+      <p>Настоящая сила компонентов видна, когда из <b>одних и тех же кирпичей</b> собираются совсем разные сайты. В «Компонентном конструкторе» участники за один вечер делают три разных лендинга (например, стоматология, кофейня и курсы английского) и при этом <b>не копируют ни одного компонента</b>: отличаются только данные и несколько props. Блок рассчитан на преподавателя и подходит для самостоятельного вечера.</p>
+
+      <div class="callout tip">
+        <b>Правила</b>
+        <p><b>1.</b> Исходные кирпичи — ваши Header, Hero, Services, Pricing, Footer и Card из практики. <b>2.</b> Нужно три лендинга на трёх адресах одного проекта: главная <code>/</code> и две новые страницы. Страницу в Next.js создаёт папка с файлом <code>page.tsx</code>: например, <code>app/cafe/page.tsx</code> откроется по адресу <code>/cafe</code>. Как это работает, разберём в уроке 9: пока просто попросите ИИ создать их. <b>3.</b> У каждого лендинга свои данные (массивы) и тексты, а компоненты общие. Меняться могут только props: заголовок, цвет акцента, список услуг. <b>4.</b> Копировать компонент и переименовывать его нельзя. Если кирпичу чего-то не хватает, добавьте ему prop. <b>5.</b> Код руками не пишете: вы описываете задачу ИИ и проверяете результат. <b>6.</b> Результат — одна живая ссылка на Vercel с тремя адресами.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Подсказка про цвет</b>
+        <p>Чтобы кирпич менял акцентный цвет, передайте ему prop с <b>полным названием класса</b> Tailwind: <code>accent="bg-amber-600"</code>. Нельзя собирать класс из частей вроде <code>bg-${color}-600</code>: Tailwind ищет в коде только целые имена классов и не создаст стиль для «склеенного» названия.</p>
+      </div>
+
+      <h3>Расписание вечера (около 2 часов)</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:10</td><td>Выбирают два новых бизнеса и для каждого записывают 3–4 услуги, цены и акцентный цвет</td></tr>
+            <tr><td>0:10–0:20</td><td>Описывают ИИ задачу по формуле промпта: контекст, цель, ограничения</td></tr>
+            <tr><td>0:20–1:20</td><td>Сборка: сначала данные, потом props для цвета и заголовков, потом страницы <code>/cafe</code> и <code>/school</code></td></tr>
+            <tr><td>1:20–1:35</td><td>Commit, push, проверка на Vercel и на телефоне</td></tr>
+            <tr><td>1:35–2:05</td><td>«Галерея»: показ трёх адресов, подсчёт очков, голосование</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Шаблон промпта для конструктора</h3>
+      <div class="prompt good-prompt">Контекст: проект Next.js (App Router, TypeScript) + Tailwind. В components/ уже есть Header, Hero, Services, Pricing, Footer и Card, данные лежат в data/. Главная страница app/page.tsx — лендинг стоматологии.
+Цель: добавить две новые страницы из тех же компонентов: app/cafe/page.tsx (кофейня «[ИМЯ]») и app/school/page.tsx (курсы английского «[ИМЯ]»). Для каждой — свой файл данных в data/ ([ПЕРЕЧИСЛИТЕ УСЛУГИ И ЦЕНЫ В СОМОНИ]).
+Ограничения: не копируй и не переименовывай компоненты; если компоненту не хватает настройки, добавь ему необязательный prop (например accent с полным названием Tailwind-класса вроде "bg-amber-600" и заголовок). Внешний вид главной страницы не меняй. Только Tailwind, без новых библиотек.
+Проверка: запусти npm run build; в конце перечисли, какие файлы созданы и какие props добавлены.</div>
+
+      <h3>Как считаем очки</h3>
+      <ul>
+        <li><b>+2</b> за каждый компонент, который используется на всех трёх страницах без копий (максимум 12).</li>
+        <li><b>+3</b> за каждый добавленный универсальный prop (цвет, заголовок), который реально используется.</li>
+        <li><b>−3</b> за каждую копию компонента с другим названием (<code>Hero2</code>, <code>CafeHero</code>).</li>
+        <li><b>+5</b> за лендинг, на котором при добавлении одной строки в массив сразу появляется новая карточка.</li>
+        <li><b>+5</b> голос группы за самый непохожий внешне результат при общих кирпичах.</li>
+      </ul>
+
+      <h3>Мини-оценка работы соседа</h3>
+      <ul class="checklist" id="cl-peer">
+        <li>Открываются три адреса, и у каждого свой цвет, заголовок и список услуг</li>
+        <li>В папке <code>components</code> нет копий вроде <code>Hero2.tsx</code> или <code>CafeHero.tsx</code></li>
+        <li>Данные лежат в массивах, а карточки выводятся через <code>map</code></li>
+        <li>Главная страница стоматологии осталась без изменений</li>
+        <li>На телефоне ничего не вылезает за край</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Для преподавателя</b>
+        <p>Покажите на проекторе файл <code>components/Hero.tsx</code> и три адреса рядом: «один файл, три сайта». Если у кого-то не получились новые страницы, не останавливайте таймер: пусть соседи вместе читают ошибку в терминале и вспоминают раздел «Если сломалось». Победителя попросите назвать, какой prop дал самый большой выигрыш.</p>
+      </div>
+    </section>
+
+    <!-- ============ Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">10</span> Домашнее задание: свой лендинг на компонентах (ДЗ-7)</h2>
+
+      <p>Переведите <b>свой</b> лендинг (это может быть проект из урока 5, «Клон-дня» или новый) на компоненты и вынесите данные в массивы. Результат сдаётся двумя ссылками: на репозиторий GitHub и на опубликованный сайт на Vercel.</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Компоненты:</b> в папке <code>components</code> минимум пять: Header, Hero, Services, Pricing (или другая секция с карточками), Footer, а также универсальная карточка <code>Card</code>.</li>
+        <li><b>Универсальность:</b> <code>Card</code> принимает props и используется минимум в двух разных секциях.</li>
+        <li><b>Данные в массивах:</b> услуги и тарифы лежат в массивах (минимум по 3 элемента в каждом, у каждого есть <code>id</code>), карточки выводятся через <code>map</code> с <code>key</code>.</li>
+        <li><b>Короткая страница:</b> <code>app/page.tsx</code> только импортирует компоненты и расставляет их по порядку, без длинной вёрстки.</li>
+        <li><b>Порядок:</b> в консоли браузера нет красных ошибок и предупреждения про <code>key</code>, <code>npm run build</code> проходит.</li>
+        <li><b>Публикация:</b> в репозитории на GitHub видна история минимум из двух commit, сайт открывается по ссылке <code>….vercel.app</code>.</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li><b>Сделайте commit</b> рабочей версии, затем разбейте проект на компоненты по промпту из раздела 7 (подставьте свои названия).</li>
+        <li><b>Проверьте руками:</b> поменяйте цену в массиве, добавьте элемент, измените стиль в <code>Card.tsx</code>: страница должна обновляться без правки вёрстки секций.</li>
+        <li><b>Запустите <code>npm run build</code></b> и убедитесь, что ошибок нет, а в консоли браузера чисто.</li>
+        <li><b>Commit и push</b> на GitHub, дождитесь обновления Vercel и проверьте сайт на телефоне.</li>
+        <li><b>Сдайте две ссылки</b> в полях ниже: сначала GitHub, затем Vercel.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Карточка не универсальна: в каждой секции своя копия с похожим названием. <b>2.</b> Массив есть, но карточки всё равно вписаны вручную. <b>3.</b> Забыли <code>key</code> и не заметили предупреждение в консоли. <b>4.</b> Неотправленный последний push: на Vercel старая версия. <b>5.</b> Ссылка на <code>localhost</code> или на профиль GitHub вместо репозитория. <b>6.</b> Приватный репозиторий: проверяющий его не увидит. <b>7.</b> Настоящие телефоны и адреса в данных.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Чек-лист требований к ДЗ-7</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>В <code>components</code> есть Header, Hero, Services, Pricing (или секция с карточками), Footer и Card</li>
+          <li><code>Card</code> принимает props и используется минимум в двух секциях</li>
+          <li>Услуги и тарифы лежат в массивах (не меньше трёх элементов, у каждого есть <code>id</code>), карточки выводятся через <code>map</code> с <code>key</code></li>
+          <li><code>app/page.tsx</code> короткий: импорты и расстановка компонентов</li>
+          <li>В консоли браузера нет красных ошибок и предупреждений про <code>key</code></li>
+          <li><code>npm run build</code> проходит без ошибок</li>
+          <li>На GitHub не меньше двух commit, репозиторий открывается без входа в аккаунт</li>
+          <li>Ссылка Vercel открывается в режиме инкогнито и показывает последнюю версию</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 10.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий проекта вида <code>https://github.com/ваш-логин/dental-landing</code>. Откройте её в режиме инкогнито: код и папка <code>components</code> должны быть видны.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dental-landing"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 10.3</span><h4>Сдача: ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте адрес опубликованного сайта вида <code>https://dental-landing-….vercel.app</code>. Откройте его на телефоне: страница должна выглядеть так же, как до разбиения на компоненты.</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://dental-landing.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">React: мыслим компонентами</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>React:</b> интерфейс собирается из компонентов-«кирпичей»; Next.js — фреймворк на основе React. <b>.tsx</b> = JSX + типы TypeScript; ошибки типов копируем целиком и отправляем ИИ.</li>
+        <li><b>JS-минимум:</b> <code>const x = 5;</code> — переменная; <code>"текст"</code> и <code>5</code> — строка и число; <code>`${a} и ${b}`</code> — шаблонная строка; <code>[1, 2]</code> — массив (счёт с нуля, <code>.length</code>); <code>{ key: value }</code> — объект, поле через точку; <code>const { a, b } = obj;</code> — деструктуризация.</li>
+        <li><b>Функции:</b> <code>function f(x) { return … }</code> и <code>const f = (x) =&gt; …</code>; <code>return</code> возвращает значение, <code>console.log</code> только печатает.</li>
+        <li><b>import / export:</b> <code>export default</code> → <code>import Name from "…"</code> (без скобок); <code>export const x</code> → <code>import { x } from "…"</code>; <code>@/</code> — от корня проекта.</li>
+        <li><b>JSX:</b> один корень (или <code>&lt;&gt;…&lt;/&gt;</code>), все теги закрыты, <code>className</code> вместо <code>class</code>, значения из JS — в <code>{…}</code>.</li>
+        <li><b>Компонент:</b> функция с заглавной буквы, возвращает JSX; вызывается как тег <code>&lt;Card /&gt;</code>; объявляется на верхнем уровне файла.</li>
+        <li><b>Props:</b> параметры компонента: <code>function Card({ title, price })</code>; строки в кавычках, остальное в <code>{…}</code>; только читаем; особый prop <code>children</code>.</li>
+        <li><b>Списки:</b> данные в массиве объектов + <code>{items.map((item) =&gt; &lt;Card key={item.id} … /&gt;)}</code>; <code>key</code> — уникальный и стабильный (<code>id</code>).</li>
+        <li><b>Структура:</b> <code>app/page.tsx</code> только собирает; <code>components/</code> — кирпичи (один файл — один компонент, имя с заглавной); <code>data/</code> — массивы данных.</li>
+        <li><b>Типичные ошибки:</b> нет <code>export default</code> («Element type is invalid»), неверный регистр в пути, нет <code>key</code>, объект вместо поля («Objects are not valid as a React child»).</li>
+        <li><b>С ИИ:</b> commit перед рефакторингом, называть файлы и props, «внешний вид не менять», проверка <code>npm run build</code>, просить объяснить непонятное.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 11.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, зачем нужен React и что такое компонент, и привести пример на любом сайте</li>
+          <li>Могу прочитать код с <code>const</code>, массивами, объектами, стрелочными функциями и импортами и сказать, что он делает</li>
+          <li>Могу объяснить, что означает расширение <code>.tsx</code> и как читать подпись типов у props</li>
+          <li>Могу написать компонент, который принимает props, и вызвать его с разными данными</li>
+          <li>Могу вывести список карточек из массива через <code>map</code> и объяснить, зачем нужен <code>key</code></li>
+          <li>Могу разложить страницу на компоненты в папке <code>components</code> и подключить их в <code>app/page.tsx</code></li>
+          <li>Могу найти причину ошибок «Module not found» и «Element type is invalid» и отправить их ИИ</li>
+        </ul>
+      </article>
+    </section>

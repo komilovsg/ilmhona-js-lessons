@@ -46,3 +46,11 @@ export function diffMessage(d: Diff, s: CheckStrings): string {
   if (d.kind === 'line') return s.lineDiff(d.line, clip(d.exp), clip(d.got));
   return d.kind === 'missing' ? s.missing(d.exp, d.got) : s.extra(d.exp, d.got);
 }
+
+/** One TypeScript diagnostic from the worker (1-based line/col, `start`/`length` = offsets in the snippet). */
+export type TsDiagnostic = { line: number; col: number; start: number; length: number; code: number; message: string };
+
+/** `Строка 3, столбец 7: Type 'string' is not assignable to type 'number'. (TS2322)` — the compiler message stays English. */
+export function formatTsDiagnostic(d: TsDiagnostic, s: Messages['ts']): string {
+  return `${s.at(d.line, d.col)}: ${d.message} (TS${d.code})`;
+}

@@ -5,11 +5,11 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Link from 'next/link';
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { destination, isAvailable, modules } from '@/content/course';
-import { courseItems, type CourseItem, type CourseStatus } from '@/lib/course-status';
+import { courseItems, useCourseProgress, type CourseItem, type CourseStatus } from '@/lib/course-status';
+import { COURSES, courseHome, lessonHref, otherCourses, type CourseId } from '@/lib/courses';
 import { levelInfo, totalXp } from '@/lib/game';
-import { fmt, toUrlLocale } from '@/lib/i18n';
-import { useProgress } from '@/lib/progress';
+import { fmt } from '@/lib/i18n';
+import { courseName } from '@/lib/site';
 import { useT } from '../I18nProvider';
 import { BoltIcon, CheckIcon, ClockIcon, DotIcon, FlagIcon, LockIcon, PinIcon, TrophyIcon } from './icons';
 
@@ -28,12 +28,15 @@ function pathThrough(pts: [number, number][]): string {
   return d;
 }
 
-export default function RoadmapView() {
+export default function RoadmapView({ courseId = 'frontend' }: { courseId?: CourseId }) {
   const { t, locale } = useT();
-  const r = t.roadmap;
-  const progress = useProgress();
+  const c = COURSES[courseId];
+  const r = { ...t.roadmap, ...(c.texts?.[locale].roadmap ?? {}) };
+  const progress = useCourseProgress(c);
+  const others = otherCourses(c);
+  const next = c.next && COURSES[c.next];
 
-  const items = useMemo(() => courseItems(progress.solved), [progress]);
+  const items = useMemo(() => courseItems(progress.solved, c), [progress, c]);
 
   const doneCount = items.filter((i) => i.status === 'done').length;
   const progCount = items.filter((i) => i.status === 'progress').length;
@@ -203,6 +206,22 @@ export default function RoadmapView() {
   const StatusIcon = ({ s }: { s: CourseStatus }) =>
     s === 'done' ? <CheckIcon /> : s === 'soon' ? <ClockIcon /> : <DotIcon />;
 
+  const finalBody = (
+    <>
+      <span className="rm-final-icon" aria-hidden="true">
+        <TrophyIcon />
+        {Array.from({ length: 10 }, (_, k) => (
+          <i key={k} className="rm-spark" />
+        ))}
+      </span>
+      <div className="rm-final-txt">
+        <p className="kicker">{r.finalKicker}</p>
+        <h2 id="rm-final-t">{c.destination.title[locale]}</h2>
+        <p>{r.finalText}</p>
+      </div>
+    </>
+  );
+
   return (
     <main className="rm" ref={root}>
       <section className="hero rm-hero">
@@ -226,13 +245,18 @@ export default function RoadmapView() {
         </ul>
         <div className="rm-in rm-cta-row">
           {ctaLesson ? (
-            <Link className="rm-cta" href={`/${toUrlLocale(locale)}/lessons/${ctaLesson.slug}`}>
+            <Link className="rm-cta" href={lessonHref(c, locale, ctaLesson.slug)}>
               {fmt(anyStarted ? r.ctaContinue : r.ctaStart, { num: ctaLesson.num, title: ctaLesson.title[locale] })}
               <span aria-hidden="true"> →</span>
             </Link>
           ) : (
             <p className="rm-cta-note">{r.ctaAllDone}</p>
           )}
+          {others.map((o) => (
+            <Link key={o.id} className="rm-alt" href={courseHome(o, locale)}>
+              {fmt(t.roadmap.otherCourse, { name: o.texts?.[locale].name ?? courseName[locale] })} <span aria-hidden="true">→</span>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -243,7 +267,7 @@ export default function RoadmapView() {
           <path className="rm-path-done" />
         </svg>
 
-        {modules.map((m) => (
+        {c.modules.map((m) => (
           <section key={m.id} className="rm-module" aria-labelledby={`rm-m${m.id}`}>
             <header className="rm-modhead">
               <p>
@@ -306,8 +330,8 @@ export default function RoadmapView() {
                           )}
                         </div>
                         <h3 className="rm-title">
-                          {isAvailable(i) ? (
-                            <Link className="rm-link" href={`/${toUrlLocale(locale)}/lessons/${i.slug}`}>
+                          {c.available.includes(i.slug) ? (
+                            <Link className="rm-link" href={lessonHref(c, locale, i.slug)}>
                               {i.title[locale]}
                             </Link>
                           ) : (
@@ -333,8 +357,8 @@ export default function RoadmapView() {
                               </Fragment>
                             ))}
                           </dl>
-                          {isAvailable(i) && (
-                            <Link className="rm-open" href={`/${toUrlLocale(locale)}/lessons/${i.slug}`}>
+                          {c.available.includes(i.slug) && (
+                            <Link className="rm-open" href={lessonHref(c, locale, i.slug)}>
                               {r.open} →
                             </Link>
                           )}
@@ -353,19 +377,13 @@ export default function RoadmapView() {
               <TrophyIcon />
             </span>
           </span>
-          <div className="rm-final-card">
-            <span className="rm-final-icon" aria-hidden="true">
-              <TrophyIcon />
-              {Array.from({ length: 10 }, (_, k) => (
-                <i key={k} className="rm-spark" />
-              ))}
-            </span>
-            <div className="rm-final-txt">
-              <p className="kicker">{r.finalKicker}</p>
-              <h2 id="rm-final-t">{destination.title[locale]}</h2>
-              <p>{r.finalText}</p>
-            </div>
-          </div>
+          {next ? (
+            <Link className="rm-final-card rm-final-link" href={courseHome(next, locale)}>
+              {finalBody}
+            </Link>
+          ) : (
+            <div className="rm-final-card">{finalBody}</div>
+          )}
         </section>
       </div>
     </main>

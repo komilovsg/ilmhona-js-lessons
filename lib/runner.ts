@@ -361,7 +361,7 @@ __ilmHold((async () => {
 
 async function buildReact(id: string, jsx: string, css: string, rs: Messages['runner']): Promise<string> {
   const { transform } = await import('sucrase');
-  const out = transform(jsx, { transforms: ['jsx'], jsxRuntime: 'automatic', production: true }).code;
+  const out = transform(jsx, { transforms: ['typescript', 'jsx'], jsxRuntime: 'automatic', production: true }).code;
   return reactDoc(id, out, css, rs);
 }
 

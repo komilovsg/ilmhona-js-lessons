@@ -1,0 +1,1007 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+</style>
+
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 17 · Модуль 6. Полноценный продукт</p>
+      <h1>Спринт 1: каркас продукта</h1>
+      <p class="lead">К концу урока у вас будет рабочий каркас выпускного проекта: сайт на Vercel, где можно зарегистрироваться и войти, роли разводят доступ, каждый экран из карты экранов уже существует (пока пустой), а в Git лежит аккуратная история маленьких commit. Это фундамент, на который в следующих спринтах вы будете навешивать настоящие функции.</p>
+      <ul class="goals">
+        <li>Объяснить три слоя проекта (интерфейс, серверный код, база) и назвать, в каком слое живёт каждая часть вашего продукта</li>
+        <li>Нарезать любую функцию на задачи не длиннее часа по правилу «одна задача = один промпт = один commit»</li>
+        <li>Собрать структуру папок и написать <code>AGENTS.md</code> для выпускного проекта</li>
+        <li>Построить каркас: страницы и навигацию по ролям, базу с RLS, вход и выход, роли, пустые экраны</li>
+        <li>Проверять каждую задачу по «определению готовности» (definition of done) и делать commit с понятным сообщением</li>
+        <li>Вернуться к рабочей версии, если агент сломал проект, и провести Daily-стендап за 5 минут</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Это урок-спринт: теории немного, основное время уходит на сборку. Нужны: Cursor, ТЗ, схема базы и карта экранов из урока 16, аккаунты Supabase, GitHub и Vercel. Время: 4–5 часов, лучше за два подхода: теория и план (разделы 1–6), затем практика (раздел 7). Откройте урок в одной половине экрана, а Cursor в другой. Тип проекта любой из шести, выбранных в уроке 16 (CRM, интернет-магазин, Booking, HRM, Telegram-бот, AI Resume Builder): шаги одинаковые, различаются только названия таблиц и экранов. Авторизацию и роли берём из урока 12, таблицы и RLS из урока 11: здесь они не объясняются заново, а применяются.</p>
+    </div>
+
+    <!-- ============ 01 · Слои ============ -->
+    <section class="topic" id="layers">
+      <h2 data-toc="Три слоя проекта"><span class="num">01</span> Архитектура: три слоя, у каждого своя работа</h2>
+
+      <p>Когда проект вырастает за пределы одной страницы, главный вопрос уже не «как написать код», а «куда этот код положить». Архитектура проекта — это договорённость, что где живёт. У веб-продукта на нашем стеке три слоя.</p>
+
+      <dl class="terms">
+        <dt>Интерфейс (UI)</dt><dd>То, что видит и нажимает человек: страницы, формы, кнопки, меню. Живёт в <code>app/**/page.tsx</code> и в папке <code>components/</code>. Его задача: показать и собрать ввод. Решать, что пользователю <b>можно</b>, он не умеет.</dd>
+        <dt>Серверный код</dt><dd>Код, который выполняется на сервере Next.js, а не в браузере: серверные страницы и компоненты, обработчики <code>route.ts</code>, файл <code>proxy.ts</code>. Здесь проверяют, кто вошёл (<code>getClaims()</code>), какая у него роль, и ходят в базу. Секретные ключи можно держать только здесь.</dd>
+        <dt>База данных</dt><dd>Supabase: таблицы Postgres, пользователи (<code>auth.users</code>), правила RLS. Это последняя линия защиты: даже если интерфейс и сервер ошиблись, база не отдаст лишнего.</dd>
+      </dl>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Схема трёх слоёв: браузер с интерфейсом, затем сервер Next.js с проверкой входа и роли, затем база Supabase с таблицами и правилами RLS; стрелки запроса идут вправо, стрелки ответа обратно, под каждым слоем подписано, что он проверяет">
+          <rect class="box g" x="10" y="30" width="200" height="120" rx="12" />
+          <text x="110" y="60" text-anchor="middle">1. Интерфейс</text><text class="sub" x="110" y="82" text-anchor="middle">страницы, формы, меню</text><text class="sub mono" x="110" y="104" text-anchor="middle">app/ · components/</text><text class="sub t-o" x="110" y="130" text-anchor="middle">проверяет: удобство</text>
+          <rect class="box b" x="260" y="30" width="200" height="120" rx="12" />
+          <text x="360" y="60" text-anchor="middle">2. Серверный код</text><text class="sub" x="360" y="82" text-anchor="middle">вход, роль, запросы</text><text class="sub mono" x="360" y="104" text-anchor="middle">proxy.ts · route.ts</text><text class="sub t-b" x="360" y="130" text-anchor="middle">проверяет: кто и что</text>
+          <rect class="box v" x="510" y="30" width="200" height="120" rx="12" />
+          <text x="610" y="60" text-anchor="middle">3. База</text><text class="sub" x="610" y="82" text-anchor="middle">таблицы, пользователи</text><text class="sub mono" x="610" y="104" text-anchor="middle">Supabase · RLS</text><text class="sub t-v" x="610" y="130" text-anchor="middle">проверяет: каждую строку</text>
+          <path class="arr" d="M210 76H254" /><path class="arr-head" d="M254 70l9 6-9 6z" />
+          <path class="arr" d="M460 76H504" /><path class="arr-head" d="M504 70l9 6-9 6z" />
+          <path class="arr" d="M504 112H466" /><path class="arr-head" d="M466 106l-9 6 9 6z" />
+          <path class="arr" d="M254 112H216" /><path class="arr-head" d="M216 106l-9 6 9 6z" />
+          <text class="sub" x="360" y="190" text-anchor="middle">запрос идёт вправо, ответ возвращается влево</text>
+          <text class="sub" x="360" y="214" text-anchor="middle">Чем правее слой, тем надёжнее его проверка: интерфейс можно обойти, правила базы нельзя</text>
+        </svg>
+        <figcaption>Три слоя проекта. Каждый делает своё дело, а права проверяются как минимум на двух правых слоях</figcaption>
+      </figure>
+
+      <h3>Что где живёт</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Часть продукта</th><th>Интерфейс</th><th>Серверный код</th><th>База</th></tr></thead>
+          <tbody>
+            <tr><td>Меню по ролям</td><td>рисует пункты</td><td>знает роль из <code>profiles</code></td><td>хранит роль</td></tr>
+            <tr><td>Список клиентов, заказов, резюме</td><td>таблица и пустое состояние</td><td>читает данные и проверяет вход</td><td>отдаёт только разрешённые строки (RLS)</td></tr>
+            <tr><td>Форма входа</td><td>поля и кнопка</td><td>вызывает Supabase Auth</td><td>хранит пользователя и хеш пароля</td></tr>
+            <tr><td>Секретный ключ</td><td>никогда</td><td>только если нужен</td><td>не хранится</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Практическое правило: прежде чем просить у ИИ новую функцию, скажите себе вслух, в каких слоях она появится. «Список заказов» — это страница (интерфейс), чтение данных (сервер) и таблица с правилами (база). Три слоя — три маленькие задачи, а не одна огромная.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Чойхона. Зал с красивыми столами и меню — интерфейс. Официант, который принимает заказ, проверяет, что вы заказываете именно своё, и несёт на кухню, — серверный код. Кухня и склад — база: повар не выдаст продукты по записке от любого прохожего, у склада свои правила. Если официанта подменить, склад всё равно проверит, кто просит.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Решать «кому можно» только в интерфейсе: спрятали кнопку и считают, что защитили. <b>2.</b> Класть секретный ключ в клиентский код или в переменную с <code>NEXT_PUBLIC_</code>. <b>3.</b> Хранить в одном файле всё сразу: форму, запрос в базу и права. Такой файл не прочитать ни вам, ни ИИ. <b>4.</b> Придумывать таблицы по ходу работы, без схемы: экраны и база расходятся. <b>5.</b> Строить красивый интерфейс на выдуманных данных и откладывать базу «на потом»: потом всё переделывать.</p>
+      </div>
+
+      <article class="task" id="q-layers">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: слои проекта</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Менеджер CRM не должен видеть клиентов другого менеджера. Где эту защиту нельзя пропускать?</p>
+          <ol class="options">
+            <li>Достаточно скрыть чужих клиентов в таблице на странице</li>
+            <li>Достаточно не показывать ссылку на чужие карточки в меню</li>
+            <li>В правилах базы (RLS): они работают, даже если интерфейс или сервер ошиблись</li>
+            <li>В названии роли: слово «менеджер» само ограничивает доступ</li>
+          </ol>
+          <div class="explain"><p>Интерфейс видно и можно обойти. База последняя проверяет каждую строку, и её правила действуют всегда. Сервер и интерфейс добавляют удобство и ещё один заслон, но не заменяют RLS.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3,5">
+          <p>Отметьте всё, что относится к слою серверного кода.</p>
+          <ol class="options">
+            <li>Файл <code>proxy.ts</code>, который перенаправляет гостя на вход</li>
+            <li>Компонент кнопки с <code>useState</code> для счётчика</li>
+            <li>Обработчик <code>route.ts</code>, который принимает запрос и читает базу</li>
+            <li>Правило RLS «видишь только свои строки»</li>
+            <li>Серверная страница, которая вызывает <code>getClaims()</code> и проверяет роль</li>
+          </ol>
+          <div class="explain"><p>Серверный код: <code>proxy.ts</code>, обработчики <code>route.ts</code> и серверные страницы. Кнопка с <code>useState</code> работает в браузере (интерфейс), а правило RLS живёт в базе.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Где разрешено использовать <code>SUPABASE_SECRET_KEY</code>?</p>
+          <ol class="options">
+            <li>В клиентском компоненте, чтобы всё читалось без ошибок</li>
+            <li>В переменной <code>NEXT_PUBLIC_SUPABASE_SECRET_KEY</code></li>
+            <li>В <code>README.md</code>, чтобы проверяющий мог запустить проект</li>
+            <li>Только в серверном коде, а для обычных страниц хватает publishable-ключа и RLS</li>
+          </ol>
+          <div class="explain"><p>Всё с префиксом <code>NEXT_PUBLIC_</code> попадает в браузер, а значит, секретному ключу там не место. В каркасе спринта 1 он обычно вообще не нужен.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/project-structure" target="_blank" rel="noopener">Next.js: Project structure and organization</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 02 · Роли ============ -->
+    <section class="topic" id="roles">
+      <h2 data-toc="Роли пользователей"><span class="num">02</span> Роли и карта доступа: кто что видит</h2>
+
+      <p>Технику ролей вы уже освоили в уроке 12: таблица <code>profiles</code>, столбец <code>role</code>, проверка на сервере и RLS. Теперь вопрос проектный: какие роли нужны <b>вашему</b> продукту и какие экраны каждая из них видит. Ответ записывается в виде таблицы, «карты доступа», и лежит рядом с ТЗ.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Проект</th><th>Роли (пример)</th><th>Главные таблицы</th><th>Экраны каркаса</th></tr></thead>
+          <tbody>
+            <tr><td>CRM</td><td><code>manager</code>, <code>admin</code></td><td><code>clients</code>, <code>deals</code></td><td>/clients, /deals, /admin</td></tr>
+            <tr><td>Интернет-магазин</td><td><code>customer</code>, <code>admin</code></td><td><code>products</code>, <code>orders</code></td><td>/catalog, /orders, /admin</td></tr>
+            <tr><td>Booking</td><td><code>client</code>, <code>admin</code></td><td><code>services</code>, <code>bookings</code></td><td>/services, /bookings, /admin</td></tr>
+            <tr><td>HRM</td><td><code>employee</code>, <code>hr</code></td><td><code>employees</code>, <code>leave_requests</code></td><td>/employees, /leave, /admin</td></tr>
+            <tr><td>Telegram-бот</td><td><code>user</code>, <code>admin</code></td><td><code>bot_users</code>, <code>messages</code></td><td>/admin/users, /admin/messages</td></tr>
+            <tr><td>AI Resume Builder</td><td><code>user</code>, <code>admin</code></td><td><code>resumes</code></td><td>/resumes, /resumes/new, /admin</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Названия ролей и таблиц возьмите из своего ТЗ и схемы из урока 16: таблица выше только пример. У Telegram-бота в этом спринте нет «экранов бота»: настоящий бот появится в уроке 21, а сейчас делаем веб-часть и пустой маршрут-заглушку для будущих запросов.</p>
+
+      <h3>Карта доступа: роль × экран</h3>
+      <p>Нарисуйте таблицу для своего проекта: строки — экраны, столбцы — роли, в ячейках «да», «нет» или «только свои». Вот пример для Booking:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Экран</th><th>Гость</th><th><code>client</code></th><th><code>admin</code></th></tr></thead>
+          <tbody>
+            <tr><td>/ (главная)</td><td>да</td><td>да</td><td>да</td></tr>
+            <tr><td>/services</td><td>да</td><td>да</td><td>да</td></tr>
+            <tr><td>/bookings</td><td>нет (на вход)</td><td>только свои</td><td>все</td></tr>
+            <tr><td>/admin</td><td>нет (на вход)</td><td>нет (404)</td><td>да</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Правила, которые избавят от боли</h3>
+      <ul>
+        <li><b>Ролей мало.</b> В первом спринте хватает двух-трёх. Сложные матрицы прав придут вместе со сложными функциями.</li>
+        <li><b>Роль по умолчанию самая слабая.</b> Новый пользователь получает её автоматически (как в уроке 12). Повысить роль можно только SQL-запросом владельца.</li>
+        <li><b>Роль хранится в <code>profiles</code></b>, а не в <code>user_metadata</code> и не в интерфейсе.</li>
+        <li><b>Карта доступа — часть ТЗ.</b> Если в ней «только свои», значит, в базе будет столбец владельца (например <code>owner_id</code>) и правило RLS по нему.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>В чойхоне три роли: гость, официант, хозяин. Гость заказывает и видит свой счёт, официант видит все столы своего зала, хозяин видит всё и считает выручку. Никому не приходит в голову дать гостю ключ от кассы «на всякий случай»: роль по умолчанию самая простая, а повышает её хозяин лично.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Придумать пять ролей «на вырост»: каждая умножает работу над правилами и проверками. <b>2.</b> Назначить новому пользователю роль <code>admin</code> по умолчанию «чтобы удобнее тестировать». <b>3.</b> Забыть про «гостя» (не вошедшего): половина страниц должна по-разному вести себя для гостя и для вошедшего. <b>4.</b> Не записать карту доступа и объяснять ИИ роли каждый раз заново.</p>
+      </div>
+
+      <article class="task" id="q-roles">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: роли в проекте</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Какую роль получает новый пользователь после регистрации?</p>
+          <ol class="options">
+            <li>Администратор: ему нужно сначала всё проверить</li>
+            <li>Самую слабую (например <code>user</code>): повысить роль может только владелец через SQL</li>
+            <li>Ту, которую пользователь выберет в форме регистрации</li>
+            <li>Ту, которая записана в <code>user_metadata</code></li>
+          </ol>
+          <div class="explain"><p>Что пользователь может выбрать сам или записать в <code>user_metadata</code>, то он может и подделать. Безопасная схема: роль по умолчанию слабая, повышение только вручную.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>В карте доступа CRM написано: менеджер видит «только своих» клиентов. Что нужно сделать в базе?</p>
+          <ol class="options">
+            <li>Добавить в таблицу <code>clients</code> столбец владельца (например <code>owner_id</code>) и правило RLS по нему</li>
+            <li>Ничего: достаточно скрыть чужих клиентов в списке на странице</li>
+            <li>Создать для каждого менеджера отдельную таблицу</li>
+            <li>Дать менеджерам роль <code>admin</code>, но не говорить им об этом</li>
+          </ol>
+          <div class="explain"><p>«Только свои» выражается данными: у каждой строки есть владелец, а правило RLS сравнивает его с вошедшим пользователем (как <code>user_id</code> в уроке 12).</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Сколько ролей разумно закладывать в первом спринте?</p>
+          <ol class="options">
+            <li>Как можно больше, чтобы потом не переделывать</li>
+            <li>Ровно по одной на каждый экран</li>
+            <li>Две-три: достаточно, чтобы разделить доступ, а остальное придёт со сложными функциями</li>
+            <li>Одну: роли в каркасе не нужны</li>
+          </ol>
+          <div class="explain"><p>Каждая лишняя роль — это дополнительные проверки и правила. Начните с минимума: обычный пользователь и администратор (плюс одна доменная роль, если без неё продукт не работает).</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener">Supabase: Row Level Security</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 03 · Мелкие задачи ============ -->
+    <section class="topic" id="slicing">
+      <h2 data-toc="Мелкие задачи"><span class="num">03</span> Работа мелкими задачами вместо «сделай всё сразу»</h2>
+
+      <p>Самая частая причина провала выпускных проектов: «Сделай мне CRM со входом, ролями и админкой». ИИ послушно создаёт 40 файлов, половина не запускается, и разобраться, где ошибка, невозможно. Лекарство — маленькие задачи. Правило этого урока и всего спринта:</p>
+
+      <div class="callout tip">
+        <b>Одна задача = один промпт = один commit</b>
+        <p>Задача настолько мала, что агент делает её за один запрос, вы проверяете результат за пять минут и сохраняете его одним commit. Если задача не помещается в эту рамку, она слишком большая: режьте дальше.</p>
+      </div>
+
+      <h3>Почему маленькие задачи работают</h3>
+      <ul>
+        <li><b>Агент точнее.</b> Чем уже задача, тем меньше он додумывает и тем реже путает файлы.</li>
+        <li><b>Проверить можно.</b> Изменения на 3–5 файлов вы прочитаете глазами, на 30 файлов — нет.</li>
+        <li><b>Откат дешёвый.</b> Сломалась одна задача — вы теряете час, а не неделю (раздел 5).</li>
+        <li><b>Видно прогресс.</b> «Сделано 6 задач из 9» — это честнее, чем «почти всё готово».</li>
+      </ul>
+
+      <h3>Как нарезать: пять вопросов</h3>
+      <ol class="steps">
+        <li><b>Что я увижу?</b> Сформулируйте результат одной фразой: «Нажимаю „Войти“ и попадаю в кабинет». Нет видимого результата — задача плохая («подготовить архитектуру»).</li>
+        <li><b>Один слой за раз.</b> Сначала страница с заглушкой, потом данные, потом права. Не смешивайте в одной задаче интерфейс, таблицы и роли.</li>
+        <li><b>Влезает в час?</b> Оценка больше 60 минут — режем пополам. Диф больше 5–7 файлов — тоже.</li>
+        <li><b>Как проверю?</b> Запишите критерий: «открыть <code>/login</code>, ввести тестовый e-mail, увидеть кабинет, <code>npm run build</code> без ошибок».</li>
+        <li><b>В каком порядке?</b> Сначала то, от чего зависит остальное: страницы, база, вход, роли, данные на экранах.</li>
+      </ol>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Было (слишком крупно)</th><th>Стало (по одной задаче)</th></tr></thead>
+          <tbody>
+            <tr><td>«Сделай вход с ролями»</td><td>1. страница <code>/login</code> с формой (без вызова Supabase)<br>2. вход и выход через Supabase Auth<br>3. таблица <code>profiles</code> и роль по умолчанию<br>4. проверка роли на странице <code>/admin</code><br>5. пункты меню по роли</td></tr>
+            <tr><td>«Сделай список клиентов»</td><td>1. страница <code>/clients</code> с пустым состоянием<br>2. таблица <code>clients</code> и RLS<br>3. вывод строк из базы<br>4. состояния «загрузка» и «ошибка»</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 200" role="img" aria-label="Цикл одной задачи: выбрать задачу, написать промпт, прочитать изменения, запустить сборку и проверить в браузере, сделать commit; стрелка от commit возвращается к выбору следующей задачи">
+          <rect class="box" x="8" y="40" width="120" height="70" rx="10" /><text x="68" y="70" text-anchor="middle">1. Задача</text><text class="sub" x="68" y="92" text-anchor="middle">одна фраза</text>
+          <rect class="box v" x="158" y="40" width="120" height="70" rx="10" /><text x="218" y="70" text-anchor="middle">2. Промпт</text><text class="sub" x="218" y="92" text-anchor="middle">один запрос</text>
+          <rect class="box b" x="308" y="40" width="120" height="70" rx="10" /><text x="368" y="70" text-anchor="middle">3. Diff</text><text class="sub" x="368" y="92" text-anchor="middle">читаем изменения</text>
+          <rect class="fill-y" x="458" y="40" width="120" height="70" rx="10" /><text x="518" y="70" text-anchor="middle">4. Проверка</text><text class="sub" x="518" y="92" text-anchor="middle">build + браузер</text>
+          <rect class="fill-g" x="608" y="40" width="104" height="70" rx="10" /><text x="660" y="70" text-anchor="middle">5. Commit</text><text class="sub" x="660" y="92" text-anchor="middle">точка возврата</text>
+          <path class="arr" d="M128 75H152" /><path class="arr-head" d="M152 69l8 6-8 6z" />
+          <path class="arr" d="M278 75H302" /><path class="arr-head" d="M302 69l8 6-8 6z" />
+          <path class="arr" d="M428 75H452" /><path class="arr-head" d="M452 69l8 6-8 6z" />
+          <path class="arr" d="M578 75H602" /><path class="arr-head" d="M602 69l8 6-8 6z" />
+          <path class="arr" d="M660 110V160H68V116" /><path class="arr-head" d="M62 116l6-9 6 9z" />
+          <text class="sub" x="364" y="182" text-anchor="middle">следующая задача: цикл повторяется, пока каркас не готов</text>
+        </svg>
+        <figcaption>Цикл одной задачи. Если на шаге «Проверка» что-то не так, правьте или откатывайтесь до commit, а не накапливайте ошибки</figcaption>
+      </figure>
+
+      <h3>Определение готовности (definition of done)</h3>
+      <p>Задача считается сделанной, когда выполнены <b>все</b> пункты. Распечатайте или перепишите в <code>AGENTS.md</code>:</p>
+      <ul>
+        <li>Сделано то, что было в одной фразе задачи, и ничего лишнего.</li>
+        <li><code>npm run build</code> проходит без ошибок.</li>
+        <li>Критерий проверки пройден руками в браузере, в консоли браузера нет красных ошибок.</li>
+        <li>Вы прочитали изменения (diff): нет секретов, чужих файлов и случайно добавленных библиотек.</li>
+        <li>Сделан commit с понятным сообщением, а изменения отправлены на GitHub (<code>push</code>).</li>
+      </ul>
+
+      <h3>План спринта с ИИ</h3>
+      <p>Нарезку можно доверить ИИ, если сначала включить режим «только план» (см. урок 6) и дать ему ТЗ. План вы читаете и правите сами: ИИ любит объединять и «заодно» добавлять лишнее.</p>
+
+      <div class="yt" data-id="WInPBmCK3l4" data-title="Introducing Plan Mode — официальный канал Cursor" data-start="0"></div>
+      <p class="muted">Видео на английском, включите субтитры. Это повтор из урока 6: посмотрите ещё раз, как режим плана предлагает шаги до того, как менять файлы.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Плов на свадьбу на двести человек не варят в одном казане за один раз. Рис моют партиями, мясо жарят в нескольких казанах, и повар пробует каждую партию. Если одна партия пересолена, вы выбрасываете казан, а не весь свадебный плов. Маленькая задача — это один казан.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> «Сделай всё и сразу»: диф на 40 файлов, который нельзя проверить. <b>2.</b> Нарезать не по результату, а по технологиям («сначала весь CSS»): ничего не видно, пока не сделано всё. <b>3.</b> Делать следующую задачу, не сохранив предыдущую: ошибки наслаиваются. <b>4.</b> Копить commit «на потом» и сделать один огромный commit в конце. <b>5.</b> Принимать план ИИ без чтения: в нём появляются лишние функции («заодно добавим платежи»).</p>
+      </div>
+
+      <article class="task" id="pg-slice">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Нарежь функции на задачи до часа</h4><span class="level mid">средняя</span></header>
+        <p>Перед вами список функций каркаса с оценкой в минутах. Правило: если оценка больше 60 минут, функцию режут на равные части, ровно столько, сколько нужно, чтобы каждая часть была не больше 60 минут. Допишите расчёт частей и название задач-частей и выведите итог в формате из блока «Ожидаемый результат».</p>
+<pre class="code" data-run data-lang="js">
+const features = [
+  { name: "pages", min: 45 },
+  { name: "database", min: 150 },
+  { name: "auth", min: 90 },
+  { name: "roles", min: 120 },
+  { name: "screens", min: 50 },
+];
+const LIMIT = 60;
+const tasks = [];
+
+for (const f of features) {
+  // TODO 1: сколько частей нужно? Math.ceil(f.min / LIMIT)
+  const parts = 1;
+  // TODO 2: сколько минут в одной части? Math.ceil(f.min / parts)
+  const each = f.min;
+  for (let i = 1; i &lt;= parts; i++) {
+    // TODO 3: если частей больше одной, имя вида "database (1/3)"
+    const name = f.name;
+    tasks.push({ name, min: each });
+  }
+}
+
+for (const t of tasks) console.log(t.name + ": " + t.min);
+console.log("tasks: " + tasks.length);
+console.log("total: " + tasks.reduce((s, t) => s + t.min, 0));
+console.log("max: " + Math.max(...tasks.map((t) => t.min)));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>pages: 45
+database (1/3): 50
+database (2/3): 50
+database (3/3): 50
+auth (1/2): 45
+auth (2/2): 45
+roles (1/2): 60
+roles (2/2): 60
+screens: 50
+tasks: 9
+total: 455
+max: 60</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Замените две строки: <code>const parts = Math.ceil(f.min / LIMIT);</code> и <code>const each = Math.ceil(f.min / parts);</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Имя части: <code>const name = parts &gt; 1 ? f.name + " (" + i + "/" + parts + ")" : f.name;</code></p></details>
+      </article>
+
+      <article class="task" id="q-slice">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Проверь себя: нарезка задач</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Какая из формулировок — хорошая задача для одного промпта?</p>
+          <ol class="options">
+            <li>Сделай всю авторизацию с ролями и админкой</li>
+            <li>Добавь страницу <code>/login</code> с формой (e-mail, пароль, кнопка «Войти»), пока без вызова Supabase</li>
+            <li>Сделай красиво</li>
+            <li>Подготовь проект к продакшену</li>
+          </ol>
+          <div class="explain"><p>Вторая формулировка даёт видимый результат, затрагивает один слой, помещается в час и проверяется открыванием страницы. Остальные слишком крупные или расплывчатые.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Агент за один ответ изменил 23 файла, проект не запускается. Что было главной ошибкой?</p>
+          <ol class="options">
+            <li>Выбрана неправильная модель</li>
+            <li>Не хватило слов в промпте</li>
+            <li>Задача была слишком крупной: её надо было резать до начала работы</li>
+            <li>Нужно было включить тёмную тему</li>
+          </ol>
+          <div class="explain"><p>Проверить диф на 23 файла невозможно, а ошибка может быть где угодно. Лечится не «умным» промптом, а нарезкой: одна задача, один промпт, один commit.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Какой порядок задач для каркаса самый разумный?</p>
+          <ol class="options">
+            <li>Страницы-заглушки и навигация, база, вход, роли, данные на экранах</li>
+            <li>Красивый дизайн всех экранов, потом всё остальное</li>
+            <li>Платежи и уведомления, потом страницы</li>
+            <li>Роли для экранов, которых ещё нет, потом база</li>
+          </ol>
+          <div class="explain"><p>Сначала то, от чего зависит остальное: нужно, где показывать данные (страницы), где их хранить (база), кто их смотрит (вход) и что кому можно (роли). Дизайн и платежи подождут.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://cursor.com/docs/agent/modes" target="_blank" rel="noopener">Cursor: режимы агента (Plan Mode)</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · Структура и AGENTS.md ============ -->
+    <section class="topic" id="structure">
+      <h2 data-toc="Папки и AGENTS.md"><span class="num">04</span> Структура папок и файл AGENTS.md проекта</h2>
+
+      <p>Договорённость «что где лежит» лучше принять один раз и записать. Тогда и вы, и ИИ каждый раз кладёте файлы в одни и те же места. Next.js не навязывает структуру, но даёт удобные инструменты: папки-группы <code>(имя)</code> не попадают в адрес, а папки с подчёркиванием <code>_имя</code> исключаются из маршрутов. Ниже рекомендуемая структура для выпускного проекта.</p>
+
+<pre class="code" data-title="Структура проекта">
+my-project/
+  AGENTS.md
+  proxy.ts
+  .env.example
+  app/
+    layout.tsx
+    page.tsx
+    not-found.tsx
+    (auth)/
+      login/page.tsx
+      register/page.tsx
+    (app)/
+      layout.tsx
+      dashboard/page.tsx
+      clients/page.tsx
+      admin/page.tsx
+  components/
+    ui/
+    layout/
+  lib/
+    supabase/
+      client.ts
+      server.ts
+    auth.ts
+    roles.ts
+    nav.ts
+  db/
+    001_init.sql
+    002_rls.sql
+  docs/
+    SPEC.md
+    SCHEMA.md
+    SPRINT.md
+</pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Папка или файл</th><th>Слой</th><th>Что внутри</th></tr></thead>
+          <tbody>
+            <tr><td><code>app/(auth)/</code></td><td>интерфейс</td><td>страницы для гостей: вход и регистрация (адреса <code>/login</code> и <code>/register</code>, группа в адрес не входит)</td></tr>
+            <tr><td><code>app/(app)/</code></td><td>интерфейс + сервер</td><td>страницы для вошедших с общим каркасом (<code>layout.tsx</code>: меню и шапка). Вместо <code>clients</code> у вас ваш главный раздел</td></tr>
+            <tr><td><code>components/ui</code>, <code>components/layout</code></td><td>интерфейс</td><td>кнопки, поля, пустое состояние; меню и шапка</td></tr>
+            <tr><td><code>lib/supabase/</code></td><td>сервер</td><td>клиенты Supabase (браузерный и серверный), как в уроке 12</td></tr>
+            <tr><td><code>lib/auth.ts</code>, <code>lib/roles.ts</code></td><td>сервер</td><td>получить текущего пользователя и роль; проверка «этой роли можно сюда»</td></tr>
+            <tr><td><code>lib/nav.ts</code></td><td>интерфейс</td><td>описание меню: какие пункты видит какая роль (одна таблица вместо <code>if</code> в каждом компоненте)</td></tr>
+            <tr><td><code>proxy.ts</code></td><td>сервер</td><td>быстрый заслон: гостей на вход (в Next.js 16 вместо <code>middleware.ts</code>)</td></tr>
+            <tr><td><code>db/</code></td><td>база</td><td>SQL-файлы, которые вы запускали в Supabase, по номерам: история схемы лежит в Git</td></tr>
+            <tr><td><code>docs/</code></td><td>—</td><td>ТЗ, схема БД и доска задач из урока 16: ИИ читает их через <code>@</code></td></tr>
+            <tr><td><code>.env.example</code></td><td>—</td><td>имена переменных без значений. Настоящие ключи только в <code>.env.local</code> и в настройках Vercel</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Файлы из урока 16 (ТЗ, схема, план спринта) сохраните в <code>docs/</code>: когда ИИ получает <code>@docs/SPEC.md</code>, он работает по вашему ТЗ, а не по своей фантазии.</p>
+
+      <h3>AGENTS.md для выпускного проекта</h3>
+      <p>В уроке 6 вы писали <code>AGENTS.md</code> для лендинга. Для проекта на несколько недель файл важнее: каждый новый чат начинается «с чистого листа» и берёт отсюда правила. Шаблон ниже пишется на английском: так инструкции агенту работают надёжнее, а вы меняете только значения в квадратных скобках. Скопируйте его в корень проекта и заполните.</p>
+
+<pre class="code" data-title="AGENTS.md">
+# Project: [name]. [One sentence: what it does and for whom]
+
+## Stack
+- Next.js 16 (App Router, TypeScript), Tailwind CSS, Supabase (Postgres, Auth), deployed on Vercel.
+- Do not add libraries without asking first.
+
+## Layers and folders
+- UI: app/ pages and components/. Server code: lib/, proxy.ts, route handlers. Database: db/*.sql.
+- Pages for guests in app/(auth)/, pages for signed-in users in app/(app)/.
+- Menu items per role live only in lib/nav.ts. Role checks live only in lib/roles.ts and lib/auth.ts.
+- Specs: docs/SPEC.md, docs/SCHEMA.md, docs/SPRINT.md. Follow them. Do not invent tables or screens.
+
+## Roles
+- Roles: [user, admin]. Stored in the profiles table (column role), never in user_metadata.
+- Default role is the weakest one. Only SQL run by the owner promotes a user.
+
+## Rules
+- One task at a time. Make a short plan first and wait for approval before changing files.
+- Touch only files needed for the task. If more than 7 files need changes, stop and propose a split.
+- Check users on the server with supabase.auth.getClaims(), never getSession(). Use proxy.ts, not middleware.ts.
+- Every table has RLS enabled and explicit policies. Show SQL separately and explain it before it is run.
+- Secrets only in .env.local and Vercel env vars. Never in code, docs or chat. Keep .env.example in sync.
+- Every page has empty, loading and error states.
+
+## Definition of done
+- npm run build passes. The check described in the task works in the browser.
+- No console errors. No secrets in the diff.
+- Finish with: list of changed files, what to check by hand, and a one-line commit message.
+
+## Never
+- Do not rewrite or reformat files unrelated to the task.
+- Do not disable RLS or loosen policies to make something work.
+</pre>
+
+      <div class="callout tip">
+        <b>Как поддерживать файл</b>
+        <p>Агент второй раз сделал одну и ту же ошибку (например, создал <code>middleware.ts</code>) — добавьте строку в «Rules». Файл должен оставаться коротким: если он вырос за экран-два, уберите всё, что не влияет на работу. Секретов в нём быть не должно: он уходит в Git.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Планировка квартала в Душанбе: прежде чем строить дома, решают, где пройдут улицы, где вода и свет. Потом любой застройщик знает, куда ставить дом, а не спорит о каждом метре. Структура папок и <code>AGENTS.md</code> — это улицы и коммуникации вашего проекта.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Держать ТЗ и схему только в голове или в чате: агент их не видит. <b>2.</b> Сложить все компоненты в одну папку и все функции в один файл. <b>3.</b> Класть в <code>AGENTS.md</code> ключи «для удобства». <b>4.</b> Копировать чужой <code>AGENTS.md</code> на 300 строк: агент теряет главное. <b>5.</b> Не хранить SQL в репозитории: через неделю вы не вспомните, какая схема сейчас в базе.</p>
+      </div>
+
+      <article class="task" id="q-structure">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: структура и AGENTS.md</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Файл лежит по пути <code>app/(app)/dashboard/page.tsx</code>. Какой у страницы адрес?</p>
+          <ol class="options">
+            <li><code>/dashboard</code>: название группы в скобках в адрес не входит</li>
+            <li><code>/(app)/dashboard</code></li>
+            <li><code>/app/dashboard</code></li>
+            <li>Страница недоступна: скобки в названии папки запрещены</li>
+          </ol>
+          <div class="explain"><p>Папки в круглых скобках — «группы»: они нужны для порядка и общих <code>layout.tsx</code>, а в адрес не попадают. Адрес складывается из остальных папок, а страница появляется, когда в папке есть <code>page.tsx</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Зачем нужен <code>AGENTS.md</code> в проекте?</p>
+          <ol class="options">
+            <li>Чтобы Vercel знал, как собирать проект</li>
+            <li>Чтобы Supabase знал о ролях</li>
+            <li>Чтобы агент в каждом новом чате получал правила проекта, а вам не приходилось повторять их</li>
+            <li>Чтобы проверяющий видел, что вы используете ИИ</li>
+          </ol>
+          <div class="explain"><p>Агент не помнит прошлые чаты. Файл правил подкладывается в запросы и заменяет ваши повторения: стек, структура, роли, запреты, определение готовности.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Что нельзя или не нужно писать в <code>AGENTS.md</code>?</p>
+          <ol class="options">
+            <li>Правило «одна задача за раз, сначала план»</li>
+            <li>Значение <code>SUPABASE_SECRET_KEY</code>, чтобы агент мог подключиться</li>
+            <li>Список ролей и где они хранятся</li>
+            <li>Весь текст ТЗ на 20 страниц вместо ссылки на <code>docs/SPEC.md</code></li>
+          </ol>
+          <div class="explain"><p>Файл уходит в Git, поэтому секретам в нём не место. А длинное ТЗ лучше держать в отдельном файле и подключать по необходимости: короткий <code>AGENTS.md</code> агент соблюдает лучше.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://cursor.com/docs/context/rules" target="_blank" rel="noopener">Cursor: Rules</a>, <a href="https://agents.md" target="_blank" rel="noopener">agents.md</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · Если агент сломал ============ -->
+    <section class="topic" id="recovery">
+      <h2 data-toc="Commit и откат"><span class="num">05</span> Дисциплина commit и что делать, когда агент всё сломал</h2>
+
+      <p>В спринте агент сломает проект хотя бы раз: это нормально. Ваша защита — привычки. Откаты вы изучали в уроке 6 (checkpoint, Discard Changes, commit перед задачей), здесь они складываются в рабочий порядок действий.</p>
+
+      <h3>Гигиена commit</h3>
+      <ul>
+        <li><b>Один commit — одна задача.</b> Сообщение коротко и по делу, на английском, с глагола: <code>add login page</code>, <code>add db schema</code>, <code>add role check</code>. Не <code>fix</code>, не <code>changes</code>, не <code>всё готово</code>.</li>
+        <li><b>Перед commit смотрите изменения.</b> В Source Control откройте каждый файл: нет ли ключей, чужих правок, временных страниц.</li>
+        <li><b>Файлы <code>.env.local</code> не коммитим.</b> Они в <code>.gitignore</code>; если файл виден в списке изменений, остановитесь и проверьте.</li>
+        <li><b>Commit работающего состояния.</b> Сборка проходит, проверка пройдена. Сломанное сохраняйте только если вы пишете сообщение «wip» осознанно и сразу исправляете.</li>
+        <li><b>Push после каждой задачи.</b> Код на GitHub, а Vercel собирает свежую версию: вы быстро узнаёте, что на сервере всё иначе, чем на компьютере.</li>
+      </ul>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1. Стоп</b><span>не просите «исправь всё»: сделаете хуже</span></div><div class="ar">→</div>
+          <div class="st"><b>2. Откат</b><span>Restore Checkpoint или Discard Changes до последнего commit</span></div><div class="ar">→</div>
+          <div class="st"><b>3. Сузить</b><span>разрежьте задачу пополам, добавьте в промпт то, что было непонятно</span></div><div class="ar">→</div>
+          <div class="st res"><b>4. Заново</b><span>новый чат с <code>AGENTS.md</code>, меньшая задача</span></div>
+        </div>
+        <figcaption>Порядок действий, когда агент сломал проект: стоп, откат, сужение, повтор</figcaption>
+      </figure>
+
+      <h3>Три попытки: правило остановки</h3>
+      <p>Агент не может исправить одну и ту же ошибку после двух попыток? Не просите в третий раз «исправь ещё раз»: он начнёт ходить по кругу и ломать соседние файлы. Откатитесь к последнему commit, перечитайте задачу и разрежьте. Помогает и новый чат: вставьте в него текст ошибки, <code>@AGENTS.md</code> и описание того, что должно работать.</p>
+
+      <h3>Если плохой commit уже сделан</h3>
+      <p>Бывает, что поломку заметили после commit. Тогда нужна не «стирающая» история команда, а новый commit, который отменяет прошлый: <code>git revert HEAD</code> (по документации Git, он создаёт commit с обратными изменениями; старый остаётся в истории). Попросите агента выполнить её и объяснить результат. Если сломалось на сервере, а локально всё работает, откройте журнал сборки в Vercel: текст ошибки там показывает причину, его и вставляйте в чат.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Торговец на бозоре записывает продажи в тетрадь и сверяет кассу вечером. Если не сходится, он ищет ошибку среди сегодняшних записей, а не за весь год. Короткие commit — это та же сверка: ошибка всегда среди последних нескольких изменений.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Просить «исправь всё», не откатившись: ошибки накапливаются. <b>2.</b> Нажать «Discard All», когда в рабочей папке лежат и сломанные, и хорошие правки без commit. <b>3.</b> Делать commit «потом»: откатываться тогда некуда. <b>4.</b> Откатить код и забыть, что агент мог поставить новую библиотеку: проверьте <code>package.json</code>. <b>5.</b> Решить проблему отключением RLS «на минутку»: такие «минутки» остаются в проекте навсегда.</p>
+      </div>
+
+      <article class="task" id="q-recover">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: commit и откат</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Агент за последний запрос сломал шесть файлов. Последний commit был перед запросом и работал. Первое действие?</p>
+          <ol class="options">
+            <li>Попросить агента «исправить всё остальное»</li>
+            <li>Удалить папку проекта и начать заново</li>
+            <li>Откатить изменения (Restore Checkpoint или Discard Changes) и повторить задачу меньшим куском</li>
+            <li>Сделать commit сломанного состояния, чтобы не потерять</li>
+          </ol>
+          <div class="explain"><p>Рабочая версия лежит в последнем commit, откат занимает секунды. Править груду поломок поверх поломок дороже. Потом задачу режут и повторяют.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Агент дважды не смог исправить одну и ту же ошибку. Что делать дальше?</p>
+          <ol class="options">
+            <li>Просить в третий, четвёртый, десятый раз</li>
+            <li>Откатиться, разрезать задачу и начать новый чат с текстом ошибки и <code>AGENTS.md</code></li>
+            <li>Отключить RLS и проверку ролей, чтобы ошибка исчезла</li>
+            <li>Добавить в проект ещё одну библиотеку</li>
+          </ol>
+          <div class="explain"><p>Если две попытки не помогли, причина обычно в слишком крупной задаче или в недостающем контексте. Новый чат с чистым контекстом и узкая задача работают лучше, чем повторение того же запроса.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Какое сообщение commit лучше всего?</p>
+          <ol class="options">
+            <li><code>add login page</code></li>
+            <li><code>fix</code></li>
+            <li><code>changes</code></li>
+            <li><code>ВСЁ СДЕЛАЛ!!! финал</code></li>
+          </ol>
+          <div class="explain"><p>Хорошее сообщение коротко, начинается с глагола и говорит, что сделано. По такой истории легко найти нужную точку возврата.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://git-scm.com/docs/git-revert" target="_blank" rel="noopener">Git: git-revert</a>, <a href="https://cursor.com/docs/agent/chat/checkpoints" target="_blank" rel="noopener">Cursor: Checkpoints</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · ИИ-блок ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: план и задача"><span class="num">06</span> ИИ-блок: сначала план, потом по одной задаче</h2>
+
+      <div class="callout ai">
+        <b>Правила работы с ИИ в спринте</b>
+        <p><b>1.</b> Агенту даёте не идею, а документы: <code>@docs/SPEC.md</code>, <code>@docs/SCHEMA.md</code>, <code>@AGENTS.md</code>. <b>2.</b> Сначала режим плана: читаете план и вычёркиваете лишнее. <b>3.</b> Одна задача — один промпт, в конце просите список изменённых файлов и что проверить руками. <b>4.</b> Схему базы и роли решаете вы (они в ТЗ), ИИ только реализует. <b>5.</b> SQL просите отдельно и читаете до запуска. <b>6.</b> Не подошло? Не начинайте заново: опишите, что именно не так, и пришлите текст ошибки. После двух неудач откатывайтесь (раздел 5).</p>
+      </div>
+
+      <p>Плохой промпт — «сделай всё» с названием продукта. Хороший — два шага: сначала нарезка (без кода), потом задачи по одной.</p>
+
+      <div class="prompt bad-prompt">Сделай мне CRM для менеджеров со входом, ролями и админкой, чтобы всё работало</div>
+
+      <p>Шаг 1. Нарезка. Включите режим плана и отправьте (значения в квадратных скобках замените своими):</p>
+      <div class="prompt good-prompt">Контекст: проект Next.js 16 (App Router, TypeScript, Tailwind CSS) с Supabase. Выпускной проект: [название и одно предложение о продукте]. Файлы @docs/SPEC.md (ТЗ и MVP), @docs/SCHEMA.md (схема базы), @AGENTS.md (правила проекта). Проект Next.js ещё пустой или только что создан.
+Цель: план первого спринта, который даёт каркас продукта: страницы и навигация по ролям, подключение Supabase, таблицы с RLS, регистрация и вход, роли [user, admin], пустые экраны из карты экранов.
+Ограничения: 1) только план, без кода и без изменения файлов; 2) каждая задача: одна фраза, слой (интерфейс, сервер или база), оценка в минутах не больше 60, критерий проверки, предлагаемое сообщение commit; 3) порядок: страницы-заглушки, подключение Supabase, база, вход, роли, защита страниц, данные на экранах; 4) не добавлять функции, которых нет в SPEC.md; 5) если задача по оценке длиннее 60 минут, разбить её.
+Примеры: «3. Таблица profiles и роль по умолчанию. Слой: база. 30 мин. Проверка: после регистрации в profiles появляется строка с role = user. Commit: add profiles table».
+Проверка: в конце покажи таблицу «номер, задача, слой, минуты» и итоговое число задач.</div>
+
+      <p>Шаг 2. Каждую задачу из плана отправляете отдельным промптом по такому шаблону:</p>
+      <div class="prompt good-prompt">Контекст: проект по правилам @AGENTS.md, ТЗ @docs/SPEC.md, схема @docs/SCHEMA.md. Уже сделано: [задачи 1–3 одной строкой].
+Цель: [одна фраза задачи из плана].
+Ограничения: 1) сначала короткий план по файлам, жди моего «ок»; 2) трогай только файлы, нужные для этой задачи; 3) новые библиотеки не ставь; 4) [особые правила: например, SQL отдельно и без выполнения].
+Примеры: [как должен выглядеть результат на экране].
+Проверка: в конце перечисли изменённые файлы, что проверить руками (по шагам) и предложи сообщение commit.</div>
+
+      <p>Не подошло — не начинайте заново: напишите, что именно не так, и приложите текст ошибки из терминала или консоли браузера (без ключей и паролей).</p>
+
+      <div class="callout warn">
+        <b>Что ИИ делает неправильно чаще всего</b>
+        <p><b>1.</b> Делает «заодно» больше, чем просили (платежи, красивые графики). <b>2.</b> Придумывает таблицы и столбцы не из схемы. <b>3.</b> Создаёт <code>middleware.ts</code> вместо <code>proxy.ts</code> и берёт <code>getSession()</code> вместо <code>getClaims()</code>. <b>4.</b> Зашивает роль в интерфейсе (<code>if (email === "...")</code>) вместо проверки роли из <code>profiles</code>. <b>5.</b> Оставляет выдуманные данные (моки) в готовых экранах. <b>6.</b> Отключает RLS или пишет <code>using (true)</code> «чтобы заработало». <b>7.</b> Правит файлы, о которых его не просили. Перед commit найдите в диффе <code>secret</code>, <code>eyJ</code>, <code>sb_</code>, <code>using (true)</code> и файлы вне задачи.</p>
+      </div>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: каркас проекта"><span class="num">07</span> Практика: собираем каркас выпускного проекта</h2>
+
+      <p>Девять задач по правилу «один промпт = один commit». Они одинаковы для любого типа проекта: названия страниц, таблиц и ролей берёте из своего ТЗ и таблицы из раздела 2. К каждой задаче даны промпт-шаблон, критерий «Готово, когда» и сообщение commit. После каждой задачи: <code>npm run build</code>, проверка в браузере, чтение diff, commit, push.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/17-sprint-1/skeleton.svg" alt="Схема готового каркаса: слева меню с пунктами «Главная», «Клиенты», «Админка» и значком роли manager, справа пустой экран «Клиентов пока нет» с кнопкой «Добавить клиента», вверху адрес сайта на Vercel и кнопка «Выйти»" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Так выглядит цель спринта на примере CRM: меню по роли, экран раздела с пустым состоянием, вход работает. Данные и функции придут в следующих спринтах</figcaption>
+      </figure>
+
+      <h3>Задача 0. Подготовка (до первого промпта)</h3>
+      <article class="task" id="cl-prep">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Чек-лист: всё готово к спринту</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте выполненное. Это 15–20 минут, но без этого спринт превращается в хаос.</p>
+        <ul class="checklist" id="cl-ready">
+          <li>ТЗ, схема БД и карта экранов из урока 16 лежат в <code>docs/SPEC.md</code>, <code>docs/SCHEMA.md</code>, <code>docs/SPRINT.md</code></li>
+          <li>В <code>docs/SPRINT.md</code> есть доска из трёх колонок: «Сделать», «В работе», «Готово» (список задач с галочками подойдёт)</li>
+          <li>Карта доступа «роль × экран» дописана в <code>docs/SPEC.md</code>, ролей не больше трёх</li>
+          <li>В корне проекта лежит <code>AGENTS.md</code> по шаблону из раздела 4 и заполнен под ваш проект</li>
+          <li>Есть аккаунты Supabase, GitHub и Vercel; в Supabase создан пустой проект для выпускного проекта</li>
+          <li>Нарезка на задачи сделана (шаг 1 из раздела 6), вы прочитали план и вычеркнули лишнее</li>
+        </ul>
+      </article>
+
+      <h3>Задача 1. Проект, репозиторий и первый деплой</h3>
+      <p>Создайте проект так же, как в уроке 5 (Next.js, TypeScript, Tailwind), положите его в новый репозиторий GitHub и подключите к Vercel. Пустая стартовая страница на живом адресе уже сейчас — лучшая страховка: каждый следующий push будет сам собираться на сервере.</p>
+      <div class="prompt good-prompt">Контекст: пустой проект Next.js 16 (App Router, TypeScript, Tailwind CSS), правила в @AGENTS.md.
+Цель: заменить стартовую страницу на главную страницу проекта [название]: заголовок, одно предложение о продукте и кнопка «Войти» (пока ведёт на /login).
+Ограничения: 1) только app/page.tsx и app/layout.tsx; 2) тексты на русском; 3) никаких новых библиотек.
+Проверка: перечисли изменённые файлы и что открыть в браузере.</div>
+      <ul>
+        <li><b>Готово, когда:</b> главная открывается на <code>localhost:3000</code> и на адресе <code>…vercel.app</code>, сборка на Vercel зелёная.</li>
+        <li><b>Commit:</b> <code>init project</code>.</li>
+      </ul>
+
+      <h3>Задача 2. Страницы-заглушки и общий каркас</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md и карте экранов из @docs/SPEC.md. Папки: app/(auth) для гостей, app/(app) для вошедших.
+Цель: создать страницы-заглушки для всех экранов из карты экранов: /login, /register, /dashboard, [ваши разделы], /admin. На каждой заголовок и текст «Раздел в разработке».
+Ограничения: 1) общий app/(app)/layout.tsx с шапкой и боковым меню, пункты меню описаны в lib/nav.ts (массив: название, адрес, роли, которым пункт виден; роль пока константа-заглушка); 2) пустое состояние оформлено компонентом components/ui/EmptyState.tsx; 3) страница not-found.tsx с понятным текстом; 4) без Supabase и без реальных данных; 5) адаптивно, меню на телефоне сворачивается.
+Проверка: перечисли созданные файлы и адреса, которые можно открыть руками.</div>
+      <ul>
+        <li><b>Готово, когда:</b> все адреса из карты экранов открываются, меню ведёт по ним, несуществующий адрес показывает 404.</li>
+        <li><b>Commit:</b> <code>add pages and navigation</code>.</li>
+      </ul>
+
+      <h3>Задача 3. Подключение Supabase</h3>
+      <p>Ключи берёте в Supabase (раздел с ключами API) и кладёте только в <code>.env.local</code>, точно как в уроках 11 и 12. Затем те же переменные добавьте в Vercel (Settings → Environment Variables) и запустите деплой заново: без этого сайт на сервере не увидит ключей.</p>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md. В .env.local уже есть NEXT_PUBLIC_SUPABASE_URL и NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (значения не показывай и не меняй).
+Цель: подключить Supabase по документации для Next.js 16: пакеты @supabase/supabase-js и @supabase/ssr, файлы lib/supabase/client.ts и lib/supabase/server.ts, корневой proxy.ts с обновлением сессии.
+Ограничения: 1) как в уроке 12: серверная проверка только через getClaims(), файл proxy.ts, не middleware.ts; 2) никаких секретных ключей в коде; 3) добавить .env.example с именами переменных без значений; 4) страниц пока не менять.
+Проверка: перечисли файлы и как проверить, что сайт по-прежнему открывается.</div>
+      <ul>
+        <li><b>Готово, когда:</b> проект собирается и открывается локально и на Vercel; <code>.env.local</code> не виден в списке изменений Git.</li>
+        <li><b>Commit:</b> <code>add supabase clients</code>.</li>
+      </ul>
+
+      <h3>Задача 4. База данных: таблицы и RLS</h3>
+      <p>Схему из <code>docs/SCHEMA.md</code> превращаем в SQL, как в уроке 11. Хватит таблиц MVP: только те, что нужны экранам спринтов 1–2. Таблицу <code>profiles</code> с ролью делаем в задаче 6.</p>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, схема базы в @docs/SCHEMA.md.
+Цель: SQL для SQL Editor в Supabase: таблицы [ваши таблицы] ровно по схеме (типы, внешние ключи, значения по умолчанию, у таблиц с личными данными столбец владельца owner_id uuid references auth.users).
+Ограничения: 1) только SQL, код сайта не трогать; 2) RLS включить на ВСЕХ таблицах; правила: [например, вошедший видит и меняет только свои строки]; никаких using (true); 3) без delete и update без where; 4) сохрани SQL в файлы db/001_init.sql и db/002_rls.sql; 5) в конце перечисли, что разрешено каждой роли на каждой таблице.
+Проверка: покажи, как проверить, что запрос без входа не возвращает строк.</div>
+      <ul>
+        <li><b>Готово, когда:</b> таблицы видны в Table Editor, у каждой включён RLS, SQL лежит в <code>db/</code>, вы прочитали и поняли каждое правило.</li>
+        <li><b>Commit:</b> <code>add db schema</code>.</li>
+      </ul>
+
+      <h3>Задача 5. Регистрация, вход и выход</h3>
+      <p>Подтверждение e-mail на время разработки отключите, как в уроке 12 (в настоящем продукте верните). Подробный промпт и разбор ошибок смотрите в том уроке.</p>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, Supabase подключён (lib/supabase/client.ts, server.ts, proxy.ts), страницы-заглушки /login и /register уже есть.
+Цель: рабочие регистрация и вход по e-mail и паролю и выход.
+Ограничения: 1) формы на /login и /register: проверка полей, понятные ошибки текстом под формой (не alert), состояние «отправляется»; 2) после входа переход на /dashboard; 3) кнопка «Выйти» в шапке app/(app)/layout.tsx, в шапке виден e-mail; 4) параметр ?next= принимать только если это путь, начинающийся с одного «/»; 5) только серверные проверки через getClaims().
+Проверка: перечисли файлы и пошагово как проверить регистрацию, вход и выход.</div>
+      <ul>
+        <li><b>Готово, когда:</b> вы регистрируете двух тестовых пользователей, оба входят и выходят; в Authentication → Users они видны.</li>
+        <li><b>Commit:</b> <code>add sign in and sign up</code>.</li>
+      </ul>
+
+      <h3>Задача 6. Роли: profiles и роль по умолчанию</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, вход работает, роли описаны в @docs/SPEC.md: [user, admin].
+Цель: таблица profiles (id = id пользователя, role с проверкой допустимых значений и значением по умолчанию [user], display_name) и автоматическое создание строки при регистрации, как в уроке 12.
+Ограничения: 1) сначала только SQL в db/003_profiles.sql; RLS: пользователь видит свою строку и может менять только display_name, но не role; 2) роль не в user_metadata; 3) функция lib/auth.ts: getCurrentUser() возвращает пользователя и его роль из profiles; 4) назначение администратора только SQL-запросом (дай запрос с моим e-mail в качестве примера, не выполняй его).
+Проверка: объясни, почему пользователь не может сам стать admin.</div>
+      <ul>
+        <li><b>Готово, когда:</b> у нового пользователя автоматически появляется строка с самой слабой ролью, а одного из двух тестовых вы повысили до admin через SQL.</li>
+        <li><b>Commit:</b> <code>add profiles and roles</code>.</li>
+      </ul>
+
+      <h3>Задача 7. Защита страниц и меню по роли</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, роль берётся из profiles через lib/auth.ts, меню описано в lib/nav.ts.
+Цель: защитить страницы тремя слоями и показывать меню по роли.
+Ограничения: 1) proxy.ts перенаправляет гостей с закрытых адресов на /login?next=...; 2) в lib/roles.ts функция requireRole(...roles): на странице проверяет роль и вызывает notFound() для остальных; 3) /admin доступна только роли admin, остальным 404; 4) lib/nav.ts фильтрует пункты по роли из getCurrentUser(), а не по константе-заглушке; 5) на /admin добавить noindex в метаданные; 6) RLS из db/ не менять.
+Проверка: покажи таблицу «адрес × гость / user / admin» и как проверить каждую клетку.</div>
+      <ul>
+        <li><b>Готово, когда:</b> по карте доступа проверены все клетки: гость, обычный пользователь и admin открывают именно то, что им разрешено; чужой адрес <code>/admin</code> даёт 404.</li>
+        <li><b>Commit:</b> <code>protect pages by role</code>.</li>
+      </ul>
+
+      <h3>Задача 8. Экраны раздела: данные из базы или пустое состояние</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, таблица [главная таблица] создана (@docs/SCHEMA.md), страница [главный раздел] пока заглушка.
+Цель: на странице [главный раздел] показать список из базы; если строк нет, показать пустое состояние (EmptyState) с кнопкой «Добавить» (кнопка пока без действия).
+Ограничения: 1) данные читает серверная страница через lib/supabase/server.ts, фильтры не нужны, права обеспечивает RLS; 2) состояния «загрузка» (loading.tsx) и «ошибка» (понятный текст, не белый экран); 3) выдуманных данных в коде не оставлять; 4) то же для остальных разделов из карты экранов, по одному.
+Проверка: что должен увидеть пользователь без данных и с одной тестовой строкой, добавленной в Table Editor.</div>
+      <ul>
+        <li><b>Готово, когда:</b> раздел показывает пустое состояние; после добавления тестовой строки в Table Editor она появляется в списке, а у другого пользователя её нет.</li>
+        <li><b>Commit:</b> по одному на раздел: <code>add clients list</code>, <code>add orders list</code> и так далее.</li>
+      </ul>
+
+      <h3>Задача 9. Деплой, README и проверка на живом сайте</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, каркас готов.
+Цель: README.md проекта и финальная проверка.
+Ограничения: 1) README: что за продукт (2–3 предложения), роли и карта доступа, как запустить локально (команды и список переменных окружения без значений), какие страницы закрыты; 2) только README.md; 3) без выдуманных функций: только то, что реально сделано.
+Проверка: перечисли разделы README и что в нём ещё не сделано (план следующих спринтов).</div>
+      <ul>
+        <li><b>Готово, когда:</b> на живом адресе Vercel вы с двух тестовых аккаунтов (обычный и admin) прошли карту доступа; в репозитории нет секретов; <code>docs/SPRINT.md</code> обновлён.</li>
+        <li><b>Commit:</b> <code>update readme</code>.</li>
+      </ul>
+
+      <div class="yt" data-id="yYxrQbP7fsU" data-title="Вайб кодинг: полный гайд на реальных проектах в Cursor AI и ChatGPT — канал Олег Малышев" data-start="0"></div>
+      <p class="muted">Видео на русском, по желанию: длинный разбор работы над реальными проектами в Cursor. Целиком смотреть не нужно: перемотайте и посмотрите, как автор делит работу на шаги и проверяет результат.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/17-sprint-1/commits.svg" alt="Схема списка commit в репозитории: девять коротких сообщений снизу вверх от init project до update readme, возле каждого значок успешной сборки на Vercel" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Так выглядит хорошая история спринта: девять коротких commit, по одному на задачу. Если что-то сломалось, вы знаете, к какой точке вернуться</figcaption>
+      </figure>
+
+      <article class="task" id="cl-built">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Чек-лист: каркас проекта собран</h4><span class="level mid">средняя</span></header>
+        <p>Отметьте, что уже работает на живом сайте Vercel, а не только на вашем компьютере.</p>
+        <ul class="checklist" id="cl-skeleton">
+          <li>Все страницы из карты экранов открываются, меню ведёт по ним, несуществующий адрес показывает 404</li>
+          <li>В Supabase созданы таблицы по схеме, у каждой включён RLS, SQL лежит в папке <code>db/</code></li>
+          <li>Регистрация, вход и выход работают, подтверждено двумя тестовыми пользователями</li>
+          <li>Таблица <code>profiles</code> хранит роль, по умолчанию самую слабую, администратор назначен через SQL</li>
+          <li>Закрытые страницы недоступны гостю, <code>/admin</code> даёт 404 обычному пользователю</li>
+          <li>Меню показывает пункты по роли, пустые экраны оформлены, есть состояния «загрузка» и «ошибка»</li>
+          <li>В истории Git не меньше восьми commit с понятными сообщениями, ключей и <code>.env.local</code> в репозитории нет</li>
+          <li><code>AGENTS.md</code> и <code>README.md</code> написаны, доска <code>docs/SPRINT.md</code> обновлена</li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-fix">
+        <header><span class="task-num">ЗАДАЧА 7.3</span><h4>Если сломалось: найди причину</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Локально всё работает, а на Vercel страницы падают с ошибкой вида «Your project's URL and API key are required to create a Supabase client». Что вероятнее всего?</p>
+          <ol class="options">
+            <li>Vercel не поддерживает Supabase</li>
+            <li>В Vercel не добавлены переменные окружения из <code>.env.local</code> (или после добавления не было нового деплоя)</li>
+            <li>В <code>.gitignore</code> забыли <code>node_modules</code></li>
+            <li>Нужно переименовать проект на GitHub</li>
+          </ol>
+          <div class="explain"><p><code>.env.local</code> в Git не попадает, поэтому сервер ключей не знает. Добавьте переменные в Settings → Environment Variables и запустите деплой заново.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В таблице <code>clients</code> три строки, а на странице пустое состояние. Ошибок нет. В чём вероятная причина?</p>
+          <ol class="options">
+            <li>Браузер кэширует страницу навсегда</li>
+            <li>Таблица <code>clients</code> слишком маленькая</li>
+            <li>RLS включён, но нет правила <code>select</code> для вашей роли: база молча возвращает пустой список</li>
+            <li>У страницы неправильное имя файла</li>
+          </ol>
+          <div class="explain"><p>Включённый RLS без подходящего правила не выдаёт ошибку, а просто скрывает строки. Попросите ИИ показать правила таблицы и добавить нужное, не отключая RLS.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>На Vercel сборка падает с «Type error: …», хотя вы не запускали сборку перед commit. Как предотвратить в будущем?</p>
+          <ol class="options">
+            <li>Запускать <code>npm run build</code> локально перед каждым commit (это пункт определения готовности)</li>
+            <li>Отключить проверку типов</li>
+            <li>Делать commit реже</li>
+            <li>Удалить файл <code>package.json</code></li>
+          </ol>
+          <div class="explain"><p>Сборка на Vercel строгая: ошибка типов роняет деплой. Локальный <code>npm run build</code> показывает её сразу, и вы исправляете её до push.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vercel.com/docs/git" target="_blank" rel="noopener">Vercel: Git-интеграция</a>, <a href="https://vercel.com/docs/environment-variables" target="_blank" rel="noopener">Vercel: Environment Variables</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 08 · Фишка ============ -->
+    <section class="topic" id="standup">
+      <h2 data-toc="Daily-стендап"><span class="num">08</span> Фишка урока: «Daily-стендап на 5 минут»</h2>
+
+      <p>В командах, которые работают спринтами, каждый день начинается с короткой встречи: «стендап» (daily). Её цель — не отчитаться перед начальником, а синхронизироваться и быстро вытащить то, что мешает работать. В этом спринте вы будете проводить её в мини-группах. По классическому Scrum встреча занимает не более 15 минут, на курсе мы сжимаем её до 5.</p>
+
+      <div class="callout tip">
+        <b>Правила</b>
+        <p><b>1.</b> Группы по 3–4 человека (разные типы проектов — это плюс). Ведущий выбирается по очереди и следит за таймером. <b>2.</b> Каждый говорит до 60 секунд и отвечает ровно на три вопроса: <b>что сделал</b> (какие задачи закрыл и сделал commit), <b>что мешает</b> (блокер: ошибка, непонимание, ожидание), <b>что дальше</b> (одна-две следующие задачи). <b>3.</b> Показать результат: 15 секунд живого сайта или списка commit. Слайдов нет. <b>4.</b> Решения не обсуждаем: блокер записывается в «парковку», а разбирается после стендапа в паре. <b>5.</b> Все стоят (или встают на последней минуте): так встреча не затягивается. <b>6.</b> Итоги записываются в <code>docs/SPRINT.md</code>: задачи переезжают по колонкам доски.</p>
+      </div>
+
+      <h3>Расписание</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:30</td><td>Ведущий называет порядок выступлений, запускает таймер</td></tr>
+            <tr><td>0:30–4:00</td><td>Каждый по 60 секунд: что сделал, что мешает, что дальше (при четырёх участниках — по 50)</td></tr>
+            <tr><td>4:00–4:40</td><td>Ведущий зачитывает блокеры из «парковки», каждому находится напарник для разбора</td></tr>
+            <tr><td>4:40–5:00</td><td>Обновляют доску и называют цель на сегодня одной фразой</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Блокеры: что делать</h3>
+      <ul>
+        <li><b>Ошибка.</b> Напарник смотрит текст ошибки и ваш последний commit; если задача слишком большая, режете.</li>
+        <li><b>Непонимание.</b> Объясните вслух, что вы пытались сделать: чаще всего ответ находится на втором предложении.</li>
+        <li><b>Ждёте кого-то.</b> Назовите, чего ждёте и от кого, и возьмите пока другую задачу из доски.</li>
+      </ul>
+
+      <h3>Очки (необязательно)</h3>
+      <ul>
+        <li><b>+2</b> за выступление ровно в 60 секунд.</li>
+        <li><b>+1</b> за каждый блокер, который помогли снять другие участники.</li>
+        <li><b>+2</b> за самый чёткий ответ «что дальше»: конкретная задача из доски, а не «буду делать проект».</li>
+        <li><b>−1</b> за выступление без единого commit со вчерашнего дня (без осуждения: просто повод разрезать задачу мельче).</li>
+      </ul>
+
+      <article class="task" id="cl-standup">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: я провёл Daily-стендап</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте после игры.</p>
+        <ul class="checklist" id="cl-daily">
+          <li>Я ответил на три вопроса: что сделал, что мешает, что дальше</li>
+          <li>Уложился в 60 секунд и показал результат (сайт или список commit)</li>
+          <li>Записал свой блокер и нашёл напарника для разбора</li>
+          <li>Обновил доску в <code>docs/SPRINT.md</code> после стендапа</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://www.atlassian.com/ru/agile/scrum/standups" target="_blank" rel="noopener">Atlassian: стендапы для agile-команд</a>.</p>
+    </section>
+
+    <!-- ============ 09 · ДЗ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание: рабочий каркас проекта со входом и ролями (ДЗ-17)</h2>
+
+      <p>Доведите каркас до состояния, в котором его можно показать: сайт на Vercel, где можно зарегистрироваться, войти и увидеть разные экраны в зависимости от роли. Сдача: две ссылки (репозиторий GitHub и сайт на Vercel). Если на занятии вы не успели, достройте оставшиеся задачи из раздела 7.</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Страницы и навигация:</b> все экраны из вашей карты экранов существуют (пусть пустые), меню ведёт по ним, есть страница 404.</li>
+        <li><b>База:</b> таблицы по схеме из урока 16, на каждой включён RLS с осмысленными правилами, SQL лежит в <code>db/</code>.</li>
+        <li><b>Вход:</b> регистрация, вход и выход по e-mail и паролю, понятные ошибки.</li>
+        <li><b>Роли:</b> таблица <code>profiles</code> с ролью (по умолчанию самая слабая), минимум две роли, администратор назначен через SQL, роль не в <code>user_metadata</code>.</li>
+        <li><b>Доступ:</b> закрытые страницы недоступны гостю; <code>/admin</code> (или другой админский раздел) только для admin; меню по роли.</li>
+        <li><b>Пустые экраны:</b> разделы показывают данные из базы или аккуратное пустое состояние, есть «загрузка» и «ошибка».</li>
+        <li><b>Порядок:</b> в Git не меньше восьми commit с понятными сообщениями (по задачам), <code>AGENTS.md</code> и <code>README.md</code> в корне, доска задач обновлена.</li>
+        <li><b>Секреты:</b> ключи только в <code>.env.local</code> и Vercel; <code>.env.example</code> без значений; в репозитории нет паролей, ключей и токенов.</li>
+        <li><b>Качество:</b> <code>npm run build</code> без ошибок; на живом сайте вы проходите карту доступа с двух аккаунтов; можете объяснить, в каком слое что живёт.</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li>Выполните задачи 1–9 из раздела 7 для своего проекта.</li>
+        <li>Создайте двух тестовых пользователей (обычный и admin) и пройдите по карте доступа «роль × экран» на живом сайте.</li>
+        <li>Допишите в <code>README.md</code> раздел «Что сделано в спринте 1 и что дальше» (3–5 пунктов).</li>
+        <li>Проверьте историю commit: каждое сообщение понятно без вашего объяснения.</li>
+        <li>Вставьте ссылки ниже и отметьте чек-лист.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Один гигантский commit «final». <b>2.</b> Роль зашита в интерфейсе или в <code>user_metadata</code>. <b>3.</b> RLS выключен или правила <code>using (true)</code>. <b>4.</b> На Vercel не добавлены переменные окружения: сайт открывается, но вход не работает. <b>5.</b> В репозитории лежит <code>.env.local</code>. <b>6.</b> <code>/admin</code> открывается обычному пользователю. <b>7.</b> Экраны показывают выдуманные данные вместо данных из базы или пустого состояния. <b>8.</b> Нет <code>README.md</code> и <code>AGENTS.md</code>.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Как проверяют</b>
+        <p>Проверяющий откроет сайт, зарегистрируется, попробует открыть закрытые адреса без входа и от имени обычного пользователя, посмотрит меню и пустые экраны. Затем изучит репозиторий: историю commit, <code>AGENTS.md</code>, папку <code>db/</code>, отсутствие секретов. Баллы: за работающий вход и роли, за защиту страниц и RLS, за аккуратную структуру и историю commit, за понятный <code>README.md</code> и за то, что вы объясняете своё решение. Критерии рубрики из урока 16 действуют и здесь.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист требований к ДЗ-17</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Все экраны из карты экранов существуют, меню работает, есть 404</li>
+          <li>Таблицы по схеме, RLS включён везде, SQL в папке <code>db/</code></li>
+          <li>Регистрация, вход и выход работают, ошибки понятные</li>
+          <li>Роли в <code>profiles</code>, по умолчанию самая слабая, админ назначен через SQL</li>
+          <li>Закрытые страницы недоступны гостю, <code>/admin</code> только для admin, меню по роли</li>
+          <li>Разделы показывают данные или пустое состояние, есть «загрузка» и «ошибка»</li>
+          <li>В Git не меньше восьми осмысленных commit, <code>AGENTS.md</code> и <code>README.md</code> на месте</li>
+          <li>Секретов в репозитории нет, есть <code>.env.example</code></li>
+          <li><code>npm run build</code> проходит, на Vercel всё работает, карта доступа пройдена с двух аккаунтов</li>
+          <li>Ссылки на GitHub и Vercel вставлены ниже</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий выпускного проекта.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/graduation-project"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 9.3</span><h4>Ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на опубликованный сайт (адрес вида <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://graduation-project.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/project-structure" target="_blank" rel="noopener">Next.js: Project structure</a>, <a href="https://supabase.com/docs/guides/auth/server-side/nextjs" target="_blank" rel="noopener">Supabase: Server-Side Auth для Next.js</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Три слоя:</b> интерфейс (что видно), серверный код (кто вошёл и что ему можно), база (последняя проверка каждой строки через RLS). Права решаются на правых слоях, не в интерфейсе.</li>
+        <li><b>Роли:</b> две-три на спринт; хранятся в <code>profiles</code>; по умолчанию самая слабая; повышает владелец через SQL; карта доступа «роль × экран» лежит в ТЗ.</li>
+        <li><b>Мелкие задачи:</b> одна задача = один промпт = один commit. Видимый результат, один слой, не больше 60 минут, не больше 5–7 файлов, критерий проверки.</li>
+        <li><b>Порядок каркаса:</b> страницы-заглушки, Supabase, база и RLS, вход, роли, защита страниц, данные и пустые экраны, деплой и README.</li>
+        <li><b>Определение готовности:</b> сделано ровно то, что в задаче; <code>npm run build</code> проходит; проверено в браузере; diff прочитан; commit сделан и отправлен на GitHub.</li>
+        <li><b>Структура:</b> <code>app/(auth)</code>, <code>app/(app)</code>, <code>components</code>, <code>lib</code>, <code>db</code>, <code>docs</code>, <code>proxy.ts</code>, <code>AGENTS.md</code>, <code>.env.example</code>.</li>
+        <li><b>AGENTS.md:</b> стек, слои, роли, правила («одна задача, сначала план», <code>getClaims()</code>, RLS везде, секреты только в env), определение готовности, запреты. Короткий, без секретов.</li>
+        <li><b>Если сломалось:</b> стоп, откат (checkpoint или Discard до последнего commit), задачу резать, новый чат с <code>AGENTS.md</code>. После двух неудач не повторять запрос. Уже сделанный плохой commit отменяет <code>git revert HEAD</code>.</li>
+        <li><b>Daily-стендап:</b> 5 минут, три вопроса (что сделал, что мешает, что дальше), блокеры решают после встречи, итог на доске.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить три слоя проекта и сказать, в каком слое живёт любая часть моего продукта</li>
+          <li>Могу нарезать функцию на задачи по правилу «один промпт = один commit» и оценить размер задачи</li>
+          <li>Могу составить карту доступа «роль × экран» и объяснить, где реализуется каждая её клетка</li>
+          <li>Могу описать структуру папок проекта и написать для него <code>AGENTS.md</code></li>
+          <li>Могу проверить задачу по определению готовности и сделать commit с понятным сообщением</li>
+          <li>Могу откатиться, если агент сломал проект, и знаю, когда остановить повторные попытки</li>
+          <li>Могу провести Daily-стендап за 5 минут</li>
+        </ul>
+      </article>
+    </section>

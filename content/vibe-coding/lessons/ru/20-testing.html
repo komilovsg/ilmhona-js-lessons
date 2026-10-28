@@ -1,0 +1,1013 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+</style>
+
+
+
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 20 · Модуль 7. Надёжность: безопасность, тесты, боты</p>
+      <h1>Тестирование и отладка вместе с ИИ-агентом</h1>
+      <p class="lead">К концу урока изменения в выпускном проекте проверяются тестами, а не надеждой: в репозитории лежат три автотеста Playwright на главный сценарий, которые агент написал, а вы запустили и прочитали сами. Вы поймаете настоящий баг тестом, найдёте запрос в логах Vercel и оформите README, по которому проект запустит чужой человек. А «Красная кнопка» покажет, ловят ли ваши тесты поломку, которую устроит преподаватель.</p>
+      <ul class="goals">
+        <li>Объяснить, почему «у меня работает» не доказательство, и назвать, что ломается у проектов с ИИ-кодом чаще всего</li>
+        <li>Описать главный сценарий проекта таблицей «шаги, ожидание, факт» и пройти его руками под двумя ролями</li>
+        <li>Установить Playwright в Next.js-проект и запустить тесты командой <code>npx playwright test</code> на локальном сервере</li>
+        <li>Прочитать автотест и сказать, что он проверяет; отличить хороший тест от теста, который всегда зелёный</li>
+        <li>Открыть логи на Vercel, найти ошибку по маршруту и статусу и связать её с кодом</li>
+        <li>Написать README и сдать три работающих автотеста выпускного проекта</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: выпускной проект из уроков 17–19 (репозиторий на GitHub, сайт на Vercel, проект Supabase, вход и роли), Cursor, терминал и Node.js 22 или новее (проверьте командой <code>node -v</code>; у Playwright в документации указаны 22.x, 24.x и 26.x). Время: 4–5 часов; удобно разбить на два подхода: теория (разделы 1–5) и практика (разделы 7–8). Урок откройте в одной половине экрана, Cursor в другой. По ходу вы ничего не ломаете в боевой базе: тестовые записи создаются в учебном проекте Supabase и удаляются сами. К концу в репозитории будет папка <code>tests/</code>, команда <code>npm run test:e2e</code> и файл <code>README.md</code>.</p>
+    </div>
+
+    <!-- ============ 01 · Почему «у меня работает» не считается ============ -->
+    <section class="topic" id="why">
+      <h2 data-toc="Почему не считается"><span class="num">01</span> Почему «у меня работает» не считается</h2>
+
+      <p>Вы нажали кнопку, форма отправилась, запись появилась. Работает? Вы проверили <b>один путь</b>: под своим аккаунтом, с правильными данными, в одном браузере, один раз. Настоящие пользователи делают всё иначе: вводят пустое поле, заходят под другой ролью, нажимают «Назад», открывают сайт с телефона. А главное, код меняется каждый день. Вчера всё работало, сегодня агент «слегка поправил» соседний файл, и вход сломался. Проверять всё руками после каждой правки невозможно: вы устанете уже на третьей.</p>
+
+      <p>С ИИ-кодом это особенно важно. Агент пишет уверенно и коротко сообщает «готово, всё работает». Но он не всегда запускал код, а если запускал, то мог проверить не то. Нейросеть может написать правдоподобный ответ о результате, которого не было. Поэтому в вайбкодинге действует правило: <b>работает то, что подтвердил запуск, а не слова агента</b>. Проверка результата — главный навык человека в паре с ИИ.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Два пути проверки. Сверху: правка кода, затем «у меня работает» после одного клика, затем релиз и жалоба пользователя. Снизу: правка кода, затем автотест, затем зелёный или красный результат, затем релиз только при зелёном">
+          <text class="sub" x="8" y="18">Без тестов</text>
+          <rect class="box v" x="8" y="28" width="150" height="62" rx="12" /><text x="83" y="55" text-anchor="middle">Правка кода</text><text class="sub" x="83" y="75" text-anchor="middle">агент или вы</text>
+          <rect class="fill-y" x="198" y="28" width="150" height="62" rx="12" /><text x="273" y="55" text-anchor="middle">Один клик руками</text><text class="sub" x="273" y="75" text-anchor="middle">«у меня работает»</text>
+          <rect class="box o" x="388" y="28" width="150" height="62" rx="12" /><text x="463" y="55" text-anchor="middle">Релиз на Vercel</text><text class="sub" x="463" y="75" text-anchor="middle">сразу всем</text>
+          <rect class="fill-r" x="578" y="28" width="134" height="62" rx="12" /><text class="t-r" x="645" y="55" text-anchor="middle">Жалоба</text><text class="sub t-r" x="645" y="75" text-anchor="middle">узнали от людей</text>
+          <path class="arr" d="M158 59H192" /><path class="arr-head" d="M192 53l9 6-9 6z" />
+          <path class="arr" d="M348 59H382" /><path class="arr-head" d="M382 53l9 6-9 6z" />
+          <path class="arr" d="M538 59H572" /><path class="arr-head" d="M572 53l9 6-9 6z" />
+          <text class="sub" x="8" y="136">С тестами</text>
+          <rect class="box v" x="8" y="146" width="150" height="62" rx="12" /><text x="83" y="173" text-anchor="middle">Правка кода</text><text class="sub" x="83" y="193" text-anchor="middle">агент или вы</text>
+          <rect class="box b" x="198" y="146" width="150" height="62" rx="12" /><text x="273" y="173" text-anchor="middle">Автотест</text><text class="sub" x="273" y="193" text-anchor="middle">секунды, без усталости</text>
+          <rect class="fill-g" x="388" y="146" width="150" height="62" rx="12" /><text class="t-g" x="463" y="173" text-anchor="middle">Зелёный</text><text class="sub" x="463" y="193" text-anchor="middle">можно выкладывать</text>
+          <rect class="fill-r" x="578" y="146" width="134" height="62" rx="12" /><text class="t-r" x="645" y="173" text-anchor="middle">Красный</text><text class="sub t-r" x="645" y="193" text-anchor="middle">чиним до релиза</text>
+          <path class="arr" d="M158 177H192" /><path class="arr-head" d="M192 171l9 6-9 6z" />
+          <path class="arr" d="M348 177H382" /><path class="arr-head" d="M382 171l9 6-9 6z" />
+          <path class="arr" d="M348 177V228H645V212" /><path class="arr-head" d="M639 212l6-9 6 9z" />
+        </svg>
+        <figcaption>Тест стоит между правкой и релизом: красный результат вы видите сами, до пользователей</figcaption>
+      </figure>
+
+      <h3>Что чаще всего ломается у проектов с ИИ-кодом</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Поломка</th><th>Как выглядит</th><th>Почему руками не заметили</th></tr></thead>
+          <tbody>
+            <tr><td><b>Сломанный соседний экран</b></td><td>Агент поправил форму заказа, а вход перестал работать</td><td>Проверяли только форму, куда вносили правку</td></tr>
+            <tr><td><b>Другая роль</b></td><td>Обычный пользователь видит админку или не видит своих записей</td><td>Всегда заходили под одним аккаунтом</td></tr>
+            <tr><td><b>Пустой и неверный ввод</b></td><td>Пустая форма создаёт запись «без названия», белый экран при ошибке</td><td>Вводили только правильные данные</td></tr>
+            <tr><td><b>Работает локально, не работает на Vercel</b></td><td>Нет переменной окружения на хостинге, 500 на боевом сайте</td><td>Смотрели только <code>localhost</code></td></tr>
+            <tr><td><b>Тихая ошибка</b></td><td>Кнопка нажимается, ничего не происходит, запись не сохранилась</td><td>Не открывали консоль и логи</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Повар в чойхоне пробует плов ложкой с края казана: вкусно. Но гости получат порцию со дна, где подгорело. Автотест — это проверка по списку перед подачей: рис, мясо, морковь, соль, температура. Каждый раз одинаково, даже когда повар устал или торопится.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Верить строке «я всё проверил» от агента без запуска. <b>2.</b> Проверять только то место, которое правили. <b>3.</b> Тестировать только под администратором. <b>4.</b> Считать тесты «лишней работой на потом»: именно после третьей правки они спасают. <b>5.</b> Просить агента «пройти тесты» и не открывать вывод: он может подогнать тест под сломанный код.</p>
+      </div>
+
+      <article class="task" id="q-why">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: что считается проверкой</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Вы попросили агента добавить поле «комментарий» в форму заказа. Он ответил: «Готово, форма работает». Что считать доказательством?</p>
+          <ol class="options">
+            <li>Сам ответ агента: он видел код, а значит, знает, что всё правильно</li>
+            <li>Запуск сценария («войти, создать заказ, увидеть его в списке») и зелёный результат, который вы видите сами</li>
+            <li>То, что файл открывается в редакторе без красных подчёркиваний</li>
+            <li>Отсутствие жалоб в течение первого дня</li>
+          </ol>
+          <div class="explain"><p>Слова агента — это гипотеза, а запуск — проверка. Подчёркиваний в редакторе мало: код может быть синтаксически верным и всё равно ломать сценарий. А ждать жалоб значит проверять на пользователях.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Какие из этих ошибок руками обычно <b>не заметны</b>, пока не проверишь специально? Выберите все верные.</p>
+          <ol class="options">
+            <li>Обычный пользователь открывает <code>/admin</code> и видит страницу</li>
+            <li>Заголовок на главной написан с опечаткой, и вы смотрите на него каждый день</li>
+            <li>Пустая форма создаёт запись без названия</li>
+            <li>Кнопка «Войти» не нажимается, и на неё сразу же заметно</li>
+          </ol>
+          <div class="explain"><p>Заметно то, на что вы смотрите. Незаметны проверки под другой ролью и с неверными данными: их никто не делает «заодно».</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/guides/testing" target="_blank" rel="noopener">Next.js: Testing</a> (виды тестов, на английском).</p>
+    </section>
+
+    <!-- ============ 02 · Сценарный тест руками ============ -->
+    <section class="topic" id="manual">
+      <h2 data-toc="Сценарий руками"><span class="num">02</span> Сценарный тест руками: сначала понять, что проверяем</h2>
+
+      <p>Автотест нельзя написать, пока вы сами не знаете, что должно происходить. Поэтому сначала сценарий проходят руками и записывают. <b>Сценарий</b> — это путь человека по продукту ради одной цели: «покупатель выбирает товар и оформляет заказ», «клиент записывается на приём», «менеджер добавляет клиента в CRM». Главный сценарий вашего выпускного проекта вы описали в ТЗ (урок 16) и сделали в спринте 2 (урок 18).</p>
+
+      <p>Запишите его таблицей из трёх колонок: <b>шаг</b> (что делает человек), <b>ожидание</b> (что должен увидеть) и <b>факт</b> (что увидели на самом деле; пока пусто). Формулировки пишите так, как видит человек: не «сработал POST», а «в списке появилась строка с названием».</p>
+
+<pre class="code" data-title="docs/test-scenarios.md (пример для интернет-магазина, подставьте свой проект)">
+# Main scenario: placing an order
+
+Role: customer (regular user). Data: test account.
+
+| # | Step | Expected | Actual |
+|---|------|----------|--------|
+| 1 | Open /dashboard without signing in | Redirect to /login | |
+| 2 | Sign in with the test account | /dashboard opens, name or e-mail is visible | |
+| 3 | Click "New order", type a title | The form accepts the text | |
+| 4 | Click "Save" | Success message, the order is in the list | |
+| 5 | Click "Save" with an empty title | A clear error, no order created | |
+| 6 | As a regular user open /admin | The admin page is not shown | |
+</pre>
+
+      <p>Сценарии делят на три типа, и хороший набор содержит все три:</p>
+      <ul>
+        <li><b>Счастливый путь:</b> всё делают правильно (шаги 2–4). Если он сломан, продукт не работает.</li>
+        <li><b>Ошибочный ввод:</b> пустое поле, неверный пароль (шаг 5). Приложение должно ответить понятно, а не упасть.</li>
+        <li><b>Доступ:</b> гость и обычный пользователь не получают чужого (шаги 1 и 6). Это связь с уроком 19: правило «защита на сервере» тоже проверяется тестом.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Маршрутка №8 в Душанбе: водитель знает маршрут по остановкам. Диспетчер, который проверяет рейс, идёт по тому же списку: «Рудаки, Исмоили Сомони, Садбарг, конечная». Сценарий — это список остановок вашего продукта: если какая-то остановка пропала, рейс не засчитывается.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Сценарий на пятьдесят шагов: тест будет хрупким и медленным. Хороший сценарий — 4–8 шагов к одной цели. <b>2.</b> Ожидание «всё работает»: нужно конкретное, что видно на экране. <b>3.</b> Только счастливый путь. <b>4.</b> Тестовые данные из жизни (настоящая почта, чужие записи).</p>
+      </div>
+
+      <article class="task" id="cl-manual">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Чек-лист: сценарий записан и пройден руками</h4><span class="level mid">средняя</span></header>
+        <p>Сделайте это в своём проекте, до установки Playwright.</p>
+        <ul class="checklist" id="cl-manual-list">
+          <li>Выбрал главный сценарий проекта и записал его в <code>docs/test-scenarios.md</code>: 4–8 шагов, у каждого конкретное ожидание</li>
+          <li>В набор входят все три типа: счастливый путь, ошибочный ввод и проверка доступа (гость или обычный пользователь)</li>
+          <li>Создал в Supabase отдельного тестового пользователя с ролью обычного пользователя (не свою настоящую почту)</li>
+          <li>Прошёл сценарий руками и заполнил колонку «Факт»; всё, что не совпало, записал отдельным списком</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://playwright.dev/docs/best-practices" target="_blank" rel="noopener">Playwright: Best Practices</a> (проверять то, что видит пользователь; на английском).</p>
+    </section>
+
+    <!-- ============ 03 · Playwright ============ -->
+    <section class="topic" id="playwright">
+      <h2 data-toc="Автотест Playwright"><span class="num">03</span> Автотест главного сценария: Playwright</h2>
+
+      <p><b>Playwright</b> — бесплатный инструмент, который открывает настоящий браузер и делает то, что делали бы вы: заходит на страницу, вводит текст, нажимает кнопки и проверяет, что на экране появилось нужное. Такие тесты называют <b>e2e</b> (end-to-end, «от края до края»): они проходят весь путь от браузера до базы данных. Вы запускаете одну команду, браузер на секунды открывается и закрывается, а в терминале виден список: что прошло, что нет.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Как работает e2e-тест: команда npx playwright test запускает сервер проекта и браузер, браузер ходит по сайту, сайт обращается к Supabase, тест сравнивает увиденное с ожиданиями и печатает результат">
+          <rect class="box v" x="8" y="20" width="150" height="86" rx="12" /><text x="83" y="50" text-anchor="middle">Файл теста</text><text class="sub mono" x="83" y="72" text-anchor="middle">tests/*.spec.ts</text>
+          <rect class="box b" x="198" y="20" width="150" height="86" rx="12" /><text x="273" y="50" text-anchor="middle">Браузер</text><text class="sub" x="273" y="72" text-anchor="middle">Chromium под</text><text class="sub" x="273" y="90" text-anchor="middle">управлением теста</text>
+          <rect class="box g" x="388" y="20" width="150" height="86" rx="12" /><text x="463" y="50" text-anchor="middle">Ваш сайт</text><text class="sub mono" x="463" y="72" text-anchor="middle">localhost:3000</text>
+          <rect class="box o" x="578" y="20" width="134" height="86" rx="12" /><text x="645" y="50" text-anchor="middle">Supabase</text><text class="sub" x="645" y="72" text-anchor="middle">учебная база</text>
+          <path class="arr" d="M158 63H192" /><path class="arr-head" d="M192 57l9 6-9 6z" />
+          <path class="arr" d="M348 63H382" /><path class="arr-head" d="M382 57l9 6-9 6z" />
+          <path class="arr" d="M538 63H572" /><path class="arr-head" d="M572 57l9 6-9 6z" />
+          <rect class="fill-g" x="198" y="140" width="340" height="62" rx="12" /><text class="t-g" x="368" y="166" text-anchor="middle">Сравнение: увидел то, что ждал?</text><text class="sub" x="368" y="186" text-anchor="middle">да: passed (зелёный), нет: failed (красный + причина)</text>
+          <path class="arr" d="M273 106V140" /><path class="arr-head" d="M267 134l6 9 6-9z" />
+        </svg>
+        <figcaption>Тест ничего не знает о коде внутри: он действует как пользователь и смотрит на экран</figcaption>
+      </figure>
+
+      <h3>Установка в проект Next.js</h3>
+      <p>Официальный путь из документации Next.js: <code>npm init playwright@latest</code> в корне проекта. Команда задаст вопросы: язык (выбирайте TypeScript), папка с тестами (<code>tests</code>), нужен ли файл GitHub Actions (пока нет, к нему вернёмся в бонусе) и скачивать ли браузеры (да). Она добавит Playwright в <code>package.json</code>, создаст <code>playwright.config.ts</code> и пример <code>tests/example.spec.ts</code>. Браузеры весят сотни мегабайт, загрузка занимает несколько минут.</p>
+
+<pre class="code" data-title="Терминал">
+npm init playwright@latest
+npx playwright test
+</pre>
+
+      <h3>Конфиг: запускаем сайт сами</h3>
+      <p>Чтобы не открывать второй терминал, в конфиге есть блок <code>webServer</code>: Playwright запускает команду, ждёт, пока адрес ответит, и только потом начинает тесты. А <code>baseURL</code> позволяет писать в тестах короткие адреса вроде <code>/login</code>. Подправьте сгенерированный файл так (остальное сгенерированное можно оставить):</p>
+
+<pre class="code" data-title="playwright.config.ts">
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  // один браузер: быстрее и проще читать результат
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  use: {
+    baseURL: 'http://localhost:3000',
+    trace: 'on-first-retry',
+  },
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
+});
+</pre>
+
+      <p>Документация Next.js советует гонять тесты на собранной версии (<code>npm run build</code> и <code>npm run start</code>), потому что она ближе к боевой. Для урока достаточно <code>npm run dev</code>: проще. Если на <code>dev</code> тесты иногда падают по времени, потому что страницы собираются при первом открытии, замените команду на <code>npm run build &amp;&amp; npm run start</code>.</p>
+
+      <h3>Как выглядит тест</h3>
+      <p>Тест — это функция с именем, внутри которой шаги пользователя и проверки. Шаги: <code>goto</code> (открыть адрес), <code>fill</code> (ввести текст), <code>click</code> (нажать). Проверки: <code>expect(...)</code> с <code>toBeVisible()</code> («виден на странице») или <code>toHaveURL()</code> («адрес такой»). Элементы ищут так, как их видит человек: <code>getByRole('button', { name: '...' })</code> («кнопка с таким названием»), <code>getByLabel('...')</code> («поле с такой подписью»), <code>getByText('...')</code>. В документации Playwright именно <code>getByRole</code> стоит первым в списке рекомендаций, а CSS-селекторы и <code>XPath</code> оставлены на крайний случай. Проверки <code>expect</code> умеют ждать: если элемент появляется через секунду, тест подождёт, а не упадёт сразу.</p>
+
+<pre class="code" data-title="tests/main-flow.spec.ts (пример: названия подставьте из своего проекта)">
+import { test, expect } from '@playwright/test';
+
+// тест 1: гость на закрытой странице уходит на вход
+test('guest is redirected to login', async ({ page }) => {
+  await page.goto('/dashboard');
+  await expect(page).toHaveURL(/\/login/);
+});
+
+// тест 2: вход и создание записи (главный сценарий)
+test('user signs in and creates an item', async ({ page }) => {
+  const title = 'e2e-item-' + Date.now(); // уникальное имя, чтобы тесты не мешали друг другу
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(process.env.E2E_EMAIL!);
+  await page.getByLabel('Password').fill(process.env.E2E_PASSWORD!);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/\/dashboard/);
+
+  await page.getByRole('button', { name: 'New item' }).click();
+  await page.getByLabel('Title').fill(title);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(title)).toBeVisible();
+});
+</pre>
+
+      <p>Подписи в кавычках («Sign in», «New item») в примере английские: у вашего проекта они свои, например «Войти». Тест должен искать то, что написано на экране вашего сайта. Пароль и почта тестового пользователя берутся из <code>process.env</code>, то есть из файла <code>.env.test</code> (он закрыт в <code>.gitignore</code> так же, как <code>.env.local</code>), а не из кода: это то же правило про секреты, что и в уроке 19.</p>
+
+      <h3>Запуск, отчёт и разбор падения</h3>
+      <ul>
+        <li><code>npx playwright test</code> запускает все тесты в тихом режиме (без окна браузера).</li>
+        <li><code>npx playwright test --ui</code> открывает окно, где видно каждый шаг теста и снимок страницы на нём: лучший способ понять, что произошло.</li>
+        <li><code>npx playwright test --headed</code> показывает настоящее окно браузера.</li>
+        <li><code>npx playwright show-report</code> открывает HTML-отчёт: список тестов, причина падения, снимок и шаги.</li>
+      </ul>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/20-testing/report.svg" alt="Схема HTML-отчёта Playwright: вкладки All 3, Passed 2, Failed 1; два зелёных теста (гость уходит на страницу входа, обычный пользователь не видит админку) и один красный (пользователь создаёт заказ и видит его в списке) с текстом ошибки expect toBeVisible failed, Timeout 5000ms exceeded" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Отчёт на упрощённой схеме: красный тест и текст ошибки. Читайте строку «Expected» и «Locator»: там сказано, что именно не нашлось</figcaption>
+      </figure>
+
+      <h3>Как читать красный результат</h3>
+      <ol class="steps">
+        <li><b>Название теста.</b> По нему понятно, какой шаг сценария сломан.</li>
+        <li><b>Строка ошибки.</b> Например, <code>expect(locator).toBeVisible() failed</code> и <code>Timeout 5000ms exceeded</code>: ждали-ждали и не дождались.</li>
+        <li><b>Что искали.</b> Строка <code>Locator:</code> показывает, какой элемент. Если текст на сайте поменяли, тест не нашёл кнопку.</li>
+        <li><b>Решение: баг или устаревший тест?</b> Если сломан сайт, чините код. Если вы сознательно изменили текст, обновляйте тест. Не «чините» тест, чтобы он стал зелёным, не разобравшись.</li>
+      </ol>
+
+      <h3>Codegen: запись шагов мышью</h3>
+      <p>Если не хочется писать шаги, Playwright умеет записывать их: команда <code>npx playwright codegen http://localhost:3000</code> открывает браузер и окно Playwright Inspector. Вы кликаете по сайту, а клики превращаются в код, который можно скопировать. В панели есть кнопки проверок (видимость, текст, значение): так вы добавляете <code>expect</code>. Запись даёт черновик; прочитайте его и переименуйте тест понятным именем.</p>
+
+      <div class="yt" data-id="JdMkZUePkSE" data-title="Get started with end-to-end testing: Playwright, Episode 2 — Getting Started — канал Visual Studio Code"></div>
+      <p class="muted">Видео на английском (включите субтитры), около 6 минут: установка Playwright и первый запуск. Смотрите, чтобы увидеть процесс; делать будете в своём проекте. Короткое введение «зачем нужны e2e-тесты» — <a href="https://www.youtube.com/watch?v=4-LwodVujTg" target="_blank" rel="noopener">Episode 1</a> того же плейлиста (около минуты).</p>
+
+      <h3>Почему тест «флакает»</h3>
+      <p>Бывает, что тест то зелёный, то красный без правок кода. Такой тест называют <b>флакающим</b> (flaky), и он хуже отсутствия теста: ему перестают верить. Частые причины:</p>
+      <ul>
+        <li><b>Жёсткая пауза</b> вместо ожидания: <code>waitForTimeout(2000)</code>. Сегодня хватает двух секунд, завтра сервер медленнее. Правильно ждать конкретное: <code>await expect(...).toBeVisible()</code>.</li>
+        <li><b>Общие данные:</b> два теста создают запись с одним названием или удаляют данные друг друга. Лечится уникальными именами (<code>Date.now()</code>) и независимыми тестами.</li>
+        <li><b>Хрупкий поиск:</b> «третья кнопка на странице» (<code>nth</code>) или длинная цепочка CSS-классов. Добавили кнопку, и тест нашёл другую. Лучше <code>getByRole</code> с названием.</li>
+        <li><b>Медленный первый запуск</b> сервера разработки: страница собирается при первом заходе. Лечится увеличением <code>timeout</code> или запуском на собранной версии.</li>
+        <li><b>Зависимость от порядка:</b> тест 2 работает только если до него прошёл тест 1.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Весы на бозоре. Если они показывают то 1 кг, то 1,2 кг на одном и том же товаре, вы не станете им верить и перестанете смотреть на стрелку. Флакающий тест — такие же весы: команда привыкает «перезапустить, может позеленеет» и пропускает настоящую поломку.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Тест без <code>expect</code>: он «проходит», потому что ничего не проверяет. <b>2.</b> Пароль или ключ прямо в тесте и в репозитории. <b>3.</b> Тест против боевой базы с настоящими данными: создали мусор или удалили чужое. <b>4.</b> Тест, который проверяет текст кнопки, а не результат («кнопка есть» вместо «запись появилась»). <b>5.</b> Перезапускать, пока не позеленеет, не выяснив причину.</p>
+      </div>
+
+      <article class="task" id="pg-runner">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Мини-раннер тестов: почини функцию, чтобы все проверки прошли</h4><span class="level mid">средняя</span></header>
+        <p>Это игрушечная версия того, что делает Playwright: функция <code>test</code> запускает проверку и печатает <code>PASS</code> или <code>FAIL</code> с причиной. Функция <code>applyDiscount(price, percent)</code> должна считать цену со скидкой в процентах и округлять до целого. Сейчас она ошибается: тест покажет, где именно. Исправьте только функцию (первые строки), не трогая тесты ниже.</p>
+<pre class="code" data-run data-lang="js">
+function applyDiscount(price, percent) {
+  // TODO: percent это проценты (10 значит 10%), результат округлить до целого
+  return price - price * percent;
+}
+
+let passed = 0;
+let total = 0;
+function test(name, fn) {
+  total++;
+  try {
+    fn();
+    passed++;
+    console.log("PASS " + name);
+  } catch (e) {
+    console.log("FAIL " + name + " -> " + e.message);
+  }
+}
+function expectEqual(actual, expected) {
+  if (actual !== expected) {
+    throw new Error("expected " + expected + ", got " + actual);
+  }
+}
+
+test("10% off 200", () => expectEqual(applyDiscount(200, 10), 180));
+test("0% changes nothing", () => expectEqual(applyDiscount(200, 0), 200));
+test("100% gives 0", () => expectEqual(applyDiscount(50, 100), 0));
+test("rounds to whole somoni", () => expectEqual(applyDiscount(99, 15), 84));
+
+console.log("passed: " + passed + " of " + total);
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>PASS 10% off 200
+PASS 0% changes nothing
+PASS 100% gives 0
+PASS rounds to whole somoni
+passed: 4 of 4</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Запустите как есть и прочитайте строки <code>FAIL</code>: там написано, что ожидали и что получили. Процент нужно разделить на 100.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Правильная строка: <code>return Math.round(price - price * percent / 100);</code>. <code>Math.round</code> округляет до ближайшего целого.</p></details>
+      </article>
+
+      <article class="task" id="q-test">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Что проверяет этот тест</h4><span class="level mid">средняя</span></header>
+        <p>Прочитайте тест, который агент написал для формы заказа.</p>
+<pre class="code" data-title="tests/order.spec.ts">
+import { test, expect } from '@playwright/test';
+
+test('order form works', async ({ page }) => {
+  await page.goto('/orders/new');
+  await page.getByLabel('Title').fill('Test order');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.waitForTimeout(2000);
+});
+</pre>
+        <div class="quiz" data-answer="3">
+          <p>Что на самом деле проверяет этот тест?</p>
+          <ol class="options">
+            <li>Что заказ создаётся и появляется в списке</li>
+            <li>Что после нажатия «Save» открывается страница со списком заказов</li>
+            <li>Почти ничего: он лишь убеждается, что страница открывается, поле находится и кнопка нажимается. Результат не проверен, поэтому он зелёный и при сломанном сохранении</li>
+            <li>Что сервер отвечает за две секунды</li>
+          </ol>
+          <div class="explain"><p>В тесте нет ни одного <code>expect</code> после нажатия. Пауза в 2 секунды ничего не проверяет, она только тратит время. Исправление: убрать паузу и добавить <code>await expect(page.getByText('Test order')).toBeVisible();</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Вы просите агента: «Добавь в этот тест проверку». Какая формулировка даст хорошую проверку?</p>
+          <ol class="options">
+            <li>«Сделай, чтобы тест был зелёным»</li>
+            <li>«После нажатия Save проверь, что на странице виден текст заказа; пауза не нужна, жди появления текста»</li>
+            <li>«Добавь побольше проверок на всякий случай»</li>
+            <li>«Проверь, что всё работает»</li>
+          </ol>
+          <div class="explain"><p>Хорошая просьба называет, что именно должно появиться на экране, и запрещает паузы. «Сделай зелёным» приглашает агента подогнать тест под результат, а «проверь всё» не говорит, что считать успехом.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="q-flaky">
+        <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Почему тест флакает</h4><span class="level hard">сложная</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Тест создаёт заказ с названием <code>'Test order'</code> и ищет его в списке через <code>getByText('Test order')</code>. С первого запуска зелёный, при втором и третьем красный: Playwright пишет «strict mode violation: resolved to 3 elements». В чём причина?</p>
+          <ol class="options">
+            <li>Каждый запуск оставляет запись с тем же названием; в списке уже несколько одинаковых, и поиск находит больше одного элемента. Нужно уникальное название на каждый запуск (<code>'e2e-' + Date.now()</code>) и уборка тестовых записей</li>
+            <li>У Playwright закончилась лицензия</li>
+            <li>Браузер Chromium устарел</li>
+            <li>Агент неправильно записал слово <code>test</code></li>
+          </ol>
+          <div class="explain"><p>Это классическая ошибка общих данных: первый запуск прошёл, а следующие видят следы предыдущих. Лечится уникальным названием и удалением созданного (в конце теста или отдельным шагом очистки).</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Тест нажимает «Save» и сразу же проверяет <code>toBeVisible()</code> текст в списке. На быстром компьютере зелёный, на медленном иногда красный. Агент предлагает вставить <code>waitForTimeout(3000)</code> перед проверкой. Что правильнее?</p>
+          <ol class="options">
+            <li>Поставить паузу 10 секунд: чем больше, тем надёжнее</li>
+            <li>Запускать тест по пять раз и считать успехом хотя бы один зелёный</li>
+            <li>Удалить тест: он слишком капризный</li>
+            <li>Не вставлять паузу, а ждать конкретный признак: проверка <code>expect(...).toBeVisible()</code> сама ждёт появления, поэтому нужно проверить, что отправка действительно завершилась (например, дождаться сообщения об успехе), а при медленном сервере увеличить таймаут</li>
+          </ol>
+          <div class="explain"><p>Фиксированная пауза либо слишком короткая, либо тратит время зря. Проверки Playwright повторяются до таймаута, так что достаточно ждать конкретное событие. «Один зелёный из пяти» скрывает поломку.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/guides/testing/playwright" target="_blank" rel="noopener">Next.js: Playwright</a>, <a href="https://playwright.dev/docs/intro" target="_blank" rel="noopener">Playwright: установка</a>, <a href="https://playwright.dev/docs/locators" target="_blank" rel="noopener">Playwright: локаторы</a>, <a href="https://playwright.dev/docs/test-webserver" target="_blank" rel="noopener">Playwright: webServer</a>, <a href="https://playwright.dev/docs/codegen-intro" target="_blank" rel="noopener">Playwright: Codegen</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · Логи и ошибки на продакшене ============ -->
+    <section class="topic" id="logs">
+      <h2 data-toc="Логи на продакшене"><span class="num">04</span> Логи и ошибки на продакшене: Vercel Logs</h2>
+
+      <p>Тесты ловят поломки до релиза. Но иногда сайт на Vercel ведёт себя не так, как у вас на компьютере: нет переменной окружения, другая версия данных, неожиданный ввод. Пользователь видит «Something went wrong», а вы не видите ничего. Здесь нужны <b>логи</b>: журнал, куда сервер записывает, что происходило. Это дневник сервера: время, адрес, код ответа и сообщения, которые вы сами вывели через <code>console.log</code> и <code>console.error</code>.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 220" role="img" aria-label="Путь ошибки: пользователь открывает сайт, серверная функция на Vercel падает, пишет console.error, запись попадает в Runtime Logs, вы фильтруете по статусу и маршруту, находите строку и исправляете код">
+          <rect class="box b" x="8" y="20" width="150" height="86" rx="12" /><text x="83" y="50" text-anchor="middle">Пользователь</text><text class="sub" x="83" y="72" text-anchor="middle">нажимает «Сохранить»</text>
+          <rect class="box o" x="198" y="20" width="150" height="86" rx="12" /><text x="273" y="50" text-anchor="middle">Функция на Vercel</text><text class="sub" x="273" y="72" text-anchor="middle">route.ts падает</text><text class="sub t-r" x="273" y="90" text-anchor="middle">статус 500</text>
+          <rect class="box v" x="388" y="20" width="150" height="86" rx="12" /><text x="463" y="50" text-anchor="middle">Runtime Logs</text><text class="sub" x="463" y="72" text-anchor="middle">запись + текст</text><text class="sub" x="463" y="90" text-anchor="middle">console.error</text>
+          <rect class="fill-g" x="578" y="20" width="134" height="86" rx="12" /><text class="t-g" x="645" y="50" text-anchor="middle">Вы</text><text class="sub" x="645" y="72" text-anchor="middle">находите строку,</text><text class="sub" x="645" y="90" text-anchor="middle">чините, тест</text>
+          <path class="arr" d="M158 63H192" /><path class="arr-head" d="M192 57l9 6-9 6z" />
+          <path class="arr" d="M348 63H382" /><path class="arr-head" d="M382 57l9 6-9 6z" />
+          <path class="arr" d="M538 63H572" /><path class="arr-head" d="M572 57l9 6-9 6z" />
+          <rect class="fill-y" x="198" y="140" width="340" height="56" rx="12" /><text x="368" y="164" text-anchor="middle">Ошибки в браузере (консоль F12) сюда не попадают</text><text class="sub" x="368" y="182" text-anchor="middle">Runtime Logs показывают только серверную часть</text>
+        </svg>
+        <figcaption>Лог — это след серверной ошибки: что случилось, где и в какое время</figcaption>
+      </figure>
+
+      <h3>Где смотреть на Vercel</h3>
+      <ol class="steps">
+        <li>Откройте <a href="https://vercel.com/dashboard" target="_blank" rel="noopener">панель Vercel</a>, выберите проект.</li>
+        <li>В боковом меню проекта откройте <b>Logs</b>. Здесь Runtime Logs: журнал вызовов серверных функций (ваши <code>route.ts</code>, серверные действия, страницы с отрисовкой на сервере) в боевой и в предпросмотровой версиях.</li>
+        <li>Слева фильтры: время, уровень (<b>Error</b>, <b>Warning</b>), маршрут (<b>Route</b>), путь запроса, код ответа (<b>Status Code</b>), окружение (<b>production</b> или <b>preview</b>). Есть поиск по тексту сообщений и режим <b>Live mode</b>: записи появляются на глазах.</li>
+        <li>Нажмите на строку: справа откроются подробности (метод, путь, код, регион, имя функции) и снизу <b>Log Messages</b>: ваши <code>console.log</code> и <code>console.error</code>.</li>
+      </ol>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/20-testing/logs.svg" alt="Схема страницы Logs на Vercel: слева меню проекта с выделенным пунктом Logs и фильтры Timeline, Level, Environment, Route и Status; справа список запросов с красной строкой POST 500 на /api/orders с текстом ошибки insert failed, зелёной 200 и жёлтой 403, внизу панель подробностей запроса" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Страница Logs на упрощённой схеме: фильтр по уровню Error, красная строка с кодом 500 и текстом ошибки. Реальный интерфейс отличается, но элементы те же</figcaption>
+      </figure>
+
+      <p>Как читать коды: <b>2xx</b> успех, <b>4xx</b> ошибка запроса (401 «не вошли», 403 «нельзя», 404 «нет такого»; Vercel подсвечивает их как предупреждение), <b>5xx</b> ошибка сервера (подсвечена как ошибка; это почти всегда баг у вас). Строка <code>console.error(...)</code> отмечена уровнем error, а <code>console.log(...)</code> уровнем info.</p>
+
+      <div class="callout warn">
+        <b>На бесплатном тарифе логи живут недолго</b>
+        <p>По документации Vercel, на тарифе Hobby Runtime Logs хранятся <b>1 час</b>, на Pro — 1 день. Поэтому привычка такая: произошла ошибка, откройте логи сразу, а не «завтра посмотрю». Чтобы повторить ошибку, сами сделайте тот же запрос на боевом сайте и сразу найдите его в Logs.</p>
+      </div>
+
+      <h3>Что писать в логи, чтобы потом найти причину</h3>
+<pre class="code" data-title="app/api/orders/route.ts (фрагмент)">
+export async function POST(request: Request) {
+  try {
+    // ... проверка входа, чтение данных, запись в Supabase
+    return Response.json({ ok: true });
+  } catch (error) {
+    // понятная метка + сообщение; без паролей, токенов и целых объектов пользователя
+    console.error('orders.create failed:', error instanceof Error ? error.message : error);
+    return Response.json({ error: 'Something went wrong' }, { status: 500 });
+  }
+}
+</pre>
+      <ul>
+        <li><b>Метка места</b> в начале: <code>orders.create failed</code> легко искать в поиске.</li>
+        <li><b>Сообщение ошибки</b>, а не просто «ошибка».</li>
+        <li><b>Не писать секреты:</b> пароль, токен, ключ, полный e-mail и данные клиентов в лог не попадают. Логи видит каждый, у кого есть доступ к проекту.</li>
+        <li><b>Не молчать:</b> пустой блок <code>catch {}</code> прячет ошибку от вас самих.</li>
+      </ul>
+
+      <h3>Логи из терминала и вместе с агентом</h3>
+      <p>У Vercel есть консольная программа (Vercel CLI). В папке подключённого проекта команда <code>vercel logs</code> показывает последние записи (по умолчанию за 30 минут), а флаги сужают поиск. Пример из документации Vercel: <code>vercel logs --environment production --query 'level:error' --since 1h</code>. Вывод можно показать агенту: «вот логи, найди причину в коде». Но саму находку проверяйте: агент догадывается, а лог показывает факт.</p>
+
+      <h3>Три вида «логов» и чем они отличаются</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Где</th><th>Что показывает</th><th>Когда смотреть</th></tr></thead>
+          <tbody>
+            <tr><td><b>Build logs</b> (карточка деплоя на Vercel)</td><td>Что происходило при сборке: <code>npm run build</code>, ошибки типов и импортов</td><td>Деплой красный, сайт не обновился</td></tr>
+            <tr><td><b>Runtime Logs</b> (Logs в проекте)</td><td>Что происходило на сервере при запросах</td><td>Сайт открылся, но функция вернула 500 или 401</td></tr>
+            <tr><td><b>Консоль браузера</b> (F12)</td><td>Ошибки страницы у пользователя: клиентский код</td><td>Белый экран, кнопка «молчит»</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Лавка на бозоре ведёт тетрадь: кто что купил, во сколько, где не хватило сдачи. Когда покупатель говорит «меня обсчитали», хозяин открывает тетрадь, а не вспоминает по памяти. Лог — тетрадь сервера. А тетрадь на один час, как на тарифе Hobby, придётся открывать быстро.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Искать серверную ошибку в консоли браузера и наоборот. <b>2.</b> Открыть логи через сутки на Hobby: записей уже нет. <b>3.</b> Логировать пароль «для отладки». <b>4.</b> Ограничиться «500 в логах» и не прочитать текст в Log Messages. <b>5.</b> Править код наугад, не воспроизведя запрос.</p>
+      </div>
+
+      <article class="task" id="pg-logs">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Разбор журнала: сколько ошибок на каждом маршруте</h4><span class="level mid">средняя</span></header>
+        <p>Перед вами массив записей журнала. Нужно посчитать ошибки (<code>level: "error"</code>) по маршрутам и вывести маршруты от самых проблемных. Подсчёт и сортировка уже написаны, но счётчик пока учитывает <b>все</b> записи подряд. Исправьте условие: считайте только ошибки.</p>
+<pre class="code" data-run data-lang="js">
+const logs = [
+  { route: "/api/orders", status: 200, level: "info", msg: "order created" },
+  { route: "/api/orders", status: 500, level: "error", msg: "insert failed: null value in column user_id" },
+  { route: "/login", status: 200, level: "info", msg: "login ok" },
+  { route: "/api/orders", status: 500, level: "error", msg: "insert failed: null value in column user_id" },
+  { route: "/admin", status: 403, level: "warning", msg: "forbidden" },
+  { route: "/api/chat", status: 500, level: "error", msg: "GEMINI_API_KEY is undefined" },
+  { route: "/", status: 200, level: "info", msg: "render" },
+  { route: "/api/chat", status: 500, level: "error", msg: "GEMINI_API_KEY is undefined" },
+  { route: "/api/chat", status: 500, level: "error", msg: "GEMINI_API_KEY is undefined" },
+  { route: "/api/orders", status: 200, level: "info", msg: "order created" },
+  { route: "/admin", status: 200, level: "info", msg: "render" },
+];
+
+const counts = {};
+for (const l of logs) {
+  // TODO: считать только записи с уровнем "error"
+  if (true) {
+    counts[l.route] = (counts[l.route] || 0) + 1;
+  }
+}
+
+const rows = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+for (const [route, n] of rows) {
+  console.log(route + ": " + n);
+}
+console.log("total errors: " + rows.reduce((sum, r) => sum + r[1], 0));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>/api/chat: 3
+/api/orders: 2
+total errors: 5</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Замените <code>true</code> на сравнение поля <code>level</code> со строкой <code>"error"</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Условие: <code>l.level === "error"</code>. Три знака равенства сравнивают значение и тип.</p></details>
+        <p class="muted">Вывод подсказывает и причины: у <code>/api/chat</code> повторяется <code>GEMINI_API_KEY is undefined</code> (в Vercel не добавлена переменная окружения), а у <code>/api/orders</code> не заполняется <code>user_id</code> (запись создают без проверки входа). По логам видно не только «где», но и «почему».</p>
+      </article>
+
+      <article class="task" id="q-logs">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Проверь себя: логи и ошибки</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Пользователь пишет: «Нажала кнопку, ничего не сохранилось». Где искать причину сначала?</p>
+          <ol class="options">
+            <li>В Build logs: там всё, что происходит на сайте</li>
+            <li>В консоли браузера (F12) и в Runtime Logs в проекте Vercel (Logs): повторить действие и посмотреть, ушёл ли запрос и какой код ответа вернулся</li>
+            <li>В файле README</li>
+            <li>В настройках домена</li>
+          </ol>
+          <div class="explain"><p>Build logs показывают только сборку. Для «кнопка не сработала» смотрят оба конца: браузер (отправился ли запрос) и сервер (что ответила функция).</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>На тарифе Hobby вы обнаружили ошибку утром, а она случилась вчера вечером. Что вы, скорее всего, увидите в Logs?</p>
+          <ol class="options">
+            <li>Всю историю за неделю</li>
+            <li>Записи отсортированы по важности, ошибка наверху</li>
+            <li>Вчерашних записей уже нет (по документации Vercel, на Hobby логи хранятся 1 час), поэтому ошибку нужно воспроизвести заново и сразу открыть Logs</li>
+            <li>Записи спрятаны в Build logs</li>
+          </ol>
+          <div class="explain"><p>Срок хранения зависит от тарифа. Привычка: воспроизвести и сразу смотреть. А тесты полезны и тут: тест можно запустить в любой момент и получить свежую ошибку.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>В логе строка: <code>POST /api/orders 500</code>. Что это значит?</p>
+          <ol class="options">
+            <li>Серверная функция <code>/api/orders</code> упала при запросе методом POST: это ошибка на стороне сервера, её причину ищут в сообщениях лога и в коде этого маршрута</li>
+            <li>Пользователь ввёл неверный пароль</li>
+            <li>Страница не найдена, надо проверить адрес</li>
+            <li>Запрос прошёл успешно</li>
+          </ol>
+          <div class="explain"><p>Коды 5xx означают ошибку сервера. Неверный пароль или запрет доступа дают 4xx (401, 403), «не найдено» — 404, успех — 2xx.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vercel.com/docs/logs/runtime" target="_blank" rel="noopener">Vercel: Runtime Logs</a>, <a href="https://vercel.com/docs/observability/debug-production-errors" target="_blank" rel="noopener">Vercel: Debug production errors</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · README ============ -->
+    <section class="topic" id="readme">
+      <h2 data-toc="README"><span class="num">05</span> README: паспорт проекта</h2>
+
+      <p><b>README</b> — файл <code>README.md</code> в корне репозитория. GitHub показывает его на главной странице проекта. Это первое, что видит преподаватель, работодатель или друг, и по нему человек решает, стоит ли читать код. Хороший README отвечает на четыре вопроса: <b>что это</b>, <b>как посмотреть</b>, <b>как запустить у себя</b> и <b>как проверить, что оно работает</b> (тесты). Последнее сегодня и добавляется: команда <code>npm run test:e2e</code> и описание тестового пользователя.</p>
+
+      <p>Агент пишет README быстро, но придумывает то, чего нет: несуществующие команды, лишние возможности, чужие переменные окружения. Поэтому правило проверки такое: <b>каждую команду из README выполните сами в чистой папке</b> (клон репозитория), как это сделает чужой человек. Если что-то не запускается, README врёт.</p>
+
+<pre class="code" data-title="README.md (шаблон, скопируйте и заполните)">
+# [Project name]
+
+[One sentence: what the product does and for whom.]
+
+**Live demo:** [https://your-project.vercel.app]
+
+![Screenshot of the main screen](docs/screenshot.png)
+
+## Features
+
+- [Main scenario in one line, e.g. a customer places an order]
+- [Roles: user, admin, what each can do]
+- [Admin panel, file upload, AI feature: only what really exists]
+
+## Tech stack
+
+Next.js (App Router, TypeScript), Tailwind CSS, Supabase (database, auth, storage), Gemini API, Vercel, Playwright.
+
+## Run locally
+
+1. Clone the repository and install dependencies:
+   ```bash
+   git clone [repository url]
+   cd [folder]
+   npm install
+   ```
+2. Copy `.env.example` to `.env.local` and fill in the values (see the table below).
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+   Open http://localhost:3000.
+
+## Environment variables
+
+| Name | What it is | Where to get it |
+|------|-----------|-----------------|
+| NEXT_PUBLIC_SUPABASE_URL | Supabase project URL | Supabase, project settings |
+| NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | Public (publishable) key | Supabase, project settings |
+| [SECRET_NAME] | [what for] | [where to get it] |
+
+Never commit real values: `.env*` is listed in `.gitignore`.
+
+## Tests
+
+End-to-end tests (Playwright) cover the main scenario:
+
+1. a guest is redirected to the login page;
+2. a user signs in and creates an item;
+3. a regular user cannot open the admin page.
+
+Create a test user in Supabase (role: regular user) and put its credentials in `.env.test`:
+
+```
+E2E_EMAIL=[test user email]
+E2E_PASSWORD=[test user password]
+```
+
+Run: `npm run test:e2e`. Report: `npx playwright show-report`.
+
+## Project structure
+
+- `app/`: pages and API routes
+- `components/`: UI components
+- `tests/`: Playwright tests
+- `docs/`: spec, audit and test scenarios
+
+## Known limitations
+
+- [What is not done yet or works only partly: be honest]
+</pre>
+
+      <div class="callout tip">
+        <b>Почему шаблон на английском</b>
+        <p>README проекта читают и за пределами курса: на GitHub, в портфолио, на собеседованиях. Поэтому шаблон на английском, а название раздела и подписи под скриншотом можно писать на русском, если проект для русскоязычных пользователей. Главное, чтобы все команды и имена переменных были точно такими же, как в проекте.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> README из одной строки: «my project». <b>2.</b> В README описаны возможности, которых нет («AI-чат»), потому что их придумал агент. <b>3.</b> Нет списка переменных окружения: чужой человек не запустит проект. <b>4.</b> В README вставлены настоящие ключи или пароль тестового пользователя. <b>5.</b> Нет ссылки на рабочий сайт и снимка экрана.</p>
+      </div>
+
+      <article class="task" id="cl-readme">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Чек-лист: README готов</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-readme-list">
+          <li>В начале README: название, одна фраза о продукте и ссылка на сайт на Vercel</li>
+          <li>Есть снимок экрана главной страницы (файл в <code>docs/</code>, без личных данных)</li>
+          <li>Описаны роли и возможности: только те, что реально работают</li>
+          <li>Раздел «Run locally» выполнен мной в чистой копии репозитория: проект запустился</li>
+          <li>Перечислены имена переменных окружения без значений; есть файл <code>.env.example</code></li>
+          <li>Раздел «Tests»: как создать тестового пользователя, команда <code>npm run test:e2e</code></li>
+          <li>В README нет ключей, паролей и настоящих e-mail</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-readmes" target="_blank" rel="noopener">GitHub Docs: About READMEs</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · ИИ-блок ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ пишет тесты"><span class="num">06</span> ИИ-блок: агент пишет тесты, вы проверяете</h2>
+
+      <div class="callout ai">
+        <b>Правила работы с агентом над тестами</b>
+        <p><b>1.</b> Тест пишет агент, а <b>читаете и запускаете вы</b>. Попросите его объяснить каждый тест одной фразой: если не понимаете, что проверяется, тест вам не принадлежит. <b>2.</b> Требуйте проверку результата (<code>expect</code> на то, что видит человек), а не «страница открылась». <b>3.</b> Запрет: не менять код приложения, чтобы тест позеленел, и не ослаблять проверки без вашего согласия. <b>4.</b> Красный тест лучше не «чинить» вслепую: вставьте в чат полный текст ошибки и спросите, где баг: в коде или в тесте. <b>5.</b> Итерация, а не перезапуск: один тест за раз, зелёный, commit, следующий.</p>
+      </div>
+
+      <p>Плохой промпт даёт тест, который ничего не проверяет, или два десятка тестов на всё подряд:</p>
+      <div class="prompt bad-prompt">Напиши тесты для моего проекта</div>
+
+      <p>Шаг 1. Настройка (один раз):</p>
+      <div class="prompt good-prompt">Контекст: выпускной проект Next.js 16 (App Router, TypeScript) с Supabase и деплоем на Vercel, правила проекта в @AGENTS.md. Нужны e2e-тесты Playwright. Главный сценарий описан в @docs/test-scenarios.md.
+Цель: установить и настроить Playwright по официальной документации (npm init playwright@latest, один браузер chromium), в playwright.config.ts задать baseURL http://localhost:3000 и webServer с командой npm run dev. Добавить в package.json скрипт "test:e2e": "playwright test". Учётные данные тестового пользователя читать из переменных окружения E2E_EMAIL и E2E_PASSWORD из файла .env.test; убедиться, что .env.test закрыт в .gitignore, и добавить .env.test.example без значений.
+Ограничения: 1) код приложения не менять; 2) не печатать пароли в консоль и не вставлять их в код; 3) не устанавливать лишних библиотек; 4) сначала покажи план из 3–5 пунктов.
+Проверка: после настройки запусти npx playwright test с примером и покажи вывод целиком.</div>
+
+      <p>Шаг 2. Тесты по одному:</p>
+      <div class="prompt good-prompt">Контекст: Playwright настроен (@playwright.config.ts), сценарий в @docs/test-scenarios.md, код страниц в @app. Подписи кнопок и полей брать из реальных страниц проекта, не выдумывать.
+Цель: написать три теста в tests/main-flow.spec.ts: 1) гость открывает закрытую страницу и попадает на страницу входа; 2) тестовый пользователь входит, создаёт запись с уникальным названием ('e2e-' + Date.now()) и видит её в списке; 3) обычный пользователь не видит админскую страницу (редирект или 403, как сделано в проекте). Первым напиши только тест 1, запусти его, потом по очереди остальные.
+Ограничения: 1) искать элементы через getByRole, getByLabel, getByText; 2) никаких waitForTimeout: ждать через expect; 3) после каждого действия есть проверка результата; 4) тесты независимы друг от друга; 5) код приложения не менять.
+Проверка: после каждого теста запусти npx playwright test и покажи вывод. В конце одной фразой объясни, что проверяет каждый тест и что он НЕ проверяет.</div>
+
+      <p>Шаг 3. Красный тест:</p>
+      <div class="prompt good-prompt">Контекст: тест [название] упал. Полный вывод ошибки ниже (вставьте текст из терминала).
+Цель: определить причину и ответить на вопрос «баг в приложении или тест устарел».
+Ограничения: 1) пока ничего не меняй, сначала объясни причину простыми словами и укажи файл и строку; 2) если баг в приложении, предложи минимальное исправление кода, а не ослабление теста; 3) если тест устарел, объясни, что изменилось в приложении.
+Проверка: после исправления запусти npx playwright test и покажи результат.</div>
+
+      <p>Шаг 4. README:</p>
+      <div class="prompt good-prompt">Контекст: выпускной проект, структура и файлы в репозитории, шаблон README в разделе урока (вставлю ниже).
+Цель: заполнить шаблон README по фактам из проекта: название, функции, роли, стек, переменные окружения (только имена из .env.example), команды запуска и тестов из package.json.
+Ограничения: 1) писать только то, что есть в коде, и если не уверен, ставь пометку [проверить]; 2) не выдумывать функции и команды; 3) не вставлять значения ключей и пароли; 4) без списка «планов на будущее».
+Проверка: перечисли, какие команды из README ты запускал, а какие не смог.</div>
+
+      <div class="callout warn">
+        <b>Где агент ошибается с тестами</b>
+        <p><b>1.</b> Пишет тест, который всегда зелёный: нет <code>expect</code> на результат. <b>2.</b> Выдумывает подписи кнопок, которых нет на странице. <b>3.</b> Подгоняет код приложения под тест или убирает проверку, когда тест красный. <b>4.</b> Вставляет настоящий пароль в файл теста. <b>5.</b> Говорит «тесты проходят», не запуская их: вывод запуска всегда смотрите сами.</p>
+      </div>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика"><span class="num">07</span> Практика: три автотеста, баг, логи, README</h2>
+
+      <p>Порядок: ветка, тестовый пользователь, установка, три теста по одному, поиск и починка бага, логи на Vercel, README, pull request. Всё идёт в ветке <code>tests</code>, в <code>main</code> напрямую не пишем (правило урока 19).</p>
+
+      <div class="callout warn">
+        <b>Правила безопасности практики</b>
+        <p>Тесты запускаются только против учебного проекта Supabase и вашего сайта, никаких чужих сайтов и боевых данных. Пароль тестового пользователя живёт в <code>.env.test</code>, который не попадает в git. Тестовые записи называем с префиксом <code>e2e-</code>, чтобы их было легко найти и удалить.</p>
+      </div>
+
+      <h3>Подготовка</h3>
+      <ol class="steps">
+        <li>Ветка: <code>git switch main</code>, <code>git pull</code>, <code>git switch -c tests</code>.</li>
+        <li>Проверьте Node: <code>node -v</code> (22 или новее). Если версия старая, обновите Node с сайта nodejs.org.</li>
+        <li>Запишите главный сценарий в <code>docs/test-scenarios.md</code> и пройдите его руками (задача 2.1).</li>
+        <li>В панели Supabase откройте Authentication, раздел Users, создайте нового пользователя (кнопка «Add user», затем создание с e-mail и паролем; названия на экране могут отличаться). Почта придуманная, например <code>e2e-test@example.com</code>, пароль длинный и случайный. Если в проекте включено подтверждение почты, отметьте подтверждение при создании. Роль у пользователя обычная.</li>
+        <li>Создайте файл <code>.env.test</code> с двумя строками <code>E2E_EMAIL=…</code> и <code>E2E_PASSWORD=…</code>. Проверьте командой <code>git check-ignore -v .env.test</code>, что файл игнорируется (она должна вывести правило из <code>.gitignore</code>). Если вывода нет, добавьте строку в <code>.gitignore</code> до первого commit.</li>
+      </ol>
+
+      <h3>Установка и первый запуск</h3>
+      <ol class="steps">
+        <li>Скопируйте промпт «Шаг 1» из раздела 6 в Cursor (режим Agent, правила проекта в контексте). Агент поставит Playwright, настроит конфиг и скрипт <code>test:e2e</code>.</li>
+        <li>Запустите сами: <code>npm run test:e2e</code>. Дождитесь результата. Пример теста должен пройти (если агент оставил пример) или команда должна сказать «No tests found»: оба варианта означают, что установка работает.</li>
+        <li>Если пишет «Executable doesn't exist», выполните <code>npx playwright install</code>: так скачиваются браузеры.</li>
+      </ol>
+
+      <h3>Три теста по одному</h3>
+      <ol class="steps">
+        <li>Промпт «Шаг 2» из раздела 6. Попросите начать с теста 1 (гость уходит на вход). Запустите <code>npm run test:e2e</code>, прочитайте тест и объясните его себе вслух: что он делает и что проверяет. Commit: <code>add guest redirect test</code>.</li>
+        <li>Тест 2: вход и создание записи. Запустите <code>npm run test:e2e -- --ui</code> (параметры после <code>--</code> передаются Playwright) и посмотрите шаги в окне. Должно быть: вошли, нажали «создать», запись появилась в списке. Commit: <code>add create item test</code>.</li>
+        <li>Тест 3: обычный пользователь не видит админку. Запустите. Commit: <code>add admin access test</code>.</li>
+        <li>Запустите весь набор трижды подряд. Три зелёных прогона: тесты стабильны. Если один раз упал, это флакающий тест: найдите причину по разделу 3 (чаще всего паузы и общие данные).</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Тестовые записи не должны копиться</b>
+        <p>Если тест создаёт запись, она остаётся в базе. Попросите агента: «Добавь в конец теста удаление созданной записи через интерфейс или хуком <code>test.afterEach</code>; если удалить нельзя, оставь префикс e2e- и опиши в README, как чистить». Для учебной базы хватает префикса и ручной уборки раз в неделю.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>Timeout waiting for http://localhost:3000.</b> Сервер не поднялся за отведённое время или порт занят: закройте другие <code>npm run dev</code> и увеличьте <code>timeout</code> в <code>webServer</code>. <b>Error: locator.fill: Timeout … waiting for getByLabel('Email').</b> На странице нет поля с такой подписью: откройте страницу, посмотрите настоящую подпись и исправьте её в тесте (агент мог выдумать). <b>E2E_EMAIL is undefined.</b> Файл <code>.env.test</code> не подхвачен: попросите агента подключить его в <code>playwright.config.ts</code> (например, через пакет <code>dotenv</code> или встроенную загрузку Node) и показать, что переменная читается, не печатая её значение. <b>Invalid login credentials.</b> Пользователь создан в другом проекте Supabase или пароль не совпадает. Любую ошибку отправьте агенту целиком с вопросом «баг в приложении или в тесте?».</p>
+      </div>
+
+      <h3>Ловим и чиним баг</h3>
+      <p>Теперь главное доказательство пользы тестов: изменение, которое должен поймать красный тест.</p>
+      <ol class="steps">
+        <li>Попросите агента сделать небольшую настоящую правку, например: «Добавь в форму создания записи обязательное поле, а пустое название не принимай и показывай ошибку». Или сами поменяйте подпись кнопки «Сохранить». Реалистичная правка чаще всего задевает соседний сценарий.</li>
+        <li>Запустите <code>npm run test:e2e</code>. Хотя бы один тест должен стать красным. Откройте <code>npx playwright show-report</code>, прочитайте ошибку и строку <code>Locator:</code>.</li>
+        <li>Решите: баг в приложении или тест устарел. Используйте промпт «Шаг 3» из раздела 6.</li>
+        <li>Почините (код или тест, но осознанно), запустите ещё раз: три зелёных. Commit: <code>fix create form after validation</code> (или ваш вариант).</li>
+        <li>Запишите в <code>docs/test-scenarios.md</code> одну строку: что сломалось, какой тест поймал, как починили.</li>
+      </ol>
+
+      <h3>Логи на Vercel</h3>
+      <ol class="steps">
+        <li>Закоммитьте тесты, отправьте ветку: <code>git push -u origin tests</code>. Vercel соберёт предпросмотровую версию (Preview) для ветки; ссылка в панели проекта, раздел Deployments.</li>
+        <li>Убедитесь, что серверный маршрут вашего главного сценария пишет <code>console.error</code> в блоке <code>catch</code> (пример в разделе 4). Если нет, попросите агента добавить метку и сообщение, без секретов и персональных данных.</li>
+        <li>На сайте (Preview или production после слияния) повторите сценарий и сделайте один «неправильный» запрос. Безопасный способ: откройте консоль браузера (F12, вкладка Console) на своём сайте вне входа и выполните <code>fetch('/api/orders', { method: 'POST' })</code> с адресом своего маршрута. Ожидаемо придёт 401 или 403.</li>
+        <li>Сразу откройте проект в Vercel, раздел <b>Logs</b>. Поставьте фильтр по пути запроса или коду ответа и найдите свою строку. Откройте её и прочитайте Log Messages. Помните: на Hobby записи хранятся 1 час.</li>
+        <li>Запишите в чек-лист ниже: маршрут, код ответа, время.</li>
+      </ol>
+
+      <h3>README и pull request</h3>
+      <ol class="steps">
+        <li>Промпт «Шаг 4» из раздела 6 с шаблоном README. Положите снимок главной страницы в <code>docs/screenshot.png</code> (без личных данных).</li>
+        <li>Проверьте README по задаче 5.1: клонируйте репозиторий в новую папку и пройдите раздел «Run locally» как чужой человек.</li>
+        <li>Откройте pull request (кнопка «Compare &amp; pull request» на GitHub), прочитайте вкладку Files changed. Слить PR в <code>main</code> можно сами, после того как тесты зелёные.</li>
+      </ol>
+
+      <article class="task" id="cl-tests">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Чек-лист: три автотеста работают</h4><span class="level hard">сложная</span></header>
+        <ul class="checklist" id="cl-tests-list">
+          <li>Playwright установлен, в <code>package.json</code> есть скрипт <code>test:e2e</code>, в <code>playwright.config.ts</code> заданы <code>baseURL</code> и <code>webServer</code></li>
+          <li><code>.env.test</code> закрыт в <code>.gitignore</code> (проверено <code>git check-ignore</code>), пароля нет ни в коде, ни в репозитории</li>
+          <li>Тест 1 «гость уходит на вход» написан, мной прочитан и запущен</li>
+          <li>Тест 2 «вход и создание записи» проверяет результат (запись видна в списке) и использует уникальное название</li>
+          <li>Тест 3 «обычный пользователь не видит админку» проходит</li>
+          <li>В тестах нет <code>waitForTimeout</code> и нет тестов без <code>expect</code></li>
+          <li>Три зелёных прогона подряд: <code>npm run test:e2e</code> стабилен</li>
+          <li>Каждый тест могу объяснить одной фразой: что он проверяет и чего не проверяет</li>
+        </ul>
+      </article>
+
+      <article class="task" id="cl-bug">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Чек-лист: баг пойман, логи прочитаны</h4><span class="level hard">сложная</span></header>
+        <ul class="checklist" id="cl-bug-list">
+          <li>Сделал реальную правку, после которой хотя бы один тест стал красным, и открыл HTML-отчёт (<code>npx playwright show-report</code>)</li>
+          <li>Прочитал ошибку и строку <code>Locator:</code>, решил: баг в приложении или устаревший тест, и починил осознанно (не ослабляя проверку)</li>
+          <li>После починки тесты снова зелёные, правка и починка в отдельных commit</li>
+          <li>Серверный маршрут пишет <code>console.error</code> с понятной меткой, без паролей и персональных данных</li>
+          <li>На Vercel открыл <b>Logs</b>, нашёл свой запрос по пути или коду ответа и прочитал Log Messages</li>
+          <li>Знаю, чем Build logs, Runtime Logs и консоль браузера отличаются и на сколько хранятся логи на моём тарифе</li>
+        </ul>
+      </article>
+
+      <div class="callout tip">
+        <b>Бонус: те же тесты в GitHub Actions</b>
+        <p>Если хотите, чтобы GitHub сам запускал тесты на каждый pull request, при установке Playwright на вопрос про GitHub Actions ответьте «да» (или попросите агента добавить файл позже): будет создан <code>.github/workflows/playwright.yml</code>. Он ставит зависимости (<code>npm ci</code>), браузеры (<code>npx playwright install --with-deps</code>) и запускает <code>npx playwright test</code>. Результат виден на вкладке Actions, отчёт сохраняется как артефакт. Тестам нужны переменные: в настройках репозитория (Settings, Secrets and variables, Actions) добавьте <code>E2E_EMAIL</code>, <code>E2E_PASSWORD</code> и переменные Supabase как секреты и передайте их в шаге запуска. Пароль в файл workflow не пишут. Это дополнительное задание, в домашнее не входит.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://playwright.dev/docs/ci-intro" target="_blank" rel="noopener">Playwright: Setting up CI</a>, <a href="https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions" target="_blank" rel="noopener">GitHub Docs: secrets in Actions</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 08 · Фишка: Красная кнопка ============ -->
+    <section class="topic" id="red-button">
+      <h2 data-toc="Красная кнопка"><span class="num">08</span> Фишка урока: «Красная кнопка»</h2>
+
+      <p>Идея: проверить не код, а <b>тесты</b>. Если преподаватель нарочно ломает проект, ваши тесты обязаны покраснеть. Если остались зелёными, они проверяют слишком мало. Время: 20–30 минут, играют парами или командами по 3–4 человека.</p>
+
+      <div class="callout warn">
+        <b>Правила безопасности игры</b>
+        <p>Ломаем только в локальной ветке <code>red-button</code>, созданной от рабочей ветки с тестами. Поломку <b>не отправляем</b> на GitHub и на Vercel и не сливаем ни во что. После игры ветку удаляют: <code>git switch tests</code> (или <code>main</code>), затем <code>git branch -D red-button</code>. Принудительный push не используем.</p>
+      </div>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1. Зелёный</b><span>все три теста проходят</span><code>npm run test:e2e</code></div><div class="ar">→</div>
+          <div class="st ai"><b>2. Красная кнопка</b><span>преподаватель называет поломку, вы вносите её в ветке</span><code>git switch -c red-button</code></div><div class="ar">→</div>
+          <div class="st"><b>3. Запуск</b><span>тесты должны покраснеть</span><code>npm run test:e2e</code></div><div class="ar">→</div>
+          <div class="st res"><b>4. Разбор</b><span>какой тест поймал; не поймали: пишем 4-й</span><code>git switch tests</code></div>
+        </div>
+        <figcaption>«Красная кнопка»: ломаем, запускаем, смотрим, кто поймал</figcaption>
+      </figure>
+
+      <h3>Раунды (преподаватель выбирает поломку)</h3>
+      <div class="table-wrap">
+        <table class="timer-tbl">
+          <thead><tr><th>Раунд</th><th>Поломка</th><th>Какой тест должен поймать</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Убрать проверку входа со страницы <code>/dashboard</code> (гость её видит)</td><td>Тест 1</td></tr>
+            <tr><td>2</td><td>Переименовать кнопку «Сохранить» или поле «Название»</td><td>Тест 2</td></tr>
+            <tr><td>3</td><td>Из серверного маршрута убрать сохранение в базу, оставив ответ «ok»</td><td>Тест 2 (запись не появится в списке)</td></tr>
+            <tr><td>4</td><td>Убрать проверку роли с <code>/admin</code> (обычному пользователю открывается)</td><td>Тест 3</td></tr>
+            <tr><td>5</td><td>Пустое название принимается и создаёт запись «без названия»</td><td>Нужен новый тест на ошибочный ввод (задание со звёздочкой)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Как играть и считать очки</h3>
+      <ol class="steps">
+        <li>Преподаватель объявляет раунд и поломку. Каждый вносит её руками или просит агента (промпт: «Внеси в проект только эту поломку: …; больше ничего не меняй») в ветке <code>red-button</code>.</li>
+        <li>Таймер 3 минуты. Запустите <code>npm run test:e2e</code>. Если нужный тест покраснел: <b>+2 очка</b> и назовите, какой тест и какая строка ошибки показала поломку.</li>
+        <li>Если тесты остались зелёными, очков нет: значит, поломку никто не ловит. За 5 минут напишите новый тест (с агентом), который краснеет на этой поломке и зеленеет без неё: <b>+3 очка</b>.</li>
+        <li>Между раундами вернитесь: <code>git restore .</code> (сбросит неотправленные правки в файлах) или <code>git reset --hard</code> на commit с зелёными тестами (только для локальной ветки).</li>
+        <li><b>Пары по кругу (по желанию):</b> ломайте проект друг друга по секрету. Задача соседа: по красному отчёту найти поломку за 5 минут. Кто нашёл быстрее, получает +1.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>Что запомнить после игры</b>
+        <p>Зелёный тест сильнее, когда вы видели его красным. Привычка профессионала: написал тест, сломал код на минуту, убедился, что тест покраснел, вернул. Тогда зелёный цвет что-то значит.</p>
+      </div>
+
+      <article class="task" id="cl-button">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: «Красная кнопка» пройдена</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-button-list">
+          <li>Работал в отдельной локальной ветке <code>red-button</code>, поломку никуда не отправлял</li>
+          <li>Минимум в двух раундах тесты покраснели, и я назвал, какой тест поймал поломку</li>
+          <li>Если поломку не поймал ни один тест, добавил новый тест, который краснеет на ней (или записал, какой тест нужен)</li>
+          <li>Вернул ветку к зелёным тестам и удалил <code>red-button</code></li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ 09 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание: тесты и README выпускного проекта (ДЗ-20)</h2>
+
+      <p>Доведите до конца то, что начали на уроке: три работающих автотеста главного сценария и README, по которому проект запустит посторонний человек. Сдача: ссылка на репозиторий (или pull request) на GitHub и ссылка на сайт на Vercel.</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Три теста Playwright</b> в папке <code>tests/</code>: счастливый путь главного сценария (вход и создание или изменение записи с проверкой результата), проверка доступа (гость или обычный пользователь не получает закрытого), и ещё один на ваш выбор (ошибочный ввод, админский сценарий или поиск, фильтр).</li>
+        <li><b>Запуск одной командой:</b> <code>npm run test:e2e</code> проходит зелёным три раза подряд; <code>baseURL</code> и <code>webServer</code> настроены.</li>
+        <li><b>Честные тесты:</b> каждый содержит <code>expect</code> на результат, без <code>waitForTimeout</code>, элементы ищутся через <code>getByRole</code>, <code>getByLabel</code> или <code>getByText</code>, тестовые записи с уникальным названием.</li>
+        <li><b>Секреты:</b> пароль тестового пользователя только в <code>.env.test</code> (в <code>.gitignore</code>) и, если делали бонус, в секретах GitHub; в репозитории есть <code>.env.test.example</code> без значений.</li>
+        <li><b>Сценарии:</b> файл <code>docs/test-scenarios.md</code> с таблицей «шаг, ожидание, факт» и строкой про баг, пойманный тестом.</li>
+        <li><b>README</b> по шаблону: что делает проект, ссылка на сайт, снимок экрана, роли, стек, запуск локально (проверен в чистой копии), таблица переменных окружения, раздел «Tests», известные ограничения.</li>
+        <li><b>Логи:</b> в README или в <code>docs/test-scenarios.md</code> одна запись: какой запрос нашли в Vercel Logs (маршрут, код ответа, что сказано в Log Messages).</li>
+        <li><b>Качество:</b> <code>npm run build</code> проходит, сайт на Vercel работает после деплоя.</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li>Закончите три теста и сценарии, прогоните тесты трижды.</li>
+        <li>Заполните README и проверьте его в чистой копии репозитория.</li>
+        <li>Влейте ветку через pull request (по правилам урока 19), дождитесь деплоя на Vercel.</li>
+        <li>Скопируйте ссылку на репозиторий или pull request и ссылку на сайт.</li>
+        <li>Отметьте чек-лист требований и вставьте ссылки ниже.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Тесты зелёные только потому, что ничего не проверяют. <b>2.</b> Пароль тестового пользователя попал в репозиторий (если так, смените пароль: удаление файла новым commit не помогает, см. урок 19). <b>3.</b> README описывает функции, которых нет. <b>4.</b> Тесты бьют по боевой базе с настоящими людьми. <b>5.</b> Тесты проходят только на вашем компьютере, потому что зависят от записей, созданных руками. <b>6.</b> Нет ссылки на сайт или она ведёт на старую версию.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Как проверяют</b>
+        <p>Проверяющий откроет репозиторий, прочитает README, клонирует проект, поставит зависимости, подставит свои переменные и запустит тесты. Потом прочитает файлы в <code>tests/</code>: есть ли проверки результата, нет ли пауз и паролей. Для «Красной кнопки» он может внести поломку в копию проекта, и тесты должны покраснеть. Баллы за стабильность, осмысленность тестов, честность README и «Известные ограничения».</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист требований к ДЗ-20</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Три теста Playwright в <code>tests/</code>, каждый проверяет результат; нет <code>waitForTimeout</code></li>
+          <li><code>npm run test:e2e</code> зелёный три раза подряд</li>
+          <li>Пароль тестового пользователя нигде в репозитории не лежит, есть <code>.env.test.example</code></li>
+          <li><code>docs/test-scenarios.md</code> заполнен, есть запись о баге, пойманном тестом</li>
+          <li>README заполнен по шаблону и проверен в чистой копии репозитория</li>
+          <li>Запись о найденном запросе в Vercel Logs есть</li>
+          <li>Сайт на Vercel собрался и работает, <code>npm run build</code> проходит</li>
+          <li>Ссылки на репозиторий и на Vercel вставлены ниже</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Ссылка на репозиторий с тестами</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий (или на влитый pull request) на GitHub, где видны папка <code>tests/</code> и README (адрес вида <code>https://github.com/ваш-логин/graduation-project</code>).</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/graduation-project"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 9.3</span><h4>Ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на опубликованный сайт после слияния (адрес вида <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://graduation-project.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://playwright.dev/docs/writing-tests" target="_blank" rel="noopener">Playwright: Writing tests</a>, <a href="https://vercel.com/docs/logs/runtime" target="_blank" rel="noopener">Vercel: Runtime Logs</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>«У меня работает» не считается:</b> один путь, один аккаунт, правильные данные. Доказательство даёт запуск, а не слова агента. Проверять надо после каждой правки.</li>
+        <li><b>Сценарий руками:</b> таблица «шаг, ожидание, факт», 4–8 шагов; три типа: счастливый путь, ошибочный ввод, доступ.</li>
+        <li><b>Playwright:</b> <code>npm init playwright@latest</code>; тесты в <code>tests/*.spec.ts</code>; запуск <code>npx playwright test</code>, <code>--ui</code>, <code>--headed</code>; отчёт <code>npx playwright show-report</code>; запись шагов <code>npx playwright codegen &lt;адрес&gt;</code>.</li>
+        <li><b>Конфиг:</b> <code>baseURL</code>, <code>webServer</code> (<code>command</code>, <code>url</code>, <code>reuseExistingServer</code>, <code>timeout</code>); для близости к боевой версии <code>npm run build</code> и <code>npm run start</code>.</li>
+        <li><b>Синтаксис:</b> <code>page.goto</code>, <code>fill</code>, <code>click</code>; поиск <code>getByRole</code> (предпочтительно), <code>getByLabel</code>, <code>getByText</code>; проверки <code>expect(...).toBeVisible()</code>, <code>toHaveURL()</code>, <code>toHaveText()</code> сами ждут.</li>
+        <li><b>Флакающие тесты:</b> причины: паузы <code>waitForTimeout</code>, общие данные, хрупкие селекторы (<code>nth</code>), медленный <code>dev</code>-сервер, зависимость от порядка. Лечение: ждать конкретное, уникальные данные, независимые тесты.</li>
+        <li><b>Красный тест:</b> прочитать ошибку и <code>Locator</code>, решить «баг или устаревший тест», не ослаблять проверку, чтобы позеленело.</li>
+        <li><b>Агент и тесты:</b> просить проверку результата, один тест за раз, запрет менять код ради теста; вывод запуска смотрит человек; пароли в <code>.env.test</code>, а не в коде.</li>
+        <li><b>Vercel Logs:</b> проект, Logs в боковом меню; фильтры (уровень, маршрут, путь, код, окружение), Live mode, Log Messages; Hobby хранит 1 час; в терминале <code>vercel logs</code>. Build logs, Runtime Logs и консоль браузера показывают разное.</li>
+        <li><b>В логах:</b> <code>console.error('метка:', message)</code>; без секретов; 4xx предупреждение, 5xx ошибка сервера.</li>
+        <li><b>README:</b> что это, ссылка, снимок, роли, стек, запуск, переменные (только имена), тесты, ограничения; все команды проверены в чистой копии.</li>
+        <li><b>Красная кнопка:</b> поломка в локальной ветке должна покраснеть в тестах; не поймали, значит, нужен ещё тест.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, почему «у меня работает» не доказательство, и привести три типичные поломки, которые не видны руками</li>
+          <li>Могу записать главный сценарий таблицей «шаг, ожидание, факт» и выделить в нём счастливый путь, ошибочный ввод и проверку доступа</li>
+          <li>Могу установить Playwright в проект Next.js, настроить <code>baseURL</code> и <code>webServer</code> и запустить тесты</li>
+          <li>Могу прочитать тест и сказать, что он проверяет, и увидеть тест, который ничего не проверяет</li>
+          <li>Могу назвать причины флакающего теста и способы лечения</li>
+          <li>Могу прочитать красный результат и решить, баг это в приложении или устаревший тест</li>
+          <li>Могу найти запрос в Runtime Logs на Vercel по маршруту и коду ответа и прочитать сообщения</li>
+          <li>Могу написать README, который выдерживает проверку в чистой копии репозитория</li>
+          <li>Могу попросить агента написать тест так, чтобы проверка была настоящей, и проверить его работу сам</li>
+        </ul>
+      </article>
+    </section>

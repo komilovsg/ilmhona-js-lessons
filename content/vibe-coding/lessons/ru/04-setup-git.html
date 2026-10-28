@@ -1,0 +1,951 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .dash { fill: none; stroke: var(--ink-3); stroke-width: 2; stroke-dasharray: 6 5; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .st.you { border-color: var(--accent-2); }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  @media (max-width: 560px) { .cmp { grid-template-columns: 1fr; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 4 · Рабочая среда: Cursor</p>
+      <h1>Окружение профессионала + Git с первого дня</h1>
+      <p class="lead">К концу урока у вас на компьютере будет полностью готовое рабочее окружение: редактор Cursor, терминал, Node.js, Git и аккаунт GitHub. Вы запустите свою страницу из терминала по адресу <code>localhost</code>, сделаете первый коммит и отправите его на GitHub: ваши работы 1–3 окажутся в настоящем репозитории, а ссылку на него вы сдадите как домашнее задание.</p>
+      <ul class="goals">
+        <li>Объяснять, зачем нужен каждый из инструментов: редактор, терминал, Node.js, npm, Git, GitHub</li>
+        <li>Выбирать между Cursor и VS Code и знать запасные варианты, если лимиты бесплатного тарифа закончились</li>
+        <li>Выполнять 10 базовых команд терминала и не бояться чёрного окна</li>
+        <li>Запускать проект на <code>localhost</code> и объяснять, что такое порт</li>
+        <li>Настроить Git (<code>user.name</code>, <code>user.email</code>), сделать коммит кнопкой Source Control и отправить его на GitHub</li>
+        <li>Разбирать типичные ошибки установки в Windows и macOS</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: компьютер (Windows или Mac) с правом устанавливать программы, интернет и около 2,5 часов. <b>Раздел 1 выполните дома до урока</b>: установка Node.js и Git занимает 20–30 минут, и на уроке это время нужно для практики. Откройте урок в одной половине экрана, а Cursor и терминал — в другой.</p>
+      <p>Это самый «технический» урок курса: часть слов будет незнакомой, и это нормально. Главное — повторять шаги и сверять результат с рисунками. Если что-то не получается, не ищите виноватого в себе: скопируйте текст ошибки и покажите его ИИ или преподавателю (раздел 7).</p>
+    </div>
+
+    <!-- ============ 01 · Перед уроком ============ -->
+    <section class="topic" id="before">
+      <h2 data-toc="Перед уроком (дома)"><span class="num">01</span> Перед уроком: установка Node.js и Git дома</h2>
+
+      <p>Вам нужно поставить две программы: <b>Node.js</b> (вместе с ней придёт <b>npm</b>) и <b>Git</b>. Зачем они нужны, узнаете из теории; сейчас важно только установить их и проверить. Скачивайте программы <b>только с официальных сайтов</b> из этого списка: «взломанные» версии и установщики с чужих сайтов могут содержать вирусы.</p>
+
+      <div class="callout tip">
+        <b>Куда вводить команды проверки</b>
+        <p><b>Windows:</b> нажмите кнопку «Пуск», наберите <code>PowerShell</code> и откройте «Windows PowerShell» (подойдёт и «Терминал»). <b>macOS:</b> нажмите Cmd+Пробел, наберите <code>Terminal</code> и нажмите Enter. Откроется окно с мигающим курсором: это терминал, подробнее о нём в разделе 4.</p>
+      </div>
+
+      <h3>Windows</h3>
+      <ol class="steps">
+        <li><b>Node.js.</b> Откройте <a href="https://nodejs.org/en/download" target="_blank" rel="noopener">nodejs.org/en/download</a>, выберите версию <b>LTS</b> (Long Term Support, «долгая поддержка» — самая стабильная) и скачайте установщик для Windows. Запустите его и нажимайте «Next», оставляя настройки по умолчанию. Если установщик предлагает поставить «necessary tools» (дополнительные инструменты) — ставить галочку не нужно, для курса хватит стандартной установки.</li>
+        <li><b>Git.</b> Откройте <a href="https://git-scm.com/install/windows" target="_blank" rel="noopener">git-scm.com/install/windows</a>, скачайте установщик <code>Git-…-64-bit.exe</code> (для компьютеров с процессором ARM — версию <code>arm64</code>) и запустите. Во всех окнах мастера нажимайте «Next»: настройки по умолчанию подходят для курса. Альтернатива для тех, кто любит терминал: <code>winget install --id Git.Git -e --source winget</code>.</li>
+        <li><b>Перезапустите PowerShell:</b> закройте окно и откройте новое. Это важно: старое окно не знает о только что установленных программах.</li>
+        <li><b>Проверьте версии</b> тремя командами из блока ниже. Если каждая напечатала номер версии — всё готово.</li>
+      </ol>
+
+      <h3>macOS</h3>
+      <ol class="steps">
+        <li><b>Node.js.</b> Откройте <a href="https://nodejs.org/en/download" target="_blank" rel="noopener">nodejs.org/en/download</a>, выберите версию <b>LTS</b>, скачайте установщик для macOS (файл <code>.pkg</code>), откройте его и пройдите все шаги, оставляя настройки по умолчанию.</li>
+        <li><b>Git.</b> В терминале введите <code>git --version</code>. Если Git уже есть, появится номер версии. Если нет, macOS покажет окно с предложением установить «command line developer tools» (инструменты командной строки): нажмите «Установить» («Install») и дождитесь окончания — это может занять 5–15 минут. Вместе с ними придёт Git. Если вы пользуетесь Homebrew, можно выполнить <code>brew install git</code>.</li>
+        <li><b>Закройте терминал и откройте заново</b>, чтобы он увидел новые программы.</li>
+        <li><b>Проверьте версии</b> тремя командами из блока ниже.</li>
+      </ol>
+
+<pre class="code" data-title="Терминал: проверка установки (одинаково в Windows и macOS)">
+node -v
+npm -v
+git --version
+</pre>
+
+      <p>Ответ должен выглядеть примерно так (номера у вас будут свои, главное — что они есть):</p>
+<pre class="code" data-title="Терминал: ожидаемый результат">
+v24.22.1
+11.19.1
+git version 2.50.1
+</pre>
+
+      <div class="yt" data-id="7S7FjiZ-zq8" data-title="Как установить Node.js на Windows 11 — Полный гайд — канал Waylohr"></div>
+      <p class="muted">Видео для Windows (на русском, около 1 минуты): установка Node.js. Берите версию LTS, даже если в ролике показан другой номер.</p>
+
+      <div class="yt" data-id="hbEzHug30PE" data-title="Как установить Node.js на macOS: видео инструкция — Эльбрус Буткемп"></div>
+      <p class="muted">Видео для macOS (на русском, около 3 минут): то же самое для Mac. Ролик записан раньше, номера версий на нём устарели — это нормально.</p>
+
+      <div class="callout warn">
+        <b>Если команда не находится</b>
+        <p>Тексты вида <code>node : The term 'node' is not recognized…</code> (Windows) или <code>zsh: command not found: node</code> (macOS) почти всегда значат одно: терминал был открыт <b>до</b> установки. Закройте все окна терминала и откройте новое. Не помогло — перезагрузите компьютер. Другие ошибки (PowerShell и «Command Line Tools») разберём в разделе 8.</p>
+      </div>
+
+      <article class="task" id="cl-home">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Чек-лист: домашняя установка</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте выполненное. Если что-то не вышло — это не страшно, придите на урок с текстом ошибки: разберём вместе.</p>
+        <ul class="checklist" id="cl-prehome">
+          <li>Node.js (версия LTS) установлен, команда <code>node -v</code> печатает номер версии</li>
+          <li>Команда <code>npm -v</code> печатает номер версии</li>
+          <li>Git установлен, команда <code>git --version</code> печатает номер версии</li>
+          <li>Терминал был перезапущен после установки</li>
+          <li>Если вышла ошибка, текст ошибки сохранён (скриншот или копия) и принесён на урок</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nodejs.org/en/download" target="_blank" rel="noopener">Node.js: загрузка</a>, <a href="https://git-scm.com/install/windows" target="_blank" rel="noopener">Git для Windows</a>, <a href="https://git-scm.com/install/" target="_blank" rel="noopener">Git для других систем</a>.</p>
+    </section>
+
+    <!-- ============ 02 · Шесть инструментов ============ -->
+    <section class="topic" id="tools">
+      <h2 data-toc="Шесть инструментов"><span class="num">02</span> Редактор, терминал, Node.js, npm, Git, GitHub: зачем каждый</h2>
+
+      <p>Профессиональная рабочая среда — это набор из шести простых «винтиков». Каждый делает одну вещь, и вместе они дают то, что вы будете использовать до конца курса. Сначала общая картина, потом подробности.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 300" role="img" aria-label="Схема: редактор кода и терминал на вашем компьютере; Node.js и npm запускают проект; Git сохраняет версии; GitHub хранит копию в интернете">
+          <rect class="zone-g" x="12" y="12" width="460" height="276" rx="14" />
+          <text class="t-g" x="28" y="36">ВАШ КОМПЬЮТЕР</text>
+          <rect class="box o" x="30" y="52" width="200" height="62" rx="12" /><text x="130" y="78" text-anchor="middle">1. Редактор кода</text><text class="sub" x="130" y="98" text-anchor="middle">пишем и храним файлы</text>
+          <rect class="box b" x="254" y="52" width="200" height="62" rx="12" /><text x="354" y="78" text-anchor="middle">2. Терминал</text><text class="sub" x="354" y="98" text-anchor="middle">даём компьютеру команды</text>
+          <rect class="box v" x="30" y="134" width="200" height="62" rx="12" /><text x="130" y="160" text-anchor="middle">3. Node.js + 4. npm</text><text class="sub" x="130" y="180" text-anchor="middle">запускают проект и пакеты</text>
+          <rect class="box g" x="254" y="134" width="200" height="62" rx="12" /><text x="354" y="160" text-anchor="middle">5. Git</text><text class="sub" x="354" y="180" text-anchor="middle">записывает версии проекта</text>
+          <rect class="box" x="30" y="216" width="424" height="56" rx="12" /><text x="242" y="240" text-anchor="middle">Папка проекта: файлы страницы, код, README</text><text class="sub" x="242" y="258" text-anchor="middle">всё это лежит у вас на диске</text>
+          <path class="arr" d="M474 160h56" /><path class="arr-head" d="M530 154l10 6-10 6z" />
+          <text class="sub" x="508" y="144" text-anchor="middle">push</text>
+          <rect class="box g" x="548" y="100" width="160" height="120" rx="14" /><text x="628" y="150" text-anchor="middle">6. GitHub</text><text class="sub" x="628" y="172" text-anchor="middle">копия в интернете,</text><text class="sub" x="628" y="190" text-anchor="middle">ссылка для проверки</text>
+        </svg>
+        <figcaption>Шесть инструментов: пять работают на вашем компьютере, шестой — GitHub — хранит копию в интернете и даёт ссылку, которую вы сдаёте как домашнее задание</figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Инструмент</th><th>Что это</th><th>Зачем в курсе</th></tr></thead>
+          <tbody>
+            <tr><td><b>Редактор кода</b></td><td>Программа, где вы открываете папку проекта, правите файлы и общаетесь с ИИ-помощником. Основной в курсе — Cursor, запасной — VS Code</td><td>Здесь вы будете работать каждый урок</td></tr>
+            <tr><td><b>Терминал</b></td><td>Окно, в которое команды вводят текстом. Он встроен в редактор</td><td>Запуск проекта, установка пакетов, Git: всё это делается командами</td></tr>
+            <tr><td><b>Node.js</b></td><td>Программа, которая умеет запускать JavaScript не в браузере, а прямо на компьютере</td><td>Нужна для локального сервера, а позже для Next.js, Tailwind и других инструментов</td></tr>
+            <tr><td><b>npm</b></td><td>«Магазин готовых деталей» для проектов: ставит чужие пакеты одной командой. Приходит вместе с Node.js</td><td>Установка Next.js, Tailwind и других библиотек в следующих уроках</td></tr>
+            <tr><td><b>Git</b></td><td>Программа, которая записывает историю изменений проекта: «сохранения», к которым можно вернуться</td><td>Откат после неудачной правки ИИ, «каждый шаг = коммит»</td></tr>
+            <tr><td><b>GitHub</b></td><td>Сайт, где хранятся копии Git-проектов в интернете</td><td>Резервная копия, портфолио и сдача домашних заданий ссылкой</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Представьте мастерскую в Душанбе. Редактор кода — верстак, на котором вы работаете. Терминал — телефон, по которому вы чётко говорите, что сделать («запусти», «сохрани», «отправь»). Node.js — электричество, без которого станки не включатся. npm — оптовый рынок запчастей. Git — тетрадь, куда мастер записывает каждую доработку с датой. GitHub — копия тетради, которую вы храните у надёжного родственника на случай, если дома что-то случится.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Путать Git и GitHub: Git — программа на вашем компьютере, GitHub — сайт, куда отправляют копию. Git работает и без GitHub. <b>2.</b> Путать Node.js с JavaScript в браузере: Node.js — отдельная программа, браузеру она не нужна. <b>3.</b> Путать VS Code с Visual Studio — это разные программы. <b>4.</b> Думать, что терминал «ломает» компьютер: безобидные команды из урока ничего не удалят.</p>
+      </div>
+
+      <article class="task" id="q-tools">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: инструменты</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Что из этого делает Git?</p>
+          <ol class="options">
+            <li>Показывает страницу в браузере</li>
+            <li>Хранит сайт в интернете, чтобы его мог открыть любой человек</li>
+            <li>Записывает историю изменений проекта на вашем компьютере, чтобы можно было вернуться к прошлой версии</li>
+            <li>Подсказывает ИИ, какой код писать</li>
+          </ol>
+          <div class="explain"><p>Git — «тетрадь версий» проекта. Хранение копии в интернете делает GitHub, а страницу показывает браузер.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>В чём разница между Git и GitHub?</p>
+          <ol class="options">
+            <li>Это два названия одной и той же программы</li>
+            <li>Git — программа для записи версий на вашем компьютере, GitHub — сайт, где хранится копия проекта в интернете</li>
+            <li>Git платный, а GitHub бесплатный</li>
+            <li>Git нужен только для сайтов, а GitHub — только для приложений</li>
+          </ol>
+          <div class="explain"><p>Git работает локально и без интернета. GitHub — один из сайтов, куда можно отправить («push») копию проекта.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Вместе с какой программой на компьютер приходит npm?</p>
+          <ol class="options">
+            <li>С Node.js</li>
+            <li>С Git</li>
+            <li>С браузером Chrome</li>
+            <li>С редактором кода</li>
+          </ol>
+          <div class="explain"><p>npm устанавливается вместе с Node.js: поэтому после установки Node.js работают обе команды, <code>node -v</code> и <code>npm -v</code>.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://docs.npmjs.com/about-npm" target="_blank" rel="noopener">npm: что такое npm</a> (на английском), <a href="https://docs.github.com/en/get-started/start-your-journey/about-github-and-git" target="_blank" rel="noopener">GitHub Docs: о Git и GitHub</a>.</p>
+    </section>
+
+    <!-- ============ 03 · Cursor vs VS Code ============ -->
+    <section class="topic" id="cursor">
+      <h2 data-toc="Cursor и VS Code"><span class="num">03</span> Cursor или VS Code: что выбрать и что делать с лимитами</h2>
+
+      <p><b>Cursor</b> — редактор кода, построенный на основе VS Code (вы уже установили VS Code в первом уроке). Внешне и по горячим клавишам они похожи: слева панель файлов, сверху вкладки, внизу терминал. Главное отличие — в Cursor ИИ-агент встроен в сам редактор: он видит все файлы проекта, умеет создавать и менять их, а вы проверяете результат.</p>
+
+      <div class="cmp">
+        <div><h5>VS Code</h5><ul><li>Бесплатный, стандарт отрасли</li><li>ИИ можно подключить расширениями</li><li>Уже установлен после урока 1</li><li>Все кнопки Git и терминала — как в Cursor</li></ul></div>
+        <div class="new"><h5>Cursor</h5><ul><li>На основе VS Code: интерфейс знаком</li><li>ИИ-агент встроен и видит весь проект</li><li>Есть бесплатный тариф с ограничениями</li><li>Основной редактор для курса</li></ul></div>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>VS Code — хорошая чойхона: чистый зал, быстрая кухня, всё делаете сами. Cursor — та же чойхона, но с официантом, который понимает заказ «сделай как в прошлый раз» и сам идёт на кухню. Только не забывайте проверять, что принесли: ответственность за блюдо остаётся на вас.</p>
+      </div>
+
+      <h3>Бесплатный тариф Cursor и его лимиты</h3>
+      <p>На странице <a href="https://cursor.com/pricing" target="_blank" rel="noopener">cursor.com/pricing</a> указано: тариф <b>Free</b> стоит 0 долларов в месяц и включает <b>ограниченное</b> число запросов к агенту и в чат. Платные тарифы начинаются с Plus (8 долларов в месяц на момент написания урока). Точных цифр на странице нет, а условия и список моделей Cursor меняет часто — поэтому не планируйте работу «до последнего запроса». Когда лимит заканчивается, редактор показывает уведомление, а лимит обновляется со временем (смотрите раздел Usage в вашем аккаунте).</p>
+
+      <div class="callout tip">
+        <b>Как экономить запросы</b>
+        <p><b>1.</b> Один запрос — одна понятная задача, а не «сделай весь сайт». <b>2.</b> Правьте точечно («поменяй цвет кнопки в шапке»), а не просите переписать файл. <b>3.</b> Не отправляйте один и тот же запрос повторно, если не прочитали ответ. <b>4.</b> Для вопросов «что значит эта ошибка» подойдёт обычный чат с ИИ из урока 1.</p>
+      </div>
+
+      <h3>Запасные варианты, если Cursor недоступен или лимит закончился</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Вариант</th><th>Что это и условия</th></tr></thead>
+          <tbody>
+            <tr><td><b>VS Code + GitHub Copilot Free</b></td><td>Тот же редактор, который у вас уже стоит, плюс бесплатный тариф помощника от GitHub. По документации GitHub: до 2000 подсказок кода в месяц, чат и агент ограничены. Нужен аккаунт GitHub (он у вас появится сегодня)</td></tr>
+            <tr><td><b>Windsurf</b></td><td>ИИ-редактор на основе VS Code с бесплатным тарифом и ограниченной квотой. Условия и сайт меняются, смотрите актуальное на windsurf.com</td></tr>
+            <tr><td><b>Google Antigravity</b></td><td>Среда разработки от Google; на сайте <a href="https://antigravity.google/" target="_blank" rel="noopener">antigravity.google</a> для разработчиков указана как доступная без оплаты. Проверьте, что она доступна в вашей стране</td></tr>
+            <tr><td><b>VS Code + чат с ИИ</b></td><td>Всегда работающий вариант из уроков 1–3: просите код в чате (Gemini, Claude, ChatGPT), вставляете в файлы. Медленнее, но бесплатно и надёжно</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <b>Важно про Gemini Code Assist</b>
+        <p>Бесплатный личный доступ к расширениям Gemini Code Assist и к Gemini CLI через вход с аккаунтом Google, по сообщению Google, прекращён с 18 июня 2026 года: в старых видео и статьях вы можете встретить его как «бесплатную замену Cursor». Не тратьте на него время, а берите варианты из таблицы выше. Всё, что вы делаете в этом уроке (терминал, Git, GitHub), одинаково работает в Cursor, VS Code и других редакторах на их основе.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Покупать платный тариф в первый день: для курса хватает бесплатных вариантов. <b>2.</b> Устанавливать три редактора одновременно и путаться, в каком открыта папка. <b>3.</b> Скачивать Cursor не с официального сайта <code>cursor.com</code>. <b>4.</b> Паниковать, когда закончился лимит: переключитесь на запасной вариант и продолжайте, Git и терминал везде одинаковы.</p>
+      </div>
+
+      <article class="task" id="q-cursor">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Проверь себя: редакторы и лимиты</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>В Cursor закончился лимит запросов на бесплатном тарифе. Что разумнее всего сделать?</p>
+          <ol class="options">
+            <li>Сразу купить самый дорогой тариф</li>
+            <li>Продолжить работу в VS Code с чатом или бесплатным помощником, а в Cursor вернуться, когда лимит обновится</li>
+            <li>Бросить курс: без Cursor работать нельзя</li>
+            <li>Найти «взломанную» версию Cursor</li>
+          </ol>
+          <div class="explain"><p>Редакторы на основе VS Code работают одинаково: терминал и Git не зависят от того, какой помощник подключён. Платить и тем более ломать программу не нужно.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Чем Cursor отличается от VS Code?</p>
+          <ol class="options">
+            <li>Cursor работает только в браузере</li>
+            <li>В VS Code нет терминала</li>
+            <li>В Cursor ИИ-агент встроен в сам редактор и видит файлы проекта, а интерфейс построен на основе VS Code</li>
+            <li>Cursor пишет код без ошибок</li>
+          </ol>
+          <div class="explain"><p>Cursor — «форк» (ответвление) VS Code со встроенным ИИ. Ошибки возможны у любого ИИ, поэтому результат всегда проверяет человек.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://cursor.com/pricing" target="_blank" rel="noopener">тарифы Cursor</a>, <a href="https://docs.github.com/en/copilot/get-started/plans" target="_blank" rel="noopener">планы GitHub Copilot</a>.</p>
+    </section>
+
+    <!-- ============ 04 · Терминал ============ -->
+    <section class="topic" id="terminal">
+      <h2 data-toc="Терминал: 10 команд"><span class="num">04</span> Терминал и 10 базовых команд</h2>
+
+      <p><b>Терминал</b> (его ещё называют «командная строка» или «консоль») — это окно, в котором компьютером управляют текстом: вы печатаете команду, нажимаете Enter, терминал отвечает. Всё то же самое можно сделать мышкой в Проводнике или Finder, но терминал быстрее, а многие инструменты (Node.js, npm, Git) работают именно через него. В Cursor и VS Code терминал встроен: откройте его через меню «Terminal → New Terminal» или сочетанием Ctrl+` (на macOS — Control+`; значок ` находится на клавише с буквой Ё).</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/04-setup-git/terminal-mock.svg" alt="Схема окна терминала: три строки с приглашением, командами pwd, ls и cd my-site и их ответами; цифрами отмечены приглашение, команда и новая папка" width="720" height="340" loading="lazy" decoding="async">
+        <figcaption>Упрощённая схема терминала (оригинальный рисунок). У вас имя компьютера и папки будут другими, а в Windows приглашение выглядит как <code>PS C:\Users\…&gt;</code></figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Проводник и Finder — это ходить по бозору и показывать пальцем на нужный товар. Терминал — позвонить знакомому продавцу и назвать точную просьбу: «пожалуйста, две лепёшки». Быстрее и точнее, но нужно знать слова. Десять слов ниже — весь «разговорник» на сегодня.</p>
+      </div>
+
+      <h3>Где вы сейчас: папка, в которой работает терминал</h3>
+      <p>Терминал всегда «стоит» в какой-то папке: команды выполняются там. Узнать, в какой именно, помогает команда <code>pwd</code>. Если вы открыли терминал в Cursor после «Open Folder», он стоит в папке проекта.</p>
+
+      <h3>10 команд, которые работают и в Windows PowerShell, и в macOS</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>№</th><th>Команда</th><th>Что делает</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><code>pwd</code></td><td>Показывает, в какой папке вы находитесь (print working directory)</td></tr>
+            <tr><td>2</td><td><code>ls</code></td><td>Показывает, что лежит в текущей папке (list)</td></tr>
+            <tr><td>3</td><td><code>mkdir имя</code></td><td>Создаёт новую папку (make directory)</td></tr>
+            <tr><td>4</td><td><code>cd имя</code></td><td>Заходит в папку (change directory)</td></tr>
+            <tr><td>5</td><td><code>echo "текст" &gt; файл.txt</code></td><td>Создаёт файл и записывает в него текст</td></tr>
+            <tr><td>6</td><td><code>cat файл.txt</code></td><td>Показывает содержимое файла</td></tr>
+            <tr><td>7</td><td><code>cp что куда</code></td><td>Копирует файл (copy)</td></tr>
+            <tr><td>8</td><td><code>mv что куда</code></td><td>Переименовывает или перемещает файл (move)</td></tr>
+            <tr><td>9</td><td><code>rm файл.txt</code></td><td>Удаляет файл (remove), <b>минуя Корзину</b></td></tr>
+            <tr><td>10</td><td><code>cd ..</code></td><td>Выходит из папки на уровень выше (две точки — «родительская папка»)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted">Бонус: команда <code>clear</code> очищает экран. Клавиша <b>Tab</b> дописывает имя файла или папки (начните печатать и нажмите Tab), а стрелка <b>↑</b> возвращает предыдущую команду. В Windows PowerShell эти команды работают как «псевдонимы» встроенных команд PowerShell, а в macOS — как настоящие команды оболочки.</p>
+
+<pre class="code" data-title="Терминал: пример работы с папками и файлами">
+pwd
+ls
+mkdir bingo-test
+cd bingo-test
+echo "hello" &gt; hello.txt
+cat hello.txt
+cp hello.txt copy.txt
+mv copy.txt renamed.txt
+rm renamed.txt
+cd ..
+</pre>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Пробелы в именах папок и файлов: <code>cd my site</code> не сработает, терминал решит, что это два разных слова. Называйте папки латиницей, без пробелов (<code>my-site</code>). <b>2.</b> Забыть, в какой папке находитесь: сначала <code>pwd</code>, потом команда. <b>3.</b> Команда <code>rm</code> удаляет навсегда, в Корзину ничего не попадает: проверяйте имя перед Enter и не вставляйте в терминал чужие команды, которых не понимаете. <b>4.</b> Копировать команды вместе с символом <code>$</code> в начале строки: этот знак — часть приглашения, а не команды.</p>
+      </div>
+
+      <article class="task" id="q-terminal">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: терминал</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Вы не помните, в какой папке стоит терминал. Какая команда это покажет?</p>
+          <ol class="options">
+            <li><code>ls</code></li>
+            <li><code>pwd</code></li>
+            <li><code>cat</code></li>
+            <li><code>mv</code></li>
+          </ol>
+          <div class="explain"><p><code>pwd</code> печатает путь к текущей папке. <code>ls</code> показывает содержимое папки, а не её имя.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Вы находитесь в папке <code>my-site</code> и хотите выйти на уровень выше. Что ввести?</p>
+          <ol class="options">
+            <li><code>cd my-site</code></li>
+            <li><code>cd</code> и закрыть терминал</li>
+            <li><code>rm ..</code></li>
+            <li><code>cd ..</code></li>
+          </ol>
+          <div class="explain"><p>Две точки означают «родительская папка». <code>rm</code> удаляет, а не переходит.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что будет после команды <code>rm notes.txt</code>?</p>
+          <ol class="options">
+            <li>Файл переместится в Корзину, его можно вернуть</li>
+            <li>Файл будет переименован</li>
+            <li>Файл будет удалён сразу и навсегда, минуя Корзину</li>
+            <li>Откроется окно с вопросом «Вы уверены?»</li>
+          </ol>
+          <div class="explain"><p>Терминал не задаёт лишних вопросов и не использует Корзину. Поэтому перед Enter всегда перечитывайте команду.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://code.visualstudio.com/docs/terminal/basics" target="_blank" rel="noopener">VS Code: встроенный терминал</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · Node, npm, localhost ============ -->
+    <section class="topic" id="localhost">
+      <h2 data-toc="Node.js, localhost и порт"><span class="num">05</span> Node.js, npm, localhost и порт</h2>
+
+      <p><b>Node.js</b> — программа, которая запускает JavaScript прямо на компьютере. До сих пор ваши страницы открывались двойным щелчком, и в адресной строке был путь вида <code>file:///…</code>. Профессиональные проекты открывают иначе: специальная программа («сервер») запускается на вашем компьютере и «раздаёт» страницу браузеру по адресу <code>localhost</code>. Так страница работает ближе к настоящему сайту в интернете, и так же запускаются Next.js и другие проекты курса.</p>
+
+      <h3>Что значит localhost</h3>
+      <p><code>localhost</code> — это «этот самый компьютер». Адрес <code>http://localhost:3000</code> означает: «зайди на этот же компьютер, на дверь с номером 3000». Страницу по такому адресу видите только вы: другие люди открыть её не смогут, пока вы не опубликуете сайт (урок 5).</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Схема: браузер запрашивает адрес localhost:3000, программа-сервер в терминале слушает порт 3000 и отдаёт файлы папки my-site">
+          <rect class="zone-g" x="12" y="12" width="696" height="246" rx="14" />
+          <text class="t-g" x="28" y="36">ВАШ КОМПЬЮТЕР (localhost)</text>
+          <rect class="box o" x="32" y="70" width="190" height="120" rx="12" /><text x="127" y="104" text-anchor="middle">Браузер</text><text class="mono sub" x="127" y="130" text-anchor="middle">localhost:3000</text><text class="sub" x="127" y="160" text-anchor="middle">«покажи страницу»</text>
+          <rect class="box v" x="290" y="70" width="190" height="120" rx="12" /><text x="385" y="104" text-anchor="middle">Сервер</text><text class="sub" x="385" y="128" text-anchor="middle">программа из терминала</text><text class="mono sub" x="385" y="156" text-anchor="middle">npx serve</text><text class="t-v" x="385" y="178" text-anchor="middle">слушает порт 3000</text>
+          <rect class="box" x="548" y="70" width="140" height="120" rx="12" /><text x="618" y="104" text-anchor="middle">Папка</text><text class="mono sub" x="618" y="130" text-anchor="middle">my-site/</text><text class="mono sub" x="618" y="152" text-anchor="middle">index.html</text>
+          <path class="arr" d="M224 114h58" /><path class="arr-head" d="M282 108l10 6-10 6z" /><text class="sub" x="253" y="104" text-anchor="middle">запрос</text>
+          <path class="arr" d="M480 114h60" /><path class="arr-head" d="M540 108l10 6-10 6z" /><text class="sub" x="510" y="104" text-anchor="middle">читает</text>
+          <path class="arr" d="M290 170h-58" /><path class="arr-head" d="M232 164l-10 6 10 6z" /><text class="sub" x="261" y="190" text-anchor="middle">страница</text>
+          <text class="sub" x="360" y="232" text-anchor="middle">Остановить сервер: Ctrl+C в терминале. После этого адрес перестанет открываться.</text>
+        </svg>
+        <figcaption>Путь страницы через localhost: браузер стучится в «дверь» с номером порта, сервер открывает и отдаёт файлы проекта</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Многоэтажка в Душанбе. Адрес дома — это <code>localhost</code>: «этот дом, вы внутри». Номер порта — номер подъезда или квартиры: в одном доме живёт много семей, и каждая отвечает на своём звонке. На порту 3000 может жить ваша страница, на порту 3001 — другой проект. Если подъезд занят, нужно позвонить в другой.</p>
+      </div>
+
+      <h3>Порт и типичное сообщение «порт занят»</h3>
+      <p><b>Порт</b> — число от 0 до 65535, «номер двери» для программ на компьютере. Один порт может занять только одна программа. Если вы запустили два проекта на порту 3000, второй сообщит: <code>address already in use</code> («адрес уже используется»). Решение — остановить первый проект (Ctrl+C) или запустить второй на другом порту.</p>
+
+      <h3>Что такое npm и npx</h3>
+      <dl class="terms">
+        <dt>npm</dt><dd>Менеджер пакетов: команда <code>npm install название</code> скачивает чужой готовый код в ваш проект. С Next.js и Tailwind вы встретитесь в следующих уроках.</dd>
+        <dt>npx</dt><dd>Запускает пакет без постоянной установки. Сегодня вы используете <code>npx serve</code>: он скачает маленький сервер <code>serve</code> и запустит его в нужной папке. При первом запуске терминал спросит <code>Ok to proceed? (y)</code>: ответьте <code>y</code> и нажмите Enter.</dd>
+      </dl>
+
+<pre class="code" data-title="Терминал: запуск страницы на localhost">
+cd my-site
+npx serve
+</pre>
+
+      <p>Через несколько секунд терминал напечатает сообщение, примерно такое:</p>
+<pre class="code" data-title="Терминал: ожидаемый ответ (порт может отличаться)">
+ INFO  Accepting connections at http://localhost:3000
+</pre>
+      <p>Откройте этот адрес в браузере. Номер порта у вас может быть другим: <b>берите адрес из вашего терминала</b>. В новых версиях <code>serve</code> ответ может быть оформлен в рамочке и содержать строки «Local» и «Network»: нужна строка Local.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/04-setup-git/localhost-browser.svg" alt="Схема окна браузера с адресом localhost:3000, внутри страница-визитка с именем и кнопкой Telegram, ниже пояснения к адресной строке и к остановке сервера" width="720" height="330" loading="lazy" decoding="async">
+        <figcaption>Так выглядит ваша страница на localhost: адрес с портом в адресной строке — то, что нужно показать на скриншоте для домашнего задания</figcaption>
+      </figure>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Закрыть терминал или нажать Ctrl+C и удивляться, что <code>localhost</code> «не открывается»: сервер остановился. <b>2.</b> Запускать <code>npx serve</code> не в той папке: сервер покажет список файлов вместо страницы, потому что в папке нет <code>index.html</code>. Проверьте <code>pwd</code> и <code>ls</code>. <b>3.</b> Набирать в браузере порт, которого нет в терминале. <b>4.</b> Думать, что <code>localhost</code> — это сайт в интернете: его видите только вы.</p>
+      </div>
+
+      <article class="task" id="q-localhost">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: localhost и порт</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Что означает адрес <code>http://localhost:3000</code>?</p>
+          <ol class="options">
+            <li>Ваш собственный компьютер, порт (дверь) с номером 3000</li>
+            <li>Сайт в интернете, который видят все</li>
+            <li>Сервер компании GitHub</li>
+            <li>Папка в Корзине</li>
+          </ol>
+          <div class="explain"><p><code>localhost</code> всегда значит «этот же компьютер». Другие люди этот адрес не откроют, пока вы не опубликуете сайт.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Вы нажали Ctrl+C в терминале, где работал <code>npx serve</code>, и страница на <code>localhost</code> перестала открываться. Почему?</p>
+          <ol class="options">
+            <li>Сломался браузер</li>
+            <li>Пропал интернет</li>
+            <li>Вы остановили сервер: пока он не запущен, открывать страницу нечему</li>
+            <li>GitHub заблокировал ваш аккаунт</li>
+          </ol>
+          <div class="explain"><p>Страницу отдаёт запущенная программа-сервер. Остановили её — адрес перестал отвечать. Запустите <code>npx serve</code> ещё раз.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Терминал выдал ошибку <code>address already in use</code> для порта 3000. Что это значит?</p>
+          <ol class="options">
+            <li>Файл <code>index.html</code> повреждён</li>
+            <li>Порт 3000 уже занят другой программой; остановите её или выберите другой порт</li>
+            <li>Нужно переустановить Node.js</li>
+            <li>Пора платить за тариф</li>
+          </ol>
+          <div class="explain"><p>Один порт может занять только одна программа. Закройте старый запуск (Ctrl+C) или запустите проект на другом порту.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nodejs.org/en/learn/getting-started/introduction-to-nodejs" target="_blank" rel="noopener">Node.js: введение</a> (на английском), <a href="https://developer.mozilla.org/ru/docs/Learn_web_development/Howto/Tools_and_setup/set_up_a_local_testing_server" target="_blank" rel="noopener">MDN: как настроить локальный тестовый сервер</a>.</p>
+    </section>
+
+    <!-- ============ 06 · Git и GitHub ============ -->
+    <section class="topic" id="git">
+      <h2 data-toc="Git и GitHub"><span class="num">06</span> Git как кнопка «сохранить»: commit и push</h2>
+
+      <p>Вы наверняка теряли файл после неудачной правки или называли документы <code>финал</code>, <code>финал2</code>, <code>финал-точно-последний</code>. Git решает эту проблему: он запоминает состояние всей папки проекта в нужные моменты, и к любому из этих «снимков» можно вернуться. Для работы с ИИ это особенно важно: если очередная правка сломала страницу, вы откатываетесь к последнему рабочему снимку вместо того, чтобы искать, что именно поменялось.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Схема: рабочая папка, затем выбор изменений, затем commit в локальную историю, затем push на GitHub">
+          <rect class="box o" x="12" y="50" width="150" height="76" rx="12" /><text x="87" y="80" text-anchor="middle">Рабочая папка</text><text class="sub" x="87" y="100" text-anchor="middle">вы правите файлы</text>
+          <rect class="box b" x="200" y="50" width="150" height="76" rx="12" /><text x="275" y="80" text-anchor="middle">Выбор изменений</text><text class="sub" x="275" y="100" text-anchor="middle">что войдёт в снимок</text>
+          <rect class="box g" x="388" y="50" width="150" height="76" rx="12" /><text x="463" y="80" text-anchor="middle">Commit</text><text class="sub" x="463" y="100" text-anchor="middle">снимок с подписью</text>
+          <rect class="box v" x="576" y="50" width="132" height="76" rx="12" /><text x="642" y="80" text-anchor="middle">GitHub</text><text class="sub" x="642" y="100" text-anchor="middle">копия в интернете</text>
+          <path class="arr" d="M164 88h28" /><path class="arr-head" d="M192 82l8 6-8 6z" />
+          <path class="arr" d="M352 88h28" /><path class="arr-head" d="M380 82l8 6-8 6z" />
+          <path class="arr" d="M540 88h28" /><path class="arr-head" d="M568 82l8 6-8 6z" />
+          <text class="mono sub" x="275" y="150" text-anchor="middle">add (Stage)</text>
+          <text class="mono sub" x="463" y="150" text-anchor="middle">commit</text>
+          <text class="mono sub" x="642" y="150" text-anchor="middle">push</text>
+          <text class="sub" x="360" y="200" text-anchor="middle">В Cursor и VS Code кнопка «Commit» в Source Control делает выбор изменений и commit; «Publish Branch» / «Sync Changes» — это push</text>
+        </svg>
+        <figcaption>Путь изменений: правим файлы, выбираем, что сохранить, делаем commit (снимок на вашем компьютере), затем push отправляет его на GitHub</figcaption>
+      </figure>
+
+      <dl class="terms">
+        <dt>Репозиторий (repo)</dt><dd>Папка проекта, за которой следит Git. Внутри неё появляется скрытая папка <code>.git</code> с историей. Её нельзя удалять и править руками.</dd>
+        <dt>Commit</dt><dd>Один «снимок» проекта с короткой подписью: что вы сделали. Как сохранение в игре: можно вернуться.</dd>
+        <dt>Push</dt><dd>Отправить свои коммиты на GitHub. Пока вы не сделали push, копии в интернете нет.</dd>
+        <dt>Ветка (branch)</dt><dd>Линия истории. Сейчас достаточно одной ветки, она называется <code>main</code>.</dd>
+      </dl>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Торговец на бозоре записывает каждый день в тетрадь: «12 октября — продано 20 кг изюма, получено 840 сомони». Каждая запись — это commit: коротко и с датой. Если запись потерялась или ошибся в числах, можно найти, когда это случилось. Push — когда торговец раз в день фотографирует страницы и отправляет брату. Если лавка сгорит, тетрадь сохранится у брата. GitHub — «брат», у которого хранится копия вашей тетради.</p>
+      </div>
+
+      <h3>Настройка Git: имя и почта (один раз)</h3>
+      <p>В каждом коммите Git подписывает автора. Чтобы он знал, кто вы, один раз введите две команды (подставьте своё имя латиницей и почту):</p>
+<pre class="code" data-title="Терминал: представиться Git (один раз на компьютер)">
+git config --global user.name "Madina Rakhimova"
+git config --global user.email "madina@example.com"
+</pre>
+      <p>Проверить: <code>git config --global user.name</code> напечатает сохранённое имя. Если не настроить, на первом коммите Git ответит <code>Author identity unknown</code> и попросит представиться. Почту лучше указать ту же, на которую вы зарегистрируете GitHub: так коммиты привяжутся к вашему профилю. Если не хотите показывать настоящую почту, в настройках GitHub («Settings → Emails») можно скрыть её и взять специальный адрес вида <code>…@users.noreply.github.com</code>: его и укажите в <code>user.email</code>.</p>
+
+      <h3>Вход в GitHub из редактора: пароль не подходит</h3>
+      <p>GitHub давно не принимает обычный пароль от аккаунта для работы Git: в документации прямо написано, что «password-based authentication for Git has been removed». Но вводить ничего не придётся. Когда вы первый раз отправляете проект на GitHub из Cursor или VS Code, редактор сам предлагает войти: откроется <b>браузер</b> со страницей GitHub, вы нажимаете «Authorize» («Разрешить»), и браузер возвращает вас в редактор. Если возврата не произошло, в строке состояния внизу есть пункт «Signing in to github.com…»: нажмите на него и вставьте код из браузера.</p>
+
+      <div class="callout warn">
+        <b>Что не стоит отправлять на GitHub</b>
+        <p>Репозиторий можно сделать публичным (виден всем) или закрытым. Для домашних заданий он должен быть публичным, поэтому <b>никогда</b> не кладите в него пароли, ключи API, файлы <code>.env</code> и документы с личными данными. Запомните правило: секреты хранят в файле <code>.env</code>, который в Git не попадает (урок про Supabase покажет, как это делается). Если секрет случайно попал в репозиторий, считайте его скомпрометированным и замените на новый.</p>
+      </div>
+
+      <div class="yt" data-id="XuFaQSW79rM" data-title="Лучший гайд по Git для начинающих за 15 минут — канал Vlad Mishustin"></div>
+      <p class="muted">Видео на русском (14 минут): как устроен Git, коммиты и отправка на GitHub. Если нет времени, достаточно первых 7 минут. В ролике основной упор на команды; на уроке вы будете делать то же самое кнопками Source Control.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Делать один гигантский коммит в конце недели: правило курса «каждый шаг = коммит». <b>2.</b> Писать сообщения вроде «asdf» или «правки»: через неделю вы не поймёте, что это было. Пишите коротко и по делу (<code>add my-site</code>, <code>fix header color</code>). <b>3.</b> Забыть про push: коммит есть на компьютере, а на GitHub пусто. <b>4.</b> Вводить пароль от GitHub в терминале — он не подойдёт. <b>5.</b> Создавать репозиторий внутри другого репозитория или внутри папки, которая синхронизируется с облаком (OneDrive, iCloud): держите проекты в простой папке на диске.</p>
+      </div>
+
+      <article class="task" id="q-git">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь себя: Git и GitHub</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Вы сделали commit, но на GitHub ничего не появилось. Почему?</p>
+          <ol class="options">
+            <li>GitHub заблокирован в вашей стране</li>
+            <li>Commit сохраняет снимок только на вашем компьютере; чтобы он попал на GitHub, нужен push (Publish Branch / Sync Changes)</li>
+            <li>Нужно подождать сутки</li>
+            <li>Нужно удалить папку <code>.git</code></li>
+          </ol>
+          <div class="explain"><p>Commit — локальное сохранение. Копия в интернете появляется только после push.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Что нужно сделать, чтобы Git не ругался <code>Author identity unknown</code>?</p>
+          <ol class="options">
+            <li>Один раз выполнить <code>git config --global user.name "…"</code> и <code>git config --global user.email "…"</code></li>
+            <li>Переустановить редактор</li>
+            <li>Ввести пароль от GitHub в терминале</li>
+            <li>Создать новый аккаунт GitHub</li>
+          </ol>
+          <div class="explain"><p>Git должен знать, кто автор коммитов. Настройка делается один раз на компьютер.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Как правильно войти в GitHub, когда редактор просит об этом при первом push?</p>
+          <ol class="options">
+            <li>Ввести пароль от аккаунта GitHub в терминале</li>
+            <li>Отправить пароль преподавателю</li>
+            <li>Пройти вход через браузер, который откроет редактор, и нажать «Authorize»</li>
+            <li>Создать репозиторий без входа: так тоже можно</li>
+          </ol>
+          <div class="explain"><p>Для Git на GitHub пароль от аккаунта не подходит. Редактор открывает браузер, вы разрешаете доступ, и вход выполняется без ввода пароля в терминал.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Что <b>нельзя</b> класть в публичный репозиторий? (выберите все верные варианты)</p>
+          <ol class="options">
+            <li>Файл <code>.env</code> с ключами API</li>
+            <li>Страницу <code>index.html</code> с учебной визиткой</li>
+            <li>Файл <code>README.md</code> с описанием проекта</li>
+            <li>Документ с паспортными данными</li>
+          </ol>
+          <div class="explain"><p>Секреты и личные документы не публикуют. Учебные страницы и README, наоборот, делают репозиторий понятным.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://docs.github.com/en/get-started/start-your-journey/hello-world" target="_blank" rel="noopener">GitHub Docs: Hello World</a>, <a href="https://code.visualstudio.com/docs/sourcecontrol/overview" target="_blank" rel="noopener">VS Code: Source Control</a>, <a href="https://docs.github.com/en/get-started/start-your-journey/creating-an-account-on-github" target="_blank" rel="noopener">GitHub: создание аккаунта</a>.</p>
+    </section>
+
+    <!-- ============ 07 · ИИ-блок ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: разбор ошибок"><span class="num">07</span> ИИ-блок: как попросить помощь с ошибкой установки</h2>
+
+      <div class="callout ai">
+        <b>ИИ как переводчик ошибок</b>
+        <p>В этом уроке ошибки будут: у каждого свой компьютер и своя версия системы. ИИ отлично объясняет сообщения терминала, но только если вы дали ему <b>точный текст ошибки</b> и сказали, какая у вас система. Пересказ «что-то не работает» не поможет. Формула та же: контекст → цель → ограничения → пример (текст ошибки) → проверка.</p>
+      </div>
+
+      <div class="prompt bad-prompt">ничего не запускается, помоги</div>
+      <div class="prompt good-prompt">Контекст: новичок, первый раз работаю в терминале. Система: [Windows 11 или macOS], терминал внутри редактора Cursor, папка проекта vibe-course. Выполняется шаг: [ЧТО ДЕЛАЛИ, например "запуск npx serve"].
+Цель: понять, что означает ошибка, и починить её.
+Ограничения: объясняй простыми словами; давай ровно одну команду за шаг и жди ответа; не предлагай удалять папки, переустанавливать систему и запускать команды с правами администратора без объяснения, чем это опасно.
+Текст ошибки (скопирован из терминала целиком): [ВСТАВЬТЕ ТЕКСТ ОШИБКИ БЕЗ ПАРОЛЕЙ И КЛЮЧЕЙ].
+Проверка: после каждого шага скажи, что должно появиться на экране, если всё получилось.</div>
+
+      <p>Если первый совет не помог, <b>не открывайте новый чат</b>: ответьте в том же диалоге «сделал, появилось вот это: …» и вставьте новый текст из терминала. Так ИИ видит всю историю попыток. Копируйте только текст ошибки: не отправляйте в чат пароли, ключи и содержимое файла <code>.env</code>.</p>
+
+      <h3>Полезные запросы по ходу урока</h3>
+      <div class="prompt">Объясни простыми словами, что делает команда: [КОМАНДА]. Что она изменит на компьютере и можно ли отменить? Ничего не запускай и не предлагай заменять команду.</div>
+      <div class="prompt">Предложи 5 коротких понятных сообщений для коммита по такому изменению: [ОПИШИТЕ ИЗМЕНЕНИЕ СВОИМИ СЛОВАМИ]. Английский язык, до 50 символов, глагол в начале (например "add header").</div>
+      <div class="prompt">Прочитай этот вывод команды git status и объясни, что в нём означает каждая строка и что делать дальше: [ВСТАВЬТЕ ВЫВОД].</div>
+
+      <div class="callout warn">
+        <b>Правила безопасности</b>
+        <p><b>1.</b> Не запускайте команды из чата, смысл которых не понимаете: попросите объяснить (первый запрос выше). <b>2.</b> Особо опасны <code>rm -rf</code>, <code>sudo</code> и всё, что просит «отключить защиту» или скачать файл с неизвестного сайта. <b>3.</b> Если ИИ советует отключить антивирус или обойти проверку подписи, остановитесь и спросите преподавателя.</p>
+      </div>
+
+      <article class="task" id="q-ai">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Проверь себя: как просить помощь</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что важнее всего вставить в запрос к ИИ, когда терминал показал ошибку?</p>
+          <ol class="options">
+            <li>Только слова «не работает»</li>
+            <li>Свою систему, шаг, на котором сломалось, и точный текст ошибки из терминала</li>
+            <li>Пароль от GitHub, чтобы ИИ сам всё исправил</li>
+            <li>Скриншот рабочего стола без текста</li>
+          </ol>
+          <div class="explain"><p>Точный текст ошибки и контекст дают ИИ шанс найти причину. Пароли и ключи в чат не отправляют никогда.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>ИИ предложил команду, смысла которой вы не понимаете. Как поступить?</p>
+          <ol class="options">
+            <li>Попросить объяснить, что она делает и можно ли отменить результат, и только потом решать</li>
+            <li>Скопировать и запустить: ИИ не ошибается</li>
+            <li>Запустить её с правами администратора, так надёжнее</li>
+            <li>Открыть новый чат и спросить то же самое</li>
+          </ol>
+          <div class="explain"><p>Правило курса: не запускать то, чего не понимаешь. Попросите объяснение, а потом решайте.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview" target="_blank" rel="noopener">Руководство по промптам (Anthropic)</a>, на английском.</p>
+    </section>
+
+    <!-- ============ 08 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: окружение и первый push"><span class="num">08</span> Практика: окружение, localhost и первый push</h2>
+
+      <p>Идём по порядку: подготовим папку, установим Cursor, заведём аккаунты, запустим проект из терминала и отправим его на GitHub. Каждый шаг короткий. Если застряли, посмотрите блок «Если сломалось» в конце раздела.</p>
+
+      <h3>Шаг 0. Подготовьте папку проекта</h3>
+      <ol class="steps">
+        <li>На рабочем столе создайте папку <code>vibe-course</code> (латиницей, через дефис). Это будет ваш репозиторий.</li>
+        <li><b>Скопируйте</b> в неё (не перемещайте!) папки <code>my-site</code> из урока 1, <code>coffee</code> из урока 2 и <code>fitness</code> из урока 3. Копируйте через Ctrl+C / Ctrl+V (в macOS — Cmd+C / Cmd+V). Какой-то из папок нет — не страшно, возьмите те, что есть.</li>
+      </ol>
+
+      <h3>Шаг 1. Установите Cursor и заведите аккаунты</h3>
+      <ol class="steps">
+        <li><b>Cursor.</b> Откройте <a href="https://cursor.com/download" target="_blank" rel="noopener">cursor.com/download</a>, нажмите кнопку скачивания для вашей системы. <b>Windows:</b> запустите скачанный установщик и пройдите его шаги. <b>macOS:</b> откройте скачанный файл и перетащите Cursor в папку «Программы» (Applications).</li>
+        <li><b>Запустите Cursor</b> из меню «Пуск» (Windows) или из «Программ» (macOS). Редактор попросит войти: создайте бесплатный аккаунт Cursor (можно через Google или почту) и подтвердите вход в браузере. Если предложит перенести настройки из VS Code, можете согласиться или пропустить: для курса это не важно.</li>
+        <li><b>GitHub.</b> Откройте <a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a>, зарегистрируйтесь (можно через «Continue with Google»), придумайте имя пользователя латиницей: оно будет в ссылке на ваши работы, поэтому выберите нейтральное и аккуратное (например, <code>madina-rakhimova</code>). <b>Подтвердите почту:</b> без этого GitHub не даст создать репозиторий. Рекомендуем сразу включить двухфакторную защиту.</li>
+      </ol>
+
+      <article class="task" id="cl-accounts">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: редактор и аккаунты</h4><span class="level easy">лёгкая</span></header>
+        <ul class="checklist" id="cl-install">
+          <li>Папка <code>vibe-course</code> создана, в неё скопированы работы из уроков 1–3</li>
+          <li>Cursor установлен, запускается, выполнен вход в аккаунт (или установлен запасной вариант: VS Code)</li>
+          <li>Аккаунт GitHub создан, почта подтверждена, имя пользователя запомнено или записано</li>
+          <li>Двухфакторная защита GitHub включена (рекомендуется)</li>
+        </ul>
+      </article>
+
+      <h3>Шаг 2. Откройте папку и терминал</h3>
+      <ol class="steps">
+        <li>В Cursor выберите «File → Open Folder…» и укажите папку <code>vibe-course</code>. На вопрос «Trust the authors?» («Доверяете авторам?») ответьте «Yes, I trust the authors»: это ваша папка.</li>
+        <li>Откройте терминал: «Terminal → New Terminal» или Ctrl+` (на macOS — Control+`). Внизу появится панель терминала, и она уже стоит в папке проекта. Проверьте командой <code>pwd</code>.</li>
+        <li>Проверьте инструменты командами <code>node -v</code>, <code>npm -v</code>, <code>git --version</code>. Если вышла ошибка — смотрите «Если сломалось» ниже.</li>
+      </ol>
+
+      <h3>Шаг 3. Представьтесь Git</h3>
+      <ol class="steps">
+        <li>В терминале введите две команды из раздела 6, подставив своё имя латиницей и почту, на которую зарегистрирован GitHub (или адрес <code>…@users.noreply.github.com</code> из настроек GitHub).</li>
+        <li>Проверьте: <code>git config --global user.name</code> и <code>git config --global user.email</code> должны напечатать то, что вы ввели.</li>
+      </ol>
+
+      <h3>Шаг 4. Запустите проект на localhost</h3>
+      <ol class="steps">
+        <li>Войдите в папку: <code>cd my-site</code>. Проверьте, что <code>ls</code> показывает <code>index.html</code>.</li>
+        <li>Запустите сервер: <code>npx serve</code>. Если терминал спросит <code>Ok to proceed? (y)</code>, введите <code>y</code> и нажмите Enter.</li>
+        <li>Дождитесь строки с адресом <code>http://localhost:…</code> и откройте его в браузере (в терминале Cursor можно нажать на адрес с зажатым Ctrl или Cmd). Вы увидите свою страницу.</li>
+        <li><b>Сделайте скриншот для домашнего задания:</b> окно браузера с адресом <code>localhost:…</code> в адресной строке и рядом терминал с запущенным сервером.</li>
+        <li>Остановите сервер: нажмите Ctrl+C в терминале, затем выйдите из папки командой <code>cd ..</code>.</li>
+      </ol>
+
+      <h3>Шаг 5. Первый коммит кнопкой Source Control</h3>
+      <ol class="steps">
+        <li>Создайте в корне <code>vibe-course</code> файл <code>README.md</code> (значок «New File» в панели файлов) и напишите в нём две строки: заголовок <code># vibe-course</code> и список работ (<code>my-site</code>, <code>coffee</code>, <code>fitness</code>). Сохраните файл (Ctrl+S / Cmd+S).</li>
+        <li>Слева на боковой панели нажмите значок <b>Source Control</b> (три кружка, соединённые линиями) или сочетание Ctrl+Shift+G (на macOS — Control+Shift+G). Если папка ещё не под Git, появится кнопка <b>Initialize Repository</b>: нажмите её. То же самое делает команда <code>git init</code>.</li>
+        <li>В списке «Changes» будут все ваши файлы с буквой <b>U</b> (untracked — «новый, Git его ещё не видел»). В поле «Message» напишите сообщение: <code>add my-site, coffee, fitness</code> и нажмите <b>Commit</b>. Если редактор спросит, добавить ли все изменения в коммит («stage all changes»), согласитесь.</li>
+        <li>После коммита кнопка превратится в <b>Publish Branch</b>. Нажмите её: редактор предложит создать репозиторий на GitHub. Выберите <b>public</b> (публичный) и подтвердите. Первый раз откроется браузер: войдите в GitHub и нажмите «Authorize» («Разрешить»), затем вернитесь в редактор. Пароль нигде вводить не нужно.</li>
+        <li>Когда редактор покажет уведомление об успехе, откройте репозиторий на сайте: <code>github.com/ваш-логин/vibe-course</code>. Вы должны увидеть свои папки и файл README.</li>
+      </ol>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/04-setup-git/source-control.svg" alt="Схема окна редактора: слева значок Source Control, в панели поле сообщения коммита, кнопка Commit и список новых файлов с буквой U; справа показана кнопка Publish Branch, которая появляется после коммита" width="720" height="440" loading="lazy" decoding="async">
+        <figcaption>Упрощённая схема Source Control. 1 — значок Source Control; 2 — поле сообщения коммита; 3 — кнопка Commit; 4 — Publish Branch (отправка на GitHub). Названия кнопок в вашей версии могут слегка отличаться</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/04-setup-git/github-repo.svg" alt="Схема страницы репозитория на сайте GitHub: адрес с логином и названием vibe-course, сообщение последнего коммита, список папок coffee, fitness, my-site и файл README.md" width="720" height="360" loading="lazy" decoding="async">
+        <figcaption>Упрощённая схема страницы репозитория (оригинальный рисунок, не копия сайта). 1 — адрес, который вы сдаёте; 2 — последний коммит; 3 — файлы проекта</figcaption>
+      </figure>
+
+      <h3>Шаг 6. Второй коммит: привычка «каждый шаг = коммит»</h3>
+      <ol class="steps">
+        <li>Откройте <code>README.md</code> и допишите строку со своим именем и одним предложением о том, чему научились сегодня. Сохраните.</li>
+        <li>В Source Control появится файл с буквой <b>M</b> (modified, «изменён»). Напишите сообщение <code>update readme</code> и нажмите <b>Commit</b>.</li>
+        <li>Нажмите <b>Sync Changes</b>: коммит отправится на GitHub. Обновите страницу репозитория в браузере: в списке коммитов должно быть минимум два.</li>
+      </ol>
+
+      <div class="callout tip">
+        <b>С этого урока: каждый шаг = коммит</b>
+        <p>После каждого значимого шага (страница заработала, добавили блок, починили ошибку) делайте коммит с понятным сообщением, а в конце работы — push. Если следующая правка ИИ сломает проект, вы просто вернётесь к прошлому коммиту. Домашние задания теперь сдаются ссылкой на GitHub.</p>
+      </div>
+
+      <article class="task" id="cl-first">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Чек-лист: проект на localhost и первый push</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-firstpush">
+          <li>Папка <code>vibe-course</code> открыта в редакторе, терминал показывает версии <code>node</code>, <code>npm</code> и <code>git</code></li>
+          <li>Выполнены <code>git config --global user.name</code> и <code>user.email</code></li>
+          <li>Страница <code>my-site</code> открыта в браузере по адресу <code>localhost</code> с номером порта, сделан скриншот</li>
+          <li>Сервер остановлен клавишами Ctrl+C</li>
+          <li>В <code>vibe-course</code> есть <code>README.md</code>, репозиторий инициализирован кнопкой Initialize Repository</li>
+          <li>Сделан первый коммит с понятным сообщением</li>
+          <li>Вход в GitHub выполнен через браузер (не паролем), репозиторий опубликован как public</li>
+          <li>На странице репозитория на GitHub видны папки проектов и README</li>
+          <li>Сделан второй коммит (изменён README) и отправлен кнопкой Sync Changes</li>
+        </ul>
+      </article>
+
+      <h3>Если сломалось</h3>
+      <div class="callout warn">
+        <b>PowerShell: «выполнение сценариев отключено» (Windows)</b>
+        <p>При запуске <code>npx</code> или <code>npm</code> в Windows PowerShell может появиться красный текст вида: <code>npx : File C:\Program Files\nodejs\npx.ps1 cannot be loaded because running scripts is disabled on this system</code> (в русской Windows: «…так как выполнение сценариев отключено в этой системе»). Это защита PowerShell: пока политика выполнения («execution policy») запрещает скрипты, <code>npx.ps1</code> не запустится. Разрешите запуск локальных скриптов только для вашего пользователя:</p>
+<pre class="code" data-title="Терминал (PowerShell): разрешить локальные скрипты для текущего пользователя">
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+</pre>
+        <p>На вопрос о смене политики ответьте <code>Y</code> (или «Д»), затем закройте терминал и откройте заново. Политика <b>RemoteSigned</b> разрешает ваши локальные скрипты, но требует подписи для скриптов, скачанных из интернета. Если команда пишет, что параметр задан групповой политикой (рабочий или школьный компьютер), в выпадающем списке рядом с «+» в панели терминала выберите профиль <b>Command Prompt</b>: там эта защита не действует.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>macOS: запрос на установку Command Line Tools</b>
+        <p>Если Git не установлен, первая команда <code>git</code> вызывает окно с текстом примерно «The “git” command requires the command line developer tools. Would you like to install the tools now?». Нажмите «Install» («Установить»), примите условия и дождитесь окончания (5–15 минут). Вторая команда терминала, запущенная во время установки, снова вызовет окно: просто подождите. Когда окно закроется, повторите команду. Если окно не появилось, запустите в терминале <code>xcode-select --install</code>. Потом закройте терминал и откройте заново.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Другие частые ошибки</b>
+        <p><b><code>node : The term 'node' is not recognized</code> / <code>zsh: command not found: node</code>.</b> Терминал открыт до установки Node.js: закройте все окна терминала (и перезапустите Cursor), откройте заново. На Windows при необходимости перезагрузите компьютер.</p>
+        <p><b><code>fatal: not a git repository (or any of the parent directories): .git</code>.</b> Папка не инициализирована или вы не в той папке: проверьте <code>pwd</code>, откройте в редакторе именно <code>vibe-course</code> и нажмите Initialize Repository в Source Control.</p>
+        <p><b><code>Author identity unknown</code> / <code>Please tell me who you are</code>.</b> Git не знает автора. Выполните две команды <code>git config --global user.name</code> и <code>user.email</code> из раздела 6.</p>
+        <p><b><code>Error: listen EADDRINUSE: address already in use :::3000</code> или сообщение «Port 3000 is already in use».</b> Порт занят другой программой, возможно, вашим же старым запуском. Нажмите Ctrl+C в окне, где он работает, или выберите другой порт: <code>npx serve -l 3001</code>.</p>
+        <p><b>Браузер пишет «Не удаётся получить доступ к сайту» / «localhost refused to connect».</b> Сервер не запущен (вы остановили его Ctrl+C) или в адресе другой порт. Запустите <code>npx serve</code> снова и откройте адрес из терминала.</p>
+        <p><b><code>remote: Support for password authentication was removed</code> или <code>Authentication failed</code> при push.</b> Пароль от GitHub для Git не подходит. Не вводите его: нажмите Publish Branch или Sync Changes ещё раз и пройдите вход через браузер. Если вход не завершается, в строке состояния нажмите «Signing in to github.com…» и вставьте код из браузера.</p>
+        <p><b>Не получается войти в Cursor или он недоступен.</b> Попробуйте снова через несколько минут; если не помогло, продолжайте урок в VS Code: терминал, Git и GitHub работают в нём точно так же (раздел 3).</p>
+        <p><b>В списке изменений сотни файлов.</b> Скорее всего, вы открыли слишком большую папку (например, весь рабочий стол). Закройте папку и откройте именно <code>vibe-course</code>. Если Git случайно инициализирован в лишней папке, попросите помощи у преподавателя: не удаляйте ничего наугад.</p>
+      </div>
+
+      <article class="task" id="q-fix">
+        <header><span class="task-num">ЗАДАЧА 8.3</span><h4>Если сломалось: найди причину</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>В Windows PowerShell команда <code>npx serve</code> вывела красный текст: «npx.ps1 cannot be loaded because running scripts is disabled on this system». Что делать?</p>
+          <ol class="options">
+            <li>Переустановить Windows</li>
+            <li>Выполнить <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code>, подтвердить и открыть терминал заново</li>
+            <li>Удалить Node.js</li>
+            <li>Скачать <code>npx.ps1</code> с другого сайта</li>
+          </ol>
+          <div class="explain"><p>PowerShell по умолчанию запрещает запуск скриптов, а <code>npx</code> в нём — скрипт. Команда разрешает локальные скрипты для вашего пользователя без прав администратора.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>При push терминал пишет «Support for password authentication was removed». Что верно?</p>
+          <ol class="options">
+            <li>Нужно ввести пароль ещё раз, внимательнее</li>
+            <li>Нужно сменить пароль на более длинный</li>
+            <li>Пароль для Git на GitHub не подходит: войдите через браузер, используя кнопки Publish Branch или Sync Changes</li>
+            <li>Нужно создать новый аккаунт</li>
+          </ol>
+          <div class="explain"><p>GitHub не принимает пароль от аккаунта для Git. Редактор открывает браузер и получает разрешение без пароля в терминале.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>На macOS после <code>git --version</code> появилось окно «The “git” command requires the command line developer tools». Что нажать?</p>
+          <ol class="options">
+            <li>«Install» («Установить») и дождаться окончания, затем повторить команду</li>
+            <li>«Cancel» и больше не пользоваться Git</li>
+            <li>Закрыть терминал и скачать Git с неизвестного сайта</li>
+            <li>Перезагрузить Mac, не нажимая ничего</li>
+          </ol>
+          <div class="explain"><p>Это штатный способ получить Git на macOS: вместе с инструментами командной строки приходит и Git.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies" target="_blank" rel="noopener">Microsoft: политики выполнения PowerShell</a> (на английском), <a href="https://docs.github.com/en/get-started/getting-started-with-git/about-remote-repositories" target="_blank" rel="noopener">GitHub: удалённые репозитории и вход</a>.</p>
+    </section>
+
+    <!-- ============ 09 · Фишка урока ============ -->
+    <section class="topic" id="bingo">
+      <h2 data-toc="Терминал-бинго"><span class="num">09</span> Фишка урока: «Терминал-бинго»</h2>
+
+      <p>Закрепим 10 команд игрой. У каждого участника карточка из десяти клеток; задача — выполнить команду в своём терминале, увидеть результат и отметить клетку. Блок рассчитан на преподавателя и подходит и для аудитории, и для онлайн.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Карточка бинго: десять клеток с командами pwd, ls, mkdir, cd, echo, cat, cp, mv, rm и cd двоеточие точка точка">
+          <g class="mono">
+            <rect class="box g" x="14" y="14" width="130" height="90" rx="10" /><text class="sub" x="79" y="38" text-anchor="middle">1</text><text x="79" y="66" text-anchor="middle">pwd</text><text class="sub" x="79" y="88" text-anchor="middle">где я?</text>
+            <rect class="box g" x="152" y="14" width="130" height="90" rx="10" /><text class="sub" x="217" y="38" text-anchor="middle">2</text><text x="217" y="66" text-anchor="middle">ls</text><text class="sub" x="217" y="88" text-anchor="middle">что тут?</text>
+            <rect class="box g" x="290" y="14" width="130" height="90" rx="10" /><text class="sub" x="355" y="38" text-anchor="middle">3</text><text x="355" y="66" text-anchor="middle">mkdir</text><text class="sub" x="355" y="88" text-anchor="middle">новая папка</text>
+            <rect class="box g" x="428" y="14" width="130" height="90" rx="10" /><text class="sub" x="493" y="38" text-anchor="middle">4</text><text x="493" y="66" text-anchor="middle">cd</text><text class="sub" x="493" y="88" text-anchor="middle">зайти</text>
+            <rect class="box g" x="566" y="14" width="130" height="90" rx="10" /><text class="sub" x="631" y="38" text-anchor="middle">5</text><text x="631" y="66" text-anchor="middle">echo &gt;</text><text class="sub" x="631" y="88" text-anchor="middle">создать файл</text>
+            <rect class="box g" x="14" y="118" width="130" height="90" rx="10" /><text class="sub" x="79" y="142" text-anchor="middle">6</text><text x="79" y="170" text-anchor="middle">cat</text><text class="sub" x="79" y="192" text-anchor="middle">прочитать</text>
+            <rect class="box g" x="152" y="118" width="130" height="90" rx="10" /><text class="sub" x="217" y="142" text-anchor="middle">7</text><text x="217" y="170" text-anchor="middle">cp</text><text class="sub" x="217" y="192" text-anchor="middle">копировать</text>
+            <rect class="box g" x="290" y="118" width="130" height="90" rx="10" /><text class="sub" x="355" y="142" text-anchor="middle">8</text><text x="355" y="170" text-anchor="middle">mv</text><text class="sub" x="355" y="192" text-anchor="middle">переименовать</text>
+            <rect class="box g" x="428" y="118" width="130" height="90" rx="10" /><text class="sub" x="493" y="142" text-anchor="middle">9</text><text x="493" y="170" text-anchor="middle">rm</text><text class="sub" x="493" y="192" text-anchor="middle">удалить</text>
+            <rect class="box g" x="566" y="118" width="130" height="90" rx="10" /><text class="sub" x="631" y="142" text-anchor="middle">10</text><text x="631" y="170" text-anchor="middle">cd ..</text><text class="sub" x="631" y="192" text-anchor="middle">выйти наверх</text>
+          </g>
+        </svg>
+        <figcaption>Карточка «Терминал-бинго»: десять команд из раздела 4. Клетка считается закрытой, когда команда выполнена и результат виден на экране</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Правила</b>
+        <p><b>1.</b> Работаем в терминале Cursor или VS Code в учебной папке <code>bingo-test</code> (её создаёт команда 3): основные проекты не трогаем. <b>2.</b> Клетки закрываются по порядку 1–10, как в примере из раздела 4. <b>3.</b> Команду нужно набрать самому (можно подсматривать в таблицу). Копирование из чата не считается. <b>4.</b> После каждой команды сверьтесь с тем, что напечатал терминал: ошибок быть не должно. <b>5.</b> Закрыли все десять клеток — поднимите руку или напишите «Бинго!» в чат группы.</p>
+      </div>
+
+      <h3>Как проводить (для преподавателя)</h3>
+      <table>
+        <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+        <tbody>
+          <tr><td>0:00–1:00</td><td>Показать карточку на экране, объяснить правила, напомнить про осторожность с <code>rm</code></td></tr>
+          <tr><td>1:00–9:00</td><td>Участники закрывают клетки; преподаватель ходит по рядам или смотрит демонстрацию экрана у тех, кто просит помощи</td></tr>
+          <tr><td>9:00–12:00</td><td>«Бинго!»: первые трое получают бонусный балл; проверка — просьба показать терминал с историей команд</td></tr>
+          <tr><td>12:00–15:00</td><td>Разбор: какая команда вызвала больше всего ошибок, какая оказалась самой полезной</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Усложнения</h3>
+      <ul>
+        <li><b>Без подсказок:</b> таблицу команд скрывают, пользоваться можно только стрелкой ↑ и клавишей Tab.</li>
+        <li><b>Бинго-линия:</b> первый, кто закрыл любые пять клеток подряд (1–5 или 6–10), получает «полбинго».</li>
+        <li><b>Командный режим:</b> пары. Один диктует команду по картинке, второй набирает; затем меняются.</li>
+        <li><b>Бонус:</b> выполнить <code>node -v</code>, <code>npm -v</code>, <code>git --version</code> и <code>git status</code> в папке <code>vibe-course</code> — это «звёздные» клетки.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Для преподавателя</b>
+        <p>Если у кого-то не работает PowerShell или не стоит Git, не останавливайте игру: пусть этот участник играет в паре с соседом. После игры спросите, какие ошибки встретились, и разберите две-три на экране: это самая ценная часть. Перед игрой убедитесь, что рядом нет важных файлов: команда <code>rm</code> удаляет без Корзины.</p>
+      </div>
+
+      <article class="task" id="cl-bingo">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист: Терминал-бинго</h4><span class="level mid">средняя</span></header>
+        <p>Отметьте клетки, которые вы выполнили сами и увидели результат.</p>
+        <ul class="checklist" id="cl-bingocard">
+          <li><code>pwd</code>: показал текущую папку</li>
+          <li><code>ls</code>: показал содержимое папки</li>
+          <li><code>mkdir bingo-test</code>: создал папку</li>
+          <li><code>cd bingo-test</code>: зашёл в папку</li>
+          <li><code>echo "hello" &gt; hello.txt</code>: создал файл</li>
+          <li><code>cat hello.txt</code>: прочитал файл</li>
+          <li><code>cp hello.txt copy.txt</code>: скопировал файл</li>
+          <li><code>mv copy.txt renamed.txt</code>: переименовал копию</li>
+          <li><code>rm renamed.txt</code>: удалил копию</li>
+          <li><code>cd ..</code>: вышел из папки наверх</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ 10 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">10</span> Домашнее задание: скриншот localhost и ссылка на репозиторий</h2>
+
+      <p>ДЗ-4 подтверждает, что у вас работает вся цепочка: проект запускается на <code>localhost</code>, а работы лежат в публичном репозитории GitHub с историей коммитов. Начиная с этого урока домашние задания сдаются <b>ссылкой на GitHub</b>.</p>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li><b>Скриншот окружения.</b> Запустите <code>npx serve</code> в любой из своих работ (<code>my-site</code>, <code>coffee</code> или <code>fitness</code>) и сделайте один скриншот: браузер с адресом <code>localhost:…</code> и терминал с запущенным сервером. Отправьте скриншот в чат группы.</li>
+        <li><b>Репозиторий.</b> Убедитесь, что <code>vibe-course</code> опубликован на GitHub как public и в нём видны <code>my-site</code>, <code>coffee</code>, <code>fitness</code> (все, что у вас есть) и <code>README.md</code>.</li>
+        <li><b>История.</b> В репозитории не меньше двух коммитов с понятными сообщениями (например, <code>add my-site, coffee, fitness</code> и <code>update readme</code>).</li>
+        <li><b>Проверка ссылки.</b> Откройте ссылку в окне инкогнито: страница должна открыться без входа. Если просит войти, репозиторий закрытый (private): откройте его «Settings» на GitHub и смените видимость на Public.</li>
+        <li><b>Сдайте ссылку</b> в поле ниже: адрес вида <code>https://github.com/ваш-логин/vibe-course</code>.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Ссылка на закрытый репозиторий: проверяющий не сможет её открыть. <b>2.</b> Скриншот без адреса <code>localhost</code> в адресной строке или с адресом <code>file:///…</code>: это не localhost. <b>3.</b> Репозиторий пустой: сделан commit, но не push. <b>4.</b> Ссылка не на репозиторий, а на профиль или на один файл. <b>5.</b> В репозитории лежат пароли, ключи или личные документы. <b>6.</b> Все файлы в одном коммите «update» — тренируйте привычку «каждый шаг = коммит».</p>
+      </div>
+
+      <h3>Как проверяющий оценит</h3>
+      <ul>
+        <li>Ссылка открывается без входа и ведёт именно на репозиторий.</li>
+        <li>Видны папки работ 1–3 и <code>README.md</code> со своим именем.</li>
+        <li>В истории не меньше двух коммитов, автор подписан именем (не «unknown»).</li>
+        <li>На скриншоте виден адрес <code>localhost</code> с портом и запущенный сервер.</li>
+        <li>Нет секретов и файлов <code>.env</code>.</li>
+      </ul>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Чек-лист требований к ДЗ-4</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Сделан скриншот: браузер с <code>localhost:…</code> и терминал с запущенным сервером</li>
+          <li>Скриншот отправлен в чат группы</li>
+          <li>Репозиторий <code>vibe-course</code> опубликован на GitHub как public</li>
+          <li>В нём есть папки работ 1–3 и <code>README.md</code> с вашим именем</li>
+          <li>Не меньше двух коммитов с понятными сообщениями</li>
+          <li>Ссылка открывается в окне инкогнито без входа</li>
+          <li>В репозитории нет паролей, ключей и файлов <code>.env</code></li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-link">
+        <header><span class="task-num">ЗАДАЧА 10.2</span><h4>Сдайте ссылку на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте адрес репозитория <code>https://github.com/ваш-логин/vibe-course</code>. Принимаются только ссылки на <code>github.com</code>.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/vibe-course"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/setting-repository-visibility" target="_blank" rel="noopener">GitHub: видимость репозитория</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Шесть инструментов:</b> редактор кода (Cursor, запасной VS Code), терминал, Node.js, npm, Git, GitHub. Git работает на компьютере, GitHub хранит копию в интернете.</li>
+        <li><b>Проверка установки:</b> <code>node -v</code>, <code>npm -v</code>, <code>git --version</code>. Не находит команду — перезапустите терминал.</li>
+        <li><b>Cursor:</b> бесплатный тариф с ограниченным числом запросов. Запасные варианты: VS Code + Copilot Free, Windsurf, Google Antigravity, VS Code + чат. Бесплатный личный Gemini Code Assist закрыт с 18 июня 2026.</li>
+        <li><b>10 команд:</b> <code>pwd</code>, <code>ls</code>, <code>mkdir</code>, <code>cd</code>, <code>echo "…" &gt; файл</code>, <code>cat</code>, <code>cp</code>, <code>mv</code>, <code>rm</code> (без Корзины!), <code>cd ..</code>. Tab дописывает имя, стрелка ↑ — прошлая команда.</li>
+        <li><b>localhost:</b> «этот компьютер»; порт — номер «двери». Запуск: <code>cd my-site</code>, затем <code>npx serve</code>; остановка — Ctrl+C. Порт занят: <code>npx serve -l 3001</code>.</li>
+        <li><b>Git:</b> commit — локальный снимок с подписью, push — отправка на GitHub. Один раз: <code>git config --global user.name</code> и <code>user.email</code>.</li>
+        <li><b>Вход в GitHub:</b> пароль не подходит; редактор открывает браузер, вы нажимаете «Authorize».</li>
+        <li><b>Source Control (Ctrl+Shift+G):</b> Initialize Repository → сообщение → Commit → Publish Branch (первый раз) или Sync Changes (потом).</li>
+        <li><b>PowerShell:</b> «выполнение сценариев отключено» лечится командой <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code>. <b>macOS:</b> запрос Command Line Tools — нажмите «Install».</li>
+        <li><b>Безопасность:</b> в публичный репозиторий не кладём пароли, ключи, <code>.env</code> и личные документы.</li>
+        <li><b>Правило курса:</b> каждый шаг = коммит; домашние задания сдаются ссылкой на GitHub.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 10.3</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, зачем нужны редактор, терминал, Node.js, npm, Git и GitHub, и чем Git отличается от GitHub</li>
+          <li>Могу выполнить 10 базовых команд терминала и понимаю, чем опасен <code>rm</code></li>
+          <li>Могу запустить проект командой <code>npx serve</code> и объяснить, что такое localhost и порт</li>
+          <li>Могу настроить <code>user.name</code> и <code>user.email</code> в Git</li>
+          <li>Могу сделать коммит и отправить его на GitHub кнопками Source Control, войдя через браузер</li>
+          <li>Знаю, что делать с ошибкой PowerShell про сценарии и с запросом Command Line Tools на macOS</li>
+          <li>Знаю запасные варианты, если лимит Cursor закончился</li>
+        </ul>
+      </article>
+    </section>

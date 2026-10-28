@@ -1,0 +1,1223 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 12 · Модуль 4. Backend без боли</p>
+      <h1>Авторизация: регистрация, вход и личный кабинет</h1>
+      <p class="lead">К концу урока у вашего сайта будут настоящие пользователи: регистрация, вход, выход, личный кабинет с редактированием профиля, закрытые страницы и роль администратора. А ещё вы проверите всё на прочность: сосед попробует открыть ваш кабинет, а вы научитесь закрывать дыры правилами RLS по id пользователя.</p>
+      <ul class="goals">
+        <li>Объяснить разницу между аутентификацией («кто вы?») и авторизацией («что вам можно?») на примере вашего сайта</li>
+        <li>Сделать регистрацию, вход и выход по e-mail и паролю через Supabase Auth и <code>@supabase/ssr</code></li>
+        <li>Объяснить, что такое сессия, access-токен, refresh-токен и где они хранятся (cookie)</li>
+        <li>Закрыть страницы <code>/account</code> и <code>/admin</code> тремя слоями: <code>proxy.ts</code>, проверка на странице и RLS</li>
+        <li>Завести роли <code>user</code> и <code>admin</code> в таблице <code>profiles</code> и объяснить, почему роль нельзя хранить в данных, которые пользователь правит сам</li>
+        <li>Написать RLS-правила «видишь и меняешь только свои строки» и проверить их атакой «Взломай соседа»</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: Cursor, проект Next.js с сайтом ресторана и базой из урока 11 (таблицы <code>bookings</code> и <code>restaurant_tables</code>, ключи в <code>.env.local</code>), аккаунт Supabase и Vercel. Время: 3–4 часа. Откройте урок в одной половине экрана, а Cursor и панель Supabase — в другой. Теорию (разделы 1–5) читайте по частям. Практику (раздел 7) делайте за один присест. Раздел 8 (вход через Google) — бонус: он отнимает около 30 минут и нужен не всем. Раздел 9 — игра в паре: заранее договоритесь с соседом.</p>
+    </div>
+
+    <!-- ============ 01 · Authn vs Authz ============ -->
+    <section class="topic" id="authn-authz">
+      <h2 data-toc="Аутентификация и авторизация"><span class="num">01</span> Кто вы и что вам можно: два разных вопроса</h2>
+
+      <p>В уроке 11 страница <code>/admin</code> открывалась любому, кто знал ссылку. Чтобы это исправить, сайту нужно ответить на два разных вопроса, и их часто путают.</p>
+
+      <dl class="terms">
+        <dt>Аутентификация (authentication)</dt><dd>Проверка личности: «вы действительно Мадина?» Доказательство: пароль, код из письма, вход через Google. Результат: сайт знает, <b>кто</b> перед ним.</dd>
+        <dt>Авторизация (authorization)</dt><dd>Проверка прав: «а что Мадине можно?» Читать свои заявки — да, читать чужие — нет, открывать <code>/admin</code> — только администратору. Результат: сайт знает, <b>что разрешено</b>.</dd>
+      </dl>
+
+      <p>Порядок всегда один: сначала аутентификация, потом авторизация. Нельзя решить, что можно Мадине, пока не знаешь, что это она.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Схема: посетитель предъявляет e-mail и пароль, сайт отвечает «это Мадина» (аутентификация); затем Мадина просит чужие заявки, сайт проверяет права и отказывает, а на свои заявки отвечает «можно» (авторизация)">
+          <rect class="box" x="10" y="80" width="130" height="70" rx="10" />
+          <text x="75" y="108" text-anchor="middle">Посетитель</text><text class="sub" x="75" y="128" text-anchor="middle">e-mail + пароль</text>
+          <rect class="fill-y" x="230" y="20" width="210" height="80" rx="10" />
+          <text x="335" y="48" text-anchor="middle">1. Аутентификация</text><text class="sub" x="335" y="68" text-anchor="middle">кто вы?</text><text class="sub t-g" x="335" y="88" text-anchor="middle">это Мадина</text>
+          <rect class="fill-g" x="230" y="130" width="210" height="80" rx="10" />
+          <text x="335" y="158" text-anchor="middle">2. Авторизация</text><text class="sub" x="335" y="178" text-anchor="middle">что вам можно?</text><text class="sub t-g" x="335" y="198" text-anchor="middle">свои заявки: да</text>
+          <rect class="box g" x="530" y="20" width="170" height="80" rx="10" />
+          <text x="615" y="52" text-anchor="middle">Личный кабинет</text><text class="sub t-g" x="615" y="74" text-anchor="middle">доступ есть</text>
+          <rect class="box" x="530" y="130" width="170" height="80" rx="10" />
+          <text x="615" y="158" text-anchor="middle">Чужие заявки</text><text class="sub t-r" x="615" y="180" text-anchor="middle">доступа нет</text>
+          <path class="arr" d="M140 105L224 62" /><path class="arr-head" d="M224 55l9 3-7 9z" />
+          <path class="arr" d="M335 100V124" /><path class="arr-head" d="M330 124l5 8 5-8z" />
+          <path class="arr" d="M440 60H524" /><path class="arr-head" d="M524 55l8 5-8 5z" />
+          <path class="arr" d="M440 170H524" /><path class="arr-head" d="M524 165l8 5-8 5z" />
+        </svg>
+        <figcaption>Сначала сайт узнаёт, кто вы (аутентификация), затем для каждого действия проверяет, можно ли это вам (авторизация)</figcaption>
+      </figure>
+
+      <div class="yt" data-id="iiFKOegQyKQ" data-title="Разница между аутентификацией и авторизацией — канал Kirill Sachkov" data-start="0"></div>
+      <p class="muted">Ролик на русском, меньше минуты: то же самое другими словами.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вход в бизнес-центр в Душанбе. У турникета охранник сверяет ваш паспорт с пропуском: это аутентификация. Дальше пропуск открывает только ваш этаж, а на этаж директора лифт не едет: это авторизация. Паспорт есть у многих, но права у всех разные.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Думать, что «вошёл» значит «можно всё»: вошедший Фирдавс не должен видеть заявки Мадины. <b>2.</b> Прятать кнопку «Админка» в меню и считать, что страница защищена: адрес всё равно можно набрать руками. <b>3.</b> Проверять права только в интерфейсе (скрыть кнопку), но не на сервере и не в базе. Интерфейс видно и можно обойти, поэтому настоящая проверка живёт там, куда посетитель не дотянется.</p>
+      </div>
+
+      <article class="task" id="q-authn">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: аутентификация и авторизация</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что из этого является аутентификацией?</p>
+          <ol class="options">
+            <li>Сайт решает, что страница <code>/admin</code> только для администратора</li>
+            <li>Сайт проверяет e-mail и пароль и узнаёт, что вошла Мадина</li>
+            <li>База не отдаёт Мадине заявки Фирдавса</li>
+            <li>В меню скрыта ссылка «Админка»</li>
+          </ol>
+          <div class="explain"><p>Аутентификация отвечает на вопрос «кто вы?». Остальные варианты про права, то есть про авторизацию (последний вообще только про внешний вид).</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Фирдавс вошёл на сайт и открыл адрес <code>/admin</code>. Сайт его не пустил, потому что он не администратор. Какой это случай?</p>
+          <ol class="options">
+            <li>Сбой аутентификации: сайт не узнал Фирдавса</li>
+            <li>Фирдавс неправильно ввёл пароль</li>
+            <li>Авторизация: сайт знает, что это Фирдавс, но прав на эту страницу у него нет</li>
+            <li>Так работает только в режиме разработки</li>
+          </ol>
+          <div class="explain"><p>Личность установлена (он вошёл), а вот прав нет. Это ровно разница между «кто вы» и «что вам можно».</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Почему мало скрыть кнопку «Админка» для обычных пользователей?</p>
+          <ol class="options">
+            <li>Адрес страницы можно набрать вручную, поэтому проверка нужна на сервере и в базе</li>
+            <li>Скрытые кнопки замедляют сайт</li>
+            <li>Браузер не умеет скрывать кнопки</li>
+            <li>Скрывать кнопки запрещено правилами Next.js</li>
+          </ol>
+          <div class="explain"><p>Интерфейс — это только удобство. Настоящую защиту ставят там, куда посетитель не может залезть: на сервере и в правилах базы.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/auth" target="_blank" rel="noopener">Supabase: Auth overview</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 02 · E-mail, пароль, Google ============ -->
+    <section class="topic" id="signin-methods">
+      <h2 data-toc="E-mail, пароль и Google"><span class="num">02</span> Способы входа: e-mail с паролем и вход через Google</h2>
+
+      <p><b>Supabase Auth</b> — готовая служба входа, встроенная в ваш проект Supabase. Вы не пишете хранение паролей сами: служба принимает e-mail и пароль, хранит <b>не пароль, а его хеш</b> (необратимый «отпечаток»), и ни вы, ни владелец проекта пароль увидеть не можете. Пользователи лежат в служебной таблице <code>auth.users</code>, которую вы в панели смотрите в разделе Authentication → Users.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>E-mail + пароль</th><th>Вход через Google</th></tr></thead>
+          <tbody>
+            <tr><td><b>Как входят</b></td><td>вводят e-mail и придуманный пароль</td><td>нажимают кнопку, выбирают аккаунт Google</td></tr>
+            <tr><td><b>Пароль на вашем сайте</b></td><td>есть (хранится только хеш)</td><td>нет, пароль знает только Google</td></tr>
+            <tr><td><b>Настройка</b></td><td>включена по умолчанию, пара минут</td><td>нужен проект в Google Cloud Console, около 30 минут</td></tr>
+            <tr><td><b>Типичные проблемы</b></td><td>забытый пароль, письма подтверждения</td><td>неверный адрес возврата (redirect URI)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>В коде это одна функция на действие (клиент <code>supabase</code> вы настроите в практике):</p>
+<pre class="code" data-title="Регистрация, вход и выход (фрагменты)">
+// Регистрация: имя уйдёт в служебные данные пользователя
+const { data, error } = await supabase.auth.signUp({
+  email,
+  password,
+  options: { data: { full_name: fullName } },
+});
+
+// Вход
+const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+// Выход
+await supabase.auth.signOut();
+</pre>
+      <p>Каждая функция возвращает <code>{ data, error }</code>, как запросы из урока 11: если <code>error</code> не пустой, показываем понятное сообщение («неверный e-mail или пароль»), а не <code>alert</code> с техническим текстом.</p>
+
+      <h3>Подтверждение e-mail и лимит писем (важно для занятия)</h3>
+      <p>По умолчанию на новом проекте включена настройка <b>Confirm email</b>: после регистрации пользователь получает письмо со ссылкой и войти может только после клика. Для настоящего продукта это правильно: так никто не зарегистрирует чужой адрес. Но на занятии у неё есть жёсткое ограничение.</p>
+      <div class="callout warn">
+        <b>Встроенная почта Supabase не рассчитана на группу</b>
+        <p>По документации Supabase (проверено в октябре 2026), встроенный отправитель писем даёт сейчас <b>2 письма в час</b>, причём доставляет их <b>только адресам участников команды (организации) вашего проекта</b>, остальным приходит ошибка <code>Email address not authorized</code>. Он нужен для пробы и демо, а не для работы группы из 15 человек. Цифры Supabase меняет без предупреждения: актуальные смотрите в документации.</p>
+      </div>
+      <p>Поэтому на уроке есть два пути:</p>
+      <ul>
+        <li><b>Путь 1 (делаем на уроке): отключить подтверждение.</b> В панели Authentication → Sign In / Providers → Email выключите переключатель <b>Confirm email</b> (название раздела в панели может слегка отличаться: ищите настройки провайдера Email). Тогда после регистрации пользователь входит сразу, письма не нужны. Для учебного сайта с вымышленными данными это нормально.</li>
+        <li><b>Путь 2 (для настоящего продукта): свой SMTP.</b> В настройках Authentication есть раздел SMTP: вы подключаете любой почтовый сервис, у которого есть SMTP-доступ (хост, порт, логин, пароль и адрес отправителя). После этого письма уходят любым адресам; лимит сначала ставится 30 писем в час и поднимается в разделе Rate Limits. Для настоящего домена добавляют записи SPF, DKIM и DMARC, чтобы письма не попадали в спам.</li>
+      </ul>
+      <p>Помните: при выключенном подтверждении любой может зарегистрироваться на чужой адрес. Когда сайт станет настоящим продуктом с живыми пользователями, подтверждение нужно <b>вернуть и подключить свой SMTP</b>. Документация Supabase прямо советует не отключать подтверждение «под давлением» в рабочем проекте.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/12-auth/auth-settings.svg" alt="Схема страницы Authentication, раздел Sign In / Providers, провайдер Email: включённый переключатель Enable Email provider, выключенный переключатель Confirm email с пометкой «для учебного проекта выключить», поле Minimum password length и красная плашка о лимите встроенной почты" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Упрощённая схема. Настоящая панель может выглядеть иначе: названия и расположение Supabase меняет</figcaption>
+      </figure>
+
+      <p>Ещё две настройки на этой же странице. <b>Минимальная длина пароля</b>: поставьте не меньше 8 символов. И <b>URL Configuration</b>: туда вписывают адрес сайта (Site URL) и разрешённые адреса возврата (Redirect URLs). Они нужны для входа через Google и для ссылок из писем (раздел 7, шаг 3).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вход через Google — как пропуск в бизнес-центр по паспорту, который проверил кто-то другой. Охранник не знает ваш пароль от почты, он доверяет Google, что вы это вы. Ваш сайт получает от Google подтверждение «это Мадина, вот её e-mail», а пароль остаётся у Google.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Хранить пароли самим в своей таблице (<code>users.password</code>): так делать нельзя, используйте Auth. <b>2.</b> Писать пароль в <code>console.log</code> или присылать его ИИ при поиске ошибки. <b>3.</b> Оставить Confirm email включённым без своей почты и зависнуть на регистрации второго пользователя. <b>4.</b> Тестировать на настоящих паролях: придумайте учебный вроде <code>Test-2026-pass</code> и не используйте его нигде больше. <b>5.</b> Сказать пользователю «пароль неверен» или «такого e-mail нет» раздельно: так подсказывают, какие адреса зарегистрированы. Лучше «неверный e-mail или пароль».</p>
+      </div>
+
+      <article class="task" id="q-methods">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: регистрация и письма</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Что Supabase Auth хранит про пароль пользователя?</p>
+          <ol class="options">
+            <li>Сам пароль в открытом виде, чтобы можно было его напомнить</li>
+            <li>Пароль в Git-репозитории вашего сайта</li>
+            <li>Необратимый хеш: исходный пароль восстановить нельзя</li>
+            <li>Ничего, пароль хранится в браузере</li>
+          </ol>
+          <div class="explain"><p>Хеш — «отпечаток» пароля. Проверить пароль по нему можно, а вернуть сам пароль нельзя. Поэтому «напомнить пароль» невозможно, есть только «сбросить и задать новый».</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>На занятии 15 человек регистрируются на сайтах с подтверждением e-mail через встроенную почту Supabase. Что произойдёт?</p>
+          <ol class="options">
+            <li>Всё работает, лимита нет</li>
+            <li>Письма упрутся в лимит (около 2 в час) и придут только участникам команды проекта, остальные не смогут подтвердиться</li>
+            <li>Supabase сам подключит платную почту</li>
+            <li>Письма уйдут, но в спам</li>
+          </ol>
+          <div class="explain"><p>Встроенный отправитель только для пробы. Для группы выключают Confirm email на учебном проекте или подключают свой SMTP.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Что стоит сделать при переходе сайта в настоящую работу с живыми пользователями? Выберите два ответа.</p>
+          <ol class="options">
+            <li>Включить Confirm email обратно</li>
+            <li>Оставить подтверждение выключенным: так удобнее</li>
+            <li>Остаться на встроенной почте Supabase</li>
+            <li>Подключить свой SMTP и настроить домен отправителя</li>
+          </ol>
+          <div class="explain"><p>В продукте подтверждение нужно, чтобы никто не регистрировал чужие адреса, а доставку писем обеспечивает свой SMTP.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/auth/passwords" target="_blank" rel="noopener">Supabase: Password-based auth</a> и <a href="https://supabase.com/docs/guides/auth/auth-smtp" target="_blank" rel="noopener">Custom SMTP</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 03 · Сессии и токены ============ -->
+    <section class="topic" id="sessions">
+      <h2 data-toc="Сессии и токены"><span class="num">03</span> Сессии и токены: как сайт «помнит», что вы вошли</h2>
+
+      <p>Из урока 10 вы знаете, что каждый запрос к серверу независим: сервер сам по себе не помнит предыдущий. Так как же он понимает на странице <code>/account</code>, что это вы? Через <b>сессию</b>: после входа вы получаете «билет», и браузер прикладывает его к каждому запросу.</p>
+
+      <dl class="terms">
+        <dt>Сессия</dt><dd>Период, пока вы «вошли»: от входа до выхода (или пока билет не отозван).</dd>
+        <dt>Access-токен (JWT)</dt><dd>Короткоживущий «билет» с вашими данными внутри: id пользователя, e-mail, роль в базе (<code>authenticated</code>), срок действия. Подписан Supabase, поэтому подделать его нельзя. В Supabase по умолчанию живёт 1 час.</dd>
+        <dt>Refresh-токен</dt><dd>«Билет на новый билет»: когда access-токен кончается, по refresh-токену выдаётся новая пара. Каждый refresh-токен меняется на новый только один раз, а повторное использование считается кражей и закрывает сессию.</dd>
+        <dt>Cookie</dt><dd>Маленький файл, который браузер хранит и сам отправляет сайту с каждым запросом. В Next.js с <code>@supabase/ssr</code> токены лежат именно в cookie, поэтому сервер видит их при отрисовке страницы.</dd>
+      </dl>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Схема сессии: 1) вход с паролем в Supabase Auth, 2) в ответ access-токен и refresh-токен, 3) браузер хранит их в cookie и прикладывает к каждому запросу страницы, 4) сервер проверяет подпись токена, 5) когда токен кончается, refresh-токен меняется на новую пару">
+          <rect class="box" x="10" y="20" width="150" height="70" rx="10" />
+          <text x="85" y="50" text-anchor="middle">Браузер</text><text class="sub" x="85" y="70" text-anchor="middle">cookie с токенами</text>
+          <rect class="fill-y" x="285" y="20" width="150" height="70" rx="10" />
+          <text x="360" y="50" text-anchor="middle">Supabase Auth</text><text class="sub" x="360" y="70" text-anchor="middle">выдаёт токены</text>
+          <rect class="box g" x="560" y="20" width="150" height="70" rx="10" />
+          <text x="635" y="50" text-anchor="middle">Ваш сервер</text><text class="sub" x="635" y="70" text-anchor="middle">Next.js, страницы</text>
+          <path class="arr" d="M160 40H279" /><path class="arr-head" d="M279 35l8 5-8 5z" />
+          <text class="sub" x="220" y="30" text-anchor="middle">1 e-mail + пароль</text>
+          <path class="arr" d="M285 72H166" /><path class="arr-head" d="M166 67l-8 5 8 5z" />
+          <text class="sub t-g" x="224" y="90" text-anchor="middle">2 токены</text>
+          <path class="arr" d="M85 90V160H635V98" /><path class="arr-head" d="M630 100l5-8 5 8z" />
+          <text class="sub" x="300" y="154" text-anchor="middle">3 каждый запрос страницы: cookie с токеном</text>
+          <rect class="fill-g" x="560" y="190" width="150" height="56" rx="10" />
+          <text x="635" y="214" text-anchor="middle">4 проверка</text><text class="sub" x="635" y="232" text-anchor="middle">подпись и срок</text>
+          <rect class="fill-r" x="250" y="196" width="220" height="50" rx="10" />
+          <text class="sub t-r" x="360" y="218" text-anchor="middle">5 токен устарел (1 час):</text><text class="sub t-r" x="360" y="236" text-anchor="middle">refresh-токен даёт новую пару</text>
+        </svg>
+        <figcaption>Вход один раз, дальше браузер сам прикладывает «билет» к каждому запросу, а старый билет заменяется новым по refresh-токену</figcaption>
+      </figure>
+
+      <h3>Токен можно прочитать, но нельзя подделать</h3>
+      <p>JWT состоит из трёх частей через точку: заголовок, <b>данные</b> и подпись. Данные не зашифрованы, а лишь закодированы: любой может их прочитать. Зато подпись сделана секретом Supabase, и если изменить хоть один символ данных, подпись перестанет сходиться и сервер токен отвергнет. Поэтому никогда не кладите в токен или в публичные данные ничего секретного, и никогда не доверяйте «данным, которые прислал браузер» без проверки подписи. Попробуйте сами:</p>
+
+      <article class="task" id="pg-jwt">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Прочитай токен руками</h4><span class="level mid">средняя</span></header>
+        <p>Ниже учебный токен (выдуманный, он ни к чему не подходит). Допишите декодирование середины и выведите три строки в формате из блока «Ожидаемый результат».</p>
+<pre class="code" data-run data-lang="js">
+const token =
+  "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9." +
+  "eyJzdWIiOiIzZjFjMGE1Mi04ZDJlLTRiN2EtOWMxMS0wYTVlN2QyYjZmMTAiLCJlbWFpbCI6Im1hZGluYUBleGFtcGxlLmNvbSIsInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODkzNDU2MDAwfQ." +
+  "c2lnbmF0dXJlLW5vdC1yZWFs";
+
+const middle = token.split(".")[1];
+
+// TODO: превратите middle (base64url) в объект payload:
+// 1) замените "-" на "+" и "_" на "/", 2) atob(...), 3) JSON.parse(...)
+const payload = {};
+
+console.log("email: " + payload.email);
+console.log("role: " + payload.role);
+// exp в токене в секундах, а Date.parse возвращает миллисекунды
+console.log("expired in 2031: " + (payload.exp * 1000 &lt; Date.parse("2031-01-01")));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>email: madina@example.com
+role: authenticated
+expired in 2031: true</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Строка: <code>const json = atob(middle.replace(/-/g, "+").replace(/_/g, "/"));</code></p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Дальше: <code>const payload = JSON.parse(json);</code> и уберите прежнюю строку <code>const payload = {};</code>.</p></details>
+      </article>
+
+      <p>Вы только что прочитали «билет» без всякого пароля. Это нормально: в нём нет ничего секретного, а подделать его нельзя из-за подписи. Серверу достаточно проверить подпись, чтобы поверить, что <code>sub</code> (id пользователя) настоящий.</p>
+
+      <h3>Два метода проверки: <code>getClaims</code> и <code>getSession</code></h3>
+      <p>В серверном коде проверять вошедшего нужно через <code>supabase.auth.getClaims()</code>: он проверяет подпись токена и возвращает его данные (<code>claims</code>), среди них <code>sub</code> — id пользователя. Метод <code>getSession()</code> просто читает cookie без проверки подписи, и по документации Supabase доверять ему в серверном коде нельзя: cookie может прислать кто угодно.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Маршрутка с проездным талоном. Талон на сутки (access-токен) показываете водителю на каждой посадке. Закончился талон — идёте в кассу с абонементом (refresh-токен) и получаете новый. Подделать печать на талоне нельзя, а прочитать, что там написано, может любой. Потеряли абонемент — кассир видит, что им воспользовались дважды, и блокирует.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Верить <code>getSession()</code> на сервере вместо <code>getClaims()</code>. <b>2.</b> Выкладывать токены в чат, на скриншот или в Git: тот, у кого есть ваш access-токен, действует от вашего имени до окончания срока. <b>3.</b> Забыть, что выход (<code>signOut()</code>) по умолчанию закрывает сессию на всех устройствах (область <code>global</code>; для текущего только <code>{ scope: "local" }</code>). <b>4.</b> Класть в <code>localStorage</code> свои «токены» вместо готовых средств Supabase: так вы заново изобретаете то, что уже сделано и проверено.</p>
+      </div>
+
+      <article class="task" id="q-sessions">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Проверь себя: сессии и токены</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Токен JWT не зашифрован, любой может прочитать его данные. Почему его всё равно нельзя подделать?</p>
+          <ol class="options">
+            <li>Потому что его знает только владелец</li>
+            <li>Потому что он подписан секретом Supabase: при любом изменении данных подпись перестанет сходиться</li>
+            <li>Потому что он хранится на сервере</li>
+            <li>Потому что браузер не даёт его изменять</li>
+          </ol>
+          <div class="explain"><p>Читать может каждый, менять незаметно нельзя: подпись проверяется на сервере.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Что делает refresh-токен?</p>
+          <ol class="options">
+            <li>Обменивается на новую пару токенов, когда access-токен устарел (по умолчанию он живёт час)</li>
+            <li>Заменяет пароль при входе</li>
+            <li>Хранит данные профиля</li>
+            <li>Шифрует cookie</li>
+          </ol>
+          <div class="explain"><p>Короткий срок access-токена безопаснее при утечке, а refresh-токен позволяет не просить пароль каждый час.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Серверная страница должна узнать, кто вошёл. Что вызвать?</p>
+          <ol class="options">
+            <li><code>getSession()</code>: он быстрее</li>
+            <li>Прочитать cookie руками и взять id оттуда</li>
+            <li><code>getClaims()</code>: он проверяет подпись токена</li>
+            <li>Ничего: Next.js сам знает пользователя</li>
+          </ol>
+          <div class="explain"><p>Cookie приходит из браузера и может быть подделан. <code>getClaims()</code> проверяет подпись, поэтому ему доверяют.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/auth/sessions" target="_blank" rel="noopener">Supabase: Sessions</a> и <a href="https://supabase.com/docs/guides/auth/server-side/nextjs" target="_blank" rel="noopener">Server-Side Auth для Next.js</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · Защищённые страницы ============ -->
+    <section class="topic" id="protected">
+      <h2 data-toc="Защищённые страницы"><span class="num">04</span> Защищённые страницы: три слоя замка</h2>
+
+      <p>Закрыть страницу «одной проверкой» ненадёжно. Профессионально защиту делают тремя слоями: если один подвёл, остальные держат.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1. proxy.ts</b><span>до страницы: нет входа — на <code>/login</code></span><code>быстрый заслон</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>2. Страница</b><span>на сервере: <code>getClaims()</code> и роль</span><code>настоящая проверка</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>3. RLS в базе</b><span>видны только свои строки</span><code>последняя линия</code></div>
+        </div>
+        <figcaption>Слой 3 самый важный: даже если ошибиться в коде страницы, база не отдаст чужое</figcaption>
+      </figure>
+
+      <h3>Слой 1: <code>proxy.ts</code> (в Next.js 16)</h3>
+      <p>Файл в корне проекта (рядом с <code>app</code>), который выполняется <b>до</b> отрисовки страницы. В Next.js 16 он называется <code>proxy.ts</code>, а функция внутри — <code>proxy</code>. В версиях до 16 это был <code>middleware.ts</code> с функцией <code>middleware</code>: старые руководства и ответы ИИ часто пишут именно так. По документации Supabase, если в проекте Next.js 16 лежит файл со старым именем, он не вызывается, и сессии перестают обновляться. Ещё один важный момент: сам Next.js предупреждает, что <code>proxy</code> годится для быстрых «оптимистичных» проверок, но <b>не должен быть единственной защитой</b>.</p>
+      <p>В proxy делают две вещи: обновляют токены в cookie (через <code>getClaims()</code>) и отправляют незваных гостей на <code>/login</code>.</p>
+
+      <h3>Слой 2: проверка на самой странице</h3>
+      <p>Серверная страница сама спрашивает <code>getClaims()</code>. Нет пользователя — <code>redirect("/login")</code>. Нужна роль администратора — читаем её из таблицы <code>profiles</code> (раздел 5) и показываем страницу или <code>notFound()</code>.</p>
+
+      <h3>Слой 3: RLS</h3>
+      <p>Вы уже знаете RLS из урока 11. Теперь у него появляется главный инструмент: функция <code>auth.uid()</code>, которая внутри базы возвращает id вошедшего пользователя (берёт его из токена, который подписан и подделать нельзя). Правило «каждый видит только свои строки» пишется так: <code>using ((select auth.uid()) = user_id)</code>.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Хранилище в банке. Охранник у входа отсекает случайных прохожих (proxy). Операционист проверяет паспорт и карту клиента (страница). А сам сейф открывается только ключом именно этого клиента (RLS). Если операционист ошибся, сейф всё равно не откроется чужому.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Проверять вход только в proxy: матчер можно написать неточно, и какая-то страница останется открытой. <b>2.</b> Не писать RLS вообще, полагаясь на то, что «ссылку никто не знает». <b>3.</b> Оставить в proxy код из старого руководства под именем <code>middleware.ts</code> и недоумевать, почему «сессия вылетает». <b>4.</b> Редиректить на адрес из параметра <code>?next=</code> без проверки: злоумышленник подставит чужой сайт. Допускайте только пути, которые начинаются с одного <code>/</code>.</p>
+      </div>
+
+      <article class="task" id="q-protected">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: слои защиты</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Как называется файл для перехвата запросов в Next.js 16 и какое имя функции в нём?</p>
+          <ol class="options">
+            <li><code>middleware.ts</code>, функция <code>middleware</code></li>
+            <li><code>guard.ts</code>, функция <code>guard</code></li>
+            <li><code>proxy.ts</code>, функция <code>proxy</code></li>
+            <li><code>auth.ts</code>, функция <code>auth</code></li>
+          </ol>
+          <div class="explain"><p>В Next.js 16 middleware переименован в proxy. Функционал тот же, а старые руководства устарели в имени.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>В коде страницы <code>/account</code> ошибка: забыли проверить вход, и страница запрашивает заявки без фильтра. В базе есть правило «select только свои строки». Что увидит посторонний?</p>
+          <ol class="options">
+            <li>Только свои (то есть никаких) строки: правило RLS не даст прочитать чужие</li>
+            <li>Все заявки всех пользователей</li>
+            <li>Ошибку 404</li>
+            <li>Только заявки администратора</li>
+          </ol>
+          <div class="explain"><p>В этом и смысл третьего слоя: защита в базе не зависит от ошибок в интерфейсе или коде страницы.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,3">
+          <p>Что из перечисленного является настоящей защитой, а не просто удобством? Выберите два ответа.</p>
+          <ol class="options">
+            <li>Скрыть ссылку «Админка» в меню</li>
+            <li>Проверка <code>getClaims()</code> и роли на серверной странице</li>
+            <li>RLS-правило в таблице</li>
+            <li>Не сообщать никому адрес страницы</li>
+          </ol>
+          <div class="explain"><p>Скрытая ссылка и «секретный адрес» ничего не защищают. Защита должна быть там, куда посетитель не дотянется: сервер и база.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/proxy" target="_blank" rel="noopener">Next.js: Proxy</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · Роли ============ -->
+    <section class="topic" id="roles">
+      <h2 data-toc="Роли"><span class="num">05</span> Роли: пользователь и администратор</h2>
+
+      <p><b>Роль</b> — ярлык, по которому сайт решает, что вам можно. У нас их две: <code>user</code> (обычный клиент) и <code>admin</code> (владелец ресторана, видит все заявки). Роль нужно где-то хранить, и вот здесь новички допускают самую опасную ошибку.</p>
+
+      <div class="callout warn">
+        <b>Главное правило раздела</b>
+        <p>Нельзя хранить роль в <code>user_metadata</code> (данные, которые пользователь передаёт при регистрации через <code>options.data</code>): по документации Supabase, пользователь может сам их изменить. Достаточно одной строчки в консоли браузера, и он «станет админом». Роль храните в таблице, которую пользователь изменить не может, или в <code>app_metadata</code>, который доступен для записи только серверу.</p>
+      </div>
+
+      <p>Мы выберем таблицу <code>profiles</code>: она же нужна для личного кабинета. Одна строка на пользователя: <code>id</code> совпадает с <code>auth.users.id</code>, плюс имя, телефон и роль.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 280" role="img" aria-label="Схема: таблица auth.users связана с таблицей profiles по id, таблица bookings ссылается на пользователя через user_id; у profiles поля full_name, phone, role, у bookings поле user_id">
+          <rect class="box v" x="12" y="30" width="200" height="130" rx="10" />
+          <rect class="fill-y" x="12" y="30" width="200" height="32" rx="10" />
+          <text class="mono" x="26" y="52">auth.users</text>
+          <text class="mono t-o" x="26" y="86">id</text><text class="sub" x="100" y="86">uuid, ключ</text>
+          <text class="mono" x="26" y="114">email</text><text class="sub" x="100" y="114">служба Auth</text>
+          <text class="sub" x="26" y="146">ведёт Supabase, не вы</text>
+          <rect class="box g" x="260" y="30" width="200" height="170" rx="10" />
+          <rect class="fill-g" x="260" y="30" width="200" height="32" rx="10" />
+          <text class="mono" x="274" y="52">profiles</text>
+          <text class="mono t-o" x="274" y="86">id</text><text class="sub" x="340" y="86">= auth.users.id</text>
+          <text class="mono" x="274" y="114">full_name</text><text class="sub" x="370" y="114">имя</text>
+          <text class="mono" x="274" y="142">phone</text><text class="sub" x="370" y="142">телефон</text>
+          <text class="mono t-r" x="274" y="170">role</text><text class="sub" x="340" y="170">user / admin</text>
+          <rect class="box b" x="508" y="30" width="200" height="170" rx="10" />
+          <rect class="fill-y" x="508" y="30" width="200" height="32" rx="10" />
+          <text class="mono" x="522" y="52">bookings</text>
+          <text class="mono t-o" x="522" y="86">id</text><text class="sub" x="588" y="86">ключ</text>
+          <text class="mono" x="522" y="114">guests …</text><text class="sub" x="610" y="114">поля из урока 11</text>
+          <text class="mono t-v" x="522" y="142">user_id</text><text class="sub" x="610" y="142">чья заявка</text>
+          <path class="arr" d="M212 86H254" /><path class="arr-head" d="M254 81l8 5-8 5z" />
+          <path class="arr" d="M506 142H486V232H112V166" /><path class="arr-head" d="M107 168l5-8 5 8z" />
+          <text class="sub" x="300" y="226">user_id указывает на auth.users.id</text>
+          <text class="sub t-r" x="260" y="262">role: менять нельзя самому пользователю</text>
+        </svg>
+        <figcaption>Профиль — «дополнение» к пользователю из Auth. Роль лежит в таблице, которую пользователь не может править, а заявка хранит <code>user_id</code></figcaption>
+      </figure>
+
+      <h3>Как создаётся профиль и как выдаётся админство</h3>
+      <ul>
+        <li><b>Профиль создаёт триггер.</b> Триггер — действие, которое база выполняет сама при событии. «После новой строки в <code>auth.users</code> добавь строку в <code>profiles</code>» (SQL в практике). Роль при этом всегда <code>user</code>: из регистрации её не взять.</li>
+        <li><b>Админа назначаете вы вручную</b> в SQL Editor: <code>update profiles set role = 'admin' where …</code>. SQL Editor работает от имени владельца базы, а не от пользователя сайта.</li>
+        <li><b>Что может пользователь.</b> Читать и менять только свой профиль и только имя с телефоном. Столбец <code>role</code> ему недоступен: ему не выдаётся право менять его (<code>grant update (full_name, phone)</code>).</li>
+        <li><b>Как база узнаёт админа.</b> Небольшая функция <code>is_admin()</code> смотрит роль в <code>profiles</code>, а правила для заявок и профилей вызывают её.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Бейджи на конференции. Ваше имя на бейдже вы пишете сами, а цвет бейджа («организатор» или «гость») выдаёт регистрация. Если цвет можно подкрасить маркером на месте, кто угодно станет организатором. Поэтому роль хранится там, где маркер не достанет.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Роль в <code>user_metadata</code> или в <code>localStorage</code>. <b>2.</b> Правило «пользователь обновляет свою строку» без ограничения столбцов: тогда он поменяет свою <code>role</code> на <code>admin</code>. <b>3.</b> Проверять админа только в меню интерфейса. <b>4.</b> Назначить админом себя на настоящем сайте с реальными пользователями и забыть сменить пароль на надёжный. <b>5.</b> Дать ИИ секретный ключ, чтобы «админка заработала»: роль решается правилами, а не ключом, который обходит RLS.</p>
+      </div>
+
+      <article class="task" id="q-roles">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: где хранить роль</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Где безопасно хранить роль <code>admin</code>?</p>
+          <ol class="options">
+            <li>В таблице <code>profiles</code>, столбец <code>role</code> которой пользователь не может менять</li>
+            <li>В <code>user_metadata</code> при регистрации</li>
+            <li>В <code>localStorage</code> браузера</li>
+            <li>В скрытом поле формы регистрации</li>
+          </ol>
+          <div class="explain"><p>Всё, что пользователь может изменить сам (метаданные пользователя, браузер, формы), для хранения прав не годится.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В таблице <code>profiles</code> есть правило «пользователь обновляет свою строку», и право <code>update</code> выдано на все столбцы. Что может сделать Фирдавс из консоли браузера?</p>
+          <ol class="options">
+            <li>Ничего: RLS всё запрещает</li>
+            <li>Изменить чужой профиль</li>
+            <li>Поменять в своей строке <code>role</code> на <code>admin</code>, ведь это его строка и правило не ограничивает столбцы</li>
+            <li>Удалить таблицу</li>
+          </ol>
+          <div class="explain"><p>RLS отвечает на вопрос «какие строки», а не «какие столбцы». Поэтому для <code>role</code> ограничение ставят правами на столбцы: <code>grant update (full_name, phone)</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Как назначить первого администратора?</p>
+          <ol class="options">
+            <li>Пользователь выбирает «я админ» на странице регистрации</li>
+            <li>Владелец проекта выполняет <code>update profiles set role = 'admin' …</code> в SQL Editor</li>
+            <li>Любой пользователь, который знает адрес <code>/admin</code></li>
+            <li>Автоматически самый первый зарегистрировавшийся</li>
+          </ol>
+          <div class="explain"><p>Администратора назначает человек, у которого есть доступ к базе (вы), а не форма на сайте.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener">Supabase: Row Level Security</a> и <a href="https://supabase.com/docs/guides/auth/managing-user-data" target="_blank" rel="noopener">Managing user data</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: аккуратно с правами"><span class="num">06</span> ИИ-блок: авторизация — не место для «и так сойдёт»</h2>
+
+      <div class="callout ai">
+        <b>Правила работы с ИИ и авторизацией</b>
+        <p><b>1.</b> Называйте точные версии: Next.js 16, <code>@supabase/ssr</code>, файл <code>proxy.ts</code>, проверка через <code>getClaims()</code>. Без этого ИИ напишет устаревшие <code>middleware.ts</code>, <code>@supabase/auth-helpers</code> и <code>getSession()</code>. <b>2.</b> Схему таблиц, роли и правила (кто что видит) расписываете вы, ИИ их реализует. <b>3.</b> SQL просите отдельно, читайте до запуска. <b>4.</b> Требуйте перечень: что разрешено каждой роли на каждой таблице. <b>5.</b> Пароли, токены и ключи не вставляйте в чат. <b>6.</b> Ответ не подошёл: пришлите текст ошибки и не начинайте заново.</p>
+      </div>
+
+      <div class="prompt bad-prompt">Сделай вход и регистрацию на сайте с supabase и админку</div>
+      <div class="prompt good-prompt">Контекст: проект Next.js 16 (App Router, TypeScript, Tailwind CSS 4), сайт ресторана «Чойхона у Рудаки» (вымышленный). Supabase подключён, ключи в .env.local (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY). Таблицы bookings и restaurant_tables уже есть, правила проекта в AGENTS.md. Пакеты @supabase/supabase-js и @supabase/ssr установлены. Файлы lib/supabase/client.ts, lib/supabase/server.ts, lib/supabase/proxy.ts и корневой proxy.ts уже созданы по документации Supabase для Next.js 16, не переписывай их.
+Цель: регистрация и вход по e-mail и паролю, выход, личный кабинет с редактированием профиля и закрытая страница /admin для роли admin.
+Ограничения: 1) сначала план по файлам, потом изменения по шагам; 2) использовать только createClient из lib/supabase/client.ts (в клиентских компонентах) и lib/supabase/server.ts (на сервере); 3) проверка пользователя на сервере только через supabase.auth.getClaims(), не getSession(); 4) роль брать из таблицы profiles (столбец role), не из user_metadata; 5) страницы: /login (вкладки «Вход» и «Регистрация»: e-mail, пароль, имя при регистрации), /account (профиль: имя и телефон с кнопкой «Сохранить», список «Мои заявки» с фильтром по user_id, кнопка «Выйти»), /admin (только admin: все заявки; остальным notFound()); 6) /admin читает через обычную сессию пользователя, без SUPABASE_SECRET_KEY; 7) параметр ?next= принимать, только если это путь, начинающийся с одного «/»; 8) состояния «загрузка», «ошибка» (понятный текст, не «alert»), валидация полей; 9) в шапке: «Войти» или e-mail и «Кабинет», «Выйти»; 10) никаких секретных ключей в клиентском коде.
+Примеры: ошибка входа показывается под формой текстом «Неверный e-mail или пароль».
+Проверка: в конце перечисли файлы, которые изменил, и объясни, какие слои защиты у /account и /admin (proxy, страница, RLS).</div>
+
+      <p>Если результат не подошёл, не начинайте заново: напишите, что именно не так, и пришлите полный текст ошибки из терминала или консоли браузера (без паролей и ключей).</p>
+
+      <div class="callout warn">
+        <b>Что ИИ делает неправильно чаще всего</b>
+        <p><b>1.</b> Создаёт <code>middleware.ts</code> вместо <code>proxy.ts</code> в Next.js 16. <b>2.</b> Берёт <code>getSession()</code> на сервере. <b>3.</b> Пишет роль в <code>user_metadata</code> при регистрации. <b>4.</b> Использует старый пакет <code>@supabase/auth-helpers-nextjs</code> или переменную <code>SUPABASE_ANON_KEY</code>. <b>5.</b> Даёт странице <code>/admin</code> secret-ключ «чтобы всё читалось», тогда как достаточно правил RLS и роли. <b>6.</b> Забывает правило <code>to authenticated</code>: после входа роль в базе уже не <code>anon</code>, и правила, написанные для <code>anon</code>, перестают действовать. <b>7.</b> Создаёт глобальный клиент Supabase на сервере: на сервере клиент создаётся заново на каждый запрос. Перед запуском попросите ИИ найти в своём ответе эти семь ошибок.</p>
+      </div>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: вход и кабинет"><span class="num">07</span> Практика: регистрация, вход, кабинет и админка</h2>
+
+      <p>Берём сайт ресторана с базой из урока 11 и превращаем его в сайт с пользователями. Порядок: настройки Supabase → таблицы и правила → клиенты и <code>proxy.ts</code> → страницы (ИИ) → проверка → деплой.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1–2</b><span>настройки и SQL</span><code>Supabase</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>3</b><span>клиенты и proxy</span><code>@supabase/ssr</code></div>
+          <div class="ar">→</div>
+          <div class="st ai"><b>4</b><span>страницы (ИИ)</span><code>/login /account /admin</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>5–7</b><span>проверка ролей</span><code>user / admin</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>8</b><span>деплой на Vercel</span><code>Site URL</code></div>
+        </div>
+        <figcaption>Правила базы пишем раньше страниц: сначала замок, потом дверь</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/12-auth/cabinet.svg" alt="Схема страницы личного кабинета: шапка с e-mail и кнопкой «Выйти», слева форма профиля с полями «Имя» и «Телефон» и кнопкой «Сохранить», справа список «Мои заявки» из двух строк" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Так примерно должен выглядеть результат. Оформление ваше, а в кабинете видны только свои заявки</figcaption>
+      </figure>
+
+      <h3>Шаг за шагом</h3>
+      <ol class="steps">
+        <li><b>Настройки Supabase.</b> В панели: Authentication → Sign In / Providers → Email. Выключите <b>Confirm email</b> (причина в разделе 2: встроенная почта не выдержит группу) и поставьте минимальную длину пароля не меньше 8. Затем Authentication → URL Configuration: в <b>Site URL</b> адрес сайта (пока <code>http://localhost:3000</code>), в <b>Redirect URLs</b> добавьте <code>http://localhost:3000/**</code>. Адрес Vercel добавите на шаге 8. Если лучше подключить свой SMTP: Authentication → раздел SMTP, но для занятия это не обязательно.</li>
+        <li><b>Таблицы и правила.</b> В SQL Editor вставьте SQL из блока ниже (весь целиком) и нажмите Run. Ожидаемо: «Success». Если ИИ в уроке 11 назвал правила по-другому, ошибка <code>drop policy</code> не страшна: посмотрите названия в Table Editor → Policies. В Table Editor убедитесь: у <code>profiles</code> RLS enabled, у <code>bookings</code> появился столбец <code>user_id</code>.</li>
+        <li><b>Клиенты и <code>proxy.ts</code>.</b> Выполните <code>npm install @supabase/ssr</code>. Создайте четыре файла из блоков ниже. Старый <code>lib/supabase.ts</code> из урока 11 замените новым клиентом везде, где он используется: обычный клиент не знает о cookie с сессией, и вошедший пользователь для него «не вошёл». Перезапустите <code>npm run dev</code>.</li>
+        <li><b>Страницы (ИИ).</b> Отправьте промпт из раздела 6 в режиме «План» (урок 6), примените изменения по шагам. Секретный ключ в страницах не нужен.</li>
+        <li><b>Два пользователя.</b> Зарегистрируйте <b>Мадину</b> (e-mail вида <code>madina@example.com</code>) и <b>Фирдавса</b> (например в окне инкогнито). Пароли учебные, не от ваших настоящих аккаунтов. В панели в Authentication → Users видны оба, а в Table Editor → <code>profiles</code> появились две строки с ролью <code>user</code>: их создал триггер.</li>
+        <li><b>Админ.</b> В SQL Editor выполните <code>update</code> из блока ниже, подставив e-mail Мадины. Теперь Мадина — администратор, Фирдавс — обычный пользователь.</li>
+        <li><b>Проверка ролей.</b> Откройте в инкогнито без входа <code>/account</code>: вас должно отправить на <code>/login</code>. Войдите как Фирдавс: отправьте заявку, она появилась в «Моих заявках»; измените имя и телефон, обновите страницу (сохранилось?). Откройте <code>/admin</code> как Фирдавс: должно быть «не найдено» или переадресация. Войдите как Мадина: <code>/admin</code> показывает заявки всех, а в её кабинете только её собственные. Нажмите «Выйти» и убедитесь, что <code>/account</code> снова закрыт.</li>
+        <li><b>Проверка из консоли.</b> Под Фирдавсом откройте сайт, DevTools (урок 3), вкладку Network и посмотрите запросы к Supabase при открытии кабинета: в ответе только его строки. Заметьте заголовок <code>Authorization: Bearer …</code>: это тот самый access-токен. Не копируйте его никуда.</li>
+        <li><b>Деплой.</b> Закоммитьте и отправьте код в GitHub. В Supabase в URL Configuration поменяйте <b>Site URL</b> на адрес <code>https://…vercel.app</code> и добавьте <code>https://…vercel.app/**</code> в Redirect URLs (адрес localhost оставьте для разработки). Проверьте на живом сайте: регистрация, вход, кабинет, <code>/admin</code>. Переменные окружения те же, что в уроке 11; <code>SUPABASE_SECRET_KEY</code> больше нужен только там, где сервер должен обходить RLS (в этом уроке нигде).</li>
+        <li><b>Объяснение.</b> Расскажите своими словами: чем вход отличается от прав, где лежат токены, три слоя защиты /admin, почему роль не в <code>user_metadata</code>.</li>
+      </ol>
+
+<pre class="code" data-title="SQL Editor: профили, роль, владелец заявки и правила (один запуск)">
+/* 1. Профили: по одной строке на пользователя */
+create table profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  full_name text check (char_length(full_name) &lt;= 80),
+  phone text check (char_length(phone) &lt;= 30),
+  role text not null default 'user' check (role in ('user', 'admin')),
+  created_at timestamptz not null default now()
+);
+alter table profiles enable row level security;
+
+/* 2. Триггер: профиль создаётся сам при регистрации, роль всегда user */
+create function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.profiles (id, full_name)
+  values (new.id, left(new.raw_user_meta_data ->&gt; 'full_name', 80));
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+/* 3. Функция: админ ли вошедший пользователь */
+create function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = (select auth.uid()) and role = 'admin'
+  );
+$$;
+revoke execute on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;
+
+/* 4. Права на таблицу profiles: читать, менять только имя и телефон (не role!) */
+grant select on table profiles to authenticated;
+grant update (full_name, phone) on table profiles to authenticated;
+
+create policy "read own profile or admin"
+on profiles for select to authenticated
+using ((select auth.uid()) = id or (select public.is_admin()));
+
+create policy "update own profile"
+on profiles for update to authenticated
+using ((select auth.uid()) = id)
+with check ((select auth.uid()) = id);
+
+/* 5. Заявки получают владельца */
+alter table bookings
+  add column user_id uuid references auth.users (id) on delete set null
+  default auth.uid();
+
+/* анонимная заявка не может прикинуться заявкой чужого пользователя */
+drop policy if exists "anyone can create a new booking" on bookings;
+create policy "anon creates a new booking"
+on bookings for insert to anon
+with check (status = 'new' and guests between 1 and 20 and user_id is null);
+
+grant select, insert on table bookings to authenticated;
+grant update (status) on table bookings to authenticated;
+grant select on table restaurant_tables to authenticated;
+
+create policy "authenticated creates own booking"
+on bookings for insert to authenticated
+with check (
+  user_id = (select auth.uid())
+  and status = 'new'
+  and guests between 1 and 20
+);
+
+create policy "read own bookings or admin"
+on bookings for select to authenticated
+using (user_id = (select auth.uid()) or (select public.is_admin()));
+
+create policy "admin updates bookings"
+on bookings for update to authenticated
+using ((select public.is_admin()))
+with check ((select public.is_admin()));
+
+create policy "logged-in users read tables"
+on restaurant_tables for select to authenticated
+using (true);
+</pre>
+      <p>Главные места: триггер всегда ставит роль <code>user</code> и не читает её из данных регистрации; право <code>update</code> выдано только на два столбца профиля, поэтому <code>role</code> пользователь поменять не сможет; у заявки есть владелец <code>user_id</code>, который по умолчанию равен <code>auth.uid()</code> и для анонима остаётся пустым; каждое правило называет роль (<code>to authenticated</code>).</p>
+<pre class="code" data-title="SQL Editor: назначить администратора (подставьте e-mail)">
+update profiles
+set role = 'admin'
+where id = (select id from auth.users where email = 'madina@example.com');
+</pre>
+
+      <h3>Клиенты и <code>proxy.ts</code> (по документации Supabase)</h3>
+<pre class="code" data-title="lib/supabase/client.ts: клиент для браузера">
+import { createBrowserClient } from "@supabase/ssr";
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  );
+}
+</pre>
+<pre class="code" data-title="lib/supabase/server.ts: клиент для сервера (создаётся на каждый запрос)">
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+
+export async function createClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =&gt;
+              cookieStore.set(name, value, options),
+            );
+          } catch {
+            // вызвано из серверного компонента: ничего страшного,
+            // токены обновляет proxy.ts
+          }
+        },
+      },
+    },
+  );
+}
+</pre>
+<pre class="code" data-title="lib/supabase/proxy.ts: обновляет токены и отправляет гостей на /login">
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =&gt;
+            request.cookies.set(name, value),
+          );
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =&gt;
+            supabaseResponse.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+
+  // Между createServerClient и getClaims() ничего не вставляйте:
+  // иначе пользователей будет случайно «выкидывать» из сессии.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
+
+  const path = request.nextUrl.pathname;
+  const isProtected = path.startsWith("/account") || path.startsWith("/admin");
+
+  if (!user &amp;&amp; isProtected) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", path);
+    return NextResponse.redirect(url);
+  }
+
+  // Верните именно этот объект: в нём обновлённые cookie
+  return supabaseResponse;
+}
+</pre>
+<pre class="code" data-title="proxy.ts (в корне проекта, рядом с app)">
+import { updateSession } from "@/lib/supabase/proxy";
+import { type NextRequest } from "next/server";
+
+export async function proxy(request: NextRequest) {
+  return await updateSession(request);
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+</pre>
+      <p>Так выглядят ключевые куски страниц, которые напишет ИИ. Сравните свой результат с ними:</p>
+<pre class="code" data-title="app/account/page.tsx: кабинет (фрагмент)">
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function AccountPage() {
+  const supabase = await createClient();
+
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, phone, role")
+    .eq("id", user.sub)
+    .single();
+
+  // фильтр по user_id нужен: админу RLS показала бы заявки всех
+  const { data: bookings } = await supabase
+    .from("bookings")
+    .select("id, booking_at, guests, status")
+    .eq("user_id", user.sub)
+    .order("booking_at", { ascending: false });
+
+  // ... форма профиля (клиентский компонент) и список bookings
+}
+</pre>
+<pre class="code" data-title="app/admin/page.tsx: только для admin (фрагмент)">
+import { notFound, redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function AdminPage() {
+  const supabase = await createClient();
+
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.sub)
+    .single();
+  if (profile?.role !== "admin") notFound();
+
+  // обычная сессия: правило RLS «админ видит все заявки» сработает само
+  const { data: bookings } = await supabase
+    .from("bookings")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  // ... таблица заявок
+}
+</pre>
+<pre class="code" data-title="В формах: вход, регистрация, сохранение профиля, выход (фрагменты)">
+const supabase = createClient(); // из lib/supabase/client.ts
+
+// Вход
+const { error } = await supabase.auth.signInWithPassword({ email, password });
+if (error) setMessage("Неверный e-mail или пароль");
+
+// Сохранить профиль
+const { error } = await supabase
+  .from("profiles")
+  .update({ full_name: fullName, phone })
+  .eq("id", userId);
+
+// Выход
+await supabase.auth.signOut();
+router.push("/");
+router.refresh();
+</pre>
+
+      <div class="yt" data-id="n_sNri8TGGo" data-title="How to Build Authentication with Supabase Auth + Next.js 16 — канал lustoykov" data-start="0"></div>
+      <p class="muted">Видео на английском (включите субтитры), около 22 минут, ноябрь 2025: полный пример входа на Supabase Auth и Next.js 16. Это общая картина параллельно с вашей практикой: код смотрите свой, он адаптирован под вашу таблицу <code>profiles</code>. Если автор покажет иное оформление, ориентируйтесь на документацию.</p>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b><code>Email address not authorized</code> или <code>email rate limit exceeded</code> при регистрации.</b> Включено подтверждение e-mail, а письма идут через встроенную почту Supabase. Выключите Confirm email (шаг 1) или подключите свой SMTP.</p>
+        <p><b><code>Invalid login credentials</code>.</b> Неверный e-mail или пароль, либо пользователь не зарегистрирован в этом проекте (проверьте Authentication → Users).</p>
+        <p><b>После входа кабинет снова отправляет на <code>/login</code>, и так по кругу.</b> Проверьте: файл называется именно <code>proxy.ts</code> (не <code>middleware.ts</code>) и лежит в корне, рядом с <code>app</code>, функция называется <code>proxy</code>; в формах используется новый <code>createClient</code> из <code>lib/supabase/client.ts</code>, а не старый обычный клиент; <code>.env.local</code> заполнен и <code>npm run dev</code> перезапущен.</p>
+        <p><b><code>Database error saving new user</code>.</b> Падает триггер <code>handle_new_user</code>: функция создана не полностью или таблица <code>profiles</code> другая. Выполните блок SQL заново с начала на чистой таблице и пришлите ИИ полный текст ошибки.</p>
+        <p><b><code>permission denied for table profiles</code> (код 42501).</b> Не выдан <code>grant</code> для роли <code>authenticated</code>. Выполните строки <code>grant</code> из SQL.</p>
+        <p><b>Профиль «сохраняется», ошибки нет, но после обновления страницы значения старые.</b> RLS не нашла вашу строку и тихо обновила ноль строк. Проверьте, что в <code>.eq("id", …)</code> id пользователя (<code>user.sub</code>), и что правило <code>update own profile</code> создано.</p>
+        <p><b><code>new row violates row-level security policy for table "bookings"</code> у вошедшего пользователя.</b> Для вошедшего нужно правило <code>to authenticated</code>: правило для <code>anon</code> на него не действует. Проверьте <code>user_id</code>: форма не должна передавать чужой id, по умолчанию он равен <code>auth.uid()</code>.</p>
+        <p><b>У вошедшего пользователя пустой список столиков.</b> Правило чтения столиков написано только для <code>anon</code>: добавьте последнее правило из SQL (<code>to authenticated</code>).</p>
+        <p><b>Всё работает на localhost, а на Vercel вход не работает.</b> В Supabase в URL Configuration не добавлен адрес Vercel, или не сделан Redeploy после смены переменных.</p>
+      </div>
+
+      <article class="task" id="cl-built">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Чек-лист: сайт с пользователями и ролями</h4><span class="level mid">средняя</span></header>
+        <p>Отметьте выполненное.</p>
+        <ul class="checklist" id="cl-auth">
+          <li>Confirm email выключен (или подключён свой SMTP), минимальная длина пароля не меньше 8</li>
+          <li>SQL выполнен: таблица <code>profiles</code> с RLS, триггер, функция <code>is_admin()</code>, у <code>bookings</code> есть <code>user_id</code></li>
+          <li>Файл <code>proxy.ts</code> (не <code>middleware.ts</code>) и клиенты <code>client.ts</code> и <code>server.ts</code> на месте</li>
+          <li>Зарегистрированы два пользователя, у обоих появилась строка в <code>profiles</code> с ролью <code>user</code></li>
+          <li>Без входа <code>/account</code> и <code>/admin</code> отправляют на <code>/login</code></li>
+          <li>Вошедший пользователь редактирует имя и телефон, значения сохраняются после обновления страницы</li>
+          <li>В кабинете видны только свои заявки, обычному пользователю <code>/admin</code> не открывается</li>
+          <li>Один пользователь назначен админом через SQL, и <code>/admin</code> показывает ему все заявки</li>
+          <li>Выход работает: после «Выйти» кабинет снова закрыт</li>
+          <li>В коде страниц нет secret-ключа и нет роли в <code>user_metadata</code></li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-fix">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Если сломалось: найди причину</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Пользователь входит, форма говорит «успешно», но стоит открыть <code>/account</code>, как его выбрасывает на <code>/login</code>. В проекте Next.js 16 лежит <code>middleware.ts</code>. В чём вероятная причина?</p>
+          <ol class="options">
+            <li>В Next.js 16 нужен <code>proxy.ts</code>: файл со старым именем не вызывается, и сессия на сервере не обновляется</li>
+            <li>Пароль слишком длинный</li>
+            <li>В таблице нет столбца <code>phone</code></li>
+            <li>Нужно включить Confirm email</li>
+          </ol>
+          <div class="explain"><p>Это самая частая поломка из-за устаревших руководств: переименование <code>middleware</code> в <code>proxy</code> в Next.js 16.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Мадина (обычный пользователь) открыла кабинет и видит заявки всех пользователей. Правило <code>select</code> сделано так: <code>using (true)</code>. Что исправить?</p>
+          <ol class="options">
+            <li>Скрыть заявки в интерфейсе стилем</li>
+            <li>Выдать Мадине роль admin</li>
+            <li>Заменить условие на <code>user_id = (select auth.uid())</code> (плюс отдельная ветка для админа через <code>is_admin()</code>)</li>
+            <li>Выключить RLS</li>
+          </ol>
+          <div class="explain"><p>Условие правила определяет, какие строки видны. <code>using (true)</code> — «все строки всем».</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>После входа список столиков в форме пустой, хотя до входа он был полный. Почему?</p>
+          <ol class="options">
+            <li>Токен просрочен</li>
+            <li>После входа роль в базе <code>authenticated</code>, а правило чтения столиков написано только для <code>anon</code></li>
+            <li>Столики удалились</li>
+            <li>Vercel ограничивает запросы</li>
+          </ol>
+          <div class="explain"><p>Правила привязаны к ролям. Вошедший пользователь — уже другая роль, поэтому правило нужно добавить для <code>authenticated</code>.</p></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============ 08 · Google ============ -->
+    <section class="topic" id="google">
+      <h2 data-toc="Бонус: вход через Google"><span class="num">08</span> Бонус: вход через Google (пошаговая инструкция)</h2>
+
+      <p>Этот раздел необязателен. Он даёт кнопку «Войти через Google»: пользователю не нужно придумывать пароль, а вам не нужны письма. Настройка делается один раз, около 30 минут. Для Google нужен адрес возврата (redirect URI) именно вашего проекта Supabase, поэтому порядок такой: узнать адрес в Supabase, создать клиент в Google, вернуть данные в Supabase.</p>
+
+      <div class="callout warn">
+        <b>Секреты и аккаунт</b>
+        <p>Client Secret из Google — это пароль вашего приложения: он вставляется только в панель Supabase и в менеджер паролей, не в код, не в Git и не в чат. Используйте личный аккаунт Google, для учебного проекта рабочий не нужен. Названия разделов в Google Cloud Console меняются: ищите их по смыслу, ориентируясь на документацию Supabase.</p>
+      </div>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/12-auth/google-client.svg" alt="Схема формы создания OAuth-клиента в Google Cloud Console: тип Web application, поле Authorized JavaScript origins с адресами localhost и сайта на Vercel, поле Authorized redirect URIs с адресом вида проект.supabase.co/auth/v1/callback и предупреждение о Client Secret" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Упрощённая схема формы клиента OAuth. Главное: два поля с адресами и секрет, который никуда не публикуется</figcaption>
+      </figure>
+
+      <ol class="steps">
+        <li><b>Адрес возврата из Supabase.</b> В панели: Authentication → Sign In / Providers → Google. Скопируйте <b>Callback URL</b> (вид <code>https://ВАШ-ПРОЕКТ.supabase.co/auth/v1/callback</code>). Страницу не закрывайте.</li>
+        <li><b>Проект в Google Cloud.</b> Откройте Google Cloud Console (console.cloud.google.com), создайте проект с любым названием (например <code>mfs-course</code>) и выберите его.</li>
+        <li><b>Google Auth Platform.</b> В консоли откройте раздел Google Auth Platform и пройдите начальную настройку: название приложения, ваш e-mail для связи, <b>Audience</b> (для обычных аккаунтов Google выбирается External). В разделе Data Access (Scopes) должны быть <code>openid</code>, <code>.../auth/userinfo.email</code> и <code>.../auth/userinfo.profile</code>: этого достаточно для входа, лишние права не добавляйте (они требуют долгой проверки). Если приложение в статусе тестирования (Testing), войти смогут только пользователи из списка Test users: добавьте туда свои адреса, либо опубликуйте приложение.</li>
+        <li><b>Клиент OAuth.</b> В Google Auth Platform откройте раздел Clients → Create client, тип приложения <b>Web application</b>, имя любое.</li>
+        <li><b>Authorized JavaScript origins.</b> Добавьте адреса сайта без пути: <code>http://localhost:3000</code> и <code>https://ваш-сайт.vercel.app</code>.</li>
+        <li><b>Authorized redirect URIs.</b> Вставьте Callback URL из шага 1 (адрес Supabase, а не вашего сайта!). Нажмите Create и сохраните <b>Client ID</b> и <b>Client Secret</b>.</li>
+        <li><b>Вернитесь в Supabase.</b> В Authentication → Sign In / Providers → Google включите провайдер, вставьте Client ID и Client Secret, сохраните. В URL Configuration проверьте Site URL и добавьте в Redirect URLs адрес <code>http://localhost:3000/auth/callback</code> (и такой же с адресом Vercel).</li>
+        <li><b>Кнопка и обработчик.</b> Попросите ИИ добавить на <code>/login</code> кнопку «Войти через Google» и маршрут <code>app/auth/callback/route.ts</code>, используя код ниже как образец.</li>
+        <li><b>Проверка.</b> Нажмите кнопку, выберите аккаунт Google: вас должно вернуть на <code>/account</code>, в Authentication → Users появился пользователь с провайдером Google, а в <code>profiles</code> — его строка (триггер сработал так же, как при регистрации по паролю).</li>
+      </ol>
+<pre class="code" data-title="Кнопка «Войти через Google» (клиентский компонент)">
+const supabase = createClient(); // lib/supabase/client.ts
+
+await supabase.auth.signInWithOAuth({
+  provider: "google",
+  options: { redirectTo: `${window.location.origin}/auth/callback` },
+});
+</pre>
+<pre class="code" data-title="app/auth/callback/route.ts: меняет одноразовый код на сессию">
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
+  const next = searchParams.get("next") ?? "/account";
+  // только свои пути: начинаются с одного «/»
+  const safeNext = next.startsWith("/") &amp;&amp; !next.startsWith("//") ? next : "/account";
+
+  if (code) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) return NextResponse.redirect(`${origin}${safeNext}`);
+  }
+  return NextResponse.redirect(`${origin}/login?error=oauth`);
+}
+</pre>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b><code>Error 400: redirect_uri_mismatch</code>.</b> Адрес в Authorized redirect URIs не совпадает с Callback URL из Supabase. Скопируйте его заново целиком, без пробелов и слеша в конце.</p>
+        <p><b>Google пишет, что доступ заблокирован или приложение не прошло проверку.</b> Приложение в статусе Testing, а ваш адрес не в списке Test users.</p>
+        <p><b>После выбора аккаунта вас возвращает на <code>/login?error=oauth</code>.</b> Не добавлен адрес <code>/auth/callback</code> в Redirect URLs Supabase или обработчик не вызывает <code>exchangeCodeForSession</code>.</p>
+        <p><b>Вход работает на localhost, но не на Vercel.</b> В Google нет адреса Vercel в Authorized JavaScript origins, или в Supabase нет в Redirect URLs.</p>
+      </div>
+
+      <article class="task" id="cl-google">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: вход через Google (бонус)</h4><span class="level mid">средняя</span></header>
+        <p>Отметьте выполненное. Если сегодня пропускаете бонус, вернитесь к нему позже.</p>
+        <ul class="checklist" id="cl-g">
+          <li>Создан проект в Google Cloud, настроен Google Auth Platform (Audience, Scopes)</li>
+          <li>Создан клиент типа Web application с двумя адресами: origins и redirect URI из Supabase</li>
+          <li>Client ID и Client Secret вставлены в Supabase, секрет нигде больше не лежит</li>
+          <li>В Redirect URLs Supabase добавлен адрес <code>/auth/callback</code></li>
+          <li>Кнопка «Войти через Google» ведёт в кабинет, в Users виден новый пользователь</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/auth/social-login/auth-google" target="_blank" rel="noopener">Supabase: Login with Google</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 09 · Взломай соседа ============ -->
+    <section class="topic" id="hack">
+      <h2 data-toc="Взломай соседа"><span class="num">09</span> Фишка урока: «Взломай соседа»</h2>
+
+      <p>Игра для пар: сначала вы специально делаете в своём сайте «ленивые» правила с дырами, сосед пытается их использовать, потом вы закрываете дыры правилами по id пользователя, и сосед пробует снова. Всё на учебных данных. Время: около 60 минут. Проводится в аудитории или онлайн.</p>
+
+      <div class="callout warn">
+        <b>Правила безопасности игры</b>
+        <p>Взламываем только <b>сайт соседа, который сам разрешил</b>, и только в учебной базе с вымышленными данными. Нельзя пробовать это на чужих настоящих сайтах: это нарушение закона и правил любого сервиса. «Ленивые» правила и страница <code>/hack</code> нужны только на время игры: после неё всё удаляется.</p>
+      </div>
+
+      <div class="yt" data-id="YAor6JTaqXI" data-title="RLS explained in less than 60s! — официальный канал Supabase" data-start="0"></div>
+      <p class="muted">Ролик на английском, меньше минуты (включите субтитры): что такое RLS. Смотрите перед игрой.</p>
+
+      <h3>Подготовка (по 10 минут у каждого)</h3>
+      <ol class="steps">
+        <li><b>Панель атаки.</b> Попросите ИИ создать страницу <code>/hack</code> (временную, только для игры): клиентский компонент на <code>createClient</code> из <code>lib/supabase/client.ts</code> с пятью кнопками и окном результата (JSON). Кнопки: <b>A</b> «прочитать все профили» (<code>from("profiles").select("*")</code>); <b>B</b> «прочитать все заявки» (<code>from("bookings").select("*")</code>); <b>C</b> «сменить имя чужому профилю» (поле id, <code>update({ full_name: "Взломано" }).eq("id", id).select()</code>); <b>D</b> «сделать меня админом» (<code>update({ role: "admin" })</code> для своего id, с <code>.select()</code>); <b>E</b> «показать мой id» (из <code>getClaims()</code>). Результат или ошибка печатаются под кнопками.</li>
+        <li><b>«Ленивые» правила.</b> В SQL Editor выполните блок ниже: он намеренно добавляет четыре дыры. Это допустимо только потому, что у вас учебная база с вымышленными данными.</li>
+        <li><b>Деплой и обмен.</b> Задеплойте сайт на Vercel (так сосед получит живую ссылку). Обменяйтесь адресами сайтов. В вашей базе должны быть данные соседу на «воровство»: оставьте в профиле выдуманное имя и телефон <code>+992 900 00 00 01</code> и пару тестовых заявок.</li>
+      </ol>
+<pre class="code" data-title="SQL Editor: ДЫРЫ ДЛЯ ИГРЫ (потом будем закрывать)">
+/* дыра 1 и 2: любой вошедший читает все профили и все заявки */
+create policy "lazy read profiles"
+on profiles for select to authenticated using (true);
+
+create policy "lazy read bookings"
+on bookings for select to authenticated using (true);
+
+/* дыра 3 и 4: любой вошедший меняет любые поля любого профиля, включая role */
+grant update on table profiles to authenticated;
+
+create policy "lazy update profiles"
+on profiles for update to authenticated
+using (true) with check (true);
+</pre>
+
+      <h3>Раунд 1: атака (15 минут)</h3>
+      <ol class="steps">
+        <li>Откройте сайт соседа, <b>зарегистрируйтесь там</b> новым пользователем (e-mail выдуманный, например <code>hacker1@example.com</code>) и откройте <code>/hack</code>.</li>
+        <li>Нажимайте кнопки по очереди и записывайте в «протокол взлома»: что получилось, какой текст вернулся. <b>A</b>: видны ли профили соседа с телефонами и ролями? <b>B</b>: видны ли чужие заявки? <b>C</b>: сменилось ли чужое имя (найдите id в результате A)? <b>D</b>: получилось ли сделать себя админом, и открывается ли теперь <code>/admin</code>?</li>
+        <li>Не удаляйте и не портите данные: меняем только имя на «Взломано» и роль у <b>своего</b> пользователя-взломщика.</li>
+      </ol>
+
+      <h3>Раунд 2: защита (15 минут)</h3>
+      <p>Получив протокол от соседа, закройте дыры. Блок ниже убирает «ленивые» правила и возвращает права на столбцы.</p>
+<pre class="code" data-title="SQL Editor: ЗАКРЫВАЕМ ДЫРЫ">
+drop policy if exists "lazy read profiles" on profiles;
+drop policy if exists "lazy read bookings" on bookings;
+drop policy if exists "lazy update profiles" on profiles;
+
+/* забираем лишнее право и снова даём только два столбца */
+revoke update on table profiles from authenticated;
+grant update (full_name, phone) on table profiles to authenticated;
+</pre>
+      <p>Что осталось: вошедший видит свой профиль и (для админа) все; обновляет только свои имя и телефон; заявки видит свои. Эти правила написаны в практике (раздел 7) и работают, пока их не «обходят» ленивыми.</p>
+
+      <h3>Раунд 3: повторная атака (10 минут)</h3>
+      <p>Сосед снова нажимает A–E на вашем сайте (может быть тем же пользователем: нужно выйти и войти, или просто обновить). Ожидаемый результат защиты: <b>A</b> возвращает один (его собственный) профиль; <b>B</b> только его заявки (или пустой список); <b>C</b> обновляет 0 строк (список пустой: RLS молча пропустила чужую строку); <b>D</b> ошибка <code>permission denied</code> (нет права менять <code>role</code>). Если какая-то кнопка всё ещё пробивает защиту, найдите правило и исправьте.</p>
+
+      <div class="callout warn">
+        <b>После игры обязательно</b>
+        <p>Удалите страницу <code>/hack</code> из проекта, закоммитьте и перезадеплойте. Проверьте, что в Table Editor → Policies нет правил со словом <code>lazy</code>, и удалите тестовых пользователей-«взломщиков» в Authentication → Users.</p>
+      </div>
+
+      <h3>Расписание</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:10</td><td>Правила, пары, ролик про RLS</td></tr>
+            <tr><td>0:10–0:20</td><td>Подготовка: <code>/hack</code>, ленивые правила, деплой, обмен адресами</td></tr>
+            <tr><td>0:20–0:35</td><td>Раунд 1: атака на сайт соседа, протокол</td></tr>
+            <tr><td>0:35–0:50</td><td>Раунд 2: защита по протоколу соседа</td></tr>
+            <tr><td>0:50–1:00</td><td>Раунд 3: повторная атака и итоги</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Очки</h3>
+      <ul>
+        <li><b>+1</b> за каждую найденную дыру в чужом сайте (A–D, максимум 4).</li>
+        <li><b>+2</b> за точное объяснение, <b>почему</b> дыра работала (какое правило или какой <code>grant</code>).</li>
+        <li><b>+3</b> за сайт, который в раунде 3 устоял против всех кнопок.</li>
+        <li><b>+2</b> за найденную дыру, которую не было в списке (например, что видно через Network).</li>
+      </ul>
+
+      <article class="task" id="cl-hack">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист: «Взломай соседа» сыгран</h4><span class="level mid">средняя</span></header>
+        <p>Отметьте выполненное.</p>
+        <ul class="checklist" id="cl-h">
+          <li>Сделал(а) страницу <code>/hack</code> и ленивые правила, обменялся(ась) адресами с соседом</li>
+          <li>Прочитал(а) чужие профили или заявки на сайте соседа и записал(а) протокол</li>
+          <li>Попытался(ась) стать админом и поменять чужое имя, записал(а) результат</li>
+          <li>Закрыл(а) дыры по протоколу соседа и объяснил(а), какое правило за что отвечает</li>
+          <li>Сосед повторно атаковал, и защита выдержала</li>
+          <li>Удалил(а) <code>/hack</code>, ленивые правила и тестовых «взломщиков»</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ ДЗ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">10</span> Домашнее задание: закрытая часть сайта и роль администратора (ДЗ-12)</h2>
+
+      <p>Доведите сайт до состояния «продукт с реальными пользователями и ролями»: часть сайта доступна только вошедшим, а владелец управляет через админку. Сдача: две ссылки (репозиторий GitHub и сайт на Vercel).</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Регистрация и вход</b> по e-mail и паролю: понятные ошибки, проверка полей, выход. На сайте есть <b>кнопка выхода</b> и в шапке видно, вошёл ли пользователь. Вход через Google по желанию (бонус).</li>
+        <li><b>Закрытая часть:</b> минимум две страницы только для вошедших (личный кабинет <code>/account</code> и ещё одна своя: например «Мои заявки» или «Избранное»). Для гостей — переадресация на вход, после входа возврат на нужную страницу (<code>?next=</code> с проверкой).</li>
+        <li><b>Личный кабинет:</b> просмотр и редактирование профиля (имя, телефон), свои данные из базы (заявки), всё через RLS по <code>user_id</code>.</li>
+        <li><b>Роли:</b> таблица <code>profiles</code> с <code>role</code> (<code>user</code> / <code>admin</code>), роль не в <code>user_metadata</code>, обычному пользователю нельзя поменять свою роль (права на столбцы), админ назначен через SQL.</li>
+        <li><b>Админка <code>/admin</code>:</b> только для роли admin, читает все заявки (или все записи вашей предметной области), на странице проверка роли, для остальных <code>notFound()</code>, закрыта от индексации (<code>noindex</code>). Secret-ключ в ней не используется.</li>
+        <li><b>Три слоя защиты:</b> <code>proxy.ts</code>, проверка на странице, RLS. В <code>README.md</code> кратко: какие страницы закрыты, какие есть роли и какие правила у каждой таблицы.</li>
+        <li><b>Проверка «Взломай соседа»</b> пройдена: в протоколе (README или заметка) перечислено, какие дыры нашли и как закрыли.</li>
+        <li><b>Секреты:</b> ключи только в <code>.env.local</code> и Vercel; <code>.env.example</code> без значений; в репозитории нет паролей, токенов и ключей; страницы <code>/hack</code> нет.</li>
+        <li><b>Качество:</b> <code>npm run build</code> без ошибок; на Vercel работает регистрация, вход, кабинет и админка; вы можете объяснить каждое правило RLS.</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li>Выполните практику урока на своём сайте (не обязательно ресторан: любой сайт с записями пользователя подойдёт).</li>
+        <li>Добавьте вторую закрытую страницу и данные, принадлежащие пользователю, с правилами по <code>user_id</code>.</li>
+        <li>Создайте двух тестовых пользователей и админа, пройдите проверку из шага 7 практики.</li>
+        <li>Сыграйте в «Взломай соседа» (или проверьте сами по кнопкам A–E) и запишите протокол в README.</li>
+        <li>Задеплойте, пропишите адрес Vercel в URL Configuration Supabase, проверьте живой сайт.</li>
+        <li>Вставьте ссылки ниже и отметьте чек-лист.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Роль в <code>user_metadata</code> или проверка «админ» только в интерфейсе. <b>2.</b> Правило <code>using (true)</code> на личных данных. <b>3.</b> Забытое право <code>update</code> на все столбцы <code>profiles</code>: пользователь делает себя админом. <b>4.</b> Файл <code>middleware.ts</code> вместо <code>proxy.ts</code>. <b>5.</b> <code>getSession()</code> вместо <code>getClaims()</code> на сервере. <b>6.</b> В репозитории Client Secret Google, пароль или токен. <b>7.</b> На Vercel не добавлен адрес сайта в URL Configuration. <b>8.</b> Страница <code>/hack</code> осталась на живом сайте. <b>9.</b> Настоящие данные друзей в базе.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Как проверяют</b>
+        <p>Проверяющий откроет сайт, зарегистрируется, посмотрит кабинет, попробует открыть <code>/account</code> и <code>/admin</code> без входа и от имени обычного пользователя, затем изучит репозиторий: <code>proxy.ts</code>, правила в README, отсутствие секретов. Баллы: за три слоя защиты, за правильное хранение роли, за правила RLS по <code>user_id</code>, за работающий кабинет и за то, что вы можете объяснить своё решение.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Чек-лист требований к ДЗ-12</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Регистрация, вход и выход работают, ошибки понятные</li>
+          <li>Минимум две закрытые страницы, гостей отправляет на вход, возврат после входа безопасный</li>
+          <li>Кабинет: профиль редактируется, свои данные показываются, правила RLS по <code>user_id</code></li>
+          <li>Роль хранится в <code>profiles</code>, пользователь не может её менять, админ назначен через SQL</li>
+          <li><code>/admin</code> только для admin, <code>notFound()</code> для остальных, noindex, без secret-ключа</li>
+          <li>Используется <code>proxy.ts</code>, <code>getClaims()</code> на сервере, три слоя защиты описаны в README</li>
+          <li>Протокол «Взломай соседа» написан, страницы <code>/hack</code> и «ленивых» правил нет</li>
+          <li>Секретов в репозитории нет, есть <code>.env.example</code></li>
+          <li><code>npm run build</code> проходит, на Vercel всё работает, адрес сайта прописан в Supabase</li>
+          <li>Ссылки на GitHub и Vercel вставлены ниже</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 10.2</span><h4>Ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий сайта.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/restaurant-site"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 10.3</span><h4>Ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на опубликованный сайт (адрес вида <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://restaurant-site.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/auth/server-side/nextjs" target="_blank" rel="noopener">Supabase: Server-Side Auth для Next.js</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Аутентификация</b> — «кто вы?» (пароль, Google). <b>Авторизация</b> — «что вам можно?» (роли, правила). Сначала первое, потом второе.</li>
+        <li><b>Supabase Auth:</b> <code>signUp</code>, <code>signInWithPassword</code>, <code>signOut</code>; пароли хранятся только как хеш; пользователи в <code>auth.users</code>.</li>
+        <li><b>Confirm email:</b> по умолчанию включён; встроенная почта Supabase даёт сейчас около 2 писем в час и только участникам команды проекта, поэтому на занятии подтверждение выключаем, а в настоящем продукте включаем обратно и подключаем свой SMTP.</li>
+        <li><b>Сессия:</b> access-токен (JWT, по умолчанию час) + refresh-токен (одноразовый обмен на новую пару); лежат в cookie. JWT читается всеми, но подделать его нельзя из-за подписи.</li>
+        <li><b>Next.js 16:</b> <code>proxy.ts</code> с функцией <code>proxy</code> (раньше <code>middleware.ts</code>). Токены проверять через <code>getClaims()</code>, не <code>getSession()</code>. Клиенты: <code>createBrowserClient</code> и <code>createServerClient</code> из <code>@supabase/ssr</code>.</li>
+        <li><b>Три слоя защиты:</b> proxy (быстрый заслон), страница (<code>getClaims()</code> и роль), RLS (последняя линия). Интерфейс не защита.</li>
+        <li><b>Роли:</b> таблица <code>profiles</code> с <code>role</code>; не в <code>user_metadata</code>; <code>grant update (full_name, phone)</code> закрывает <code>role</code>; админа назначает SQL; <code>is_admin()</code> для правил.</li>
+        <li><b>RLS по пользователю:</b> <code>using ((select auth.uid()) = user_id)</code>, всегда с ролью (<code>to authenticated</code>). Правила для <code>anon</code> на вошедшего не действуют.</li>
+        <li><b>Google (бонус):</b> проект в Google Cloud, Google Auth Platform, клиент Web application, redirect URI = Callback URL из Supabase, Client ID и Secret в Supabase, <code>signInWithOAuth</code> и обработчик <code>/auth/callback</code> с <code>exchangeCodeForSession</code>.</li>
+        <li><b>«Взломай соседа»:</b> проверяйте защиту атакой изнутри (кнопки A–E), записывайте протокол, закрывайте дыры, удаляйте временные страницы и правила.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 11.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить разницу между аутентификацией и авторизацией на примере сайта</li>
+          <li>Могу сделать регистрацию, вход и выход через Supabase Auth и объяснить, почему на занятии выключаем Confirm email</li>
+          <li>Могу объяснить, что такое сессия, access- и refresh-токен и где они лежат</li>
+          <li>Могу закрыть страницу тремя слоями: <code>proxy.ts</code>, проверка на странице, RLS</li>
+          <li>Могу завести роли и объяснить, почему роль нельзя хранить в <code>user_metadata</code></li>
+          <li>Могу написать RLS-правило «только свои строки» и проверить его атакой из браузера</li>
+          <li>Могу пошагово объяснить, как настроить вход через Google (бонус)</li>
+        </ul>
+      </article>
+    </section>

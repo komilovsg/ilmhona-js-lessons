@@ -13,6 +13,7 @@ const csp = [
   "connect-src 'self' https: wss:",
   "media-src 'self' data: blob: https:",
   "worker-src 'self' blob:",
+  "frame-src 'self' https://www.youtube-nocookie.com",
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'self'",

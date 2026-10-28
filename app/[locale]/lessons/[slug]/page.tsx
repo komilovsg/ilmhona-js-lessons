@@ -49,7 +49,7 @@ export default async function LessonPage({ params }: { params: Params }) {
     isPartOf: {
       '@type': 'Course',
       name: `${SITE_NAME}: ${courseName[locale]}`,
-      url: absUrl(pagePath(locale)),
+      url: absUrl(pagePath(locale, '/frontend-ai')),
       provider: { '@type': 'Organization', name: SITE_NAME, url: absUrl(pagePath('ru')) },
     },
   };

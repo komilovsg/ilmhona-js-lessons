@@ -4,7 +4,7 @@ import { homeOg, ogContentType, ogSize } from '@/lib/og';
 
 export const size = ogSize;
 export const contentType = ogContentType;
-export const alt = 'MakeFirstStep — Frontend + ИИ';
+export const alt = 'MakeFirstStep — Сделай первый шаг';
 
 export function generateStaticParams() {
   return urlLocales.map((locale) => ({ locale }));
@@ -13,5 +13,5 @@ export function generateStaticParams() {
 export default async function Image({ params }: { params: Promise<{ locale: string }> }) {
   const locale = fromUrlLocale((await params).locale);
   if (!locale) notFound();
-  return homeOg(locale);
+  return homeOg(locale, 'board');
 }

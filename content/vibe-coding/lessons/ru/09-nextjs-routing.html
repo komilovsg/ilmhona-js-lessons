@@ -1,0 +1,1108 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 9 · Модуль 3. Современный Frontend</p>
+      <h1>Next.js: страницы, роутинг, структура сайта</h1>
+      <p class="lead">К концу урока у вас будет полноценный многостраничный корпоративный сайт: Главная, Услуги, Кейсы, О компании и Контакты. У всех страниц общая шапка и подвал, меню подсвечивает текущий раздел, картинки загружаются через <code>next/image</code>, а у каждой страницы свой заголовок и описание для поисковиков. Весь стиль берётся из одной «дизайн-системы» в Tailwind: поменяли цвет бренда в одном месте — сайт перекрасился целиком.</p>
+      <ul class="goals">
+        <li>Создавать страницы в App Router: папка в <code>app</code> и файл <code>page.tsx</code> превращаются в адрес сайта</li>
+        <li>Собирать общий <code>layout.tsx</code> с шапкой и подвалом и объяснять, что такое <code>children</code></li>
+        <li>Связывать страницы через <code>Link</code> и писать меню с подсветкой текущей страницы</li>
+        <li>Подключать картинки через <code>next/image</code> и не получать скачков вёрстки</li>
+        <li>Задавать <code>title</code>, <code>description</code> и шаблон заголовка через Metadata API и перечислить базовые приёмы SEO</li>
+        <li>Вынести цвета, шрифты и скругления в дизайн-систему Tailwind и провести взаимное код-ревью по чек-листу</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: Cursor, Node.js и Git из урока 4, опыт создания проекта из урока 5, компоненты из урока 7 и интерактив из урока 8. Время: 3–4 часа. Откройте урок в одной половине экрана, а Cursor — в другой. Теорию (разделы 1–6) читайте по частям: в двух задачах код выполняется прямо на странице, остальные — тесты и схемы. Практику (раздел 8) делайте за один присест: к концу у вас будет сайт из пяти страниц и ссылка на него.</p>
+      <p>Next.js в браузер этого урока не помещается, поэтому «роутинг» вы увидите на схемах и в своём проекте, а в редакторе прямо здесь потренируете логику меню и дизайн-токены.</p>
+    </div>
+
+    <!-- ============ 01 · Роутинг ============ -->
+    <section class="topic" id="routing">
+      <h2 data-toc="App Router и страницы"><span class="num">01</span> App Router: папка — это адрес</h2>
+
+      <p>В уроке 7 вы просили ИИ создать <code>app/cafe/page.tsx</code> и получили адрес <code>/cafe</code>. Сегодня разбираем, почему это работает. В Next.js действует <b>файловый роутинг</b>: адрес страницы определяется структурой папок. Не нужно писать список маршрутов в коде и что-то регистрировать: создали папку и файл — страница появилась.</p>
+
+      <dl class="terms">
+        <dt>Сегмент</dt><dd>Одна часть адреса между слэшами. В <code>/services/web</code> два сегмента: <code>services</code> и <code>web</code>. Каждому сегменту соответствует папка.</dd>
+        <dt><code>page.tsx</code></dt><dd>Файл, который делает адрес <b>открываемым</b>. Внутри — компонент с <code>export default</code>. Без этого файла папка — просто папка, адрес не появится.</dd>
+        <dt><code>layout.tsx</code></dt><dd>Общая «рамка» для страниц: шапка, подвал, фон. Разберём в разделе 2.</dd>
+        <dt>Динамический сегмент</dt><dd>Папка в квадратных скобках, например <code>[slug]</code>: один файл обслуживает много адресов (<code>/cases/bank</code>, <code>/cases/cafe</code>).</dd>
+      </dl>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 330" role="img" aria-label="Схема: дерево папок app слева и соответствующие адреса сайта справа">
+          <text class="sub" x="14" y="22">ПАПКИ В ПРОЕКТЕ</text>
+          <text class="sub" x="440" y="22">АДРЕСА НА САЙТЕ</text>
+          <rect class="box" x="12" y="34" width="330" height="284" rx="12" />
+          <text class="mono" x="28" y="62">app/</text>
+          <text class="mono t-g" x="44" y="88">layout.tsx</text>
+          <rect class="fill-g" x="40" y="104" width="150" height="24" rx="6" /><text class="mono" x="48" y="121">page.tsx</text>
+          <text class="mono" x="44" y="150">services/</text>
+          <rect class="fill-g" x="60" y="160" width="150" height="24" rx="6" /><text class="mono" x="68" y="177">page.tsx</text>
+          <text class="mono" x="44" y="206">cases/</text>
+          <rect class="fill-g" x="60" y="216" width="150" height="24" rx="6" /><text class="mono" x="68" y="233">page.tsx</text>
+          <text class="mono" x="44" y="262">cases/[slug]/</text>
+          <rect class="fill-g" x="60" y="272" width="150" height="24" rx="6" /><text class="mono" x="68" y="289">page.tsx</text>
+          <rect class="fill-y" x="226" y="62" width="104" height="24" rx="6" /><text class="mono" x="234" y="79" style="font-size:11px">Team.tsx</text>
+          <text class="sub" x="226" y="102">нет page.tsx → 404</text>
+          <path class="arr" d="M196 116h226" /><path class="arr-head" d="M422 111l8 5-8 5z" />
+          <path class="arr" d="M216 172h206" /><path class="arr-head" d="M422 167l8 5-8 5z" />
+          <path class="arr" d="M216 228h206" /><path class="arr-head" d="M422 223l8 5-8 5z" />
+          <path class="arr" d="M216 284h206" /><path class="arr-head" d="M422 279l8 5-8 5z" />
+          <rect class="box g" x="440" y="102" width="268" height="28" rx="8" /><text class="mono" x="454" y="121">/</text>
+          <rect class="box g" x="440" y="158" width="268" height="28" rx="8" /><text class="mono" x="454" y="177">/services</text>
+          <rect class="box g" x="440" y="214" width="268" height="28" rx="8" /><text class="mono" x="454" y="233">/cases</text>
+          <rect class="box g" x="440" y="270" width="268" height="28" rx="8" /><text class="mono" x="454" y="289">/cases/bank  ·  /cases/cafe  ·  …</text>
+        </svg>
+        <figcaption>Каждая папка с файлом <code>page.tsx</code> становится адресом. Файл с другим именем (например <code>Team.tsx</code>) адреса не создаёт</figcaption>
+      </figure>
+
+      <h3>Как выглядит страница и динамический адрес</h3>
+<pre class="code" data-lang="tsx" data-title="app/services/page.tsx">
+export default function ServicesPage() {
+  return (
+    &lt;main&gt;
+      &lt;h1&gt;Услуги&lt;/h1&gt;
+    &lt;/main&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="app/cases/[slug]/page.tsx">
+export default async function CasePage({
+  params,
+}: {
+  params: Promise&lt;{ slug: string }&gt;;
+}) {
+  const { slug } = await params;
+  return &lt;h1&gt;Кейс: {slug}&lt;/h1&gt;;
+}
+</pre>
+      <p>Страница — это обычный компонент из урока 7, только с именем файла <code>page.tsx</code>. У динамической страницы адрес <code>/cases/bank</code> передаёт <code>slug = "bank"</code>. В Next.js 16 <code>params</code> приходит как «обещание» (<code>Promise</code>), поэтому перед использованием его нужно «дождаться» словом <code>await</code> — ИИ делает это сам, просто не удаляйте <code>await</code>.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Корпус на бозоре. Каждая дверь в ряду — папка, а табличка «Открыто» на двери — файл <code>page.tsx</code>. Дверь без таблички есть, но покупателя не пустят: получите 404. Квадратные скобки — это как лавка «Всё на заказ»: одна лавка принимает любые названия товаров и выдаёт нужный.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Назвать файл <code>Services.tsx</code> или <code>index.tsx</code> вместо <code>page.tsx</code>: страницы не будет. <b>2.</b> Положить папку не внутрь <code>app</code>, а рядом: Next.js её не увидит. <b>3.</b> Написать <code>pages/about.tsx</code> по старым руководствам: так работал прежний Pages Router, в нашем проекте он не нужен. <b>4.</b> Забыть <code>export default</code> в <code>page.tsx</code>.</p>
+      </div>
+
+      <article class="task" id="q-routes">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: папки и адреса</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Какой файл нужно создать, чтобы сайт открывался по адресу <code>/about</code>?</p>
+          <ol class="options">
+            <li><code>app/about.tsx</code></li>
+            <li><code>app/about/page.tsx</code></li>
+            <li><code>app/pages/about.tsx</code></li>
+            <li><code>components/About.tsx</code></li>
+          </ol>
+          <div class="explain"><p>Папка <code>about</code> внутри <code>app</code> задаёт сегмент адреса, а файл <code>page.tsx</code> делает его открываемым.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В папке <code>app/cases</code> лежит только файл <code>Cases.tsx</code> с готовым компонентом. Что увидит посетитель по адресу <code>/cases</code>?</p>
+          <ol class="options">
+            <li>Содержимое компонента <code>Cases</code>: Next.js найдёт его сам</li>
+            <li>Пустую белую страницу с кодом 200</li>
+            <li>Страницу 404: адреса нет, пока в папке нет <code>page.tsx</code></li>
+            <li>Ошибку сборки: папка без <code>page.tsx</code> запрещена</li>
+          </ol>
+          <div class="explain"><p>Папка без <code>page.tsx</code> маршрут не создаёт. Файл <code>Cases.tsx</code> — просто компонент, который можно импортировать. Папки для «кирпичей» — нормальное явление, поэтому ошибки сборки нет.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что означает папка <code>app/cases/[slug]</code> с файлом <code>page.tsx</code>?</p>
+          <ol class="options">
+            <li>Адрес, который буквально называется <code>[slug]</code></li>
+            <li>Один файл-шаблон для многих адресов вида <code>/cases/bank</code>, <code>/cases/cafe</code>; значение попадает в <code>params.slug</code></li>
+            <li>Секретную папку, которую не видно посетителям</li>
+            <li>Папку, в которой хранятся только картинки</li>
+          </ol>
+          <div class="explain"><p>Квадратные скобки — динамический сегмент: часть адреса становится параметром, который страница читает из <code>params</code>.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/layouts-and-pages" target="_blank" rel="noopener">Next.js: Layouts and Pages</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 02 · Layout ============ -->
+    <section class="topic" id="layout">
+      <h2 data-toc="Общий layout"><span class="num">02</span> Общий layout: шапка и подвал один раз</h2>
+
+      <p>Если шапку копировать в каждую из пяти страниц, при первой же правке меню придётся менять пять файлов. Для этого есть <b>layout</b>: компонент-«рамка», внутрь которой Next.js подставляет нужную страницу. Вы уже видели файл <code>app/layout.tsx</code> в новом проекте — это <b>корневой layout</b>. Он обязателен и обязан содержать теги <code>&lt;html&gt;</code> и <code>&lt;body&gt;</code>.</p>
+
+<pre class="code" data-lang="tsx" data-title="app/layout.tsx">
+import "./globals.css";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    &lt;html lang="ru"&gt;
+      &lt;body&gt;
+        &lt;Header /&gt;
+        &lt;main&gt;{children}&lt;/main&gt;
+        &lt;Footer /&gt;
+      &lt;/body&gt;
+    &lt;/html&gt;
+  );
+}
+</pre>
+
+      <p>Главное слово здесь — <code>children</code> (prop из урока 7). Это «то, что положили внутрь»: при адресе <code>/services</code> там окажется <code>app/services/page.tsx</code>, при <code>/cases</code> — <code>app/cases/page.tsx</code>. Шапка и подвал остаются теми же.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/09-nextjs-routing/site-wireframe.svg" alt="Схема окна браузера с сайтом: сверху зелёная шапка с меню, в меню подсвечена Услуги; в центре жёлтая область со страницей Услуги; внизу зелёный подвал. Подписи: 1 — layout, шапка; 2 — page.tsx, меняется; 3 — layout, подвал" width="720" height="440" loading="lazy" decoding="async">
+        <figcaption>Упрощённая схема сайта. Зелёное — общий layout (одинаково на всех адресах), жёлтое — <code>page.tsx</code> (своё у каждого адреса)</figcaption>
+      </figure>
+
+      <h3>Layout не перезагружается и бывает вложенным</h3>
+      <p>При переходе между страницами Next.js заменяет только содержимое <code>children</code>, а layout остаётся на месте: он не перерисовывается заново и не теряет состояние (например, открытое меню или текст в поле поиска в шапке). Layout можно вкладывать: файл <code>app/cases/layout.tsx</code> обернёт только страницы раздела <code>/cases</code>, а корневой — все сразу.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Схема вложенности: корневой layout содержит шапку, подвал и вложенный layout раздела кейсов, внутри которого страница">
+          <rect class="fill-g" x="12" y="12" width="696" height="246" rx="14" />
+          <text class="mono t-g" x="28" y="38">app/layout.tsx — корневой (html, body, шапка, подвал)</text>
+          <rect class="box g" x="32" y="52" width="656" height="34" rx="8" /><text class="mono" x="48" y="74">&lt;Header /&gt;</text>
+          <rect class="fill-y" x="32" y="98" width="656" height="104" rx="10" />
+          <text class="mono" x="48" y="122">app/cases/layout.tsx — только для /cases/…</text>
+          <rect class="box o" x="52" y="134" width="616" height="54" rx="8" /><text class="mono t-o" x="68" y="158">{children}</text><text class="sub" x="68" y="177">сюда подставляется app/cases/page.tsx или app/cases/[slug]/page.tsx</text>
+          <rect class="box g" x="32" y="214" width="656" height="34" rx="8" /><text class="mono" x="48" y="236">&lt;Footer /&gt;</text>
+        </svg>
+        <figcaption>Layout-ы вкладываются друг в друга, как матрёшки: внутренний лежит в <code>children</code> внешнего</figcaption>
+      </figure>
+
+      <div class="yt" data-id="NK-8a8EzWrU" data-title="Next.js 15: Layouts (нечто общее для страниц) — канал Codevolution"></div>
+      <p class="muted">Ролик на английском, 4,5 минуты, включите субтитры: как работает <code>layout.tsx</code> и вложенность. Версия Next.js в ролике 15, но для layout правила те же, что в 16.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Маршрутка. Кузов, водитель и табличка с маршрутом — layout: они едут весь путь. Меняются только пассажиры на сиденьях — это <code>children</code>. На каждой остановке (странице) салон не перекрашивают, а лишь пересаживают людей.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Копировать шапку в каждую страницу вместо одного <code>layout.tsx</code>. <b>2.</b> Забыть <code>{children}</code> в layout: страницы просто не появятся. <b>3.</b> Добавить второй <code>&lt;html&gt;</code> или <code>&lt;body&gt;</code> во вложенный layout — они нужны только в корневом. <b>4.</b> Поставить <code>lang="en"</code> на русскоязычном сайте: поисковики и читалки экрана решат, что язык другой.</p>
+      </div>
+
+      <article class="task" id="q-layout">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: layout</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что попадает в <code>{children}</code> корневого <code>app/layout.tsx</code> при переходе на <code>/services</code>?</p>
+          <ol class="options">
+            <li>Весь сайт целиком</li>
+            <li>Содержимое <code>app/services/page.tsx</code> (или вложенный layout со страницей внутри)</li>
+            <li>Только заголовок <code>&lt;title&gt;</code></li>
+            <li>Ничего: <code>children</code> нужен только для кнопок</li>
+          </ol>
+          <div class="explain"><p>В <code>children</code> Next.js подставляет текущую страницу или вложенный layout. Остальное в корневом layout (шапка, подвал) остаётся неизменным.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Какие преимущества даёт общий layout? (выберите все верные варианты)</p>
+          <ol class="options">
+            <li>Шапка и подвал описаны один раз, а не пять</li>
+            <li>Страницам больше не нужны файлы <code>page.tsx</code></li>
+            <li>При переходе между страницами шапка не перерисовывается и не теряет состояние</li>
+            <li>Сайт автоматически получает хорошие позиции в поиске</li>
+          </ol>
+          <div class="explain"><p><code>page.tsx</code> нужен всегда: layout лишь рамка. А позиции в поиске зависят от содержимого, скорости и многих других факторов, но не от самого факта layout.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/api-reference/file-conventions/layout" target="_blank" rel="noopener">Next.js: layout.js</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 03 · Link ============ -->
+    <section class="topic" id="link">
+      <h2 data-toc="Навигация через Link"><span class="num">03</span> Навигация: Link вместо обычной ссылки</h2>
+
+      <p>Между страницами сайта переходят компонентом <code>Link</code> из <code>next/link</code>. Он выглядит как обычная ссылка <code>&lt;a&gt;</code> и даже превращается в неё в HTML, но умеет два трюка: <b>переход без перезагрузки всей страницы</b> (меняется только <code>children</code>, layout остаётся) и <b>предзагрузку</b> страницы, пока ссылка видна на экране. Предзагрузка работает только в боевой сборке (<code>npm run build</code> и деплой), в режиме <code>npm run dev</code> вы её не увидите.</p>
+
+<pre class="code" data-lang="tsx" data-title="Link в коде">
+import Link from "next/link";
+
+export default function Cta() {
+  return (
+    &lt;&gt;
+      {/* внутренний адрес сайта: Link */}
+      &lt;Link href="/contacts"&gt;Связаться с нами&lt;/Link&gt;
+
+      {/* внешний сайт: обычная ссылка */}
+      &lt;a href="https://t.me/saru_studio" target="_blank" rel="noopener"&gt;Telegram&lt;/a&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Куда ведёт ссылка</th><th>Чем писать</th></tr></thead>
+          <tbody>
+            <tr><td>На другую страницу этого же сайта</td><td><code>&lt;Link href="/services"&gt;</code></td></tr>
+            <tr><td>На раздел внутри страницы</td><td><code>&lt;Link href="/#contacts"&gt;</code></td></tr>
+            <tr><td>На чужой сайт, Telegram, почту</td><td>обычный <code>&lt;a&gt;</code> (<code>mailto:</code>, <code>tel:</code>, <code>https://…</code>)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Меню с подсветкой текущей страницы</h3>
+      <p>Чтобы посетитель понимал, где он, пункт меню текущей страницы выделяют. Узнать адрес помогает хук <code>usePathname</code> из <code>next/navigation</code>. Это хук, а хуки (как <code>useState</code> в уроке 8) работают только в клиентских компонентах, поэтому файл меню начинается с <code>"use client"</code>. Сами страницы и layout при этом остаются серверными: Metadata API из раздела 5 работает именно там.</p>
+
+<pre class="code" data-lang="tsx" data-title="components/Nav.tsx">
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const items = [
+  { href: "/", label: "Главная" },
+  { href: "/services", label: "Услуги" },
+  { href: "/cases", label: "Кейсы" },
+  { href: "/about", label: "О компании" },
+  { href: "/contacts", label: "Контакты" },
+];
+
+function isActive(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(href + "/");
+}
+
+export default function Nav() {
+  const pathname = usePathname();
+  return (
+    &lt;nav className="flex gap-4"&gt;
+      {items.map((item) =&gt; (
+        &lt;Link
+          key={item.href}
+          href={item.href}
+          aria-current={isActive(pathname, item.href) ? "page" : undefined}
+          className={isActive(pathname, item.href) ? "font-bold text-brand-600" : "text-slate-600"}
+        &gt;
+          {item.label}
+        &lt;/Link&gt;
+      ))}
+    &lt;/nav&gt;
+  );
+}
+</pre>
+
+      <p>Всё в этом файле вам знакомо: массив и <code>map</code> (урок 7), условие в классе (урок 8). Новое — только <code>usePathname</code> и функция <code>isActive</code>. Зачем в ней два условия? Адрес <code>/</code> — начало любого адреса, поэтому для главной сравниваем строго. А раздел <code>/services</code> должен оставаться «активным» и на вложенной странице <code>/services/web</code>, но не на <code>/servicesX</code>: поэтому проверяем <code>href + "/"</code>.</p>
+
+      <p>Потренируйтесь на «чистой» логике. В Next.js адрес даёт <code>usePathname</code>, а здесь он приходит как prop, и вместо <code>Link</code> стоит обычная ссылка (компонент <code>Link</code> в браузере урока недоступен).</p>
+
+      <article class="task" id="pg-nav">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Реализуйте isActive для меню</h4><span class="level mid">средняя</span></header>
+        <p>Допишите функцию <code>isActive(pathname, href)</code>: она возвращает <code>true</code>, если пункт меню нужно подсветить. Нажимайте на пункты в превью, чтобы увидеть подсветку. Блок «ПРОВЕРКА» не трогайте.</p>
+        <div class="playground" data-mode="react" data-title="Меню с подсветкой">
+<pre class="code" data-lang="jsx">
+import { useState, useEffect } from "react";
+
+const items = [
+  { href: "/", label: "Home" },
+  { href: "/services", label: "Services" },
+  { href: "/cases", label: "Cases" },
+];
+
+// TODO: верните true, если пункт href нужно подсветить на странице pathname
+// Главная ("/") подсвечивается только на "/".
+// Остальные: точное совпадение или вложенные адреса ("/services/web").
+function isActive(pathname, href) {
+  return false;
+}
+
+function Nav({ pathname, onGo }) {
+  return (
+    &lt;nav className="nav"&gt;
+      {items.map((item) =&gt; (
+        &lt;a
+          key={item.href}
+          href={item.href}
+          className={isActive(pathname, item.href) ? "link active" : "link"}
+          onClick={(e) =&gt; { e.preventDefault(); onGo(item.href); }}
+        &gt;
+          {item.label}
+        &lt;/a&gt;
+      ))}
+    &lt;/nav&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const cases = [
+      ["/", "/"],
+      ["/services", "/"],
+      ["/services", "/services"],
+      ["/services/web", "/services"],
+      ["/servicesX", "/services"],
+      ["/cases", "/services"],
+    ];
+    for (const [p, h] of cases) console.log(p + " -&gt; " + h + ": " + isActive(p, h));
+  }, []);
+  return null;
+}
+
+export default function App() {
+  const [pathname, setPathname] = useState("/services");
+  return (
+    &lt;div&gt;
+      &lt;Nav pathname={pathname} onGo={setPathname} /&gt;
+      &lt;p className="url"&gt;Адрес: {pathname}&lt;/p&gt;
+      &lt;Report /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.nav { display: flex; gap: 8px; margin-bottom: 12px; }
+.link { padding: 8px 14px; border-radius: 999px; color: #475569; text-decoration: none; font-weight: 600; font-family: system-ui, sans-serif; }
+.link.active { background: #0e7a55; color: #fff; }
+.url { font-family: ui-monospace, monospace; color: #475569; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>/ -&gt; /: true
+/services -&gt; /: false
+/services -&gt; /services: true
+/services/web -&gt; /services: true
+/servicesX -&gt; /services: false
+/cases -&gt; /services: false</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Сначала особый случай: <code>if (href === "/") return pathname === "/";</code>. Для главной подходит только точное совпадение.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Для остальных: <code>return pathname === href || pathname.startsWith(href + "/");</code>. Слэш после <code>href</code> не даёт <code>/servicesX</code> сойти за вложенный адрес.</p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Указатели в метро. Стрелка на нужную линию подсвечена, остальные приглушены, и пассажир сразу видит, где он. А пересадка (Link) происходит без выхода на улицу и входа заново: вы остаётесь на станции, меняется только поезд.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Писать для своих страниц <code>&lt;a href="/services"&gt;</code>: страница перезагрузится целиком, а предзагрузки не будет. <b>2.</b> Забыть <code>"use client"</code> в файле с <code>usePathname</code>: Next.js остановит сборку с текстом вроде «You're importing a component that needs usePathname. This React Hook only works in a Client Component». <b>3.</b> Сравнивать <code>pathname.startsWith("/")</code> для главной: подсвечены окажутся все пункты. <b>4.</b> Положить <code>"use client"</code> в <code>layout.tsx</code> «заодно»: тогда весь сайт станет клиентским. Выносите в отдельный маленький файл только меню.</p>
+      </div>
+
+      <article class="task" id="q-link">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Проверь себя: Link и меню</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Чем <code>&lt;Link href="/services"&gt;</code> лучше обычной ссылки для перехода внутри сайта?</p>
+          <ol class="options">
+            <li>Переход без полной перезагрузки страницы и предзагрузка страницы в боевой сборке</li>
+            <li>Ссылка автоматически становится красивее</li>
+            <li>Работает без интернета</li>
+            <li>Ничем: <code>Link</code> нужен только на английских сайтах</li>
+          </ol>
+          <div class="explain"><p><code>Link</code> заменяет только <code>children</code> и подгружает следующую страницу заранее. Внешний вид задают классами, как у любой ссылки.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>В файле меню вы используете <code>usePathname()</code>. Что обязательно должно стоять в начале файла?</p>
+          <ol class="options">
+            <li><code>"use server"</code></li>
+            <li><code>"use client"</code></li>
+            <li><code>export const metadata</code></li>
+            <li>Ничего: хуки работают в любом файле</li>
+          </ol>
+          <div class="explain"><p>Хуки работают только в клиентских компонентах, поэтому нужна директива <code>"use client"</code> (урок 8). <code>metadata</code>, наоборот, экспортируют из серверных файлов.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Как правильно оформить ссылку на ваш Telegram-канал <code>https://t.me/saru_studio</code>?</p>
+          <ol class="options">
+            <li><code>&lt;Link href="t.me/saru_studio"&gt;</code> без https</li>
+            <li><code>&lt;Link href="/https://t.me/saru_studio"&gt;</code></li>
+            <li>Обычным <code>&lt;a href="https://t.me/saru_studio" target="_blank" rel="noopener"&gt;</code></li>
+            <li>Положить файл <code>app/t.me/page.tsx</code></li>
+          </ol>
+          <div class="explain"><p>Link предназначен для переходов внутри вашего сайта. Внешние адреса, <code>mailto:</code> и <code>tel:</code> оформляют обычной ссылкой, а <code>rel="noopener"</code> защищает при открытии в новой вкладке.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/api-reference/components/link" target="_blank" rel="noopener">Next.js: компонент Link</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · next/image ============ -->
+    <section class="topic" id="image">
+      <h2 data-toc="next/image"><span class="num">04</span> Картинки: next/image</h2>
+
+      <p>Обычная <code>&lt;img&gt;</code> скачивает файл «как есть»: фото с телефона на 4 МБ грузится и на ноутбуке, и на смартфоне с медленным интернетом. Компонент <code>Image</code> из <code>next/image</code> берёт это на себя: отдаёт подходящий размер и современный формат, откладывает загрузку картинок за пределами экрана и резервирует место, чтобы текст не «подпрыгивал», когда картинка загрузилась.</p>
+
+<pre class="code" data-lang="tsx" data-title="Две схемы: известный размер и «заполнить блок»">
+import Image from "next/image";
+
+export default function Examples() {
+  return (
+    &lt;&gt;
+      {/* 1. Размер известен: width и height обязательны */}
+      &lt;Image src="/images/team.webp" alt="Команда студии за работой" width={800} height={533} /&gt;
+
+      {/* 2. Картинка заполняет блок: родителю нужен position: relative */}
+      &lt;div className="relative h-64 w-full"&gt;
+        &lt;Image src="/images/office.webp" alt="Офис студии" fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" /&gt;
+      &lt;/div&gt;
+    &lt;/&gt;
+  );
+}
+</pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Что делает</th></tr></thead>
+          <tbody>
+            <tr><td><code>src</code></td><td>Путь к файлу: <code>/images/team.webp</code> значит файл <code>public/images/team.webp</code> (слово <code>public</code> в пути не пишут)</td></tr>
+            <tr><td><code>alt</code></td><td>Описание для читалок экрана и поисковиков; обязателен. Для чисто декоративной картинки — пустая строка <code>alt=""</code></td></tr>
+            <tr><td><code>width</code>, <code>height</code></td><td>Настоящий размер файла в пикселях: нужен браузеру, чтобы зарезервировать место. Показываемый размер задают CSS-классами</td></tr>
+            <tr><td><code>fill</code></td><td>Вместо width и height: картинка заполняет родителя. У родителя должен быть <code>position: relative</code> (в Tailwind — класс <code>relative</code>) и размер; обрезку задаёт <code>object-cover</code></td></tr>
+            <tr><td><code>sizes</code></td><td>Подсказка, какую часть экрана займёт картинка: браузер скачает файл нужного размера, а не самый большой</td></tr>
+            <tr><td><code>preload</code></td><td>Загрузить картинку заранее: только для самой первой картинки экрана. В старых примерах вместо него встретится <code>priority</code>: с Next.js 16 это название устарело</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <b>Откуда брать картинки</b>
+        <p>Свои фото или картинки с бесплатных стоков, где разрешено использование (проверьте лицензию). Кладите в <code>public/images</code>, формат <code>.webp</code> или <code>.jpg</code>, до 300 КБ на файл — большие пережмите. Для логотипов и значков подойдёт <code>.svg</code>: Next.js сам не оптимизирует его (SVG и так лёгкий). Картинки с чужого адреса (<code>https://…</code>) нужно сначала разрешить в <code>next.config.ts</code> в настройке <code>images.remotePatterns</code>, иначе будет ошибка: это защита от чужих злоупотреблений. Для учебного сайта проще положить файлы в <code>public</code>.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Фотограф на свадьбе приносит снимки сразу в трёх размерах: маленький для телефона, средний для планшета и большой для печати. Гость с телефона получает лёгкую версию и не ждёт. <code>next/image</code> — такой фотограф: он сам готовит нужный размер и формат под устройство.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Не указать <code>alt</code> или написать «картинка» / «image1». Пишите, что на фото, коротко и по делу. <b>2.</b> Писать путь <code>/public/images/team.webp</code>: файлы из <code>public</code> доступны от корня сайта. <b>3.</b> Использовать <code>fill</code> без <code>relative</code> у родителя: картинка улетает или растягивается на весь экран. <b>4.</b> Указать <code>width</code> и <code>height</code> «от балды», в другой пропорции, чем файл: картинка исказится, пока CSS не задаст размер. <b>5.</b> Разместить картинку с чужого сайта без <code>remotePatterns</code>: ошибка вида <code>Invalid src prop … hostname "…" is not configured under images in your next.config.js</code>. <b>6.</b> Ставить <code>preload</code> на все картинки: выигрыш пропадает.</p>
+      </div>
+
+      <article class="task" id="q-image">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: next/image</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Картинка лежит в <code>public/images/team.webp</code>, её размер 800×533 пикселей. Как правильно подключить?</p>
+          <ol class="options">
+            <li><code>&lt;Image src="/public/images/team.webp" alt="Команда" /&gt;</code></li>
+            <li><code>&lt;Image src="/images/team.webp" alt="Команда" width={800} height={533} /&gt;</code></li>
+            <li><code>&lt;Image src="images/team.webp" width={800} /&gt;</code></li>
+            <li><code>&lt;Image src="C:\\site\\team.webp" alt="Команда" /&gt;</code></li>
+          </ol>
+          <div class="explain"><p>Путь начинается от корня сайта без слова <code>public</code>; нужны <code>alt</code> и оба размера (если не используется <code>fill</code>).</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Вы поставили <code>&lt;Image fill … /&gt;</code> внутрь <code>&lt;div&gt;</code>, и картинка расползлась по всей странице. Что проверить в первую очередь?</p>
+          <ol class="options">
+            <li>У родителя нет <code>position: relative</code> (класс <code>relative</code>) и заданной высоты</li>
+            <li>Забыт <code>"use client"</code></li>
+            <li>Файл слишком маленький</li>
+            <li>Нужно заменить <code>Image</code> на <code>Link</code></li>
+          </ol>
+          <div class="explain"><p>При <code>fill</code> картинка позиционируется относительно ближайшего позиционированного родителя, поэтому родителю нужны <code>relative</code> и размер.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В <code>&lt;Image src="https://images.example.com/photo.jpg" … /&gt;</code> терминал показал ошибку про hostname, который не настроен в <code>next.config</code>. Что делать?</p>
+          <ol class="options">
+            <li>Удалить <code>alt</code></li>
+            <li>Поставить <code>priority</code></li>
+            <li>Добавить адрес в <code>images.remotePatterns</code> в <code>next.config.ts</code> или скачать файл в <code>public</code> (с учётом лицензии)</li>
+            <li>Заменить <code>Image</code> на <code>Link</code></li>
+          </ol>
+          <div class="explain"><p>Внешние адреса для оптимизации нужно разрешить явно. Для учебного проекта проще положить картинку в <code>public</code>.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/api-reference/components/image" target="_blank" rel="noopener">Next.js: компонент Image</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · Metadata и SEO ============ -->
+    <section class="topic" id="metadata">
+      <h2 data-toc="Метатеги и SEO"><span class="num">05</span> Метатеги и базовое SEO</h2>
+
+      <p><b>SEO</b> — это приёмы, которые помогают поисковикам понять, о чём ваша страница, и показать её нужным людям. Начинается всё с двух строчек, которые видны в результатах поиска: <b>title</b> (синий заголовок) и <b>description</b> (серое описание под ним). В Next.js их задают через <b>Metadata API</b>: в файле <code>layout.tsx</code> или <code>page.tsx</code> экспортируется объект <code>metadata</code>, а Next.js сам создаёт теги в <code>&lt;head&gt;</code> страницы.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/09-nextjs-routing/serp-snippet.svg" alt="Схема результата поиска: адрес saru.vercel.app › services, синий заголовок «Услуги | Студия «Сарв»» и серое описание страницы; справа подписи адрес, title и description; внизу фрагмент кода с полями title и description" width="720" height="300" loading="lazy" decoding="async">
+        <figcaption>Схема результата поиска (оригинальный рисунок): то, что вы пишете в <code>metadata</code>, видит человек в выдаче</figcaption>
+      </figure>
+
+<pre class="code" data-lang="tsx" data-title="app/layout.tsx (общие настройки для всего сайта)">
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Студия «Сарв» — сайты и приложения в Душанбе",
+    template: "%s | Студия «Сарв»",
+  },
+  description: "Делаем сайты и приложения для бизнеса в Душанбе. Фиксированная цена в сомони.",
+  openGraph: {
+    title: "Студия «Сарв»",
+    description: "Сайты и приложения для бизнеса в Душанбе.",
+    type: "website",
+    locale: "ru_RU",
+  },
+};
+</pre>
+<pre class="code" data-lang="tsx" data-title="app/services/page.tsx (своё у каждой страницы)">
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Услуги",
+  description: "Сайты, приложения и поддержка: что входит и сколько стоит в сомони.",
+};
+
+export default function ServicesPage() {
+  return &lt;h1&gt;Услуги&lt;/h1&gt;;
+}
+</pre>
+
+      <p>Шаблон <code>"%s | Студия «Сарв»"</code> из корневого layout подставит название страницы вместо <code>%s</code>: в <code>&lt;title&gt;</code> будет «Услуги | Студия «Сарв»». Для главной берётся <code>default</code>. Поле <code>openGraph</code> задаёт заголовок и описание для карточки при отправке ссылки в Telegram и соцсети (картинку карточки можно положить в <code>app/opengraph-image.png</code> — Next.js подключит её сам).</p>
+
+      <div class="callout tip">
+        <b>Важное правило слияния</b>
+        <p>Если страница задаёт свой <code>openGraph</code>, он <b>целиком заменяет</b> общий из layout, а не дополняет его. Поэтому для страниц, где вам нужны особые данные для соцсетей, перепишите все нужные поля, а общую картинку вынесите в файл <code>opengraph-image</code>.</p>
+      </div>
+
+      <div class="yt" data-id="OldUurB0Wx8" data-title="Next.js 15: Metadata для маршрутов — канал Codevolution"></div>
+      <p class="muted">Ролик на английском, 8 минут, включите субтитры: статические метаданные, шаблон заголовка, <code>generateMetadata</code>. Для этого урока важны первые 5 минут.</p>
+
+      <h3>Базовое SEO: чек-лист на каждую страницу</h3>
+      <ul>
+        <li><b>Свой title и description</b> у каждой страницы: у «Услуг» и «Контактов» они не должны совпадать. Заголовок — коротко (около 50–60 символов), описание — 1–2 предложения (около 150 символов), по делу и без «лучшие в мире».</li>
+        <li><b>Один <code>&lt;h1&gt;</code></b> на странице: главная мысль страницы. Подзаголовки — <code>&lt;h2&gt;</code>.</li>
+        <li><b>Осмысленные адреса:</b> <code>/services</code>, а не <code>/page2</code>. Они же помогают посетителю понять, где он.</li>
+        <li><b><code>alt</code></b> у каждой содержательной картинки.</li>
+        <li><b>Язык:</b> <code>&lt;html lang="ru"&gt;</code> в корневом layout.</li>
+        <li><b>Мобильная версия:</b> сайт должен хорошо выглядеть на телефоне (урок 3 и Tailwind).</li>
+        <li><b>Файлы <code>robots.ts</code> и <code>sitemap.ts</code></b> в папке <code>app</code>: Next.js превратит их в <code>/robots.txt</code> и <code>/sitemap.xml</code> — карту сайта для поисковиков. Для первого сайта хватит просьбы к ИИ их сгенерировать.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Честно про SEO</b>
+        <p>Метатеги не гарантируют позиций: на них влияет содержание, скорость, ссылки на сайт и многое другое. Метатеги — основа, без которой остальное не работает. И ещё: не размещайте на сайте скрытый текст или «простыню» ключевых слов — поисковики наказывают за это.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вывеска и меню у входа в чойхону. Вывеска (<code>title</code>) говорит прохожему, что внутри; строка под ней (<code>description</code>) — чем здесь кормят. Если на всех пяти дверях одинаковая вывеска «Магазин», никто не поймёт, куда идти. А хорошая вывеска не гарантирует очередь, но без неё очереди точно не будет.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Положить <code>export const metadata</code> в файл с <code>"use client"</code>: сборка остановится с сообщением, что экспорт <code>metadata</code> из клиентского компонента запрещён. Метаданные живут в серверных <code>page.tsx</code> и <code>layout.tsx</code>. <b>2.</b> Оставить в <code>layout.tsx</code> заготовку «Create Next App»: она покажется в Telegram и поиске. <b>3.</b> Написать <code>title: "Услуги | Студия «Сарв»"</code> на странице при готовом шаблоне: получится «Услуги | Студия «Сарв» | Студия «Сарв»». <b>4.</b> Сделать description одинаковым на всех страницах. <b>5.</b> Указать относительный адрес картинки в <code>openGraph.images</code> и не задать <code>metadataBase</code>: сборка выдаст ошибку, нужен адрес сайта целиком.</p>
+      </div>
+
+      <article class="task" id="q-meta">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: metadata и SEO</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>В корневом <code>layout.tsx</code> задан шаблон <code>title: { template: "%s | Сарв", default: "Сарв" }</code>, а в <code>app/about/page.tsx</code> — <code>title: "О компании"</code>. Какой <code>&lt;title&gt;</code> у страницы <code>/about</code>?</p>
+          <ol class="options">
+            <li>О компании</li>
+            <li>О компании | Сарв</li>
+            <li>%s | Сарв</li>
+            <li>Сарв | О компании</li>
+          </ol>
+          <div class="explain"><p>Next.js подставляет название страницы вместо <code>%s</code> в шаблон из родительского layout.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Где можно экспортировать <code>metadata</code>?</p>
+          <ol class="options">
+            <li>В серверных <code>page.tsx</code> и <code>layout.tsx</code> (без <code>"use client"</code>)</li>
+            <li>Только в файлах с <code>"use client"</code></li>
+            <li>В любом компоненте из папки <code>components</code></li>
+            <li>В файле <code>globals.css</code></li>
+          </ol>
+          <div class="explain"><p>Metadata API работает только в серверных компонентах: метаданные должны быть известны до отправки страницы в браузер.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3,4">
+          <p>Что относится к базовому SEO страницы? (выберите все верные варианты)</p>
+          <ol class="options">
+            <li>Свои уникальные <code>title</code> и <code>description</code></li>
+            <li>Одинаковое описание на всех страницах — так надёжнее</li>
+            <li>Один <code>&lt;h1&gt;</code> и осмысленный <code>alt</code> у картинок</li>
+            <li><code>&lt;html lang="ru"&gt;</code> и понятные адреса вроде <code>/services</code></li>
+          </ol>
+          <div class="explain"><p>Дублирующиеся описания не помогают поисковику отличить страницы. Остальное — основа, на которой строится всё остальное SEO.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/metadata-and-og-images" target="_blank" rel="noopener">Next.js: Metadata and OG images</a>, <a href="https://nextjs.org/docs/app/api-reference/functions/generate-metadata" target="_blank" rel="noopener">справочник generateMetadata</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · Дизайн-система ============ -->
+    <section class="topic" id="design">
+      <h2 data-toc="Дизайн-система в Tailwind"><span class="num">06</span> Дизайн-система в Tailwind: цвета и правила в одном месте</h2>
+
+      <p>Когда сайт из пяти страниц, а цвет кнопки «Связаться» записан в двадцати местах как <code>bg-[#0e7a55]</code>, смена бренда превращается в поиск по всему проекту. <b>Дизайн-система</b> — это договорённость: цвета, шрифты, скругления и отступы заданы один раз, а страницы только <b>используют</b> их. Состоит она из двух слоёв.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1. Токены</b><span>цвета, шрифты, скругления: значения в одном месте</span><code>@theme в globals.css</code></div>
+          <div class="ar">→</div>
+          <div class="st ai"><b>2. Кирпичи</b><span>Button, Section, Container, Card: используют только токены</span><code>components/ui</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>3. Страницы</b><span>собираются из кирпичей, без «своих» цветов</span><code>app/…/page.tsx</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>Единый стиль</b><span>меняем токен — меняется весь сайт</span><code>--color-brand-600</code></div>
+        </div>
+        <figcaption>Слои дизайн-системы: токены → кирпичи → страницы. Страницы не знают конкретных цветов, только их названия</figcaption>
+      </figure>
+
+      <h3>Токены в Tailwind 4</h3>
+      <p>Tailwind CSS 4 настраивается прямо в файле <code>app/globals.css</code> блоком <code>@theme</code>. Любая переменная из «пространства» <code>--color-*</code>, <code>--font-*</code>, <code>--radius-*</code> превращается в классы:</p>
+
+<pre class="code" data-lang="css" data-title="app/globals.css">
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #ecfdf5;
+  --color-brand-600: #0e7a55;
+  --color-brand-700: #0b6045;
+  --color-ink: #0f172a;
+  --radius-card: 16px;
+}
+</pre>
+
+      <p>Теперь доступны классы <code>bg-brand-600</code>, <code>text-brand-700</code>, <code>bg-brand-50</code>, <code>text-ink</code> и <code>rounded-card</code>. Чтобы сменить палитру, вы правите три строки в одном файле. В новом проекте в <code>globals.css</code> уже могут быть переменные и блок <code>@theme inline</code> для шрифтов: не удаляйте их, добавьте свой блок <code>@theme</code> рядом.</p>
+
+      <div class="callout tip">
+        <b>Правило из урока 7 остаётся в силе</b>
+        <p>Tailwind находит в коде только <b>целые</b> названия классов. Нельзя собирать <code>bg-${color}-600</code>: стиль не появится. Если цвет приходит как prop, передавайте полное название класса целиком, например <code>accent="bg-brand-600"</code>.</p>
+      </div>
+
+      <h3>Попробуйте идею на чистом CSS</h3>
+      <p>Принцип «одно значение — много мест» одинаков и в Tailwind (<code>@theme</code>), и в обычном CSS (переменная <code>var(--brand)</code>). В Tailwind вы уже используете готовые классы, а здесь потренируйтесь в самой идее: три элемента должны брать цвет из одной переменной.</p>
+
+      <article class="task" id="pg-tokens">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Один токен вместо трёх цветов</h4><span class="level mid">средняя</span></header>
+        <p>В CSS цвет <code>#0e7a55</code> записан в трёх правилах вручную. Замените его в каждом на <code>var(--brand)</code> (переменная <code>--brand</code> уже объявлена вверху). Проверка сменит <code>--brand</code> на красный и посмотрит, перекрасились ли все три элемента. Блок «ПРОВЕРКА» не трогайте.</p>
+<div class="playground" data-mode="dom" data-title="Дизайн-токен">
+<pre class="code" data-lang="html">
+&lt;header class="bar"&gt;
+  &lt;a class="link" href="#"&gt;Services&lt;/a&gt;
+  &lt;span class="badge"&gt;New&lt;/span&gt;
+  &lt;button class="btn"&gt;Contact us&lt;/button&gt;
+&lt;/header&gt;
+</pre>
+<pre class="code" data-lang="css">
+:root { --brand: #0e7a55; }
+
+body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; background: #f8fafc; }
+.bar { display: flex; align-items: center; gap: 14px; }
+.link { color: #0e7a55; font-weight: 700; }
+.badge { background: #0e7a55; color: #fff; padding: 2px 10px; border-radius: 999px; font-size: 13px; }
+.btn { background: #0e7a55; color: #fff; border: 0; padding: 10px 18px; border-radius: 10px; font-weight: 700; }
+</pre>
+<pre class="code" data-lang="js">
+// ПРОВЕРКА — этот код не меняйте. Правьте только вкладку CSS.
+const css = (s, p) => getComputedStyle(document.querySelector(s))[p];
+const ok = (name, cond) => console.log((cond ? '✓ ' : '✗ ') + name);
+
+document.documentElement.style.setProperty('--brand', '#dc2626');
+const red = 'rgb(220, 38, 38)';
+ok('link uses --brand', css('.link', 'color') === red);
+ok('badge uses --brand', css('.badge', 'backgroundColor') === red);
+ok('btn uses --brand', css('.btn', 'backgroundColor') === red);
+</pre>
+</div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>✓ link uses --brand
+✓ badge uses --brand
+✓ btn uses --brand</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В каждом из трёх правил замените значение <code>#0e7a55</code> на <code>var(--brand)</code>. В <code>:root</code> оставьте как есть: это единственное место, где цвет записан цифрами.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Должно получиться, например, <code>.btn { background: var(--brand); … }</code>. Следите за точкой с запятой после значения.</p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Школьная форма. Школа решает один раз: цвет — тёмно-синий, галстук — зелёный. Классы не спорят о цветах каждый день, а любой новый ученик сразу «в стиле». Захотели обновить форму — решаете в кабинете директора (<code>@theme</code>), а не обходите каждого ученика.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Заводить 12 оттенков «на всякий случай»: хватит бренда (2–3 тона), нейтрального серого и акцента. <b>2.</b> Вписывать цвет прямо в компонент (<code>bg-[#0e7a55]</code>), потому что «так быстрее»: единый стиль ломается на второй странице. <b>3.</b> Каждой странице писать свои кнопки с разными скруглениями: заведите один <code>Button</code>. <b>4.</b> Забыть, что тёмная тема (урок 8) — это ещё один набор значений токенов, а не копия компонентов.</p>
+      </div>
+
+      <article class="task" id="q-design">
+        <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Проверь себя: дизайн-система</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Вы хотите, чтобы в проекте работали классы <code>bg-brand-600</code> и <code>text-brand-600</code>. Что нужно сделать в Tailwind 4?</p>
+          <ol class="options">
+            <li>Создать файл <code>brand.tsx</code> с цветом</li>
+            <li>Добавить в <code>@theme</code> в <code>globals.css</code> переменную <code>--color-brand-600: …</code></li>
+            <li>Написать <code>className="bg-brand-600"</code> без настройки: Tailwind угадает</li>
+            <li>Установить пакет <code>brand-colors</code></li>
+          </ol>
+          <div class="explain"><p>Переменные в <code>@theme</code> из пространства <code>--color-*</code> автоматически становятся классами цвета.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Главная причина вынести цвета и скругления в токены:</p>
+          <ol class="options">
+            <li>Сменить стиль сайта можно правкой в одном месте, и у всех страниц он останется единым</li>
+            <li>Сайт начнёт работать быстрее в десять раз</li>
+            <li>Tailwind перестанет работать с цветами</li>
+            <li>Не придётся использовать компоненты</li>
+          </ol>
+          <div class="explain"><p>Токены дают единый стиль и дешёвые правки. Скорость сайта от них напрямую не зависит, а компоненты нужны по-прежнему: токены — это значения, компоненты — готовые «кирпичи» из них.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://tailwindcss.com/docs/theme" target="_blank" rel="noopener">Tailwind CSS: Theme variables</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 07 · ИИ-блок ============ -->
+    <section class="topic" id="ai-prompt">
+      <h2 data-toc="ИИ: как просить сайт"><span class="num">07</span> ИИ-блок: как просить многостраничный сайт</h2>
+
+      <div class="callout ai">
+        <b>Правила для многостраничного сайта</b>
+        <p><b>1.</b> Сначала режим «План» (урок 6): карта сайта, дерево файлов, дизайн-токены, и только потом код. <b>2.</b> Одно дело за раз: сначала токены и кирпичи, потом layout и меню, потом страницы по одной. <b>3.</b> Правила проекта (<code>AGENTS.md</code>) держат ИИ в рамках: перечислите в них свои договорённости (см. шаг 2 практики). <b>4.</b> После каждого шага: <code>npm run build</code> и проверка глазами в браузере. <b>5.</b> Коммит перед каждой крупной задачей (урок 6), чтобы можно было откатиться.</p>
+      </div>
+
+      <div class="prompt bad-prompt">Сделай сайт компании на next js с несколькими страницами</div>
+      <div class="prompt good-prompt">Контекст: проект Next.js 16 (App Router, TypeScript, Tailwind CSS 4, без папки src), создан через create-next-app. Нужен корпоративный сайт вымышленной студии «Сарв» из Душанбе: веб-разработка для бизнеса. Правила проекта лежат в AGENTS.md.
+Цель: многостраничный сайт из 5 страниц: Главная (/), Услуги (/services), Кейсы (/cases), О компании (/about), Контакты (/contacts). У всех страниц общая шапка с меню и подвал, всё в одном стиле.
+Ограничения: общий layout в app/layout.tsx (lang="ru"); меню в components/Nav.tsx с подсветкой текущей страницы через usePathname (только этот файл с "use client"); ссылки внутри сайта только через Link; картинки только через next/image из public/images, у каждой alt и размеры; на каждой странице свой title и description через metadata, шаблон заголовка в корневом layout; цвета, шрифты и скругления только через @theme в app/globals.css и классы bg-brand-600 и т. п.; общие кирпичи Container, Section, Button в components/ui; без новых библиотек; адаптивно для телефона.
+Примеры: тексты короткие и по делу на русском, цены в сомони, вымышленные контакты.
+Проверка: после изменений запусти npm run build, исправь ошибки и в конце перечисли созданные файлы и адреса.</div>
+
+      <p>Вместо одного огромного промпта удобнее делить работу на шаги (в практике они уже расписаны). Если ИИ «залез» не туда, не начинайте заново: откатите шаг через Checkpoint или <b>Discard Changes</b> (урок 6) и дайте точечную правку.</p>
+
+      <h3>Правки: короткие, по одной</h3>
+      <div class="prompt">Подсветка в меню не работает на странице /services/web. Исправь isActive в components/Nav.tsx так, чтобы раздел оставался активным на вложенных адресах, но главная подсвечивалась только на «/». Остальное не меняй.</div>
+      <div class="prompt">Найди в проекте все места, где цвет написан напрямую (hex или bg-[#…]) и замени на токены из @theme. Новые токены добавь в globals.css. Список изменённых файлов выведи в конце.</div>
+      <div class="prompt">Проверь все страницы: у каждой должны быть уникальные title и description, один h1 и alt у каждой картинки. Покажи таблицу «страница → title → description» и исправь недочёты.</div>
+      <div class="prompt">Объясни простыми словами, как для новичка: как Next.js понимает по папкам, какие адреса есть на сайте, что такое children в layout.tsx и почему Nav.tsx помечен "use client", а page.tsx нет. Код не переписывай.</div>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/project-structure" target="_blank" rel="noopener">Next.js: Project structure</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 08 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: корпоративный сайт"><span class="num">08</span> Практика: корпоративный сайт из пяти страниц</h2>
+
+      <p>Собираем сайт вымышленной студии «Сарв» (кипарис: символ стойкости). Свою студию, бренд и цвета выберите сами: сайт получится вашим. План такой: новый проект → правила → дизайн-система → layout и меню → пять страниц → картинки и метатеги → проверка → публикация.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1–2</b><span>проект и правила</span><code>AGENTS.md</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>3</b><span>токены и кирпичи</span><code>@theme, ui/</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>4</b><span>layout, шапка, подвал</span><code>Nav, Footer</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>5–6</b><span>страницы, картинки, метатеги</span><code>5 × page.tsx</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>7–8</b><span>проверка и деплой</span><code>build → push</code></div>
+        </div>
+        <figcaption>Порядок работы: фундамент (правила, токены) раньше страниц, а проверка — после каждого шага</figcaption>
+      </figure>
+
+      <h3>Шаг 0. Подготовка</h3>
+      <ul>
+        <li>Cursor, Node.js, Git и аккаунты GitHub и Vercel из уроков 4–5 готовы.</li>
+        <li>Решите: название студии, чем занимается, 3 услуги с ценами в сомони, 3 кейса (вымышленных), 2–3 «людей из команды». Для картинок подготовьте 3–4 файла (свои фото, сгенерированные или со стоков с разрешённой лицензией), каждый до 300 КБ.</li>
+        <li>Контакты на сайте — только вымышленные или те, что готовы показать публично.</li>
+      </ul>
+
+      <h3>Шаг за шагом</h3>
+      <ol class="steps">
+        <li><b>Создайте проект.</b> В терминале из папки, где хранятся ваши проекты: <code>npx create-next-app@latest saru-site</code>, ответы по умолчанию (рекомендуемые настройки, как в уроке 5: TypeScript, ESLint, Tailwind, App Router, без <code>src</code>). Откройте папку в Cursor, запустите <code>npm run dev</code> и убедитесь, что страница открывается на <code>localhost:3000</code>. Сделайте первый коммит.</li>
+        <li><b>Правила проекта.</b> Попросите агента в режиме «План» создать или дополнить <code>AGENTS.md</code> короткими правилами (урок 6). Пример: «Страницы — в app/<адрес>/page.tsx. Ссылки внутри сайта — только Link. Картинки — только next/image из public/images, всегда alt, width и height. Цвета и шрифты — только токены из @theme. "use client" — только в Nav и форме. У каждой страницы свой title и description». Проверьте, что правил не больше 10 и они конкретны.</li>
+        <li><b>Дизайн-система.</b> Дайте агенту задачу: «В app/globals.css добавь @theme с токенами: brand-50, brand-600, brand-700, ink, radius-card (мой акцентный цвет: […]). Создай components/ui/Container.tsx, Section.tsx, Button.tsx, использующие только эти токены. Button умеет два вида: заполненный и контурный; для внутренней ссылки внутри себя использует Link». Запустите <code>npm run build</code>, закоммитьте.</li>
+        <li><b>Layout и меню.</b> Попросите: «components/Header.tsx с логотипом и Nav, components/Nav.tsx (только он с "use client", usePathname, подсветка текущей страницы, как в уроке 9), components/Footer.tsx; подключи их в app/layout.tsx, lang="ru», общая metadata с шаблоном заголовка. Бургер-меню на телефоне (урок 8)». Откройте сайт, убедитесь, что шапка видна, а меню ведёт на адреса (они пока дадут 404).</li>
+        <li><b>Пять страниц.</b> По одной: <code>app/page.tsx</code> (hero, 3 услуги, кнопка в контакты), <code>app/services/page.tsx</code>, <code>app/cases/page.tsx</code> (карточки кейсов из массива), <code>app/about/page.tsx</code> (команда, история), <code>app/contacts/page.tsx</code> (контакты и форма заявки из урока 8: попросите адаптировать форму из <code>dental-landing</code>, она остаётся клиентским компонентом в отдельном файле). Каждую страницу проверяйте в браузере и коммитьте.</li>
+        <li><b>Картинки.</b> Положите файлы в <code>public/images</code>. Попросите: «Подключи картинки через next/image: hero на главной с preload, фото команды на странице О компании с fill и object-cover, у каждой alt, sizes указан». Проверьте на узком окне, что вёрстка не «прыгает».</li>
+        <li><b>Метатеги.</b> Попросите: «Для каждой страницы задай свои title и description через metadata. Таблицу «страница → title → description» покажи в ответе». Откройте страницу, нажмите правой кнопкой → «Просмотр кода страницы» (View Page Source) и найдите <code>&lt;title&gt;</code> и <code>&lt;meta name="description"&gt;</code>. Бонус: <code>app/robots.ts</code> и <code>app/sitemap.ts</code>.</li>
+        <li><b>Страница 404.</b> Попросите <code>app/not-found.tsx</code> в стиле сайта со ссылкой «На главную». Проверьте, открыв несуществующий адрес, например <code>/zzz</code>.</li>
+        <li><b>Проверка.</b> Выполните <code>npm run build</code>: ошибок быть не должно. Пройдите по меню, проверьте подсветку, откройте сайт на ширине телефона (урок 3), посмотрите, что цвета везде из токенов. Задайте агенту вопрос «найди захардкоженные цвета» (см. промпты выше).</li>
+        <li><b>GitHub и Vercel.</b> Создайте репозиторий на GitHub, отправьте код (коммит и push, урок 4), в Vercel импортируйте репозиторий (урок 5) и дождитесь деплоя. Откройте ссылку <code>…vercel.app</code>, пройдите по всем страницам.</li>
+        <li><b>Объяснение.</b> Спросите у ИИ, какие адреса есть на сайте и почему <code>Nav.tsx</code> клиентский, а страницы нет. Назовите ответ своими словами — это шаг «от результата к пониманию».</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>404 на адресе, который вы создали.</b> Файл называется не <code>page.tsx</code> (например, <code>services.tsx</code>), лежит вне папки <code>app</code> или в имени папки опечатка. Сверьте имена: адрес = имя папки.</p>
+        <p><b>Ошибка про <code>usePathname</code> и Client Component.</b> В файле меню нет <code>"use client"</code> первой строкой. Добавьте или попросите ИИ.</p>
+        <p><b>Ошибка про <code>metadata</code> и <code>"use client"</code>.</b> Экспорт <code>metadata</code> оказался в клиентском файле. Верните страницу серверной, а клиентскую часть вынесите в отдельный компонент.</p>
+        <p><b>Ошибка <code>Invalid src prop … hostname "…" is not configured under images in your next.config.js</code>.</b> Картинка с чужого адреса: положите файл в <code>public/images</code> или добавьте адрес в <code>images.remotePatterns</code> (текст ошибки в вашей версии может чуть отличаться).</p>
+        <p><b>Картинка «улетела» или растянулась на весь экран.</b> У <code>Image</code> с <code>fill</code> родитель без <code>relative</code> и высоты. Задайте классы вроде <code>relative h-64</code>.</p>
+        <p><b>Стили токенов не применяются (<code>bg-brand-600</code> без цвета).</b> Проверьте, что переменная названа <code>--color-brand-600</code> (с префиксом <code>--color-</code>) и находится внутри <code>@theme</code>; после правки перезапустите <code>npm run dev</code>, если страница не обновилась.</p>
+        <p><b>Меню подсвечено на всех страницах.</b> Для главной сравнивается <code>startsWith("/")</code>. Верните точное сравнение для <code>/</code> (см. задачу 3.1).</p>
+        <p><b>Vercel собрал не то, что на компьютере.</b> Забыли <code>git push</code> или не закоммитили файлы (особенно <code>public/images</code>). Файл в имени с заглавной буквой на Windows и macOS работает, а на Vercel (Linux) может сломаться: сверьте регистр в импортах.</p>
+      </div>
+
+      <article class="task" id="cl-built">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: сайт собран</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-site">
+          <li>Создан проект, <code>npm run dev</code> открывает сайт, сделан первый коммит</li>
+          <li>В <code>AGENTS.md</code> есть правила проекта (Link, next/image, токены, "use client", metadata)</li>
+          <li>В <code>globals.css</code> блок <code>@theme</code> с токенами, в <code>components/ui</code> есть Container, Section, Button</li>
+          <li>Общий <code>layout.tsx</code> с шапкой и подвалом, <code>lang="ru"</code>, меню подсвечивает текущую страницу</li>
+          <li>Есть пять страниц: <code>/</code>, <code>/services</code>, <code>/cases</code>, <code>/about</code>, <code>/contacts</code>; несуществующий адрес показывает свою страницу 404</li>
+          <li>Картинки подключены через <code>next/image</code>, у каждой есть alt</li>
+          <li>У каждой страницы свой title и description (проверено в «Просмотр кода страницы»)</li>
+          <li><code>npm run build</code> проходит без ошибок, сайт нормально выглядит на ширине телефона</li>
+          <li>Код отправлен на GitHub, на Vercel открывается ссылка <code>…vercel.app</code> и все пять страниц</li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-fix">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Если сломалось: найди причину</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Меню ведёт на <code>/services</code>, но показывает 404. В проекте есть файл <code>app/services/Services.tsx</code>. Причина?</p>
+          <ol class="options">
+            <li>На Vercel не хватает памяти</li>
+            <li>Забыт <code>"use client"</code></li>
+            <li>Нет файла <code>app/services/page.tsx</code>: Next.js не считает <code>Services.tsx</code> страницей</li>
+            <li>Нужно заменить <code>Link</code> на <code>&lt;a&gt;</code></li>
+          </ol>
+          <div class="explain"><p>Адрес появляется только при файле <code>page.tsx</code>. Переименуйте файл или создайте <code>page.tsx</code>, который импортирует компонент.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Сборка остановилась с сообщением: «You are attempting to export "metadata" from a component marked with "use client"». Что исправить?</p>
+          <ol class="options">
+            <li>Убрать <code>"use client"</code> из <code>page.tsx</code> и вынести интерактивную часть в отдельный клиентский компонент</li>
+            <li>Добавить ещё один <code>"use client"</code></li>
+            <li>Удалить файл <code>globals.css</code></li>
+            <li>Переименовать <code>metadata</code> в <code>meta</code></li>
+          </ol>
+          <div class="explain"><p>Metadata API работает только в серверных файлах. Оставьте <code>page.tsx</code> серверным, а клиентскую часть (форму, меню) вынесите.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Вместо цвета бренда кнопка серая. В CSS написано <code>--brand-600: #0e7a55;</code> внутри <code>@theme</code>, а в компоненте <code>bg-brand-600</code>. Что не так?</p>
+          <ol class="options">
+            <li>Нужен перезапуск компьютера</li>
+            <li>Переменная должна называться <code>--color-brand-600</code>: Tailwind создаёт классы цвета только из <code>--color-*</code></li>
+            <li>Нужно написать цвет прописными буквами</li>
+            <li>Цвет в <code>@theme</code> задавать нельзя</li>
+          </ol>
+          <div class="explain"><p>Префикс определяет, какие классы появятся: <code>--color-*</code> — классы цвета, <code>--radius-*</code> — скругления и так далее.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/api-reference/file-conventions/not-found" target="_blank" rel="noopener">Next.js: not-found.js</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 09 · Фишка урока ============ -->
+    <section class="topic" id="challenge">
+      <h2 data-toc="Взаимное код-ревью"><span class="num">09</span> Фишка урока: взаимное код-ревью</h2>
+
+      <p>Профессиональные команды не выпускают код, который не посмотрел второй человек. Это называется <b>код-ревью</b>. Сегодня вы попробуете себя в двух ролях: автор и ревьюер. Работаете парами, проверяете чужой сайт по чек-листу и пишете полезные комментарии. Блок рассчитан на преподавателя и может проводиться в аудитории или онлайн.</p>
+
+      <div class="callout tip">
+        <b>Правила</b>
+        <p><b>1.</b> Пары назначает преподаватель (или жребий). Каждый проверяет сайт соседа и получает ревью на свой. <b>2.</b> У ревьюера две вкладки: живой сайт на Vercel и репозиторий на GitHub. <b>3.</b> Идём строго по чек-листу ниже, ничего не правим в чужом коде: только комментарии. <b>4.</b> Комментарий должен быть конкретным: <b>где</b> (файл или страница), <b>что</b> не так, <b>почему</b> это важно, <b>как</b> исправить. Без «плохо» и «мне не нравится». <b>5.</b> Каждому замечанию — уровень: <b>блокер</b> (сайт ломается или не выполнено требование), <b>важно</b> (стоит исправить), <b>улучшение</b> (на желание). <b>6.</b> Хотя бы <b>одно</b> замечание обязательно и хотя бы <b>одна похвала</b> за что-то удачное. <b>7.</b> Автор отвечает на каждое замечание: «исправлено» или «не согласен, потому что…».</p>
+      </div>
+
+      <h3>Расписание (около 60 минут)</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:05</td><td>Обмениваются двумя ссылками (GitHub и Vercel), открывают сайт соседа</td></tr>
+            <tr><td>0:05–0:15</td><td>Проход по живому сайту: меню, подсветка, адреса, телефон, 404</td></tr>
+            <tr><td>0:15–0:30</td><td>Проход по коду на GitHub: структура папок, layout, Nav, <code>next/image</code>, metadata, токены</td></tr>
+            <tr><td>0:30–0:40</td><td>Пишут комментарии в формате «где · что · почему · как исправить · уровень»</td></tr>
+            <tr><td>0:40–0:50</td><td>Обмениваются ревью, читают, отвечают автору</td></tr>
+            <tr><td>0:50–1:00</td><td>Исправляют блокеры, в общем чате делятся самым полезным замечанием</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Чек-лист ревьюера</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Область</th><th>Что проверить</th><th>Где смотреть</th></tr></thead>
+          <tbody>
+            <tr><td><b>Структура</b></td><td>Пять адресов открываются, у каждого есть <code>page.tsx</code> в своей папке; нет лишних папок и «мусора»</td><td>GitHub → <code>app/</code>; сайт</td></tr>
+            <tr><td><b>Layout</b></td><td>Шапка и подвал описаны один раз в <code>layout.tsx</code>, а не копируются; <code>lang="ru"</code></td><td><code>app/layout.tsx</code></td></tr>
+            <tr><td><b>Навигация</b></td><td>Внутри сайта только <code>Link</code>, текущий пункт меню подсвечен, <code>"use client"</code> только там, где нужен</td><td><code>components/Nav.tsx</code></td></tr>
+            <tr><td><b>Картинки</b></td><td>Везде <code>next/image</code>, у каждой осмысленный <code>alt</code>, размеры или <code>fill</code> с <code>relative</code>, файлы лёгкие</td><td><code>public/images</code>, страницы</td></tr>
+            <tr><td><b>SEO</b></td><td>У каждой страницы свои title и description, один h1, шаблон заголовка, нет «Create Next App»</td><td>«Просмотр кода страницы», <code>metadata</code></td></tr>
+            <tr><td><b>Дизайн-система</b></td><td>Цвета, шрифты, скругления из токенов; нет <code>bg-[#…]</code>; есть общие Button, Section, Container</td><td><code>globals.css</code>, <code>components/ui</code></td></tr>
+            <tr><td><b>Качество</b></td><td>Нет секретов в коде и в репозитории, <code>npm run build</code> проходит, нет кода, который автор не может объяснить; вёрстка не ломается на телефоне</td><td>Репозиторий, сайт на узкой ширине</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Пример хорошего комментария</h3>
+      <div class="prompt">Где: components/Nav.tsx, функция isActive.
+Что: для главной используется startsWith("/"), поэтому все пункты подсвечены одновременно.
+Почему: посетитель не понимает, на какой он странице; на скриншоте на странице /cases подсвечены все пять пунктов.
+Как исправить: для href === "/" сравнивать pathname === "/".
+Уровень: блокер.</div>
+
+      <div class="callout tip">
+        <b>Ревью и ИИ</b>
+        <p>Сначала ревью делаете сами, глазами и по чек-листу. Потом можно попросить ИИ о втором мнении: «Проверь этот файл по чек-листу …», но любое замечание ИИ подтвердите в коде: он может ошибаться и не видеть всего проекта. Передавайте ему только код, без ключей и приватных данных.</p>
+      </div>
+
+      <h3>Как считаем очки (необязательно)</h3>
+      <ul>
+        <li><b>+2</b> за каждое подтверждённое автором замечание уровня «блокер» или «важно».</li>
+        <li><b>+1</b> за каждое улучшение, которое автор принял.</li>
+        <li><b>+1</b> за каждую конкретную похвалу.</li>
+        <li><b>+3</b> автору, если все блокеры исправлены до конца блока.</li>
+        <li><b>−2</b> за замечание без «где» и «как исправить».</li>
+      </ul>
+
+      <article class="task" id="cl-review">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист: я провёл ревью и получил ревью</h4><span class="level mid">средняя</span></header>
+        <p>Отметьте выполненное.</p>
+        <ul class="checklist" id="cl-peer">
+          <li>Проверил сайт соседа на Vercel: меню, подсветка, 404, узкое окно</li>
+          <li>Проверил код соседа на GitHub по чек-листу ревьюера</li>
+          <li>Написал не меньше трёх комментариев в формате «где · что · почему · как исправить · уровень» и одну похвалу</li>
+          <li>Получил ревью своего сайта, ответил на каждое замечание («исправлено» или «не согласен, потому что…»)</li>
+          <li>Исправил все блокеры из ревью и отправил изменения на GitHub</li>
+        </ul>
+      </article>
+
+      <div class="callout analogy">
+        <b>Для преподавателя</b>
+        <p>Составьте пары заранее, при нечётном числе сделайте одну тройку по кругу. Спросите в конце: какое замечание было самым полезным? Какое оказалось спорным? Подчеркните: ревью проверяет код, а не человека, и хорошее замечание звучит как «давайте сделаем так», а не «вы сделали неправильно». Чтобы никто не остался с одним блокером «на потом», оставьте 10 минут на исправления.</p>
+      </div>
+    </section>
+
+    <!-- ============ Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">10</span> Домашнее задание: корпоративный сайт из пяти страниц (ДЗ-9)</h2>
+
+      <p>Доработайте сайт из практики или создайте новый корпоративный сайт на любую вымышленную или реальную тему (компания, клиника, школа). Сдача: две ссылки (репозиторий GitHub и сайт на Vercel).</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Пять страниц:</b> Главная, Услуги, Кейсы (или Портфолио), О компании, Контакты, у каждой своя папка с <code>page.tsx</code> и свои тексты, а не пять копий одного и того же.</li>
+        <li><b>Один layout:</b> шапка и подвал только в <code>layout.tsx</code>; меню подсвечивает текущую страницу; ссылки внутри сайта через <code>Link</code>.</li>
+        <li><b>Дизайн-система:</b> токены в <code>@theme</code> (минимум основной цвет, нейтральный текст, скругление); общие <code>Button</code>, <code>Section</code>, <code>Container</code>; в страницах нет <code>bg-[#…]</code> и цветов «вручную».</li>
+        <li><b>Картинки:</b> не меньше трёх через <code>next/image</code> с осмысленным <code>alt</code>, размеры заданы (или <code>fill</code> с <code>relative</code>), файлы до 300 КБ.</li>
+        <li><b>SEO:</b> уникальные title и description на каждой странице, шаблон заголовка в корневом layout, <code>lang="ru"</code>, один h1 на страницу, своя страница 404; бонус: <code>robots.ts</code> и <code>sitemap.ts</code>.</li>
+        <li><b>Контакты:</b> форма заявки с проверкой полей (урок 8) или явные способы связи.</li>
+        <li><b>Качество:</b> <code>npm run build</code> без ошибок, на телефоне ничего не ломается, нет ключей и паролей в коде.</li>
+        <li><b>Ревью:</b> вы провели ревью сайта соседа и учли замечания к своему (достаточно в отчёте: «получил N замечаний, исправил M»).</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li>Доведите сайт до выполнения всех требований. Каждую крупную задачу начинайте с коммита.</li>
+        <li>Проверьте себя по чек-листу ревьюера из раздела 9.</li>
+        <li>Отправьте код на GitHub и убедитесь, что на Vercel собралась последняя версия.</li>
+        <li>Пройдите по всем пяти адресам на ссылке Vercel, на телефоне и ноутбуке.</li>
+        <li>Вставьте две ссылки в блоки ниже и отметьте чек-лист требований.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Пять страниц с одинаковым содержимым и разными заголовками. <b>2.</b> Шапка скопирована в каждую страницу. <b>3.</b> Одинаковые title («Create Next App») у всех страниц. <b>4.</b> Картинка без <code>alt</code> или с <code>alt="image"</code>. <b>5.</b> Цвета прописаны в классах цифрами. <b>6.</b> В репозиторий попали <code>.env</code> с ключами или папка <code>node_modules</code>. <b>7.</b> Ссылка на Vercel ведёт на старый деплой, а на GitHub — новая версия.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Как проверяют</b>
+        <p>Проверяющий откроет Vercel-ссылку, пройдёт по меню, откроет «Просмотр кода страницы» на двух-трёх страницах, затем заглянет в <code>layout.tsx</code>, <code>Nav.tsx</code>, <code>globals.css</code> и одну страницу. Баллы за соответствие требованиям, аккуратность структуры и то, что вы можете объяснить свой код.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Чек-лист требований к ДЗ-9</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Пять страниц с адресами <code>/</code>, <code>/services</code>, <code>/cases</code>, <code>/about</code>, <code>/contacts</code>, у каждой свой контент</li>
+          <li>Шапка и подвал только в <code>layout.tsx</code>, меню подсвечивает текущую страницу, внутри сайта только <code>Link</code></li>
+          <li>Токены в <code>@theme</code>, общие <code>Button</code>, <code>Section</code>, <code>Container</code>, нет цветов «вручную»</li>
+          <li>Не меньше трёх картинок через <code>next/image</code> с <code>alt</code> и размерами</li>
+          <li>У каждой страницы свой title и description, шаблон заголовка в layout, <code>lang="ru"</code>, один h1, своя страница 404</li>
+          <li>Есть форма заявки с проверкой или явные контакты</li>
+          <li><code>npm run build</code> проходит, на телефоне ничего не ломается, секретов в репозитории нет</li>
+          <li>Взаимное ревью проведено, замечания учтены</li>
+          <li>Ссылки на GitHub и Vercel вставлены ниже</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 10.2</span><h4>Ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий сайта.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/saru-site"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 10.3</span><h4>Ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на опубликованный сайт (адрес вида <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://saru-site.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/deploying" target="_blank" rel="noopener">Next.js: деплой</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Роутинг:</b> папка в <code>app</code> + файл <code>page.tsx</code> = адрес. Папка без <code>page.tsx</code> адреса не создаёт. <code>[slug]</code> — один шаблон на много адресов, значение в <code>params</code> (с <code>await</code>).</li>
+        <li><b>Layout:</b> <code>app/layout.tsx</code> обязателен, содержит <code>&lt;html lang&gt;</code> и <code>&lt;body&gt;</code>; <code>{children}</code> — место для страницы. Layout-ы вкладываются и не перерисовываются при переходах.</li>
+        <li><b>Link:</b> внутри сайта <code>&lt;Link href="/…"&gt;</code>, наружу — обычный <code>&lt;a&gt;</code>. Предзагрузка работает в боевой сборке.</li>
+        <li><b>Меню с подсветкой:</b> <code>usePathname</code> + <code>"use client"</code> в отдельном файле; для <code>/</code> сравнение строгое, для остальных <code>===</code> или <code>startsWith(href + "/")</code>.</li>
+        <li><b>next/image:</b> <code>src</code> от корня <code>public</code>, <code>alt</code>, <code>width</code> и <code>height</code> или <code>fill</code> с <code>relative</code> у родителя, <code>sizes</code>; первая картинка экрана — <code>preload</code> (раньше <code>priority</code>); чужие адреса — <code>remotePatterns</code>.</li>
+        <li><b>Metadata:</b> <code>export const metadata</code> в серверных <code>page.tsx</code> / <code>layout.tsx</code>; шаблон <code>title.template</code> и <code>default</code> в корне; <code>openGraph</code> страницы заменяет общий; <code>robots.ts</code>, <code>sitemap.ts</code>, <code>opengraph-image</code> — файловые конвенции.</li>
+        <li><b>SEO-минимум:</b> уникальные title и description, один h1, alt, <code>lang="ru"</code>, понятные адреса, мобильная версия. Позиций метатеги не гарантируют.</li>
+        <li><b>Дизайн-система:</b> токены в <code>@theme</code> (<code>--color-brand-600</code> → <code>bg-brand-600</code>) → кирпичи <code>Button</code>, <code>Section</code>, <code>Container</code> → страницы. Цвет «вручную» в компонентах — признак проблемы.</li>
+        <li><b>Работа с ИИ:</b> сначала «План», правила в <code>AGENTS.md</code>, фундамент (токены, layout) раньше страниц, <code>npm run build</code> и коммит после каждого шага.</li>
+        <li><b>Код-ревью:</b> «где · что · почему · как исправить · уровень»; блокер, важно, улучшение; не только критика, но и похвала; чужой код не правим, только комментируем.</li>
+        <li><b>Безопасность:</b> ключи и <code>.env</code> не попадают в репозиторий; картинки только с разрешённой лицензией; личные данные на сайт не выкладываем.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 11.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу по дереву папок назвать адреса сайта и объяснить, зачем нужен <code>page.tsx</code></li>
+          <li>Могу объяснить, что такое layout и <code>children</code>, и собрать общую шапку и подвал</li>
+          <li>Могу написать меню на <code>Link</code> с подсветкой текущей страницы и объяснить, зачем в нём <code>"use client"</code></li>
+          <li>Могу подключить картинку через <code>next/image</code>: размеры, <code>alt</code>, <code>fill</code>, разрешение внешних адресов</li>
+          <li>Могу задать title, description и шаблон заголовка и назвать базовые приёмы SEO</li>
+          <li>Могу вынести цвета в токены Tailwind и не писать их вручную в страницах</li>
+          <li>Могу проверить чужой сайт по чек-листу и написать конкретное замечание</li>
+        </ul>
+      </article>
+    </section>

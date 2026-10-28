@@ -1,0 +1,1181 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+  .topic p code, .topic li code, .topic td code, .topic summary + p code, .explain code, .hint code { white-space: normal; overflow-wrap: anywhere; }
+</style>
+
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 18 · Модуль 6. Полноценный продукт</p>
+      <h1>Спринт 2: данные, админка, файлы</h1>
+      <p class="lead">К концу урока ваш выпускной проект выполняет свою основную задачу: пользователь создаёт, ищет, правит и удаляет записи, прикладывает картинку, а владелец получает письмо о новой записи. У администратора есть панель со статистикой и управлением записями, а файлы лежат в закрытом хранилище, к которому у каждого пользователя доступ только к своей папке.</p>
+      <ul class="goals">
+        <li>Собрать CRUD-экраны (создать, показать, изменить, удалить) с проверкой данных на сервере и правилами RLS</li>
+        <li>Сделать поиск, фильтры, сортировку и пагинацию так, чтобы состояние жило в адресе страницы (query string)</li>
+        <li>Создать закрытый бакет Supabase Storage, написать политики по id пользователя и загрузить картинку</li>
+        <li>Отправить e-mail-уведомление через Resend и объяснить, почему без своего домена письма идут только на ваш адрес</li>
+        <li>Построить админ-панель: статистика и управление записями, доступ только роли admin на трёх уровнях</li>
+        <li>Пройти главный сценарий продукта от начала до конца и найти чужие ошибки с помощью баг-репорта</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Это второй урок-спринт: продолжаем выпускной проект из урока 17. Откройте урок в одной половине экрана, а Cursor с вашим репозиторием в другой. Нужны: рабочий каркас (вход, роли, пустые экраны), файлы <code>docs/SPEC.md</code>, <code>docs/SCHEMA.md</code>, <code>docs/SPRINT.md</code>, <code>AGENTS.md</code>, аккаунты Supabase, GitHub и Vercel; в разделе 4 добавится бесплатный аккаунт Resend. Время: 5–6 часов, лучше за два подхода: теория и план (разделы 1–6), затем практика (раздел 7) и «Сломай чужой продукт» (раздел 8). Правило прежнее: одна задача = один промпт = один commit; как нарезать задачи и откатываться, объяснено в уроке 17, здесь оно только применяется. Таблицы, RLS и роли берём из уроков 11–12, вызов внешнего API с секретным ключом на сервере из урока 13.</p>
+    </div>
+
+    <!-- ============ 01 · CRUD ============ -->
+    <section class="topic" id="crud">
+      <h2 data-toc="CRUD-экраны"><span class="num">01</span> CRUD: четыре действия с любой записью</h2>
+
+      <p>Почти любой продукт, от CRM до интернет-магазина, делает с данными четыре вещи: <b>создаёт</b> (Create), <b>показывает</b> (Read), <b>меняет</b> (Update) и <b>удаляет</b> (Delete). Аббревиатуру CRUD запоминают раз и навсегда: она связывает экран, действие в базе и правило RLS. На один раздел вашего продукта обычно нужны четыре экрана: список, форма создания, страница записи с формой изменения и подтверждение удаления.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Таблица из четырёх строк: Create — форма создания, команда insert, правило with check; Read — список и страница записи, команда select, правило using; Update — форма изменения, команда update, правила using и with check; Delete — кнопка с подтверждением, команда delete, правило using">
+          <text class="sub" x="14" y="22">Действие</text><text class="sub" x="150" y="22">Экран</text><text class="sub" x="360" y="22">Команда базы</text><text class="sub" x="520" y="22">Правило RLS</text>
+          <rect class="fill-g" x="8" y="32" width="124" height="44" rx="10" /><text x="70" y="60" text-anchor="middle">Create</text>
+          <rect class="box" x="146" y="32" width="196" height="44" rx="10" /><text x="244" y="60" text-anchor="middle">форма «Добавить»</text>
+          <rect class="box b" x="356" y="32" width="150" height="44" rx="10" /><text class="mono" x="431" y="60" text-anchor="middle">insert</text>
+          <rect class="box v" x="520" y="32" width="190" height="44" rx="10" /><text class="mono" x="615" y="60" text-anchor="middle">with check</text>
+          <rect class="fill-g" x="8" y="88" width="124" height="44" rx="10" /><text x="70" y="116" text-anchor="middle">Read</text>
+          <rect class="box" x="146" y="88" width="196" height="44" rx="10" /><text x="244" y="116" text-anchor="middle">список и страница записи</text>
+          <rect class="box b" x="356" y="88" width="150" height="44" rx="10" /><text class="mono" x="431" y="116" text-anchor="middle">select</text>
+          <rect class="box v" x="520" y="88" width="190" height="44" rx="10" /><text class="mono" x="615" y="116" text-anchor="middle">using</text>
+          <rect class="fill-y" x="8" y="144" width="124" height="44" rx="10" /><text x="70" y="172" text-anchor="middle">Update</text>
+          <rect class="box" x="146" y="144" width="196" height="44" rx="10" /><text x="244" y="172" text-anchor="middle">форма «Изменить»</text>
+          <rect class="box b" x="356" y="144" width="150" height="44" rx="10" /><text class="mono" x="431" y="172" text-anchor="middle">update</text>
+          <rect class="box v" x="520" y="144" width="190" height="44" rx="10" /><text class="mono" x="615" y="172" text-anchor="middle">using + with check</text>
+          <rect class="fill-r" x="8" y="200" width="124" height="44" rx="10" /><text x="70" y="228" text-anchor="middle">Delete</text>
+          <rect class="box" x="146" y="200" width="196" height="44" rx="10" /><text x="244" y="228" text-anchor="middle">кнопка + «Вы уверены?»</text>
+          <rect class="box b" x="356" y="200" width="150" height="44" rx="10" /><text class="mono" x="431" y="228" text-anchor="middle">delete</text>
+          <rect class="box v" x="520" y="200" width="190" height="44" rx="10" /><text class="mono" x="615" y="228" text-anchor="middle">using</text>
+        </svg>
+        <figcaption>Каждая буква CRUD: экран, команда базы и правило RLS (урок 11). Если правила для команды нет, база молча ничего не сделает</figcaption>
+      </figure>
+
+      <h3>Где что выполняется</h3>
+      <p>Страница читает данные на сервере (она серверный компонент, урок 9). Формы отправляют данные в <b>серверные действия</b> (Server Actions): это функции с директивой <code>"use server"</code>, которые Next.js вызывает по отправке формы. Действие делает три вещи по порядку: проверяет вошедшего пользователя (<code>getClaims()</code>, урок 12), проверяет данные формы и выполняет запрос к Supabase; затем сообщает странице обновиться (<code>revalidatePath</code>) или перенаправляет на нужный адрес. Весь код вставляет ИИ, а вы проверяете его по трём правилам ниже.</p>
+
+      <div class="callout tip">
+        <b>Три правила CRUD-экрана</b>
+        <p><b>1. Данные проверяет сервер.</b> Браузерная проверка (<code>required</code>, длина поля) нужна для удобства, а настоящая защита в серверном действии и в базе: запрос можно отправить в обход вашей формы. <b>2. Права решает RLS.</b> Не «прячем кнопку», а в базе есть правила <code>update</code> и <code>delete</code> только для своих строк и для admin. <b>3. У каждого экрана четыре состояния:</b> загрузка, пусто, ошибка, успех (после сохранения короткое сообщение или переход на список).</p>
+      </div>
+
+      <h3>Практичные детали</h3>
+      <ul>
+        <li><b>Удаление спрашивает подтверждение.</b> «Вы уверены?» защищает от случайного клика. Мягкое удаление (столбец <code>deleted_at</code> вместо реального <code>delete</code>) нужно, если запись может понадобиться восстановить; в учебном проекте хватит обычного.</li>
+        <li><b>Идентификатор владельца ставит сервер.</b> Столбец <code>user_id</code> заполняется из <code>getClaims()</code> в серверном действии, а не из скрытого поля формы: поле можно подменить.</li>
+        <li><b>После изменения обновите список.</b> Если страница списка осталась старой, значит, не вызван <code>revalidatePath</code> для её адреса.</li>
+        <li><b>Один компонент формы на создание и изменение.</b> Различаются начальные значения и кнопка: так меньше кода и меньше ошибок.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Тетрадь учёта в маленькой лавке на базаре. Продавец записывает новый товар (Create), смотрит записи (Read), поправляет цену (Update) и вычёркивает проданное (Delete). Но хозяин лавки решает, кому можно трогать тетрадь: помощник пишет только в свой раздел, а вычёркивать и смотреть всё может лишь хозяин. Тетрадь — таблица, хозяин — правила RLS, а ваша форма — только окошко, через которое продавец протягивает руку.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Есть правило <code>select</code> и <code>insert</code>, а <code>update</code> и <code>delete</code> забыли: кнопка «Сохранить» нажимается, ошибки нет, но запись не меняется (RLS молча отфильтровал строку). <b>2.</b> <code>user_id</code> берут из формы. <b>3.</b> Нет проверки на сервере: пустые и слишком длинные строки попадают в базу. <b>4.</b> Удаление без подтверждения и без <code>revalidatePath</code>: запись исчезла, а в списке ещё видна. <b>5.</b> Меняют статус записи в интерфейсе, а в базе правило разрешает любому вошедшему менять любые строки (<code>using (true)</code>). <b>6.</b> Не проверяют ошибки ответа Supabase: <code>const { error } = …</code> написали, а <code>error</code> не используют.</p>
+      </div>
+
+      <article class="task" id="q-crud">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: CRUD и права</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Пользователь нажал «Сохранить» на форме изменения своей записи. Ошибок нет, но значение осталось прежним. В таблице включён RLS, правила <code>select</code> и <code>insert</code> есть. Что вероятнее всего?</p>
+          <ol class="options">
+            <li>Браузер закэшировал страницу на неделю</li>
+            <li>В Supabase закончилась бесплатная квота</li>
+            <li>Нет правила <code>update</code> для этой таблицы: RLS не выдаёт ошибку, а просто не находит строк для изменения</li>
+            <li>Название таблицы написано заглавными буквами</li>
+          </ol>
+          <div class="explain"><p>Включённый RLS без подходящего правила молча скрывает строки от команды. Попросите ИИ показать правила таблицы и добавить <code>update</code> для своих строк и для admin, не отключая RLS.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Откуда серверное действие должно взять <code>user_id</code> новой записи?</p>
+          <ol class="options">
+            <li>Из скрытого поля формы: так удобнее</li>
+            <li>Из проверенных данных вошедшего пользователя на сервере (<code>getClaims()</code>)</li>
+            <li>Из адреса страницы</li>
+            <li>Из локального хранилища браузера</li>
+          </ol>
+          <div class="explain"><p>Скрытое поле и всё, что приходит из браузера, можно подменить. Владельца записи ставит сервер по проверенной сессии, а правило <code>with check</code> в базе подстраховывает.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Какие команды базы соответствуют буквам C, R, U, D?</p>
+          <ol class="options">
+            <li><code>insert</code>, <code>select</code>, <code>update</code>, <code>delete</code></li>
+            <li><code>create</code>, <code>read</code>, <code>use</code>, <code>drop</code></li>
+            <li><code>post</code>, <code>get</code>, <code>put</code>, <code>remove</code></li>
+            <li>Все четыре буквы выполняет <code>select</code></li>
+          </ol>
+          <div class="explain"><p>В SQL это <code>insert</code>, <code>select</code>, <code>update</code>, <code>delete</code>, и на каждую команду нужно своё правило RLS. Варианты с <code>post/get/put</code> относятся к HTTP-запросам (урок 10).</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/mutating-data" target="_blank" rel="noopener">Next.js: Mutating Data (Server Actions)</a>, <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener">Supabase: Row Level Security</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 02 · Поиск, фильтры, сортировка, пагинация ============ -->
+    <section class="topic" id="list">
+      <h2 data-toc="Поиск, фильтры, пагинация"><span class="num">02</span> Список записей: поиск, фильтры, сортировка, пагинация</h2>
+
+      <p>Когда записей десять, список можно просто вывести. Когда их тысяча, пользователю нужны четыре инструмента: <b>поиск</b> по тексту, <b>фильтр</b> («только открытые»), <b>сортировка</b> («сначала дорогие») и <b>пагинация</b> (по 10 записей на странице). Главная идея: всё это состояние хранится <b>в адресе страницы</b>, в query string:</p>
+
+<pre class="code" data-title="Адрес списка">
+/items?q=tea&amp;status=open&amp;sort=price_desc&amp;page=2
+</pre>
+
+      <p>Такой адрес можно отправить другу, добавить в закладки, обновить страницу и вернуться кнопкой «назад», а состояние не потеряется. Если хранить его в <code>useState</code>, всё исчезнет при обновлении. В Next.js серверная страница получает параметры адреса готовыми: свойство <code>searchParams</code> (в Next.js 16 это промис, его читают через <code>await</code>).</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Поток: адрес с параметрами, затем серверная страница читает searchParams, затем запрос к Supabase с фильтром, сортировкой и диапазоном, затем ответ с рядами и общим числом, затем список и номера страниц; стрелка от ссылок страниц возвращается к адресу">
+          <rect class="fill-y" x="8" y="40" width="150" height="70" rx="10" /><text x="83" y="68" text-anchor="middle">1. Адрес</text><text class="sub mono" x="83" y="90" text-anchor="middle">?q=tea&amp;page=2</text>
+          <rect class="box v" x="188" y="40" width="150" height="70" rx="10" /><text x="263" y="68" text-anchor="middle">2. page.tsx</text><text class="sub" x="263" y="90" text-anchor="middle">await searchParams</text>
+          <rect class="box b" x="368" y="40" width="160" height="70" rx="10" /><text x="448" y="68" text-anchor="middle">3. Запрос</text><text class="sub" x="448" y="90" text-anchor="middle">ilike, eq, order, range</text>
+          <rect class="fill-g" x="558" y="40" width="152" height="70" rx="10" /><text x="634" y="68" text-anchor="middle">4. Экран</text><text class="sub" x="634" y="90" text-anchor="middle">строки + страницы</text>
+          <path class="arr" d="M158 75H182" /><path class="arr-head" d="M182 69l8 6-8 6z" />
+          <path class="arr" d="M338 75H362" /><path class="arr-head" d="M362 69l8 6-8 6z" />
+          <path class="arr" d="M528 75H552" /><path class="arr-head" d="M552 69l8 6-8 6z" />
+          <path class="arr" d="M634 110V170H83V116" /><path class="arr-head" d="M77 116l6-9 6 9z" />
+          <text class="sub" x="360" y="198" text-anchor="middle">клик по «Страница 3» или смена фильтра меняет адрес, и цикл повторяется</text>
+        </svg>
+        <figcaption>Адрес страницы — единственный источник правды: форма и ссылки только меняют его, а список строится из него</figcaption>
+      </figure>
+
+      <h3>Как это выглядит в запросе к Supabase</h3>
+      <p>Нужные фильтры по очереди добавляются к запросу (код пишет ИИ, но вы должны читать его глазами):</p>
+
+<pre class="code" data-title="app/(app)/items/page.tsx (фрагмент)">
+const size = 10;
+const from = (page - 1) * size;
+const to = from + size - 1; // range включает обе границы
+
+let query = supabase
+  .from("items")
+  .select("id, title, status, price, created_at", { count: "exact" })
+  .order(sort, { ascending: dir === "asc" })
+  .range(from, to);
+
+if (q) query = query.ilike("title", `%${q}%`);
+if (status) query = query.eq("status", status);
+
+const { data, count, error } = await query;
+const pages = Math.max(1, Math.ceil((count ?? 0) / size));
+</pre>
+
+      <ul>
+        <li><code>ilike</code> ищет без учёта регистра, знаки <code>%</code> по краям означают «что угодно до и после». Для частых поисков по большой таблице потом добавляют индекс, на учебный проект это не влияет.</li>
+        <li><code>range(from, to)</code> отсчитывается с нуля, а границы <b>включены</b>: <code>range(0, 9)</code> вернёт первые десять строк. Всегда вместе с <code>order</code>, иначе порядок строк не гарантирован и записи могут «прыгать» между страницами.</li>
+        <li><code>{ count: "exact" }</code> возвращает общее число подходящих строк: по нему вы считаете страницы. Для панели статистики есть вариант <code>{ count: "exact", head: true }</code>: вернётся только число без самих строк.</li>
+        <li><b>Сортировку проверяйте по белому списку.</b> Если взять <code>sort</code> из адреса как есть, пользователь подставит что угодно: разрешайте только известные поля (<code>created_at</code>, <code>price</code>, <code>title</code>).</li>
+        <li><b>Мусор в адресе не должен ломать страницу.</b> <code>?page=abc</code> и <code>?page=-5</code> превращаются в первую страницу, а <code>page</code> больше числа страниц показывает последнюю или пустое состояние.</li>
+      </ul>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/18-sprint-2/list-toolbar.svg" alt="Схема экрана списка: сверху поле поиска «tea», выпадающие списки «Статус: open» и «Сортировка: цена по убыванию» и кнопка «Сбросить»; ниже таблица из трёх записей; внизу «Страница 2 из 2» и кнопки «Назад» и «Вперёд»; в строке адреса видны параметры q, status, sort и page" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Типичная панель списка: поиск, два фильтра, сортировка, «Сбросить» и пагинация. Любая смена значения меняет адрес</figcaption>
+      </figure>
+
+      <h3>Что нужно знать, чтобы объяснить решение</h3>
+      <ul>
+        <li><b>Серверная пагинация.</b> Браузеру отдаётся одна страница (10 строк), а не вся таблица: иначе сайт медленный, а лишние данные утекают к пользователю.</li>
+        <li><b>Смена фильтра сбрасывает страницу на первую.</b> Иначе после выбора фильтра пользователь окажется на третьей странице, которой уже нет.</li>
+        <li><b>Форма с методом GET.</b> Поиск и фильтры можно сделать обычной формой <code>&lt;form&gt;</code> без JavaScript: браузер сам добавит поля к адресу. Для пагинации достаточно обычных ссылок.</li>
+      </ul>
+
+      <h3>Попробуйте сами: логика списка на чистом JavaScript</h3>
+      <p>Сначала проверим логику на массиве: так видно каждый шаг, и вы поймёте, что именно делает запрос к базе.</p>
+
+      <article class="task" id="pg-query">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Фильтр, сортировка и пагинация массива</h4><span class="level mid">средняя</span></header>
+        <p>Перед вами записи и параметры «адреса». Допишите три шага: отфильтровать по тексту (без учёта регистра) и статусу (пустая строка значит «любой»), отсортировать по цене по убыванию, взять нужную страницу. Выведите итог в формате из блока «Ожидаемый результат».</p>
+<pre class="code" data-run data-lang="js">
+const items = [
+  { id: 1, title: "Green tea", status: "open", price: 15 },
+  { id: 2, title: "Black tea", status: "open", price: 12 },
+  { id: 3, title: "Tea pot", status: "closed", price: 90 },
+  { id: 4, title: "Teapot cover", status: "open", price: 25 },
+  { id: 5, title: "Coffee beans", status: "open", price: 60 },
+  { id: 6, title: "Tea spoon", status: "open", price: 5 },
+  { id: 7, title: "Iced tea", status: "closed", price: 18 },
+  { id: 8, title: "Tea cup", status: "open", price: 30 },
+  { id: 9, title: "Sugar", status: "open", price: 8 },
+  { id: 10, title: "Tea tray", status: "open", price: 45 },
+];
+const params = { q: "tea", status: "open", sort: "price_desc", page: 2, size: 3 };
+
+// TODO 1: оставьте записи, где title содержит params.q (без учёта регистра)
+// и (если params.status не пустая строка) status равен params.status
+let rows = items;
+
+// TODO 2: если params.sort === "price_desc", отсортируйте по цене от большей к меньшей,
+// иначе по цене от меньшей к большей
+// (sort меняет массив на месте: rows уже новый массив после filter)
+
+const total = rows.length;
+const pages = Math.ceil(total / params.size);
+// TODO 3: from = (page - 1) * size; pageRows = rows.slice(from, from + size)
+const from = 0;
+const pageRows = rows;
+
+console.log("total: " + total);
+console.log("pages: " + pages);
+console.log("page: " + params.page + " of " + pages);
+for (const r of pageRows) console.log(r.id + " " + r.title + " " + r.price);
+console.log("range: " + from + "-" + (from + pageRows.length - 1));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>total: 6
+pages: 2
+page: 2 of 2
+1 Green tea 15
+2 Black tea 12
+6 Tea spoon 5
+range: 3-5</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>TODO 1: <code>let rows = items.filter((i) =&gt; i.title.toLowerCase().includes(params.q.toLowerCase()) &amp;&amp; (params.status === "" || i.status === params.status));</code> (замените строку <code>let rows = items;</code>).</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>TODO 2: <code>rows.sort((a, b) =&gt; params.sort === "price_desc" ? b.price - a.price : a.price - b.price);</code>. TODO 3: <code>const from = (params.page - 1) * params.size;</code> и <code>const pageRows = rows.slice(from, from + params.size);</code></p></details>
+      </article>
+
+      <h3>Адрес из фильтров: query string</h3>
+      <p>Обратная задача: по значениям формы построить адрес. Значения нужно закодировать (<code>encodeURIComponent</code>): пробел, кириллица, знаки <code>&amp;</code> и <code>=</code> иначе сломают адрес. А значения по умолчанию в адрес не пишут: чистый <code>/items</code> лучше, чем <code>/items?q=&amp;status=all&amp;page=1</code>.</p>
+
+      <article class="task" id="pg-qs">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Построй адрес из фильтров</h4><span class="level mid">средняя</span></header>
+        <p>Допишите функцию <code>buildQuery(f)</code>: она возвращает строку вида <code>?q=…&amp;status=…&amp;sort=…&amp;page=…</code> в этом порядке. Не включайте пустой <code>q</code>, <code>status</code> со значением <code>"all"</code>, <code>sort</code> со значением <code>"new"</code> и <code>page</code> не больше 1. Если параметров нет, верните пустую строку.</p>
+<pre class="code" data-run data-lang="js">
+function buildQuery(f) {
+  const parts = [];
+  // TODO 1: если f.q не пустая, добавьте "q=" + encodeURIComponent(f.q)
+  // TODO 2: если f.status задан и не равен "all", добавьте "status=" + ...
+  // TODO 3: если f.sort задан и не равен "new", добавьте "sort=" + ...
+  // TODO 4: если f.page больше 1, добавьте "page=" + f.page
+  return parts.length ? "?" + parts.join("&amp;") : "";
+}
+
+const cases = [
+  { q: "", status: "all", sort: "new", page: 1 },
+  { q: "green tea", status: "open", sort: "new", page: 1 },
+  { q: "чай", status: "all", sort: "price_asc", page: 3 },
+  { q: "a&amp;b=c", status: "closed", sort: "new", page: 2 },
+];
+for (const c of cases) console.log("/items" + buildQuery(c));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>/items
+/items?q=green%20tea&amp;status=open
+/items?q=%D1%87%D0%B0%D0%B9&amp;sort=price_asc&amp;page=3
+/items?q=a%26b%3Dc&amp;status=closed&amp;page=2</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Каждая строка по шаблону: <code>if (f.q) parts.push("q=" + encodeURIComponent(f.q));</code></p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>if (f.status &amp;&amp; f.status !== "all") parts.push("status=" + encodeURIComponent(f.status));</code>, аналогично для <code>sort</code> со значением <code>"new"</code>, а для страницы: <code>if (f.page &amp;&amp; f.page &gt; 1) parts.push("page=" + f.page);</code></p></details>
+      </article>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Бозор и торговый ряд. Вы не покупаете «весь рынок»: говорите продавцу «чай, только зелёный, подешевле» (поиск, фильтр, сортировка) и просите «покажите первые десять пачек» (страница). Если записать эту просьбу на бумажке, любой человек, получив бумажку, получит ту же полку. Бумажка — это адрес страницы.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Загрузить всю таблицу и фильтровать массивом в браузере: на тысяче записей это медленно, а чужие данные уходят пользователю. <b>2.</b> Хранить фильтры в <code>useState</code>: обновили страницу и всё потеряно. <b>3.</b> <code>range</code> без <code>order</code>: записи дублируются или пропадают между страницами. <b>4.</b> Не сбрасывать <code>page</code> на 1 при смене фильтра. <b>5.</b> Подставлять <code>sort</code> из адреса без проверки. <b>6.</b> Считать страницы по длине массива текущей страницы, а не по <code>count</code>. <b>7.</b> В поисковую строку попадает <code>%</code> или <code>,</code>, а пользователь видит ошибку: экранируйте или чистите строку.</p>
+      </div>
+
+      <article class="task" id="q-list">
+        <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Проверь себя: списки</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="4">
+          <p>Почему состояние поиска и фильтров лучше хранить в адресе страницы?</p>
+          <ol class="options">
+            <li>Так быстрее работает база данных</li>
+            <li>Адрес занимает меньше памяти, чем переменная</li>
+            <li>Так нельзя использовать RLS</li>
+            <li>Состояние переживает обновление страницы и работает с кнопкой «назад», а адрес можно отправить другому человеку</li>
+          </ol>
+          <div class="explain"><p>Адрес — состояние, которое браузер умеет сохранять, копировать и восстанавливать сам. К скорости базы и к RLS это не относится.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>На странице по 10 записей. Какой диапазон нужно передать в <code>range</code> для страницы 3?</p>
+          <ol class="options">
+            <li><code>range(20, 30)</code></li>
+            <li><code>range(20, 29)</code></li>
+            <li><code>range(30, 39)</code></li>
+            <li><code>range(21, 30)</code></li>
+          </ol>
+          <div class="explain"><p>Начало: <code>(3 − 1) × 10 = 20</code>. Конец: начало плюс размер минус один, то есть 29. Индексы идут с нуля, а обе границы входят в диапазон, поэтому на странице ровно десять записей.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что нужно сделать с <code>page</code>, когда пользователь меняет фильтр «Статус»?</p>
+          <ol class="options">
+            <li>Оставить как есть</li>
+            <li>Увеличить на единицу</li>
+            <li>Сбросить на первую страницу: на старой странице подходящих записей может не быть</li>
+            <li>Удалить таблицу</li>
+          </ol>
+          <div class="explain"><p>После фильтра записей может стать меньше, и страницы 3 уже нет. Поэтому адрес с новым фильтром строят без <code>page</code> (или с <code>page=1</code>).</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/api-reference/file-conventions/page" target="_blank" rel="noopener">Next.js: page.js и searchParams</a>, <a href="https://supabase.com/docs/reference/javascript/range" target="_blank" rel="noopener">Supabase JS: range</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 03 · Файлы и Storage ============ -->
+    <section class="topic" id="storage">
+      <h2 data-toc="Файлы и Storage"><span class="num">03</span> Файлы и картинки: Supabase Storage</h2>
+
+      <p>Картинки, PDF и другие файлы нельзя хранить в обычной таблице: они тяжёлые. Для них в Supabase есть <b>Storage</b>: файловое хранилище, где файлы лежат в <b>бакетах</b> (buckets, «корзины»), а внутри бакета в папках. В таблицу вы записываете только <b>путь к файлу</b> (текст), а сам файл остаётся в хранилище.</p>
+
+      <h3>Публичный или закрытый бакет</h3>
+      <div class="cmp">
+        <div class="old">
+          <h5>Публичный бакет</h5>
+          <ul>
+            <li>Читать файл по ссылке может любой, без входа и без RLS (<code>getPublicUrl</code>)</li>
+            <li>Загрузка, замена и удаление всё равно проверяются правилами</li>
+            <li>Подходит для логотипов и картинок сайта, которые и так видят все</li>
+          </ul>
+        </div>
+        <div class="new">
+          <h5>Закрытый бакет (по умолчанию)</h5>
+          <ul>
+            <li>Всё, включая чтение, идёт через правила RLS</li>
+            <li>Файл показывают по временной подписанной ссылке (<code>createSignedUrl</code>)</li>
+            <li>Подходит для документов, фото пользователей и всего, что нельзя видеть чужим</li>
+          </ul>
+        </div>
+      </div>
+      <p>В этом спринте картинки записей и вложения делаем в <b>закрытом бакете</b>: безопаснее по умолчанию, а публичным его можно сделать позже, если станет ясно, что файл и так для всех. Правило урока: <b>бакет с публичной записью не создаём никогда</b> (разрешение «любой может загружать» превращает ваше хранилище в бесплатный файлообменник для спама и вредоносных файлов).</p>
+
+      <h3>Как правильно создать бакет</h3>
+      <ol class="steps">
+        <li>В панели Supabase откройте раздел <b>Storage</b>, нажмите <b>New bucket</b> и введите имя, например <code>item-images</code> (в документации Supabase это путь «Storage → New Bucket → Create Bucket»).</li>
+        <li>Переключатель «Public bucket» оставьте выключенным.</li>
+        <li>В дополнительных настройках бакета задайте ограничения: максимальный размер файла (например, 2 МБ) и допустимые типы (<code>image/jpeg</code>, <code>image/png</code>, <code>image/webp</code>). Ограничения бакета база проверяет на своей стороне, а не доверяет браузеру. Названия пунктов в панели могут немного отличаться: ищите «file size limit» и «allowed MIME types».</li>
+        <li>Бакет создан, но загрузить в него пока нельзя: <b>без политик на <code>storage.objects</code> загрузка закрыта для всех</b>. Это нормально и безопасно: дальше вы дадите ровно те права, которые нужны.</li>
+      </ol>
+
+      <h3>Политики по id пользователя (RLS на storage.objects)</h3>
+      <p>Файлы описаны строками таблицы <code>storage.objects</code>: в её столбце <code>name</code> лежит полный путь вида <code>папка/файл.jpg</code>, в <code>bucket_id</code> имя бакета. Значит, правила RLS пишутся так же, как для обычных таблиц (урок 11), а функция <code>storage.foldername(name)</code> возвращает массив папок пути. Договорённость: <b>первая папка пути — это id пользователя</b>, то есть файл вошедшего пользователя лежит как <code>&lt;user-id&gt;/&lt;случайное-имя&gt;.jpg</code>.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Схема загрузки: браузер отправляет файл по пути user-id/файл в бакет; хранилище проверяет правило, что первая папка равна id вошедшего пользователя; при успехе файл сохраняется, а путь записывается в столбец image_path таблицы; для показа сервер создаёт подписанную ссылку на ограниченное время">
+          <rect class="box g" x="8" y="30" width="150" height="80" rx="12" /><text x="83" y="62" text-anchor="middle">Браузер</text><text class="sub" x="83" y="84" text-anchor="middle">выбрал файл</text>
+          <rect class="fill-y" x="205" y="30" width="190" height="80" rx="12" /><text x="300" y="58" text-anchor="middle">Проверка RLS</text><text class="sub mono" x="300" y="80" text-anchor="middle">первая папка =</text><text class="sub mono" x="300" y="98" text-anchor="middle">id пользователя</text>
+          <rect class="box b" x="440" y="30" width="270" height="80" rx="12" /><text x="575" y="62" text-anchor="middle">Бакет item-images</text><text class="sub mono" x="575" y="84" text-anchor="middle">u-42/9f3a.webp</text>
+          <path class="arr" d="M158 70H199" /><path class="arr-head" d="M199 64l8 6-8 6z" />
+          <path class="arr" d="M395 70H434" /><path class="arr-head" d="M434 64l8 6-8 6z" />
+          <rect class="box v" x="205" y="160" width="190" height="80" rx="12" /><text x="300" y="192" text-anchor="middle">Таблица items</text><text class="sub mono" x="300" y="214" text-anchor="middle">image_path</text>
+          <rect class="fill-g" x="440" y="160" width="270" height="80" rx="12" /><text x="575" y="192" text-anchor="middle">Показ картинки</text><text class="sub" x="575" y="214" text-anchor="middle">подписанная ссылка на час</text>
+          <path class="arr" d="M83 110V200H199" /><path class="arr-head" d="M199 194l8 6-8 6z" />
+          <path class="arr" d="M395 200H434" /><path class="arr-head" d="M434 194l8 6-8 6z" />
+          <text class="sub" x="140" y="150">путь пишем в таблицу</text>
+        </svg>
+        <figcaption>Файл идёт в бакет только по пути со своим id, путь сохраняется в таблице, а показывается файл по временной ссылке</figcaption>
+      </figure>
+
+      <p>Сохраните политики в файл <code>db/003_storage.sql</code> и выполните в SQL Editor, как делали в уроке 11. Имя бакета замените своим:</p>
+
+<pre class="code" data-title="db/003_storage.sql">
+/* пользователь загружает файлы только в свою папку */
+create policy "item-images: insert own folder"
+on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'item-images'
+  and (storage.foldername(name))[1] = (select auth.uid())::text
+);
+
+/* читает свои файлы; admin читает все (функция is_admin из урока 12) */
+create policy "item-images: select own or admin"
+on storage.objects for select to authenticated
+using (
+  bucket_id = 'item-images'
+  and ((storage.foldername(name))[1] = (select auth.uid())::text
+       or (select public.is_admin()))
+);
+
+/* удаляет свои файлы; admin удаляет любые */
+create policy "item-images: delete own or admin"
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'item-images'
+  and ((storage.foldername(name))[1] = (select auth.uid())::text
+       or (select public.is_admin()))
+);
+</pre>
+
+      <ul>
+        <li><b><code>to authenticated</code></b>: гость без входа не может загружать вообще. Правила «для anon» на запись не пишем.</li>
+        <li><b>Кто решает, чья папка.</b> Не форма и не браузер: проверка сравнивает путь с <code>auth.uid()</code> из сессии. Попытка загрузить файл в папку другого пользователя получает ошибку нарушения RLS.</li>
+        <li><b>Только те команды, что нужны.</b> Правила <code>update</code> здесь нет: файлы не перезаписывают, а загружают под новым случайным именем и удаляют старый. (Для перезаписи с <code>upsert</code> нужны ещё <code>select</code> и <code>update</code>.)</li>
+        <li><b>Чтение нужно даже для подписанной ссылки:</b> создать ссылку может только тот, кому разрешён <code>select</code>.</li>
+        <li>В официальной документации Supabase та же проверка записана через <code>auth.jwt()-&gt;&gt;'sub'</code>: это тот же id пользователя другим способом.</li>
+      </ul>
+
+      <h3>Загрузка и показ файла</h3>
+      <p>Загрузка идёт из браузера клиентом Supabase (из файла <code>lib/supabase/client.ts</code> урока 12) под сессией пользователя, поэтому правила RLS применяются к нему. Id пользователя передайте в компонент формы с сервера: серверная страница уже знает его из <code>getClaims()</code>.</p>
+
+<pre class="code" data-title="Загрузка картинки (фрагмент клиентского компонента)">
+const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+
+const { error } = await supabase.storage
+  .from("item-images")
+  .upload(path, file, { contentType: file.type });
+
+if (error) {
+  setMessage("Upload failed: " + error.message);
+  return;
+}
+// дальше: сохранить path в столбец image_path записи
+</pre>
+
+<pre class="code" data-title="Показ картинки на сервере (фрагмент)">
+const { data } = await supabase.storage
+  .from("item-images")
+  .createSignedUrl(item.image_path, 3600); // ссылка живёт 3600 секунд
+
+// data?.signedUrl подставляем в src картинки
+</pre>
+
+      <ul>
+        <li><b>Случайное имя файла</b> (<code>crypto.randomUUID()</code>) защищает от совпадений и от странных символов в имени. Загрузка в существующий путь без <code>upsert</code> вернёт ошибку «Asset Already Exists».</li>
+        <li><b>Размер и тип проверяем дважды:</b> в браузере (для удобства: ошибка сразу) и в настройках бакета (для защиты). Браузерной проверке доверять нельзя.</li>
+        <li><b>Простая загрузка</b> рассчитана на файлы примерно до 6 МБ; для больших есть возобновляемая загрузка, в учебном проекте она не нужна.</li>
+        <li><b>Картинку показывайте обычным тегом <code>&lt;img&gt;</code> с шириной и высотой.</b> Если выберете <code>next/image</code> (урок 9), адрес хранилища нужно добавить в <code>images.remotePatterns</code> в <code>next.config.ts</code>, иначе Next.js откажется показывать картинку.</li>
+        <li><b>При удалении записи удаляйте и файл</b> (<code>storage.from(…).remove([path])</code>), иначе в хранилище копится мусор. Нужно правило <code>delete</code>, оно в SQL выше.</li>
+      </ul>
+
+      <div class="yt" data-id="4ERX__Y908k" data-title="How to Configure Access Control on Your Supabase Storage Buckets — SupabaseTips, официальный канал Supabase" data-start="0"></div>
+      <p class="muted">Видео на английском, включите субтитры. Посмотрите, как выглядит экран политик бакета и как правила выбирают, кто что может делать с файлами. Интерфейс панели со временем меняется, но идея та же.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Камера хранения на вокзале Душанбе. У каждого пассажира своя ячейка с номером, а на чеке написан номер ячейки (путь в таблице). Открыть можно только свою ячейку: служба охраны проверяет, что номер на чеке совпадает с номером на вашем билете (политика по id). Публичный бакет с записью для всех был бы камерой хранения без охраны и без замков: кто угодно ставит туда что угодно.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Сделать бакет публичным, чтобы «заработало», и забыть про политики. <b>2.</b> Написать политику <code>with check (true)</code> на <code>insert</code>: загружать может любой вошедший в любую папку. <b>3.</b> Поставить на запись роль <code>anon</code>: гости смогут заливать файлы. <b>4.</b> Класть в путь имя файла пользователя без очистки: кириллица, пробелы и повторы ломают загрузку. <b>5.</b> Не задать лимит размера и типы: в бакет попадают гигабайтные видео и исполняемые файлы. <b>6.</b> Хранить в таблице готовую подписанную ссылку: она протухнет, а хранить нужно путь. <b>7.</b> Использовать secret key в браузере «чтобы обойти RLS»: он даёт полный доступ ко всему и должен жить только на сервере (урок 11). <b>8.</b> Не проверить ошибку ответа <code>upload</code>.</p>
+      </div>
+
+      <h3>Проверка файла перед загрузкой</h3>
+      <article class="task" id="pg-validate">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Проверь файлы и построй пути</h4><span class="level mid">средняя</span></header>
+        <p>Допишите проверку списка файлов. Для каждого файла: если тип не из разрешённых, выведите <code>type not allowed</code>; иначе если размер больше лимита, выведите <code>too big</code>; иначе выведите путь вида <code>id-пользователя/номер.расширение</code>, где номер считает только принятые файлы (с единицы), а расширение берётся из имени в нижнем регистре (если точки нет, <code>bin</code>). Размер ровно равный лимиту допустим.</p>
+<pre class="code" data-run data-lang="js">
+const MAX = 2 * 1024 * 1024;
+const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+const userId = "u42";
+const files = [
+  { name: "Photo.JPG", size: 500000, type: "image/jpeg" },
+  { name: "scan.pdf", size: 100000, type: "application/pdf" },
+  { name: "big.png", size: 3000000, type: "image/png" },
+  { name: "cover.webp", size: 2097152, type: "image/webp" },
+  { name: "noext", size: 1000, type: "image/png" },
+];
+
+let accepted = 0;
+for (const f of files) {
+  // TODO 1: если тип не входит в ALLOWED, выведите f.name + ": type not allowed" и перейдите к следующему (continue)
+  // TODO 2: если f.size больше MAX, выведите f.name + ": too big" и continue
+  accepted++;
+  // TODO 3: расширение: часть имени после последней точки в нижнем регистре, если точки нет: "bin"
+  const ext = "bin";
+  console.log(f.name + ": " + userId + "/" + accepted + "." + ext);
+}
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Photo.JPG: u42/1.jpg
+scan.pdf: type not allowed
+big.png: too big
+cover.webp: u42/2.webp
+noext: u42/3.bin</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>TODO 1 и 2: <code>if (!ALLOWED.includes(f.type)) { console.log(f.name + ": type not allowed"); continue; }</code> и такой же <code>if</code> для <code>f.size &gt; MAX</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>TODO 3: <code>const dot = f.name.lastIndexOf("."); const ext = dot === -1 ? "bin" : f.name.slice(dot + 1).toLowerCase();</code> (замените строку <code>const ext = "bin";</code>).</p></details>
+      </article>
+
+      <article class="task" id="q-storage">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Проверь себя: хранилище</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Какая политика правильно разрешает пользователю загружать файлы только в свою папку бакета?</p>
+          <ol class="options">
+            <li><code>insert to authenticated with check (bucket_id = 'item-images' and (storage.foldername(name))[1] = (select auth.uid())::text)</code></li>
+            <li><code>insert to anon with check (true)</code></li>
+            <li><code>insert to authenticated with check (true)</code></li>
+            <li>Политики не нужны, достаточно сделать бакет публичным</li>
+          </ol>
+          <div class="explain"><p>Правильный вариант сравнивает первую папку пути с id из сессии и привязан к одному бакету. Остальные разрешают загрузку гостям или любому вошедшему в любую папку; публичный бакет открывает чтение, но не заменяет контроль записи.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Загрузка в бакет возвращает ошибку «new row violates row-level security policy». Что проверить в первую очередь?</p>
+          <ol class="options">
+            <li>Не слишком ли тяжёлая картинка для браузера</li>
+            <li>Не слишком ли длинное название сайта</li>
+            <li>Есть ли политика <code>insert</code> и совпадает ли первая папка пути с id пользователя, выполнившего вход</li>
+            <li>Не включена ли тёмная тема</li>
+          </ol>
+          <div class="explain"><p>Это сообщение значит, что политика не разрешила вставку: либо правила нет, либо путь не начинается с вашего id, либо вы не вошли. Размер и тип файла дают другие ошибки (лимит размера и недопустимый MIME-тип).</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что записывать в таблицу после успешной загрузки?</p>
+          <ol class="options">
+            <li>Сам файл целиком в текстовое поле</li>
+            <li>Путь к файлу в бакете (например, <code>u-42/9f3a.webp</code>), а ссылку создавать на сервере при показе</li>
+            <li>Подписанную ссылку: её хватит навсегда</li>
+            <li>Ничего, Supabase сам найдёт файл по названию записи</li>
+          </ol>
+          <div class="explain"><p>Путь не меняется, а подписанная ссылка живёт ограниченное время, поэтому её создают заново при каждом показе. Файл в таблицу не кладут: для этого и существует хранилище.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/storage/security/access-control" target="_blank" rel="noopener">Supabase Storage: Access Control</a>, <a href="https://supabase.com/docs/guides/storage/uploads/standard-uploads" target="_blank" rel="noopener">Supabase Storage: Standard Uploads</a>, <a href="https://supabase.com/docs/guides/storage/serving/downloads" target="_blank" rel="noopener">Supabase Storage: Serving downloads</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 04 · E-mail ============ -->
+    <section class="topic" id="email">
+      <h2 data-toc="E-mail уведомления"><span class="num">04</span> Уведомления на e-mail</h2>
+
+      <p>Продукту нужно сообщать о важном: «пришла новая заявка», «заказ оформлен», «статус изменён». Письма отправляются <b>только с сервера</b>: сайт вызывает почтовый сервис по API с секретным ключом (как с Gemini в уроке 13), а браузер этот ключ видеть не должен. В курсе используем сервис <b>Resend</b>: у него есть бесплатный тариф (на момент написания: до 3000 писем в месяц, не больше 100 в сутки), простой API и готовая библиотека для Node.js.</p>
+
+      <div class="callout warn">
+        <b>Главное ограничение: без своего домена письма идут только вам</b>
+        <p>Отправлять письма «от своего имени» на любые адреса можно только после подтверждения домена (<code>вашсайт.com</code>) через записи DNS. Пока домена нет, используется тестовый отправитель <code>onboarding@resend.dev</code>, и письма доходят <b>только на адрес, на который зарегистрирован ваш аккаунт Resend</b>. Попытка отправить кому-то ещё вернёт ошибку 403 с текстом «You can only send testing emails to your own email address … To send emails to other recipients, please verify a domain». <b>Для домашнего задания этого достаточно</b>: уведомление получает владелец продукта (вы). Свой домен можно подключить позже, он нужен только для настоящего запуска.</p>
+      </div>
+
+      <h3>Что придумать</h3>
+      <p>В выпускном проекте письмо получает владелец, то есть вы: «в интернет-магазине оформлен заказ», «в Booking создана бронь», «в CRM появилась заявка». Адрес получателя храните в переменной окружения <code>NOTIFY_EMAIL</code>, а не в коде. Telegram-уведомления появятся в уроке 21, здесь только e-mail.</p>
+
+      <h3>Подключение за пять шагов</h3>
+      <ol class="steps">
+        <li>Зарегистрируйтесь на resend.com <b>тем адресом, на который хотите получать письма</b>.</li>
+        <li>В панели откройте раздел API Keys и создайте ключ с правом отправки (sending access). Ключ показывают один раз: сразу сохраните в <code>.env.local</code> как <code>RESEND_API_KEY=…</code>. Туда же <code>NOTIFY_EMAIL=ваш-адрес</code>. В <code>.env.example</code> запишите имена без значений.</li>
+        <li>Установите библиотеку: <code>npm install resend</code> (это единственная новая библиотека урока, поэтому правило «ничего не ставить без спроса» из <code>AGENTS.md</code> вы здесь сознательно разрешаете).</li>
+        <li>В серверном действии после успешного сохранения записи отправьте письмо.</li>
+        <li>Добавьте обе переменные в настройки Vercel (Settings → Environment Variables) и запустите деплой заново.</li>
+      </ol>
+
+<pre class="code" data-title="lib/notify.ts (фрагмент)">
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function notifyOwner(subject: string, html: string) {
+  const { error } = await resend.emails.send({
+    from: "My Project &lt;onboarding@resend.dev&gt;",
+    to: [process.env.NOTIFY_EMAIL!],
+    subject,
+    html,
+  });
+  if (error) console.error("e-mail not sent:", error.message);
+}
+</pre>
+
+      <ul>
+        <li><b>Ошибка письма не должна ломать сохранение.</b> Запись уже в базе: функция только пишет ошибку в журнал и возвращается, а пользователь видит успех.</li>
+        <li><b>Не вставляйте в письмо чужие данные без экранирования.</b> Текст из формы может содержать теги: либо экранируйте HTML, либо отправляйте простой текст.</li>
+        <li><b>Письма могут попасть в «Спам».</b> Для тестового отправителя это обычное дело: проверьте папку, прежде чем искать ошибку в коде.</li>
+        <li><b>Лимиты.</b> Не отправляйте письмо на каждое нажатие клавиши и не пишите циклов: сто писем в сутки на бесплатном тарифе кончаются быстро.</li>
+        <li>У Resend есть тестовые адреса вроде <code>delivered@resend.dev</code>, но они нужны только для проверки API, а не для реального уведомления, которое должно дойти до вашей почты.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Почтальон из соседнего района. Пока у вас нет своей вывески (домена), почта согласна носить письма только на адрес владельца аккаунта: так проверяют, что вы не рассылаете спам от чужого имени. Когда зарегистрируете вывеску и покажете документы (записи DNS), почтальон понесёт письма кому угодно.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Ключ <code>RESEND_API_KEY</code> попал в код, в чат или в репозиторий. <b>2.</b> Переменная названа с <code>NEXT_PUBLIC_</code>: ключ уходит в браузер. <b>3.</b> Переменные добавили в <code>.env.local</code>, а в Vercel забыли: на сайте письма не уходят. <b>4.</b> Пытаются отправить письмо клиенту и получают 403: до подтверждения домена письма идут только на ваш адрес. <b>5.</b> Регистрируются в Resend одним адресом, а <code>NOTIFY_EMAIL</code> пишут другой. <b>6.</b> Не проверяют <code>error</code> в ответе и не понимают, почему тихо ничего не пришло.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://resend.com/docs/send-with-nextjs" target="_blank" rel="noopener">Resend: отправка из Next.js</a>, <a href="https://resend.com/docs/api-reference/errors" target="_blank" rel="noopener">Resend: коды ошибок</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · Админ-панель ============ -->
+    <section class="topic" id="admin">
+      <h2 data-toc="Админ-панель"><span class="num">05</span> Админ-панель: статистика и управление записями</h2>
+
+      <p>Админ-панель — это закрытый раздел для роли <code>admin</code> (урок 12), где владелец видит, как идут дела, и управляет записями всех пользователей. Для учебного проекта в ней два блока: <b>статистика</b> (несколько чисел и простая диаграмма) и <b>таблица записей</b> с теми же поиском, фильтрами и пагинацией, что вы уже сделали, плюс действия: сменить статус, посмотреть файл, удалить.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/18-sprint-2/admin-panel.svg" alt="Схема админ-панели: вверху четыре карточки со статистикой — всего записей 128, новых за 7 дней 14, в работе 31, выполнено 83; ниже горизонтальные полоски по статусам; ниже таблица записей с колонками название, статус, владелец и кнопками «Сменить статус» и «Удалить»; слева меню с пунктом «Админка» и значком роли admin" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Админ-панель: слева меню, сверху статистика, ниже таблица управления записями. Цифры в схеме выдуманные</figcaption>
+      </figure>
+
+      <h3>Статистика: что считать</h3>
+      <ul>
+        <li><b>Всего записей</b> и <b>по статусам</b>: по одному запросу с <code>{ count: "exact", head: true }</code> на статус (запросы запускают вместе через <code>Promise.all</code>).</li>
+        <li><b>Новые за период</b>: те же запросы с условием <code>.gte("created_at", датаНачала)</code>.</li>
+        <li><b>Количество пользователей</b> и по ролям: подсчёт строк таблицы <code>profiles</code>.</li>
+        <li><b>Диаграмма</b> без библиотек: полоска с шириной в процентах от общего числа. Подключать библиотеку графиков в этом спринте не нужно.</li>
+        <li>Для сложных подсчётов (по дням, по категориям) ИИ может предложить SQL-представление (view). Для него в Postgres 15+ нужен параметр <code>security_invoker = true</code>, иначе представление обходит RLS. Если не уверены, считайте простыми запросами.</li>
+      </ul>
+
+      <h3>Три уровня защиты админки</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Уровень</th><th>Что делает</th><th>Что будет без него</th></tr></thead>
+          <tbody>
+            <tr><td>Меню (<code>lib/nav.ts</code>)</td><td>показывает пункт «Админка» только admin</td><td>обычный пользователь видит лишний пункт (неудобно, но не страшно)</td></tr>
+            <tr><td>Страница и серверные действия</td><td>проверяют роль из <code>profiles</code> на сервере; чужому отвечают 404 и не выполняют действие</td><td>обычный пользователь открывает <code>/admin</code> по адресу или вызывает действие вручную</td></tr>
+            <tr><td>База (RLS и <code>is_admin()</code>)</td><td>чужие строки и файлы выдаются только админу</td><td>через API Supabase любой вошедший читает и меняет чужие данные</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Главный уровень последний: меню и страницу можно обойти, а база проверяет каждую строку. <b>Не используйте secret key «для админки»</b>: он обходит RLS и защита исчезает. Достаточно политик с <code>is_admin()</code>, которые вы уже написали для заявок (урок 12) и хранилища (раздел 3).</p>
+
+      <h3>Управление записями</h3>
+      <ul>
+        <li>Таблица использует тот же компонент списка и ту же логику <code>searchParams</code>, что и пользовательский список (переиспользование, а не копия кода).</li>
+        <li>Смена статуса и удаление выполняются серверными действиями, где первой строкой стоит проверка «это admin?»; удаление спрашивает подтверждение.</li>
+        <li>Для действий администратора пригодится журнал: колонка <code>updated_at</code> или отдельная таблица. На учебный проект достаточно <code>updated_at</code>.</li>
+        <li>Пользователь не должен менять поля, которые принадлежат администратору (например, <code>status</code>). Политика <code>update</code> разрешает менять строку целиком, поэтому в этом спринте статус меняют только через серверное действие админа, а форма пользователя вообще не содержит этого поля. Продвинутая защита столбцов — тема отдельного разговора.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Директор чойхоны вечером смотрит тетрадь: сколько чайников продали (статистика), какие заказы не выполнены (таблица) и может отменить один из них. В зал ему идти не обязательно, но дверь в кабинет закрыта: не только табличкой «Посторонним вход воспрещён» (меню), а ещё и замком (страница) и сейфом с ключом только у директора (база).</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Защитили только меню: <code>/admin</code> открывается всем по адресу. <b>2.</b> Секретный ключ в админке «чтобы всё работало». <b>3.</b> Статистика выдуманная (числа вписаны в код) вместо подсчёта по базе. <b>4.</b> Серверные действия админки не проверяют роль. <b>5.</b> Копия пользовательского списка с другими названиями вместо переиспользования. <b>6.</b> Админ видит чужие картинки, а политики <code>select</code> на хранилище для админа нет. <b>7.</b> Подсчёт всех записей без пагинации: админ-таблица грузит всю базу сразу.</p>
+      </div>
+
+      <article class="task" id="q-email-admin">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: e-mail и админка</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Вы отправляете письмо с <code>onboarding@resend.dev</code> клиенту на другой адрес и получаете ошибку 403. Что это значит и что делать?</p>
+          <ol class="options">
+            <li>Ключ утерян: создать новый и вставить в код</li>
+            <li>Без подтверждённого домена Resend отправляет только на адрес владельца аккаунта: для задания отправляйте уведомление себе, а домен подключите перед настоящим запуском</li>
+            <li>Бесплатный тариф закончился навсегда</li>
+            <li>Письма нужно отправлять из браузера, а не с сервера</li>
+          </ol>
+          <div class="explain"><p>Это правило сервиса для тестового отправителя. Ошибка не про ключ и не про код. Уведомление владельцу полностью решает задачу спринта.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Где должна храниться переменная <code>RESEND_API_KEY</code>?</p>
+          <ol class="options">
+            <li>В коде компонента, чтобы не потерять</li>
+            <li>В переменной с префиксом <code>NEXT_PUBLIC_</code></li>
+            <li>В <code>.env.local</code> и в переменных окружения Vercel, имя в <code>.env.example</code> без значения</li>
+            <li>В файле <code>README.md</code></li>
+          </ol>
+          <div class="explain"><p>Секреты живут только в окружении сервера. Всё, что имеет префикс <code>NEXT_PUBLIC_</code>, попадает в браузер, а репозиторий видят все.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Как правильно защитить админ-панель?</p>
+          <ol class="options">
+            <li>Роль проверяется на сервере (страницы и действия), а в базе работают политики с <code>is_admin()</code>; меню лишь скрывает пункт</li>
+            <li>Пункт «Админка» не показывается в меню, этого достаточно</li>
+            <li>В админке используется secret key, чтобы запросы точно проходили</li>
+            <li>Адрес <code>/admin</code> просто не публикуется</li>
+          </ol>
+          <div class="explain"><p>Скрытое меню и «секретный» адрес не защищают. Защита должна быть там, где принимается решение: на сервере и в базе. Secret key обходит RLS и убирает защиту.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener">Supabase: RLS и представления</a>, <a href="https://nextjs.org/docs/app/guides/authentication" target="_blank" rel="noopener">Next.js: Authentication и авторизация</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="ИИ: промпты спринта"><span class="num">06</span> ИИ-блок: как просить данные, файлы и админку</h2>
+
+      <div class="callout ai">
+        <b>Правила работы с ИИ во втором спринте</b>
+        <p><b>1.</b> Как и в уроке 17: одна задача = один промпт = один commit, сначала план и ваше «ок», потом изменения. Не повторяйте нарезку здесь: берите шаблон из раздела 6 урока 17. <b>2.</b> Агенту даёте документы: <code>@AGENTS.md</code>, <code>@docs/SPEC.md</code>, <code>@docs/SCHEMA.md</code>. <b>3.</b> SQL и политики (таблицы, RLS, хранилище) просите отдельным блоком, читаете и запускаете сами; ИИ их не выполняет. <b>4.</b> В каждой задаче называйте <b>границы</b>: какие файлы можно трогать и что нельзя (секреты, RLS, новые библиотеки). <b>5.</b> Не подошло: не начинайте заново, а пришлите текст ошибки (без ключей) и опишите, что именно не так.</p>
+      </div>
+
+      <p>Плохой промпт спринта 2 выглядит так:</p>
+      <div class="prompt bad-prompt">Сделай полный CRUD с поиском, загрузкой картинок и админкой со статистикой, чтобы всё работало</div>
+      <p>Он просит четыре большие вещи сразу, не называет таблицу, права и ограничения. ИИ придумает свои таблицы, сделает бакет публичным «чтобы заработало» и добавит библиотеку графиков. Хороший промпт один и узкий. Вот пример для задачи про фильтры и пагинацию (значения в квадратных скобках замените своими):</p>
+      <div class="prompt good-prompt">Контекст: проект по правилам @AGENTS.md, ТЗ @docs/SPEC.md, схема @docs/SCHEMA.md. Уже сделано: каркас, вход, роли, форма создания и изменения записей [таблица items]. Страница списка: app/(app)/items/page.tsx.
+Цель: добавить на страницу списка поиск по полю title, фильтр по status, сортировку (новые, по названию, по цене) и пагинацию по 10 записей. Состояние хранится в адресе страницы (searchParams).
+Ограничения: 1) сначала короткий план по файлам и жди подтверждения «ок»; 2) запрос к базе делает серверный компонент: ilike, eq, order, range и count; 3) sort принимай только из белого списка [created_at, title, price]; некорректные page и sort заменяй значениями по умолчанию; 4) смена фильтра сбрасывает page на 1; 5) форма поиска и фильтров с методом GET, пагинация обычными ссылками; 6) новые библиотеки не ставь, RLS и схему базы не меняй; 7) пустое состояние «Ничего не найдено» и кнопка «Сбросить».
+Примеры: адрес /items?q=tea&amp;status=open&amp;sort=title&amp;page=2 показывает вторую страницу найденных открытых записей.
+Проверка: перечисли изменённые файлы, что проверить руками по шагам (в том числе мусорный адрес ?page=abc) и предложи сообщение commit.</div>
+      <p>И пример для SQL с политиками хранилища: просим SQL, а не его выполнение.</p>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md. Бакет item-images создан в панели Supabase как закрытый, лимит 2 МБ, типы jpeg, png, webp. Функция public.is_admin() уже есть (@db/ с прошлого спринта).
+Цель: написать файл db/003_storage.sql с политиками на storage.objects для бакета item-images: загрузка и удаление только в папку с id пользователя (первая папка пути равна auth.uid()), чтение своих файлов, admin читает и удаляет все.
+Ограничения: 1) только SQL и короткое пояснение к каждой политике, ничего не выполняй; 2) права только для роли authenticated, никакого anon и никаких with check (true); 3) без update: файлы не перезаписываем; 4) не трогай файлы приложения.
+Примеры: файл u-42/photo.webp пользователь с id u-42 может загрузить и прочитать, а пользователь u-7 — нет.
+Проверка: покажи, как проверить политики двумя тестовыми аккаунтами.</div>
+
+      <div class="callout warn">
+        <b>Что ИИ делает неправильно чаще всего в этом спринте</b>
+        <p><b>1.</b> Создаёт публичный бакет или политику <code>using (true)</code> и <code>with check (true)</code> «чтобы загрузка заработала». <b>2.</b> Берёт <code>user_id</code> из формы, а не из сессии. <b>3.</b> Использует secret key (service role) для админки или загрузки, потому что «так проще». <b>4.</b> Грузит всю таблицу и режет страницы массивом в браузере. <b>5.</b> Подставляет <code>sort</code> из адреса в запрос без проверки. <b>6.</b> Кладёт в таблицу подписанную ссылку вместо пути. <b>7.</b> Ставит библиотеку графиков, форм или таблиц «для красоты». <b>8.</b> Отправляет письмо клиенту (получает 403) или кладёт ключ почты в <code>NEXT_PUBLIC_</code>. <b>9.</b> Оставляет выдуманные данные в статистике. Перед commit найдите в диффе <code>secret</code>, <code>service_role</code>, <code>NEXT_PUBLIC_RESEND</code>, <code>using (true)</code>, <code>with check (true)</code> и файлы вне задачи.</p>
+      </div>
+
+      <p>Дополните <code>AGENTS.md</code> правилами спринта 2 (добавьте в конец раздела «Rules», на английском, как и весь файл):</p>
+
+<pre class="code" data-title="AGENTS.md: добавить в Rules">
+- Lists: filters, search, sort and page live in URL searchParams. Query runs on the server with order + range + count. Allow only whitelisted sort fields.
+- Storage buckets are private. Files go to path {user_id}/{random}.{ext}. Policies on storage.objects check the first folder against auth.uid(). Never create a public-write bucket. Store the path in the table, create signed URLs on read.
+- Admin pages and server actions check the role on the server. Never use the secret/service_role key in the app. Admin access comes from RLS policies with is_admin().
+- E-mail only from the server (Resend). RESEND_API_KEY and NOTIFY_EMAIL only in .env.local and Vercel env vars. Without a verified domain mail goes only to the account owner address. An e-mail error must not break saving.
+- Server actions: check the user, validate input, take user_id from the session, check the error of every Supabase call, then revalidatePath.
+</pre>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/storage/security/access-control" target="_blank" rel="noopener">Supabase Storage: Access Control</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: основная логика"><span class="num">07</span> Практика: основная логика и админ-панель выпускного проекта</h2>
+
+      <p>Одиннадцать задач по правилу «один промпт = один commit». Они одинаковы для любого проекта: название таблицы, полей и экранов берите из своего ТЗ. Ниже запись основной сущности названа <code>items</code>; подставьте своё (<code>clients</code>, <code>orders</code>, <code>bookings</code>…). После каждой задачи: <code>npm run build</code>, проверка в браузере, чтение diff, commit, push, отметка на доске <code>docs/SPRINT.md</code>.</p>
+
+      <h3>Что подставить в вашем проекте</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Проект</th><th>Основная запись</th><th>Фильтр</th><th>Файл</th><th>Письмо владельцу</th><th>Статистика админа</th></tr></thead>
+          <tbody>
+            <tr><td>CRM</td><td>клиент или сделка</td><td>статус</td><td>фото, договор</td><td>новая заявка</td><td>по статусам, новые за 7 дней</td></tr>
+            <tr><td>Магазин</td><td>товар и заказ</td><td>категория, статус</td><td>фото товара</td><td>новый заказ</td><td>заказы по статусам, сумма</td></tr>
+            <tr><td>Booking</td><td>бронь</td><td>дата, статус</td><td>фото услуги</td><td>новая бронь</td><td>брони по статусам</td></tr>
+            <tr><td>HRM</td><td>заявка сотрудника</td><td>тип, статус</td><td>документ (добавьте <code>application/pdf</code> в типы)</td><td>новая заявка</td><td>по типам и статусам</td></tr>
+            <tr><td>Telegram-бот</td><td>обращение или правило бота</td><td>статус</td><td>картинка ответа</td><td>новое обращение (Telegram в уроке 21)</td><td>по статусам</td></tr>
+            <tr><td>AI Resume Builder</td><td>резюме</td><td>шаблон, статус</td><td>фото для резюме</td><td>резюме создано</td><td>по шаблонам, новые за 7 дней</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Подготовка (до первого промпта), 10 минут:</p>
+      <ul>
+        <li>Каркас из урока 17 работает, на доске <code>docs/SPRINT.md</code> добавлены задачи спринта 2.</li>
+        <li>Таблица основной сущности есть: <code>id</code>, <code>user_id</code>, <code>title</code>, <code>status</code>, <code>created_at</code> (добавьте недостающие столбцы по <code>docs/SCHEMA.md</code>).</li>
+        <li>В <code>AGENTS.md</code> добавлены правила из раздела 6.</li>
+        <li>Есть два тестовых аккаунта: обычный и admin.</li>
+      </ul>
+
+      <h3>Задача 1. Создание записи</h3>
+      <div class="prompt good-prompt">Контекст: проект по правилам @AGENTS.md, схема @docs/SCHEMA.md. Страница списка app/(app)/items/page.tsx уже показывает записи из базы.
+Цель: страница /items/new с формой создания записи (поля из схемы: title, description) и серверным действием, которое сохраняет запись и возвращает на список с сообщением об успехе.
+Ограничения: 1) сначала план по файлам и жди подтверждения «ок»; 2) действие проверяет вошедшего пользователя через getClaims(), проверяет поля (title 3–100 символов, description до 1000) и ставит user_id из сессии; 3) проверяй error ответа Supabase и показывай понятное сообщение; 4) после сохранения revalidatePath для /items; 5) правила RLS не менять; 6) без новых библиотек.
+Проверка: перечисли файлы и что проверить руками (в том числе пустой title).</div>
+      <ul>
+        <li><b>Готово, когда:</b> новая запись появляется в списке и в таблице Supabase с вашим <code>user_id</code>; пустой <code>title</code> даёт понятную ошибку.</li>
+        <li><b>Commit:</b> <code>add create form</code>.</li>
+      </ul>
+
+      <h3>Задача 2. Изменение и удаление</h3>
+      <p>Сначала запишите правила <code>update</code> и <code>delete</code> в <code>db/004_crud_policies.sql</code> (образец ниже), прочитайте и выполните в SQL Editor, затем отправьте промпт.</p>
+<pre class="code" data-title="db/004_crud_policies.sql (замените items на вашу таблицу)">
+create policy "items: update own or admin"
+on public.items for update to authenticated
+using (user_id = (select auth.uid()) or (select public.is_admin()))
+with check (user_id = (select auth.uid()) or (select public.is_admin()));
+
+create policy "items: delete own or admin"
+on public.items for delete to authenticated
+using (user_id = (select auth.uid()) or (select public.is_admin()));
+</pre>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, правила update и delete для items добавлены (db/004_crud_policies.sql).
+Цель: страница /items/[id] с формой изменения (та же форма, что при создании) и кнопка «Удалить» с подтверждением «Вы уверены?». Серверные действия: updateItem и deleteItem.
+Ограничения: 1) план и жди подтверждения «ок» до изменений; 2) переиспользуй компонент формы из задачи 1; 3) проверка пользователя и данных, user_id не принимать из формы; 4) revalidatePath и переход на список; 5) если записи нет или она чужая, показывай not-found; 6) RLS не менять.
+Проверка: что проверить руками двумя аккаунтами: чужую запись изменить и удалить нельзя.</div>
+      <ul>
+        <li><b>Готово, когда:</b> запись изменяется и удаляется, чужую запись обычный пользователь не открывает; admin может.</li>
+        <li><b>Commit:</b> <code>add edit and delete</code>.</li>
+      </ul>
+
+      <h3>Задача 3. Поиск, фильтр и сортировка</h3>
+      <p>Промпт-образец смотрите в разделе 6. Часть «пагинация» пока уберите: она будет в задаче 4. Не забудьте белый список полей сортировки.</p>
+      <ul>
+        <li><b>Готово, когда:</b> адрес <code>/items?q=…&amp;status=…&amp;sort=…</code> даёт нужный список, «Сбросить» чистит адрес, мусорные значения не ломают страницу.</li>
+        <li><b>Commit:</b> <code>add search and filters</code>.</li>
+      </ul>
+
+      <h3>Задача 4. Пагинация</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, список /items фильтруется по searchParams (q, status, sort).
+Цель: пагинация по 10 записей: запрос с order, range и count, внизу «Страница N из M» и ссылки «Назад» и «Вперёд» с сохранением остальных параметров.
+Ограничения: 1) сначала план; 2) page из адреса приводи к числу от 1 до M, мусор считай первой страницей; 3) смена фильтра или поиска сбрасывает page; 4) кнопки неактивны на краях; 5) не грузить всю таблицу; 6) без новых библиотек.
+Проверка: что проверить руками (в том числе ?page=999 и ?page=abc), сообщение commit.</div>
+      <ul>
+        <li><b>Готово, когда:</b> при 25 записях видно три страницы, фильтры сохраняются при переходе, края работают.</li>
+        <li><b>Commit:</b> <code>add pagination</code>.</li>
+      </ul>
+
+      <h3>Задача 5. Бакет и политики хранилища</h3>
+      <p>Эта задача выполняется <b>вручную</b> (по шагам из раздела 3), SQL ИИ может написать (образец промпта в разделе 6), но читаете и запускаете его вы.</p>
+      <ol class="steps">
+        <li>Storage → New bucket: <code>item-images</code>, публичный доступ выключен, лимит 2 МБ, типы <code>image/jpeg</code>, <code>image/png</code>, <code>image/webp</code>.</li>
+        <li>Файл <code>db/003_storage.sql</code> с политиками из раздела 3: выполните в SQL Editor.</li>
+        <li>В таблицу добавьте столбец: <code>alter table public.items add column if not exists image_path text;</code> и сохраните команду в <code>db/005_image_path.sql</code>.</li>
+        <li>Не меняйте политики на «разрешить всем», если что-то не работает: сначала прочитайте ошибку.</li>
+      </ol>
+      <ul>
+        <li><b>Готово, когда:</b> бакет закрытый, политики на месте, столбец <code>image_path</code> существует, SQL лежит в <code>db/</code>.</li>
+        <li><b>Commit:</b> <code>add storage bucket and policies</code>.</li>
+      </ul>
+
+      <h3>Задача 6. Загрузка и показ картинки</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, закрытый бакет item-images с политиками (db/003_storage.sql), в items есть столбец image_path.
+Цель: в форму записи добавить поле «Картинка»: файл загружается в бакет по пути {userId}/{uuid}.{ext}, путь сохраняется в image_path. В карточке записи и в списке картинка показывается через подписанную ссылку на 3600 секунд.
+Ограничения: 1) сначала план; 2) загрузка из браузерного клиента Supabase под сессией пользователя, userId передаётся из серверного компонента (getClaims); 3) перед загрузкой проверить размер до 2 МБ и тип jpeg, png, webp и показать понятную ошибку; 4) подписанную ссылку создавать на сервере, в таблице хранить только путь; 5) показывать обычным тегом img с width и height (без next/image); 6) при удалении записи удалять и файл (remove); 7) secret key не использовать, политики не менять.
+Проверка: что проверить руками: загрузка, показ, слишком большой файл, чужая папка (попытка должна упасть).</div>
+      <ul>
+        <li><b>Готово, когда:</b> картинка загружается и показывается, лишний файл отклоняется, у второго аккаунта своя папка, в панели Storage файлы лежат по путям с id.</li>
+        <li><b>Commit:</b> <code>add image upload</code>.</li>
+      </ul>
+
+      <h3>Задача 7. E-mail уведомление владельцу</h3>
+      <p>Зарегистрируйтесь в Resend, создайте ключ, добавьте <code>RESEND_API_KEY</code> и <code>NOTIFY_EMAIL</code> в <code>.env.local</code> (раздел 4); имена без значений в <code>.env.example</code>.</p>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md. В .env.local уже есть RESEND_API_KEY и NOTIFY_EMAIL (значения не показывай и не меняй). Пакет resend установлен.
+Цель: функция notifyOwner(subject, html) в lib/notify.ts и вызов из серверного действия создания записи: после успешного сохранения владельцу уходит письмо «Новая запись: [title]» со ссылкой на запись в админке.
+Ограничения: 1) сначала план; 2) отправитель onboarding@resend.dev, получатель только NOTIFY_EMAIL (без своего домена письма идут лишь на адрес аккаунта Resend); 3) ошибка отправки пишется в журнал и не ломает сохранение; 4) текст из формы экранируй или отправляй простым текстом; 5) ключ только из process.env на сервере, без NEXT_PUBLIC_.
+Проверка: что проверить руками (письмо пришло, а если пришло не сразу, то проверить папку «Спам»).</div>
+      <ul>
+        <li><b>Готово, когда:</b> после создания записи письмо приходит на ваш адрес; при неверном ключе запись всё равно сохраняется.</li>
+        <li><b>Commit:</b> <code>add email notification</code>.</li>
+      </ul>
+
+      <h3>Задача 8. Главный сценарий от начала до конца</h3>
+      <p>Выберите главный сценарий из <code>docs/SPEC.md</code> (самая важная история пользователя) и пройдите его на локальном сайте двумя аккаунтами. Примеры: клиент оформляет заказ и владелец получает письмо; гость регистрируется, создаёт бронь и видит её в списке; менеджер добавляет клиента, прикладывает договор и находит клиента поиском. Все дыры запишите на доску, закройте мелкими задачами.</p>
+      <ul>
+        <li><b>Готово, когда:</b> сценарий проходит без остановок и ручных правок в базе; на каждом экране есть состояния «загрузка», «пусто», «ошибка»; в консоли браузера нет красных ошибок.</li>
+        <li><b>Commit:</b> по одному на каждую найденную дыру, например <code>fix empty state in orders</code>.</li>
+      </ul>
+
+      <h3>Задача 9. Админ-панель: статистика</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, роль admin хранится в profiles, функция is_admin() есть. Страница app/(app)/admin/page.tsx пока заглушка.
+Цель: на /admin показать статистику по items: всего записей, по каждому status, новых за последние 7 дней, число пользователей; под числами простая диаграмма статусов полосками.
+Ограничения: 1) сначала план; 2) страница серверная, роль проверяется на сервере, чужому 404; 3) числа считай запросами select с count: exact и head: true через Promise.all, без выдуманных данных; 4) диаграмма на CSS, без библиотек; 5) secret key не использовать, RLS не менять; 6) состояния загрузка, ошибка, нет данных.
+Проверка: что проверить руками: admin видит числа, обычный пользователь получает 404, числа совпадают с таблицей Supabase.</div>
+      <ul>
+        <li><b>Готово, когда:</b> числа настоящие и совпадают с таблицей, диаграмма отображается, обычному пользователю админка недоступна.</li>
+        <li><b>Commit:</b> <code>add admin stats</code>.</li>
+      </ul>
+
+      <h3>Задача 10. Админ-панель: управление записями</h3>
+      <div class="prompt good-prompt">Контекст: проект по @AGENTS.md, /admin показывает статистику, пользовательский список /items с поиском, фильтрами и пагинацией уже есть.
+Цель: страница /admin/items со списком записей всех пользователей (поиск, фильтр по статусу, пагинация как в /items), столбец «владелец», ссылка на картинку и действия: сменить статус и удалить с подтверждением.
+Ограничения: 1) сначала план; 2) переиспользуй компоненты и логику списка из /items; 3) серверные действия сначала проверяют, что пользователь admin, чужому 404; 4) удаление записи удаляет и файл из бакета; 5) secret key не использовать; 6) без новых библиотек.
+Проверка: что проверить руками двумя аккаунтами: admin видит всё и управляет, обычный пользователь не открывает страницу и не вызывает действия.</div>
+      <ul>
+        <li><b>Готово, когда:</b> admin видит записи всех пользователей, меняет статус и удаляет; от лица обычного пользователя действия не работают.</li>
+        <li><b>Commit:</b> <code>add admin records</code>.</li>
+      </ul>
+
+      <h3>Задача 11. Деплой и README</h3>
+      <p>Добавьте на Vercel переменные <code>RESEND_API_KEY</code> и <code>NOTIFY_EMAIL</code> (Settings → Environment Variables), запустите деплой заново и пройдите главный сценарий на живом сайте. В <code>README.md</code> допишите раздел «Что сделано в спринте 2 и что дальше».</p>
+      <ul>
+        <li><b>Готово, когда:</b> на живом сайте главный сценарий работает, письмо приходит, файлы грузятся, админка защищена.</li>
+        <li><b>Commit:</b> <code>update readme</code>.</li>
+      </ul>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/18-sprint-2/policies.svg" alt="Схема экрана политик Storage: список из трёх политик для бакета item-images (insert, select, delete), у каждой подпись «authenticated» и условие «первая папка равна id пользователя»; справа два аккаунта: Аня загружает в свою папку u-42 успешно, а попытка загрузить в папку u-7 получает ошибку нарушения политики" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Так выглядит итог задачи 5 в упрощённом виде: три политики и два аккаунта. Схема упрощена, настоящая панель Supabase выглядит иначе</figcaption>
+      </figure>
+
+      <article class="task" id="cl-sprint">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Чек-лист: спринт 2 собран</h4><span class="level mid">средняя</span></header>
+        <p>Отметьте, что уже работает на живом сайте Vercel, а не только на вашем компьютере.</p>
+        <ul class="checklist" id="cl-built2">
+          <li>Создание, изменение и удаление записей работают, чужую запись обычный пользователь изменить не может</li>
+          <li>Поиск, фильтр, сортировка и пагинация живут в адресе, мусор в адресе не ломает страницу</li>
+          <li>Бакет закрытый, лимит и типы заданы, политики на <code>storage.objects</code> по id пользователя лежат в <code>db/</code></li>
+          <li>Картинка загружается, показывается по подписанной ссылке, в таблице хранится только путь</li>
+          <li>Письмо владельцу приходит после создания записи, ключ только в <code>.env.local</code> и Vercel</li>
+          <li>Админ-панель показывает настоящую статистику и управляет записями всех пользователей</li>
+          <li><code>/admin</code> недоступна обычному пользователю: проверено двумя аккаунтами</li>
+          <li>В истории Git не меньше десяти новых commit, секретов в репозитории нет, <code>.env.example</code> обновлён</li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-fix">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Если сломалось: найди причину</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>На сайте на Vercel загрузка картинки работает, но письма не приходят, а локально приходят. Что вероятнее всего?</p>
+          <ol class="options">
+            <li>Vercel не умеет отправлять письма</li>
+            <li>В Vercel не добавлены <code>RESEND_API_KEY</code> и <code>NOTIFY_EMAIL</code> или после добавления не было нового деплоя</li>
+            <li>Нужно сменить название бакета</li>
+            <li>В браузере выключен JavaScript</li>
+          </ol>
+          <div class="explain"><p><code>.env.local</code> в Git не попадает, поэтому сервер Vercel ключей не знает. Добавьте переменные в Settings → Environment Variables и запустите деплой заново.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Картинка загрузилась, путь записан, но в списке вместо неё пустой квадрат, а в журнале ошибка про «hostname is not configured under images». В чём причина?</p>
+          <ol class="options">
+            <li>Файл повреждён</li>
+            <li>Бакет слишком большой</li>
+            <li>Картинка выводится через <code>next/image</code>, а адрес хранилища не добавлен в <code>images.remotePatterns</code>: либо добавьте его, либо используйте обычный <code>&lt;img&gt;</code></li>
+            <li>Нужно отключить RLS</li>
+          </ol>
+          <div class="explain"><p>Next.js не обрабатывает картинки с адресов, которые не перечислены в настройках. Отключать RLS не нужно: это не про права.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Обычный пользователь открывает <code>/admin</code> и видит таблицу всех записей. Что проверить?</p>
+          <ol class="options">
+            <li>Проверку роли на сервере страницы и политики базы: возможно, нужные запросы выполняются с secret key, а политики разрешают всем (<code>using (true)</code>)</li>
+            <li>Цвет кнопки «Админка»</li>
+            <li>Размер шрифта таблицы</li>
+            <li>Название репозитория на GitHub</li>
+          </ol>
+          <div class="explain"><p>Это уязвимость доступа: роль не проверяется на сервере или база отдаёт чужие строки. Остановитесь, откатите или исправьте задачу, не публикуйте сайт, пока правило не починено.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vercel.com/docs/environment-variables" target="_blank" rel="noopener">Vercel: Environment Variables</a>, <a href="https://nextjs.org/docs/app/api-reference/components/image" target="_blank" rel="noopener">Next.js: компонент Image</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 08 · Фишка ============ -->
+    <section class="topic" id="breakit">
+      <h2 data-toc="Сломай чужой продукт"><span class="num">08</span> Фишка урока: «Сломай чужой продукт»</h2>
+
+      <p>Автор всегда видит свой продукт глазами того, кто знает, как им пользоваться. Поэтому ошибки находят другие. В этой игре вы 30 минут тестируете чужой продукт и заводите баг-репорты, а затем исправляете найденные ошибки в своём. Так работают тестировщики в командах, и вы сразу узнаёте, какие дыры остались.</p>
+
+      <div class="callout warn">
+        <b>Правила безопасной игры</b>
+        <p><b>1.</b> Тестируем только через интерфейс сайта и только на тестовых аккаунтах: ваш и тестовый от автора. <b>2.</b> Никаких сканеров, перебора паролей и нагрузки: цель найти ошибки, а не положить сайт. <b>3.</b> Чужие ключи и пароли не просим и не ищем; если случайно увидели секрет (ключ в коде страницы, в ответе сайта), сразу сообщите автору лично, и это тоже серьёзная ошибка. <b>4.</b> Ошибку не используют против автора и не публикуют вне группы. <b>5.</b> Если сломали данные (удалили запись), скажите об этом автору.</p>
+      </div>
+
+      <h3>Ход игры (50 минут)</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:05</td><td>Разбиваются на пары (или тройки) и обмениваются ссылками на Vercel, данными тестовых аккаунтов (роль user и роль admin) и описанием главного сценария из <code>docs/SPEC.md</code></td></tr>
+            <tr><td>0:05–0:35</td><td>Тест по сценарию проверки (таблица ниже). Каждая найденная ошибка записывается отдельным баг-репортом по шаблону</td></tr>
+            <tr><td>0:35–0:45</td><td>Обмен репортами: автор читает, задаёт вопросы, отмечает «воспроизвёл» или «не воспроизвёл» и ставит приоритет</td></tr>
+            <tr><td>0:45–0:50</td><td>Подсчёт очков, план исправлений на доске <code>docs/SPRINT.md</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Сценарий проверки для тестировщика</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Область</th><th>Что попробовать</th></tr></thead>
+          <tbody>
+            <tr><td>Гость</td><td>Открыть закрытые адреса без входа; адреса <code>/admin</code> и записи по прямой ссылке; несуществующий адрес</td></tr>
+            <tr><td>Обычный пользователь</td><td>Пройти главный сценарий; открыть <code>/admin</code> и админские адреса; попробовать открыть чужую запись по её адресу</td></tr>
+            <tr><td>Формы</td><td>Пустые поля, очень длинный текст, спецсимволы и теги (<code>&lt;b&gt;</code>), двойное нажатие на «Сохранить», обновление страницы после отправки</td></tr>
+            <tr><td>Список</td><td>Поиск (в том числе <code>%</code> и кириллица), все фильтры, сортировки, переход по страницам, мусор в адресе (<code>?page=abc</code>, <code>?sort=drop</code>)</td></tr>
+            <tr><td>Файлы</td><td>Слишком большой файл, не картинка (PDF, текстовый файл), файл с длинным и странным именем, файл с кириллицей, загрузка без входа</td></tr>
+            <tr><td>Письмо</td><td>Пришло ли письмо владельцу; что в письме; не ломается ли сохранение, если письмо не ушло (спросите автора)</td></tr>
+            <tr><td>Админ-панель</td><td>Администратор: числа совпадают с таблицей, смена статуса, удаление; пользователь: те же действия должны быть закрыты</td></tr>
+            <tr><td>Телефон</td><td>Экран шириной 390 пикселей (режим устройства в DevTools, урок 3): ничего не вылезает, кнопки нажимаются, меню работает</td></tr>
+            <tr><td>Состояния</td><td>Пустой список, ошибка (отключите интернет на минуту), долгая загрузка</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Шаблон баг-репорта</h3>
+      <p>Один баг — один репорт. Скопируйте шаблон в файл или в issue на GitHub (вкладка Issues репозитория автора):</p>
+
+<div class="prompt good-prompt">Название: [что сломано, одной строкой, без слов «не работает»]
+Важность: critical | major | minor | cosmetic
+
+Где: [адрес страницы и роль: гость, user или admin]
+Шаги:
+1. [открыть …]
+2. [нажать …]
+3. [ввести …]
+Ожидал: [что должно было произойти]
+Получил: [что произошло на самом деле, текст ошибки дословно]
+Среда: [браузер, телефон или компьютер, ширина экрана]
+Доказательство: [скриншот, запись экрана или текст ошибки из консоли браузера]
+Повторяется: всегда | иногда | один раз</div>
+
+      <h3>Как оценить важность</h3>
+      <ul>
+        <li><b>critical</b> (3 очка): ломает главный сценарий или раскрывает чужие данные: чужая запись или файл открываются, обычный пользователь видит админку, в коде страницы виден секрет.</li>
+        <li><b>major</b> (2 очка): важная функция не работает, но обходной путь есть: фильтр не фильтрует, картинка не грузится.</li>
+        <li><b>minor</b> (1 очко): мелкая ошибка: неверный текст, неудобная кнопка, нет пустого состояния.</li>
+        <li><b>cosmetic</b> (0,5 очка): внешний вид: сдвиг, цвет, выравнивание.</li>
+      </ul>
+
+      <h3>Очки</h3>
+      <ul>
+        <li>Очки по важности за каждую подтверждённую автором ошибку (дубликаты не считаются).</li>
+        <li><b>+1</b> за репорт, где все поля заполнены и автор воспроизвёл ошибку по шагам с первого раза.</li>
+        <li><b>+2</b> автору за каждую исправленную критическую или важную ошибку из репортов до конца урока (commit с номером репорта в сообщении).</li>
+        <li><b>−1</b> за «репорт» без шагов или без доказательства («у вас всё не работает»).</li>
+      </ul>
+
+      <article class="task" id="cl-bug">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: мой баг-репорт хорош</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте после игры, взяв один из своих репортов.</p>
+        <ul class="checklist" id="cl-bugreport">
+          <li>В названии сказано, что именно сломано, без слов «не работает» и «глючит»</li>
+          <li>Указаны адрес страницы и роль, под которой я тестировал</li>
+          <li>Шаги написаны по порядку, автор может их повторить без вопросов</li>
+          <li>Есть «ожидал» и «получил», текст ошибки скопирован дословно</li>
+          <li>Приложены скриншот или текст из консоли, в них нет ключей и паролей</li>
+          <li>Выбрана важность, и я могу объяснить, почему именно такая</li>
+          <li>Я проверил, что ошибка повторяется, и это не дубликат</li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-bug">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Проверь себя: баг-репорты</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Какой из баг-репортов самый полезный?</p>
+          <ol class="options">
+            <li>«Сайт глючит, исправьте»</li>
+            <li>«Фильтр не работает вообще, очень плохо»</li>
+            <li>«/items: роль user. Шаги: 1) открыть /items; 2) выбрать статус open; 3) нажать «Вперёд». Ожидал: вторую страницу открытых записей. Получил: страница 2 показывает все записи, фильтр пропал из адреса. Скриншот приложен»</li>
+            <li>«Мне не нравится дизайн»</li>
+          </ol>
+          <div class="explain"><p>Третий репорт даёт адрес, роль, шаги, ожидание, результат и доказательство: автор повторит ошибку за минуту. Остальные не позволяют ничего воспроизвести.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Тестировщик вошёл как обычный пользователь и по прямой ссылке открыл запись другого пользователя. Какая это важность?</p>
+          <ol class="options">
+            <li>critical: раскрыты чужие данные, это нужно чинить в первую очередь</li>
+            <li>cosmetic: просто внешний вид</li>
+            <li>minor: мелкая неудобность</li>
+            <li>Не ошибка: ссылка ведь существует</li>
+          </ol>
+          <div class="explain"><p>Доступ к чужим данным — нарушение прав на уровне RLS или серверного кода. Такие ошибки всегда critical: они ломают безопасность, а не удобство.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что нельзя делать при тестировании чужого продукта?</p>
+          <ol class="options">
+            <li>Вводить пустые и очень длинные значения</li>
+            <li>Запускать сканеры и массовые запросы, пытаться подобрать пароли или искать чужие ключи</li>
+            <li>Открывать сайт с телефона</li>
+            <li>Загружать слишком большой файл</li>
+          </ol>
+          <div class="explain"><p>Игра проверяет продукт через интерфейс на тестовых аккаунтах. Сканеры, подбор паролей и нагрузка могут навредить и выходят за рамки договорённости.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://docs.github.com/en/issues/tracking-your-work-with-issues/about-issues" target="_blank" rel="noopener">GitHub: об issues</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 09 · ДЗ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание: работающая админка и главный сценарий (ДЗ-18)</h2>
+
+      <p>Доведите проект до состояния, когда его основная задача выполняется от начала до конца, а админ-панель показывает настоящую статистику и управляет записями. Сдача: две ссылки (репозиторий GitHub и сайт на Vercel). Если на занятии вы не успели, достройте оставшиеся задачи из раздела 7 и исправьте ошибки из репортов.</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Главный сценарий:</b> пользователь проходит основной сценарий из <code>docs/SPEC.md</code> от начала до конца на живом сайте без ручных правок в базе.</li>
+        <li><b>CRUD:</b> создание, просмотр, изменение и удаление основной записи, проверка данных на сервере, <code>user_id</code> из сессии, RLS на всех командах (<code>select</code>, <code>insert</code>, <code>update</code>, <code>delete</code>).</li>
+        <li><b>Список:</b> поиск, минимум один фильтр, сортировка и пагинация, состояние в адресе, мусор в адресе не ломает страницу.</li>
+        <li><b>Файлы:</b> загрузка картинки или файла в закрытый бакет, ограничения размера и типа, политики на <code>storage.objects</code> по id пользователя в <code>db/</code>, в таблице путь, показ по подписанной ссылке. Публичных бакетов с записью нет.</li>
+        <li><b>E-mail:</b> владелец получает письмо о новой записи (получатель только ваш адрес), ключ только в <code>.env.local</code> и Vercel, ошибка письма не ломает сохранение.</li>
+        <li><b>Админ-панель:</b> настоящая статистика (минимум четыре числа и диаграмма статусов) и таблица записей всех пользователей с поиском, пагинацией, сменой статуса и удалением; доступ только admin на трёх уровнях.</li>
+        <li><b>Баг-репорты:</b> вы протестировали чужой проект и завели минимум два репорта по шаблону; исправили не меньше двух ошибок из полученных репортов (в commit или в README указан номер).</li>
+        <li><b>Порядок:</b> не меньше десяти новых commit по задачам, <code>README.md</code> обновлён (раздел «Что сделано в спринте 2 и что дальше»), доска <code>docs/SPRINT.md</code> актуальна.</li>
+        <li><b>Секреты:</b> в репозитории нет ключей и паролей, <code>.env.example</code> без значений, <code>npm run build</code> проходит.</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li>Выполните задачи 1–11 из раздела 7 для своего проекта.</li>
+        <li>Пройдите главный сценарий на живом сайте двумя аккаунтами (обычный и admin) и ещё раз проверьте карту доступа «роль × экран».</li>
+        <li>Исправьте ошибки из полученных баг-репортов, начиная с critical.</li>
+        <li>Допишите в <code>README.md</code> раздел «Что сделано в спринте 2 и что дальше» (3–5 пунктов) и приложите 2–3 скриншота главного сценария и админки (без личных данных и ключей).</li>
+        <li>Вставьте ссылки ниже и отметьте чек-лист.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Бакет публичный или политика <code>with check (true)</code>. <b>2.</b> Статистика админки выдуманная. <b>3.</b> Список грузит всю таблицу, а пагинация режет массив в браузере. <b>4.</b> Ключ почты в репозитории или в <code>NEXT_PUBLIC_</code>. <b>5.</b> На Vercel нет переменных: письма не уходят. <b>6.</b> <code>/admin</code> открывается обычному пользователю. <b>7.</b> Попытка отправить письмо клиенту и ошибка 403: в задании достаточно письма владельцу. <b>8.</b> Секретный ключ используется в админке. <b>9.</b> Один гигантский commit. <b>10.</b> Репорты без шагов и доказательства.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Как проверяют</b>
+        <p>Проверяющий откроет сайт, зарегистрируется, пройдёт главный сценарий, попробует поиск и пагинацию с «мусорными» адресами, загрузит картинку (и слишком большой файл), попробует открыть <code>/admin</code> и чужую запись от обычного пользователя, а затем изучит репозиторий: историю commit, папку <code>db/</code> (политики таблиц и хранилища), <code>README.md</code>, отсутствие секретов, ваши баг-репорты. Баллы: за работающий главный сценарий, за поиск и пагинацию, за безопасную работу с файлами, за честную админку, за качество репортов и умение объяснить своё решение.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист требований к ДЗ-18</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Главный сценарий проходит от начала до конца на живом сайте</li>
+          <li>CRUD работает, RLS есть на всех командах, <code>user_id</code> берётся из сессии</li>
+          <li>Поиск, фильтр, сортировка и пагинация живут в адресе и не ломаются от мусора</li>
+          <li>Закрытый бакет, ограничения, политики по id пользователя в <code>db/</code>, в таблице путь</li>
+          <li>Письмо владельцу приходит, ключ только в <code>.env.local</code> и Vercel</li>
+          <li>Админ-панель: настоящая статистика и управление записями, доступ только admin</li>
+          <li>Я протестировал чужой проект и завёл минимум два баг-репорта по шаблону</li>
+          <li>Исправлено не меньше двух ошибок из полученных репортов</li>
+          <li>Не меньше десяти новых commit, <code>README.md</code> и доска обновлены, секретов в репозитории нет</li>
+          <li><code>npm run build</code> проходит, ссылки на GitHub и Vercel вставлены ниже</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий выпускного проекта.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/graduation-project"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 9.3</span><h4>Ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на опубликованный сайт (адрес вида <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://graduation-project.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://supabase.com/docs/guides/storage" target="_blank" rel="noopener">Supabase Storage: обзор</a>, <a href="https://resend.com/docs/introduction" target="_blank" rel="noopener">Resend: документация</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>CRUD:</b> четыре экрана (список, создание, запись с изменением, удаление с подтверждением); команды <code>insert/select/update/delete</code> и по правилу RLS на каждую; серверное действие: пользователь, проверка данных, запрос, проверка <code>error</code>, <code>revalidatePath</code>. <code>user_id</code> ставит сервер.</li>
+        <li><b>Списки:</b> состояние в адресе (<code>q</code>, <code>status</code>, <code>sort</code>, <code>page</code>); запрос на сервере с <code>ilike</code>, <code>eq</code>, <code>order</code>, <code>range</code>, <code>count</code>; <code>range(from, to)</code> включает обе границы; сортировка по белому списку; смена фильтра сбрасывает страницу.</li>
+        <li><b>Storage:</b> бакет закрытый по умолчанию, лимит размера и типы в настройках бакета; путь <code>{user_id}/{случайное имя}.{ext}</code>; политики на <code>storage.objects</code> через <code>storage.foldername(name)</code> и <code>auth.uid()</code>; в таблице путь; показ по <code>createSignedUrl</code>. Бакет с публичной записью не создают.</li>
+        <li><b>E-mail:</b> только с сервера; Resend, <code>RESEND_API_KEY</code> и <code>NOTIFY_EMAIL</code> в <code>.env.local</code> и Vercel; без подтверждённого домена письма идут только на адрес аккаунта (иначе 403), для ДЗ этого достаточно; ошибка письма не ломает сохранение.</li>
+        <li><b>Админка:</b> статистика по настоящим запросам (<code>count: "exact", head: true</code>), таблица записей с теми же фильтрами; защита на трёх уровнях: меню, сервер, база (<code>is_admin()</code>); secret key не использовать.</li>
+        <li><b>Сломай чужой продукт:</b> тест через интерфейс на тестовых аккаунтах; один баг — один репорт (название, важность, где, шаги, ожидал, получил, среда, доказательство); critical = утечка данных или поломка главного сценария.</li>
+        <li><b>Порядок:</b> одна задача = один промпт = один commit; перед commit <code>npm run build</code>, проверка в браузере, чтение diff без секретов.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, какие экраны, команды базы и правила RLS нужны для CRUD</li>
+          <li>Могу сделать поиск, фильтры, сортировку и пагинацию с состоянием в адресе страницы</li>
+          <li>Могу создать закрытый бакет и написать политики по id пользователя</li>
+          <li>Могу загрузить файл, сохранить путь и показать картинку по подписанной ссылке</li>
+          <li>Могу объяснить, почему без своего домена письма идут только на мой адрес, и подключить отправку с сервера</li>
+          <li>Могу построить админ-панель со статистикой и защитить её на трёх уровнях</li>
+          <li>Могу протестировать чужой продукт и написать понятный баг-репорт</li>
+        </ul>
+      </article>
+    </section>

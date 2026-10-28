@@ -1,0 +1,1223 @@
+<style>
+  /* услубҳои умумии нақшаҳои дарс: дар мавзӯи равшан ва торик тавассути тағйирёбандаҳо кор мекунанд */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 12 · Модули 4. Backend бе душворӣ</p>
+      <h1>Авторизатсия: бақайдгирӣ, воридшавӣ ва кабинети шахсӣ</h1>
+      <p class="lead">То охири дарс сайти шумо корбарони воқеӣ хоҳад дошт: бақайдгирӣ, воридшавӣ, баромад, кабинети шахсӣ бо таҳрири профил, саҳифаҳои пӯшида ва нақши администратор. Ғайр аз ин, шумо ҳама чизро ба санҷиши мустаҳкамӣ мегузаронед: ҳамсоя кӯшиш мекунад кабинети шуморо кушояд, шумо бошед рахнаҳоро бо қоидаҳои RLS аз рӯи id-и корбар пӯшиданро меомӯзед.</p>
+      <ul class="goals">
+        <li>Фарқи аутентификатсия («шумо кистед?») ва авторизатсия («ба шумо чӣ мумкин аст?»)-ро дар мисоли сайти худ фаҳмонед</li>
+        <li>Бақайдгирӣ, воридшавӣ ва баромадро бо e-mail ва парол тавассути Supabase Auth ва <code>@supabase/ssr</code> созед</li>
+        <li>Фаҳмонед, ки сессия, access-токен, refresh-токен чист ва онҳо дар куҷо нигоҳ дошта мешаванд (cookie)</li>
+        <li>Саҳифаҳои <code>/account</code> ва <code>/admin</code>-ро бо се қабат пӯшед: <code>proxy.ts</code>, санҷиш дар саҳифа ва RLS</li>
+        <li>Нақшҳои <code>user</code> ва <code>admin</code>-ро дар ҷадвали <code>profiles</code> ворид кунед ва фаҳмонед, ки чаро нақшро дар маълумоте, ки корбар худаш таҳрир мекунад, нигоҳ доштан мумкин нест</li>
+        <li>Қоидаҳои RLS нависед «танҳо сатрҳои худро мебинед ва тағйир медиҳед» ва онҳоро бо ҳамлаи «Ҳамсояро шикаст» санҷед</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Ин дарсро чӣ тавр гузаштан лозим</b>
+      <p>Лозим мешавад: Cursor, лоиҳаи Next.js бо сайти тарабхона ва пойгоҳ аз дарси 11 (ҷадвалҳои <code>bookings</code> ва <code>restaurant_tables</code>, калидҳо дар <code>.env.local</code>), ҳисобҳои Supabase ва Vercel. Вақт: 3–4 соат. Дарсро дар нимаи экран кушоед, Cursor ва панели Supabase-ро дар нимаи дигар. Назарияро (бахшҳои 1–5) қисм-қисм хонед. Амалиётро (бахши 7) дар як нишаст иҷро кунед. Бахши 8 (воридшавӣ бо Google) бонус аст: тақрибан 30 дақиқа мегирад ва ба ҳама лозим нест. Бахши 9 бозӣ дар ҷуфт аст: пешакӣ бо ҳамсоя мувофиқа кунед.</p>
+    </div>
+
+    <!-- ============ 01 · Authn vs Authz ============ -->
+    <section class="topic" id="authn-authz">
+      <h2 data-toc="Аутентификатсия ва авторизатсия"><span class="num">01</span> Шумо кистед ва ба шумо чӣ мумкин аст: ду саволи гуногун</h2>
+
+      <p>Дар дарси 11 саҳифаи <code>/admin</code> барои ҳар касе, ки истинодро медонист, кушода буд. Барои ислоҳи ин сайт бояд ба ду саволи гуногун ҷавоб диҳад, ва онҳоро аксар вақт омезиш медиҳанд.</p>
+
+      <dl class="terms">
+        <dt>Аутентификатсия (authentication)</dt><dd>Санҷиши шахсият: «оё шумо дарвоқеъ Мадинаед?» Исбот: парол, рамз аз мактуб, воридшавӣ бо Google. Натиҷа: сайт медонад, ки дар назди он <b>кист</b>.</dd>
+        <dt>Авторизатсия (authorization)</dt><dd>Санҷиши ҳуқуқҳо: «ба Мадина чӣ мумкин аст?» Дархостҳои худро хондан — ҳа, бегонаро — не, <code>/admin</code>-ро кушодан — танҳо ба администратор. Натиҷа: сайт медонад, ки <b>чӣ иҷозат аст</b>.</dd>
+      </dl>
+
+      <p>Тартиб ҳамеша як аст: аввал аутентификатсия, баъд авторизатсия. Ҳалли он, ки ба Мадина чӣ мумкин аст, ғайриимкон аст, то нафаҳмед, ки ин худи ӯст.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Нақша: меҳмон e-mail ва паролро нишон медиҳад, сайт ҷавоб медиҳад «ин Мадина аст» (аутентификатсия); баъд Мадина дархостҳои бегонаро мепурсад, сайт ҳуқуқҳоро месанҷад ва рад мекунад, ба дархостҳои худаш бошад ҷавоб медиҳад «мумкин» (авторизатсия)">
+          <rect class="box" x="10" y="80" width="130" height="70" rx="10" />
+          <text x="75" y="108" text-anchor="middle">Меҳмон</text><text class="sub" x="75" y="128" text-anchor="middle">e-mail + парол</text>
+          <rect class="fill-y" x="230" y="20" width="210" height="80" rx="10" />
+          <text x="335" y="48" text-anchor="middle">1. Аутентификатсия</text><text class="sub" x="335" y="68" text-anchor="middle">шумо кистед?</text><text class="sub t-g" x="335" y="88" text-anchor="middle">ин Мадина аст</text>
+          <rect class="fill-g" x="230" y="130" width="210" height="80" rx="10" />
+          <text x="335" y="158" text-anchor="middle">2. Авторизатсия</text><text class="sub" x="335" y="178" text-anchor="middle">ба шумо чӣ мумкин аст?</text><text class="sub t-g" x="335" y="198" text-anchor="middle">дархостҳои худӣ: ҳа</text>
+          <rect class="box g" x="530" y="20" width="170" height="80" rx="10" />
+          <text x="615" y="52" text-anchor="middle">Кабинети шахсӣ</text><text class="sub t-g" x="615" y="74" text-anchor="middle">дастрасӣ ҳаст</text>
+          <rect class="box" x="530" y="130" width="170" height="80" rx="10" />
+          <text x="615" y="158" text-anchor="middle">Дархостҳои бегона</text><text class="sub t-r" x="615" y="180" text-anchor="middle">дастрасӣ нест</text>
+          <path class="arr" d="M140 105L224 62" /><path class="arr-head" d="M224 55l9 3-7 9z" />
+          <path class="arr" d="M335 100V124" /><path class="arr-head" d="M330 124l5 8 5-8z" />
+          <path class="arr" d="M440 60H524" /><path class="arr-head" d="M524 55l8 5-8 5z" />
+          <path class="arr" d="M440 170H524" /><path class="arr-head" d="M524 165l8 5-8 5z" />
+        </svg>
+        <figcaption>Аввал сайт мефаҳмад, ки шумо кистед (аутентификатсия), баъд барои ҳар амал месанҷад, ки оё ин ба шумо мумкин аст (авторизатсия)</figcaption>
+      </figure>
+
+      <div class="yt" data-id="iiFKOegQyKQ" data-title="Фарқи аутентификатсия ва авторизатсия — канали Kirill Sachkov" data-start="0"></div>
+      <p class="muted">Видео бо забони русӣ, камтар аз як дақиқа: ҳамин чиз бо суханони дигар.</p>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Даромадгоҳи маркази тиҷоратӣ дар Душанбе. Назди турникет посбон шиноснома ва иҷозатномаи шуморо муқоиса мекунад: ин аутентификатсия аст. Минбаъд иҷозатнома танҳо ошёнаи шуморо мекушояд, ба ошёнаи директор лифт намеравад: ин авторизатсия аст. Шиноснома бисёриҳо доранд, аммо ҳуқуқҳо барои ҳама гуногунанд.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Фикр кардан, ки «ворид шуд» маънои «ҳама чиз мумкин»-ро дорад: Фирдавси ворид шуда набояд дархостҳои Мадинаро бинад. <b>2.</b> Тугмаи «Админка»-ро дар меню пинҳон кардан ва ҳисоб кардан, ки саҳифа ҳифз шудааст: суроғаро ба ҳар ҳол бо даст навиштан мумкин аст. <b>3.</b> Ҳуқуқҳоро танҳо дар интерфейс санҷидан (тугмаро пинҳон кардан), на дар сервер ва на дар пойгоҳ. Интерфейс намоён аст ва онро гирифтан мумкин аст, барои ҳамин санҷиши воқеӣ он ҷо ҷойгир аст, ки меҳмон ба он нарасад.</p>
+      </div>
+
+      <article class="task" id="q-authn">
+        <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Худро санҷед: аутентификатсия ва авторизатсия</h4><span class="level easy">осон</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Кадоме аз инҳо аутентификатсия аст?</p>
+          <ol class="options">
+            <li>Сайт ҳал мекунад, ки саҳифаи <code>/admin</code> танҳо барои администратор аст</li>
+            <li>Сайт e-mail ва паролро месанҷад ва мефаҳмад, ки Мадина ворид шуд</li>
+            <li>Пойгоҳ дархостҳои Фирдавсро ба Мадина намедиҳад</li>
+            <li>Дар меню истиноди «Админка» пинҳон аст</li>
+          </ol>
+          <div class="explain"><p>Аутентификатсия ба саволи «шумо кистед?» ҷавоб медиҳад. Вариантҳои дигар дар бораи ҳуқуқҳо, яъне авторизатсия мебошанд (охирин умуман танҳо дар бораи намуди зоҳирӣ аст).</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Фирдавс ба сайт ворид шуд ва суроғаи <code>/admin</code>-ро кушод. Сайт ӯро надод, зеро ӯ администратор нест. Ин кадом ҳолат аст?</p>
+          <ol class="options">
+            <li>Нокомии аутентификатсия: сайт Фирдавсро нашинохт</li>
+            <li>Фирдавс паролро нодуруст ворид кард</li>
+            <li>Авторизатсия: сайт медонад, ки ин Фирдавс аст, аммо ба ин саҳифа ҳуқуқ надорад</li>
+            <li>Ин танҳо дар реҷаи таҳия ҳамин тавр кор мекунад</li>
+          </ol>
+          <div class="explain"><p>Шахсият муқаррар шуд (ӯ ворид шуд), аммо ҳуқуқ нест. Фарқ маҳз дар байни «шумо кистед» ва «ба шумо чӣ мумкин аст» аст.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Чаро пинҳон кардани тугмаи «Админка» барои корбарони оддӣ кофӣ нест?</p>
+          <ol class="options">
+            <li>Суроғаи саҳифаро бо даст навиштан мумкин аст, барои ҳамин санҷиш дар сервер ва дар пойгоҳ лозим аст</li>
+            <li>Тугмаҳои пинҳоншуда сайтро суст мекунанд</li>
+            <li>Браузер тугмаҳоро пинҳон карда наметавонад</li>
+            <li>Пинҳон кардани тугмаҳо бо қоидаҳои Next.js манъ аст</li>
+          </ol>
+          <div class="explain"><p>Интерфейс танҳо қулайӣ аст. Ҳифзи воқеиро он ҷо мегузоранд, ки меҳмон ба он даст расонда наметавонад: дар сервер ва дар қоидаҳои пойгоҳ.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/auth" target="_blank" rel="noopener">Supabase: Auth overview</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 02 · E-mail, пароль, Google ============ -->
+    <section class="topic" id="signin-methods">
+      <h2 data-toc="E-mail, парол ва Google"><span class="num">02</span> Усулҳои воридшавӣ: e-mail бо парол ва воридшавӣ бо Google</h2>
+
+      <p><b>Supabase Auth</b> — хизмати тайёри воридшавӣ, ки ба лоиҳаи Supabase-и шумо сохта шудааст. Шумо нигоҳдории паролҳоро худатон наменависед: хизмат e-mail ва паролро қабул мекунад, <b>на паролро, балки хеши онро</b> («изи ангушти» барнагарданда) нигоҳ медорад, ва на шумо ва на соҳиби лоиҳа паролро дида наметавонед. Корбарон дар ҷадвали хизматии <code>auth.users</code> нигоҳ дошта мешаванд, ки онро дар панел дар бахши Authentication → Users мебинед.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>E-mail + парол</th><th>Воридшавӣ бо Google</th></tr></thead>
+          <tbody>
+            <tr><td><b>Чӣ тавр ворид мешаванд</b></td><td>e-mail ва пароли ихтироъкардаро ворид мекунанд</td><td>тугмаро пахш мекунанд, ҳисоби Google-ро интихоб мекунанд</td></tr>
+            <tr><td><b>Парол дар сайти шумо</b></td><td>ҳаст (танҳо хеш нигоҳ дошта мешавад)</td><td>не, паролро танҳо Google медонад</td></tr>
+            <tr><td><b>Танзим</b></td><td>ба таври пешфарз фаъол аст, чанд дақиқа</td><td>лоиҳа дар Google Cloud Console лозим аст, тақрибан 30 дақиқа</td></tr>
+            <tr><td><b>Мушкилоти маъмул</b></td><td>парол фаромӯш шуд, мактубҳои тасдиқ</td><td>суроғаи бозгашти нодуруст (redirect URI)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Дар код ин як функсия барои як амал аст (клиенти <code>supabase</code>-ро шумо дар амалиёт танзим мекунед):</p>
+<pre class="code" data-title="Бақайдгирӣ, воридшавӣ ва баромад (порчаҳо)">
+// Бақайдгирӣ: ном ба маълумоти хизматии корбар меравад
+const { data, error } = await supabase.auth.signUp({
+  email,
+  password,
+  options: { data: { full_name: fullName } },
+});
+
+// Воридшавӣ
+const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+// Баромад
+await supabase.auth.signOut();
+</pre>
+      <p>Ҳар функсия <code>{ data, error }</code> бармегардонад, мисли дархостҳо аз дарси 11: агар <code>error</code> холӣ набошад, паёми фаҳмо нишон медиҳем («e-mail ё парол нодуруст аст»), на <code>alert</code> бо матни техникӣ.</p>
+
+      <h3>Тасдиқи e-mail ва маҳдудияти мактубҳо (барои машғулият муҳим)</h3>
+      <p>Ба таври пешфарз дар лоиҳаи нав танзими <b>Confirm email</b> фаъол аст: баъди бақайдгирӣ корбар мактуб бо истинод мегирад ва танҳо баъди пахш кардани он ворид шуда метавонад. Барои маҳсулоти воқеӣ ин дуруст аст: ҳамин тавр касе суроғаи бегонаро бақайд намегирад. Аммо дар машғулият он маҳдудияти сахт дорад.</p>
+      <div class="callout warn">
+        <b>Почтаи дарунсохти Supabase барои гурӯҳ пешбинӣ нашудааст</b>
+        <p>Тибқи ҳуҷҷатҳои Supabase (дар моҳи октябри соли 2026 санҷида шуд), фиристандаи дарунсохти мактубҳо ҳоло <b>2 мактуб дар як соат</b> медиҳад, ва онҳоро <b>танҳо ба суроғаҳои аъзои гурӯҳи (ташкилоти) лоиҳаи шумо</b> мерасонад, ба дигарон хатои <code>Email address not authorized</code> меояд. Он барои озмоиш ва намоиш лозим аст, на барои кори гурӯҳи 15 нафара. Рақамҳоро Supabase бе огоҳӣ иваз мекунад: аҳамияти ҳозираро дар ҳуҷҷатҳо бинед.</p>
+      </div>
+      <p>Барои ҳамин дар дарс ду роҳ ҳаст:</p>
+      <ul>
+        <li><b>Роҳи 1 (дар дарс иҷро мекунем): тасдиқро хомӯш кардан.</b> Дар панел Authentication → Sign In / Providers → Email гузариши <b>Confirm email</b>-ро хомӯш кунед (номи бахш дар панел каме фарқ карда метавонад: танзимоти провайдери Email-ро ҷӯед). Он гоҳ баъди бақайдгирӣ корбар якбора ворид мешавад, мактуб лозим нест. Барои сайти таълимӣ бо маълумоти фарзӣ ин муқаррарӣ аст.</li>
+        <li><b>Роҳи 2 (барои маҳсулоти воқеӣ): SMTP-и худӣ.</b> Дар танзимоти Authentication бахши SMTP ҳаст: шумо ҳар хизмати почтаро, ки дастрасии SMTP дорад (хост, порт, логин, парол ва суроғаи фиристанда), пайваст мекунед. Баъд мактубҳо ба ҳар суроға мераванд; маҳдудият аввал 30 мактуб дар як соат гузошта мешавад ва дар бахши Rate Limits баланд бардошта мешавад. Барои домени воқеӣ сабтҳои SPF, DKIM ва DMARC илова мекунанд, то мактубҳо ба спам наафтанд.</li>
+      </ul>
+      <p>Дар ёд доред: ҳангоми хомӯш будани тасдиқ ҳар кас метавонад ба суроғаи бегона бақайдгирӣ шавад. Вақте сайт ба маҳсулоти воқеӣ бо корбарони зинда табдил ёбад, тасдиқро бояд <b>баргардонед ва SMTP-и худиро пайваст кунед</b>. Ҳуҷҷатҳои Supabase ошкоро тавсия медиҳанд, ки тасдиқро дар лоиҳаи корӣ «зери фишор» хомӯш накунед.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/12-auth/auth-settings.svg" alt="Нақшаи саҳифаи Authentication, бахши Sign In / Providers, провайдери Email: гузариши фаъоли Enable Email provider, гузариши хомӯши Confirm email бо ёддошти «барои лоиҳаи таълимӣ хомӯш кунед», майдони Minimum password length ва лавҳаи сурх дар бораи маҳдудияти почтаи дарунсохт" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Нақшаи соддакардашуда. Панели воқеӣ метавонад дигар хел бошад: номҳо ва ҷойгиршавиро Supabase иваз мекунад</figcaption>
+      </figure>
+
+      <p>Боз ду танзим дар ҳамин саҳифа. <b>Дарозии ҳадди ақали парол</b>: на камтар аз 8 аломат гузоред. Ва <b>URL Configuration</b>: дар он суроғаи сайт (Site URL) ва суроғаҳои иҷозатдодашудаи бозгашт (Redirect URLs)-ро менависанд. Онҳо барои воридшавӣ бо Google ва барои истинодҳои мактубҳо лозиманд (бахши 7, қадами 1).</p>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Воридшавӣ бо Google — мисли иҷозатномаи маркази тиҷоратӣ аз рӯи шиноснома, ки онро каси дигар санҷидааст. Посбон пароли почтаи шуморо намедонад, ба Google эътимод дорад, ки шумо худи шумоед. Сайти шумо аз Google тасдиқи «ин Мадина аст, e-mail-и ӯ ин аст» мегирад, парол бошад назди Google мемонад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Паролҳоро худатон дар ҷадвали худ нигоҳ доштан (<code>users.password</code>): ин тавр кардан мумкин нест, Auth-ро истифода баред. <b>2.</b> Паролро ба <code>console.log</code> навиштан ё ҳангоми ҷустуҷӯи хато ба AI фиристодан. <b>3.</b> Confirm email-ро бе почтаи худӣ фаъол гузоштан ва дар бақайдгирии корбари дуюм мондан. <b>4.</b> Бо паролҳои воқеӣ озмудан: паролҳои таълимӣ ихтироъ кунед, мисли <code>Test-2026-pass</code> ва онро дар ҷои дигар истифода набаред. <b>5.</b> Ба корбар ҷудогона «парол нодуруст аст» ё «чунин e-mail нест» гуфтан: ҳамин тавр маслиҳат медиҳанд, ки кадом суроғаҳо бақайд шудаанд. Беҳтараш «e-mail ё парол нодуруст аст».</p>
+      </div>
+
+      <article class="task" id="q-methods">
+        <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Худро санҷед: бақайдгирӣ ва мактубҳо</h4><span class="level easy">осон</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Supabase Auth дар бораи пароли корбар чиро нигоҳ медорад?</p>
+          <ol class="options">
+            <li>Худи паролро дар шакли кушода, то ки онро ёдрас кардан мумкин бошад</li>
+            <li>Паролро дар репозиторияи Git-и сайти шумо</li>
+            <li>Хеши барнагарданда: паролли аслиро барқарор кардан мумкин нест</li>
+            <li>Ҳеҷ чиз, парол дар браузер нигоҳ дошта мешавад</li>
+          </ol>
+          <div class="explain"><p>Хеш — «изи ангушти» парол аст. Паролро аз рӯи он санҷидан мумкин аст, аммо худи паролро баргардондан не. Барои ҳамин «паролро ёдрас кардан» номумкин аст, танҳо «аз нав танзим кардан ва пароли нав гузоштан» ҳаст.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Дар машғулият 15 нафар дар сайтҳо бо тасдиқи e-mail тавассути почтаи дарунсохти Supabase бақайдгирӣ мешаванд. Чӣ мешавад?</p>
+          <ol class="options">
+            <li>Ҳама чиз кор мекунад, маҳдудият нест</li>
+            <li>Мактубҳо ба маҳдудият (тақрибан 2 дар як соат) бармехӯранд ва танҳо ба аъзоёни гурӯҳи лоиҳа мерасанд, боқимонда тасдиқ шуда наметавонанд</li>
+            <li>Supabase худаш почтаи пулакиро пайваст мекунад</li>
+            <li>Мактубҳо мераванд, аммо ба спам</li>
+          </ol>
+          <div class="explain"><p>Фиристандаи дарунсохт танҳо барои озмоиш аст. Барои гурӯҳ дар лоиҳаи таълимӣ Confirm email-ро хомӯш мекунанд ё SMTP-и худиро пайваст мекунанд.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Ҳангоми гузаштани сайт ба кори воқеӣ бо корбарони зинда чӣ кардан лозим? Ду ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li>Confirm email-ро боз фаъол кардан</li>
+            <li>Тасдиқро хомӯш гузоштан: ин қулайтар аст</li>
+            <li>Дар почтаи дарунсохти Supabase мондан</li>
+            <li>SMTP-и худиро пайваст кардан ва домени фиристандаро танзим кардан</li>
+          </ol>
+          <div class="explain"><p>Дар маҳсулот тасдиқ лозим аст, то касе суроғаҳои бегонаро бақайд нагирад, расонидани мактубҳоро бошад SMTP-и худӣ таъмин мекунад.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/auth/passwords" target="_blank" rel="noopener">Supabase: Password-based auth</a> ва <a href="https://supabase.com/docs/guides/auth/auth-smtp" target="_blank" rel="noopener">Custom SMTP</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 03 · Сессии и токены ============ -->
+    <section class="topic" id="sessions">
+      <h2 data-toc="Сессияҳо ва токенҳо"><span class="num">03</span> Сессияҳо ва токенҳо: сайт чӣ тавр «ба ёд меорад», ки шумо ворид шудаед</h2>
+
+      <p>Аз дарси 10 медонед, ки ҳар дархост ба сервер мустақил аст: сервер худ аз худ дархости пешинро дар ёд надорад. Пас чӣ тавр ӯ дар саҳифаи <code>/account</code> мефаҳмад, ки ин шумоед? Тавассути <b>сессия</b>: баъди воридшавӣ шумо «чипта» мегиред, ва браузер онро ба ҳар дархост замима мекунад.</p>
+
+      <dl class="terms">
+        <dt>Сессия</dt><dd>Давраи ба «воридшуда» буданатон: аз воридшавӣ то баромад (ё то бозхонди чипта).</dd>
+        <dt>Access-токен (JWT)</dt><dd>«Чипта»-и кӯтоҳмуддат бо маълумоти шумо дар дарун: id-и корбар, e-mail, нақш дар пойгоҳ (<code>authenticated</code>), мӯҳлати амал. Supabase имзо кардааст, барои ҳамин онро қалбакӣ кардан мумкин нест. Дар Supabase ба таври пешфарз 1 соат амал мекунад.</dd>
+        <dt>Refresh-токен</dt><dd>«Чиптаи барои чипта»: вақте access-токен ба охир мерасад, аз рӯи refresh-токен ҷуфти нав дода мешавад. Ҳар refresh-токен ба нав танҳо як маротиба иваз мешавад, истифодаи такрорӣ бошад дуздӣ ҳисоб мешавад ва сессияро мебандад.</dd>
+        <dt>Cookie</dt><dd>Файли хурде, ки браузер нигоҳ медорад ва худаш бо ҳар дархост ба сайт мефиристад. Дар Next.js бо <code>@supabase/ssr</code> токенҳо маҳз дар cookie ҷойгиранд, барои ҳамин сервер онҳоро ҳангоми тасвири саҳифа мебинад.</dd>
+      </dl>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Нақшаи сессия: 1) воридшавӣ бо парол ба Supabase Auth, 2) дар ҷавоб access-токен ва refresh-токен, 3) браузер онҳоро дар cookie нигоҳ медорад ва ба ҳар дархости саҳифа замима мекунад, 4) сервер имзои токенро месанҷад, 5) вақте токен ба охир мерасад, refresh-токен ба ҷуфти нав иваз мешавад">
+          <rect class="box" x="10" y="20" width="150" height="70" rx="10" />
+          <text x="85" y="50" text-anchor="middle">Браузер</text><text class="sub" x="85" y="70" text-anchor="middle">cookie бо токенҳо</text>
+          <rect class="fill-y" x="285" y="20" width="150" height="70" rx="10" />
+          <text x="360" y="50" text-anchor="middle">Supabase Auth</text><text class="sub" x="360" y="70" text-anchor="middle">токенҳо медиҳад</text>
+          <rect class="box g" x="560" y="20" width="150" height="70" rx="10" />
+          <text x="635" y="50" text-anchor="middle">Сервери шумо</text><text class="sub" x="635" y="70" text-anchor="middle">Next.js, саҳифаҳо</text>
+          <path class="arr" d="M160 40H279" /><path class="arr-head" d="M279 35l8 5-8 5z" />
+          <text class="sub" x="220" y="30" text-anchor="middle">1 e-mail + парол</text>
+          <path class="arr" d="M285 72H166" /><path class="arr-head" d="M166 67l-8 5 8 5z" />
+          <text class="sub t-g" x="224" y="90" text-anchor="middle">2 токенҳо</text>
+          <path class="arr" d="M85 90V160H635V98" /><path class="arr-head" d="M630 100l5-8 5 8z" />
+          <text class="sub" x="300" y="154" text-anchor="middle">3 ҳар дархости саҳифа: cookie бо токен</text>
+          <rect class="fill-g" x="560" y="190" width="150" height="56" rx="10" />
+          <text x="635" y="214" text-anchor="middle">4 санҷиш</text><text class="sub" x="635" y="232" text-anchor="middle">имзо ва мӯҳлат</text>
+          <rect class="fill-r" x="250" y="196" width="220" height="50" rx="10" />
+          <text class="sub t-r" x="360" y="218" text-anchor="middle">5 токен кӯҳна шуд (1 соат):</text><text class="sub t-r" x="360" y="236" text-anchor="middle">refresh-токен ҷуфти нав медиҳад</text>
+        </svg>
+        <figcaption>Воридшавӣ як маротиба, баъд браузер худаш «чипта»-ро ба ҳар дархост замима мекунад, чипта кӯҳна бошад аз рӯи refresh-токен бо нав иваз мешавад</figcaption>
+      </figure>
+
+      <h3>Токенро хондан мумкин аст, аммо қалбакӣ кардан не</h3>
+      <p>JWT аз се қисм иборат аст, ки бо нуқта ҷудо шудаанд: сарлавҳа, <b>маълумот</b> ва имзо. Маълумот рамзгузорӣ нашудааст, танҳо рамзбандӣ шудааст: ҳар кас онро хонда метавонад. Аммо имзо бо сирри Supabase сохта шудааст, ва агар ҳатто як аломати маълумотро иваз кунед, имзо мувофиқ намеояд ва сервер токенро рад мекунад. Барои ҳамин ҳеҷ гоҳ ба токен ё ба маълумоти оммавӣ чизи сирриро насозед, ва ҳеҷ гоҳ ба «маълумоте, ки браузер фиристод» бе санҷиши имзо бовар накунед. Худатон озмоиш кунед:</p>
+
+      <article class="task" id="pg-jwt">
+        <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Токенро бо даст хонед</h4><span class="level mid">миёна</span></header>
+        <p>Дар зер токени таълимӣ (ихтироъшуда, он ба ҳеҷ чиз мувофиқ нест). Рамзкушоии миёнаро анҷом диҳед ва се сатрро бо шакли блоки «Натиҷаи интизоршаванда» чоп кунед.</p>
+<pre class="code" data-run data-lang="js">
+const token =
+  "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9." +
+  "eyJzdWIiOiIzZjFjMGE1Mi04ZDJlLTRiN2EtOWMxMS0wYTVlN2QyYjZmMTAiLCJlbWFpbCI6Im1hZGluYUBleGFtcGxlLmNvbSIsInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxODkzNDU2MDAwfQ." +
+  "c2lnbmF0dXJlLW5vdC1yZWFs";
+
+const middle = token.split(".")[1];
+
+// TODO: миёнаи токенро (base64url) ба объекти payload табдил диҳед:
+// 1) "-"-ро бо "+" ва "_"-ро бо "/" иваз кунед, 2) atob(...), 3) JSON.parse(...)
+const payload = {};
+
+console.log("email: " + payload.email);
+console.log("role: " + payload.role);
+// exp дар токен бо сония аст, Date.parse бошад миллисония бармегардонад
+console.log("expired in 2031: " + (payload.exp * 1000 &lt; Date.parse("2031-01-01")));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>email: madina@example.com
+role: authenticated
+expired in 2031: true</pre></div>
+        <details class="hint"><summary>Ишораи 1</summary><p>Сатр: <code>const json = atob(middle.replace(/-/g, "+").replace(/_/g, "/"));</code></p></details>
+        <details class="hint"><summary>Ишораи 2</summary><p>Минбаъд: <code>const payload = JSON.parse(json);</code> ва сатри пештараи <code>const payload = {};</code>-ро хориҷ кунед.</p></details>
+      </article>
+
+      <p>Шумо ҳоло «чипта»-ро бе ҳеҷ парол хондед. Ин муқаррарӣ аст: дар он чизи сирри нест, қалбакӣ кардани он бошад аз сабаби имзо мумкин нест. Серверро кифоя аст имзоро санҷад, то бовар кунад, ки <code>sub</code> (id-и корбар) воқеӣ аст.</p>
+
+      <h3>Ду усули санҷиш: <code>getClaims</code> ва <code>getSession</code></h3>
+      <p>Дар коди серверӣ воридшударо бояд тавассути <code>supabase.auth.getClaims()</code> санҷид: он имзои токенро месанҷад ва маълумоти онро (<code>claims</code>) бармегардонад, дар миёни онҳо <code>sub</code> — id-и корбар. Усули <code>getSession()</code> танҳо cookie-ро бе санҷиши имзо мехонад, ва тибқи ҳуҷҷатҳои Supabase ба он дар коди серверӣ бовар кардан мумкин нест: cookie-ро ҳар кас фиристода метавонад.</p>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Маршрутка бо талони роҳкиро. Талони як шабонарӯзиро (access-токен) ба ронанда ҳангоми ҳар савор шудан нишон медиҳед. Талон ба охир расид — бо абонемент (refresh-токен) ба хазина меравед ва нав мегиред. Мӯҳри талонро қалбакӣ кардан мумкин нест, хондани навиштаҷот бошад ҳар касро мешавад. Абонементро гум кардед — хазинадор мебинад, ки онро ду маротиба истифода кардаанд ва манъ мекунад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Дар сервер ба ҷои <code>getClaims()</code> ба <code>getSession()</code> бовар кардан. <b>2.</b> Токенҳоро ба чат, скриншот ё Git гузоштан: касе, ки access-токени шуморо дорад, то анҷоми мӯҳлат аз номи шумо амал мекунад. <b>3.</b> Фаромӯш кардан, ки баромад (<code>signOut()</code>) ба таври пешфарз сессияро дар ҳамаи дастгоҳҳо мебандад (доираи <code>global</code>; барои ҳозира танҳо <code>{ scope: "local" }</code>). <b>4.</b> Ба <code>localStorage</code> «токенҳо»-и худро гузоштан ба ҷои воситаҳои тайёри Supabase: ҳамин тавр шумо бори дигар он чиро, ки аллакай сохта ва санҷида шудааст, ихтироъ мекунед.</p>
+      </div>
+
+      <article class="task" id="q-sessions">
+        <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Худро санҷед: сессияҳо ва токенҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Токени JWT рамзгузорӣ нашудааст, ҳар кас маълумоти онро хонда метавонад. Чаро онро ба ҳар ҳол қалбакӣ кардан мумкин нест?</p>
+          <ol class="options">
+            <li>Зеро онро танҳо соҳиб медонад</li>
+            <li>Зеро он бо сирри Supabase имзо шудааст: ҳангоми ҳар тағйири маълумот имзо мувофиқ намеояд</li>
+            <li>Зеро он дар сервер нигоҳ дошта мешавад</li>
+            <li>Зеро браузер намегузорад онро тағйир диҳанд</li>
+          </ol>
+          <div class="explain"><p>Хондан ба ҳама мумкин аст, ноаён тағйир додан не: имзо дар сервер санҷида мешавад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Refresh-токен чӣ кор мекунад?</p>
+          <ol class="options">
+            <li>Вақте access-токен кӯҳна шуд (ба таври пешфарз як соат амал мекунад), ба ҷуфти нави токенҳо иваз мешавад</li>
+            <li>Ҳангоми воридшавӣ паролро иваз мекунад</li>
+            <li>Маълумоти профилро нигоҳ медорад</li>
+            <li>cookie-ро рамзгузорӣ мекунад</li>
+          </ol>
+          <div class="explain"><p>Мӯҳлати кӯтоҳи access-токен ҳангоми ошкоршавӣ бехатартар аст, refresh-токен бошад имкон медиҳад, ки ҳар соат парол напурсанд.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Саҳифаи серверӣ бояд бифаҳмад, ки кӣ ворид шудааст. Чиро даъват кунем?</p>
+          <ol class="options">
+            <li><code>getSession()</code>: он тезтар аст</li>
+            <li>cookie-ро бо даст хондан ва id-ро аз он гирифтан</li>
+            <li><code>getClaims()</code>: он имзои токенро месанҷад</li>
+            <li>Ҳеҷ чиро: Next.js худаш корбарро медонад</li>
+          </ol>
+          <div class="explain"><p>Cookie аз браузер меояд ва қалбакӣ шуда метавонад. <code>getClaims()</code> имзоро месанҷад, барои ҳамин ба он бовар мекунанд.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/auth/sessions" target="_blank" rel="noopener">Supabase: Sessions</a> ва <a href="https://supabase.com/docs/guides/auth/server-side/nextjs" target="_blank" rel="noopener">Server-Side Auth барои Next.js</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 04 · Защищённые страницы ============ -->
+    <section class="topic" id="protected">
+      <h2 data-toc="Саҳифаҳои ҳифзшуда"><span class="num">04</span> Саҳифаҳои ҳифзшуда: се қабати қулф</h2>
+
+      <p>Пӯшидани саҳифа бо «як санҷиш» боэътимод нест. Ҳифзро касбӣ бо се қабат месозанд: агар яке хато кард, боқимонда нигоҳ медоранд.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1. proxy.ts</b><span>то саҳифа: воридшавӣ нест — ба <code>/login</code></span><code>монеаи зуд</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>2. Саҳифа</b><span>дар сервер: <code>getClaims()</code> ва нақш</span><code>санҷиши воқеӣ</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>3. RLS дар пойгоҳ</b><span>танҳо сатрҳои худӣ намоён мебошанд</span><code>хатти охирин</code></div>
+        </div>
+        <figcaption>Қабати 3 аз ҳама муҳим аст: ҳатто агар дар коди саҳифа хато кунед, пойгоҳ чизи бегонаро намедиҳад</figcaption>
+      </figure>
+
+      <h3>Қабати 1: <code>proxy.ts</code> (дар Next.js 16)</h3>
+      <p>Файл дар решаи лоиҳа (дар паҳлӯи <code>app</code>), ки <b>пеш аз</b> тасвири саҳифа иҷро мешавад. Дар Next.js 16 он <code>proxy.ts</code> ном дорад, функсияи дарун — <code>proxy</code>. Дар нусхаҳои то 16 ин <code>middleware.ts</code> бо функсияи <code>middleware</code> буд: дастурҳои кӯҳна ва ҷавобҳои AI аксар вақт маҳз ҳамин тавр менависанд. Тибқи ҳуҷҷатҳои Supabase, агар дар лоиҳаи Next.js 16 файл бо номи кӯҳна бошад, он даъват намешавад ва сессияҳо навсозӣ намешаванд. Нуқтаи муҳими дигар: худи Next.js огоҳ мекунад, ки <code>proxy</code> барои санҷишҳои зуд ва «хушбинона» мувофиқ аст, аммо <b>набояд ҳифзи ягона бошад</b>.</p>
+      <p>Дар proxy ду кор мекунанд: токенҳоро дар cookie нав мекунанд (тавассути <code>getClaims()</code>) ва меҳмонони номатлубро ба <code>/login</code> мефиристанд.</p>
+
+      <h3>Қабати 2: санҷиш дар худи саҳифа</h3>
+      <p>Саҳифаи серверӣ худаш аз <code>getClaims()</code> мепурсад. Корбар нест — <code>redirect("/login")</code>. Нақши администратор лозим аст — онро аз ҷадвали <code>profiles</code> мехонем (бахши 5) ва саҳифаро нишон медиҳем ё <code>notFound()</code>.</p>
+
+      <h3>Қабати 3: RLS</h3>
+      <p>RLS-ро аз дарси 11 медонед. Акнун дар он воситаи асосӣ пайдо мешавад: функсияи <code>auth.uid()</code>, ки дар дохили пойгоҳ id-и корбари воридшударо бармегардонад (онро аз токен мегирад, ки имзо шудааст ва қалбакӣ кардан мумкин нест). Қоидаи «ҳар кас танҳо сатрҳои худро мебинад» чунин навишта мешавад: <code>using ((select auth.uid()) = user_id)</code>.</p>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Хазинаи бонк. Посбон дар даромадгоҳ роҳгузарони тасодуфиро рад мекунад (proxy). Оператор шиноснома ва корти муштариро месанҷад (саҳифа). Худи сейф танҳо бо калиди маҳз ҳамин муштарӣ кушода мешавад (RLS). Агар оператор хато кунад, сейф ба ҳар ҳол ба бегона кушода намешавад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Воридшавиро танҳо дар proxy санҷидан: matcher-ро нодуруст навиштан мумкин аст ва ягон саҳифа кушода мемонад. <b>2.</b> RLS-ро умуман нанависед ва ба он такя кунед, ки «истинодро касе намедонад». <b>3.</b> Коди дастури кӯҳнаро дар proxy бо номи <code>middleware.ts</code> гузоштан ва дар ҳайрат мондан, ки чаро «сессия мепарад». <b>4.</b> Ба суроғаи параметри <code>?next=</code> бе санҷиш равона кардан: ҳамлагар сайти бегонаро ҷойгузин мекунад. Танҳо роҳҳоеро, ки бо як <code>/</code> оғоз мешаванд, иҷозат диҳед.</p>
+      </div>
+
+      <article class="task" id="q-protected">
+        <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Худро санҷед: қабатҳои ҳифз</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Файл барои боздоштани дархостҳо дар Next.js 16 чӣ ном дорад ва номи функсия дар он чист?</p>
+          <ol class="options">
+            <li><code>middleware.ts</code>, функсияи <code>middleware</code></li>
+            <li><code>guard.ts</code>, функсияи <code>guard</code></li>
+            <li><code>proxy.ts</code>, функсияи <code>proxy</code></li>
+            <li><code>auth.ts</code>, функсияи <code>auth</code></li>
+          </ol>
+          <div class="explain"><p>Дар Next.js 16 middleware ба proxy тағйири ном шудааст. Имкониятҳо як хелананд, дастурҳои кӯҳна бошад дар ном куҳна шудаанд.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Дар коди саҳифаи <code>/account</code> хато ҳаст: санҷиши воридшавиро фаромӯш кардаанд ва саҳифа дархостҳоро бе филтр мепурсад. Дар пойгоҳ қоидаи «select танҳо сатрҳои худӣ» ҳаст. Шахси бегона чиро мебинад?</p>
+          <ol class="options">
+            <li>Танҳо сатрҳои худӣ (яъне ҳеҷ кадом): қоидаи RLS намегузорад бегонаҳоро хонад</li>
+            <li>Ҳамаи дархостҳои ҳамаи корбаронро</li>
+            <li>Хатои 404-ро</li>
+            <li>Танҳо дархостҳои администраторро</li>
+          </ol>
+          <div class="explain"><p>Маънои қабати сеюм ҳамин аст: ҳифз дар пойгоҳ аз хатоҳо дар интерфейс ё коди саҳифа вобаста нест.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,3">
+          <p>Кадоме аз номбаршудаҳо ҳифзи воқеӣ аст, на танҳо қулайӣ? Ду ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li>Пинҳон кардани истиноди «Админка» дар меню</li>
+            <li>Санҷиши <code>getClaims()</code> ва нақш дар саҳифаи серверӣ</li>
+            <li>Қоидаи RLS дар ҷадвал</li>
+            <li>Суроғаи саҳифаро ба касе нагуфтан</li>
+          </ol>
+          <div class="explain"><p>Истиноди пинҳоншуда ва «суроғаи махфӣ» ҳеҷ чизро ҳифз намекунанд. Ҳифз бояд он ҷо бошад, ки меҳмон ба он нарасад: сервер ва пойгоҳ.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://nextjs.org/docs/app/getting-started/proxy" target="_blank" rel="noopener">Next.js: Proxy</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 05 · Роли ============ -->
+    <section class="topic" id="roles">
+      <h2 data-toc="Нақшҳо"><span class="num">05</span> Нақшҳо: корбар ва администратор</h2>
+
+      <p><b>Нақш</b> — нишоне, ки аз рӯи он сайт ҳал мекунад, ки ба шумо чӣ мумкин аст. Мо ду нақш дорем: <code>user</code> (муштарии оддӣ) ва <code>admin</code> (соҳиби тарабхона, ҳамаи дархостҳоро мебинад). Нақшро бояд дар ҷое нигоҳ дошт, ва маҳз дар ин ҷо навомӯзон хатои хатарноктаринро содир мекунанд.</p>
+
+      <div class="callout warn">
+        <b>Қоидаи асосии бахш</b>
+        <p>Нақшро дар <code>user_metadata</code> нигоҳ доштан мумкин нест (маълумоте, ки корбар ҳангоми бақайдгирӣ тавассути <code>options.data</code> медиҳад): тибқи ҳуҷҷатҳои Supabase, корбар онро худаш тағйир дода метавонад. Як сатр дар консоли браузер кофӣ аст, ва ӯ «админ мешавад». Нақшро дар ҷадвале нигоҳ доред, ки корбар онро тағйир дода наметавонад, ё дар <code>app_metadata</code>, ки танҳо ба сервер барои навиштан дастрас аст.</p>
+      </div>
+
+      <p>Мо ҷадвали <code>profiles</code>-ро интихоб мекунем: он барои кабинети шахсӣ ҳам лозим аст. Як сатр барои як корбар: <code>id</code> бо <code>auth.users.id</code> мувофиқ меояд, илова бар ин ном, телефон ва нақш.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 280" role="img" aria-label="Нақша: ҷадвали auth.users бо ҷадвали profiles аз рӯи id алоқаманд аст, ҷадвали bookings ба корбар тавассути user_id ишора мекунад; profiles майдонҳои full_name, phone, role дорад, bookings майдони user_id дорад">
+          <rect class="box v" x="12" y="30" width="200" height="130" rx="10" />
+          <rect class="fill-y" x="12" y="30" width="200" height="32" rx="10" />
+          <text class="mono" x="26" y="52">auth.users</text>
+          <text class="mono t-o" x="26" y="86">id</text><text class="sub" x="100" y="86">uuid, калид</text>
+          <text class="mono" x="26" y="114">email</text><text class="sub" x="100" y="114">хизмати Auth</text>
+          <text class="sub" x="26" y="146">Supabase пеш мебарад, на шумо</text>
+          <rect class="box g" x="260" y="30" width="200" height="170" rx="10" />
+          <rect class="fill-g" x="260" y="30" width="200" height="32" rx="10" />
+          <text class="mono" x="274" y="52">profiles</text>
+          <text class="mono t-o" x="274" y="86">id</text><text class="sub" x="340" y="86">= auth.users.id</text>
+          <text class="mono" x="274" y="114">full_name</text><text class="sub" x="370" y="114">ном</text>
+          <text class="mono" x="274" y="142">phone</text><text class="sub" x="370" y="142">телефон</text>
+          <text class="mono t-r" x="274" y="170">role</text><text class="sub" x="340" y="170">user / admin</text>
+          <rect class="box b" x="508" y="30" width="200" height="170" rx="10" />
+          <rect class="fill-y" x="508" y="30" width="200" height="32" rx="10" />
+          <text class="mono" x="522" y="52">bookings</text>
+          <text class="mono t-o" x="522" y="86">id</text><text class="sub" x="588" y="86">калид</text>
+          <text class="mono" x="522" y="114">guests …</text><text class="sub" x="610" y="114">майдонҳо аз дарси 11</text>
+          <text class="mono t-v" x="522" y="142">user_id</text><text class="sub" x="610" y="142">дархости кист</text>
+          <path class="arr" d="M212 86H254" /><path class="arr-head" d="M254 81l8 5-8 5z" />
+          <path class="arr" d="M506 142H486V232H112V166" /><path class="arr-head" d="M107 168l5-8 5 8z" />
+          <text class="sub" x="300" y="226">user_id ба auth.users.id ишора мекунад</text>
+          <text class="sub t-r" x="260" y="262">role: худи корбар тағйир дода наметавонад</text>
+        </svg>
+        <figcaption>Профил — «иловаи» корбар аз Auth. Нақш дар ҷадвале нигоҳ дошта мешавад, ки корбар онро таҳрир карда наметавонад, дархост бошад <code>user_id</code>-ро нигоҳ медорад</figcaption>
+      </figure>
+
+      <h3>Профил чӣ тавр сохта мешавад ва админӣ чӣ тавр дода мешавад</h3>
+      <ul>
+        <li><b>Профилро триггер месозад.</b> Триггер — амалест, ки пойгоҳ худаш ҳангоми ҳодиса иҷро мекунад. «Баъди сатри нав дар <code>auth.users</code> сатр дар <code>profiles</code> илова кун» (SQL дар амалиёт). Нақш ҳамеша <code>user</code> аст: онро аз бақайдгирӣ гирифтан мумкин нест.</li>
+        <li><b>Админро шумо дастӣ таъин мекунед</b> дар SQL Editor: <code>update profiles set role = 'admin' where …</code>. SQL Editor аз номи соҳиби пойгоҳ кор мекунад, на аз номи корбари сайт.</li>
+        <li><b>Корбар чӣ карда метавонад.</b> Танҳо профили худро хондан ва тағйир додан ва танҳо ном бо телефонро. Сутуни <code>role</code> барои ӯ дастнорас аст: ба ӯ ҳуқуқи тағйир додани он дода намешавад (<code>grant update (full_name, phone)</code>).</li>
+        <li><b>Пойгоҳ чӣ тавр админро мешиносад.</b> Функсияи хурди <code>is_admin()</code> нақшро дар <code>profiles</code> мебинад, қоидаҳо барои дархостҳо ва профилҳо бошанд онро даъват мекунанд.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Бейҷҳо дар конфронс. Номи худро дар бейҷ шумо худатон менависед, аммо рангро (бейҷи «ташкилкунанда» ё «меҳмон») бақайдгирӣ медиҳад. Агар ранги онро дар ҷой бо маркер тағйир додан мумкин бошад, ҳар кас ташкилкунанда мешавад. Барои ҳамин нақш он ҷо нигоҳ дошта мешавад, ки маркер ба он нарасад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Нақш дар <code>user_metadata</code> ё дар <code>localStorage</code>. <b>2.</b> Қоидаи «корбар сатри худро нав мекунад» бе маҳдуд кардани сутунҳо: он гоҳ ӯ <code>role</code>-и худро ба <code>admin</code> иваз мекунад. <b>3.</b> Админро танҳо дар менюи интерфейс санҷидан. <b>4.</b> Худро дар сайти воқеӣ бо корбарони воқеӣ админ таъин кардан ва пароли боэътимодро иваз карданро фаромӯш кардан. <b>5.</b> Ба AI калиди махфӣ додан, то «админка кор кунад»: нақшро қоидаҳо ҳал мекунанд, на калиде, ки RLS-ро давр мезанад.</p>
+      </div>
+
+      <article class="task" id="q-roles">
+        <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Худро санҷед: нақшро дар куҷо нигоҳ доранд</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Нақши <code>admin</code>-ро дар куҷо бехатар нигоҳ доштан мумкин аст?</p>
+          <ol class="options">
+            <li>Дар ҷадвали <code>profiles</code>, ки сутуни <code>role</code>-ро корбар тағйир дода наметавонад</li>
+            <li>Дар <code>user_metadata</code> ҳангоми бақайдгирӣ</li>
+            <li>Дар <code>localStorage</code>-и браузер</li>
+            <li>Дар майдони пинҳонии шакли бақайдгирӣ</li>
+          </ol>
+          <div class="explain"><p>Ҳар чизе, ки корбар худаш тағйир дода метавонад (метамаълумоти корбар, браузер, шаклҳо), барои нигоҳдории ҳуқуқҳо мувофиқ нест.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Дар ҷадвали <code>profiles</code> қоидаи «корбар сатри худро нав мекунад» ҳаст, ва ҳуқуқи <code>update</code> ба ҳамаи сутунҳо дода шудааст. Фирдавс аз консоли браузер чӣ карда метавонад?</p>
+          <ol class="options">
+            <li>Ҳеҷ чиз: RLS ҳамаро манъ мекунад</li>
+            <li>Профили бегонаро тағйир диҳад</li>
+            <li>Дар сатри худ <code>role</code>-ро ба <code>admin</code> иваз кунад, зеро ин сатри худи ӯст ва қоида сутунҳоро маҳдуд намекунад</li>
+            <li>Ҷадвалро нест кунад</li>
+          </ol>
+          <div class="explain"><p>RLS ба саволи «кадом сатрҳо» ҷавоб медиҳад, на «кадом сутунҳо». Барои ҳамин барои <code>role</code> маҳдудиятро бо ҳуқуқҳо ба сутунҳо мегузоранд: <code>grant update (full_name, phone)</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Администратори аввалинро чӣ тавр таъин мекунанд?</p>
+          <ol class="options">
+            <li>Корбар дар саҳифаи бақайдгирӣ «ман админам»-ро интихоб мекунад</li>
+            <li>Соҳиби лоиҳа дар SQL Editor <code>update profiles set role = 'admin' …</code>-ро иҷро мекунад</li>
+            <li>Ҳар корбаре, ки суроғаи <code>/admin</code>-ро медонад</li>
+            <li>Автоматӣ аввалин бақайдгиршуда</li>
+          </ol>
+          <div class="explain"><p>Администраторро шахсе таъин мекунад, ки ба пойгоҳ дастрасӣ дорад (шумо), на шакл дар сайт.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener">Supabase: Row Level Security</a> ва <a href="https://supabase.com/docs/guides/auth/managing-user-data" target="_blank" rel="noopener">Managing user data</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai">
+      <h2 data-toc="AI: бо ҳуқуқҳо эҳтиёткорона"><span class="num">06</span> Блоки AI: авторизатсия ҷои «ҳамин ҳам мешавад» нест</h2>
+
+      <div class="callout ai">
+        <b>Қоидаҳои кор бо AI ва авторизатсия</b>
+        <p><b>1.</b> Нусхаҳои дақиқро ном баред: Next.js 16, <code>@supabase/ssr</code>, файли <code>proxy.ts</code>, санҷиш тавассути <code>getClaims()</code>. Бе ин AI <code>middleware.ts</code>, <code>@supabase/auth-helpers</code> ва <code>getSession()</code>-и кӯҳнаро менависад. <b>2.</b> Нақшаи ҷадвалҳо, нақшҳо ва қоидаҳоро (кӣ чиро мебинад) шумо менависед, AI онҳоро амалӣ мекунад. <b>3.</b> SQL-ро ҷудо пурсед, пеш аз иҷро бихонед. <b>4.</b> Рӯйхатро талаб кунед: ба ҳар нақш дар ҳар ҷадвал чӣ иҷозат аст. <b>5.</b> Паролҳо, токенҳо ва калидҳоро ба чат нагузоред. <b>6.</b> Ҷавоб мувофиқ наомад: матни хаторо фиристед ва аз нав оғоз накунед.</p>
+      </div>
+
+      <div class="prompt bad-prompt">Сделай вход и регистрацию на сайте с supabase и админку</div>
+      <div class="prompt good-prompt">Контекст: проект Next.js 16 (App Router, TypeScript, Tailwind CSS 4), сайт ресторана «Чойхона у Рудаки» (вымышленный). Supabase подключён, ключи в .env.local (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY). Таблицы bookings и restaurant_tables уже есть, правила проекта в AGENTS.md. Пакеты @supabase/supabase-js и @supabase/ssr установлены. Файлы lib/supabase/client.ts, lib/supabase/server.ts, lib/supabase/proxy.ts и корневой proxy.ts уже созданы по документации Supabase для Next.js 16, не переписывай их.
+Цель: регистрация и вход по e-mail и паролю, выход, личный кабинет с редактированием профиля и закрытая страница /admin для роли admin.
+Ограничения: 1) сначала план по файлам, потом изменения по шагам; 2) использовать только createClient из lib/supabase/client.ts (в клиентских компонентах) и lib/supabase/server.ts (на сервере); 3) проверка пользователя на сервере только через supabase.auth.getClaims(), не getSession(); 4) роль брать из таблицы profiles (столбец role), не из user_metadata; 5) страницы: /login (вкладки «Вход» и «Регистрация»: e-mail, пароль, имя при регистрации), /account (профиль: имя и телефон с кнопкой «Сохранить», список «Мои заявки» с фильтром по user_id, кнопка «Выйти»), /admin (только admin: все заявки; остальным notFound()); 6) /admin читает через обычную сессию пользователя, без SUPABASE_SECRET_KEY; 7) параметр ?next= принимать, только если это путь, начинающийся с одного «/»; 8) состояния «загрузка», «ошибка» (понятный текст, не «alert»), валидация полей; 9) в шапке: «Войти» или e-mail и «Кабинет», «Выйти»; 10) никаких секретных ключей в клиентском коде.
+Примеры: ошибка входа показывается под формой текстом «Неверный e-mail или пароль».
+Проверка: в конце перечисли файлы, которые изменил, и объясни, какие слои защиты у /account и /admin (proxy, страница, RLS).</div>
+
+      <p>Агар натиҷа мувофиқ наомад, аз нав оғоз накунед: нависед, ки маҳз чӣ нодуруст аст, ва матни пурраи хаторо аз терминал ё консоли браузер фиристед (бе паролҳо ва калидҳо).</p>
+
+      <div class="callout warn">
+        <b>AI чиро аксар вақт нодуруст мекунад</b>
+        <p><b>1.</b> Дар Next.js 16 ба ҷои <code>proxy.ts</code> файли <code>middleware.ts</code>-ро месозад. <b>2.</b> Дар сервер <code>getSession()</code>-ро мегирад. <b>3.</b> Нақшро ҳангоми бақайдгирӣ дар <code>user_metadata</code> менависад. <b>4.</b> Бастаи кӯҳнаи <code>@supabase/auth-helpers-nextjs</code> ё тағйирёбандаи <code>SUPABASE_ANON_KEY</code>-ро истифода мебарад. <b>5.</b> Ба саҳифаи <code>/admin</code> калиди secret медиҳад «то ҳама чиз хонда шавад», дар ҳоле ки қоидаҳои RLS ва нақш кифоя аст. <b>6.</b> Қоидаи <code>to authenticated</code>-ро фаромӯш мекунад: баъди воридшавӣ нақш дар пойгоҳ дигар <code>anon</code> нест, ва қоидаҳое, ки барои <code>anon</code> навишта шудаанд, амал карданро қатъ мекунанд. <b>7.</b> Дар сервер клиенти глобалии Supabase месозад: дар сервер клиент барои ҳар дархост аз нав сохта мешавад. Пеш аз иҷро аз AI хоҳиш кунед, ки дар ҷавоби худ ин ҳафт хаторо ёбад.</p>
+      </div>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Амалиёт: воридшавӣ ва кабинет"><span class="num">07</span> Амалиёт: бақайдгирӣ, воридшавӣ, кабинет ва админка</h2>
+
+      <p>Сайти тарабхонаро бо пойгоҳ аз дарси 11 мегирем ва онро ба сайт бо корбарон табдил медиҳем. Тартиб: танзимоти Supabase → ҷадвалҳо ва қоидаҳо → клиентҳо ва <code>proxy.ts</code> → саҳифаҳо (AI) → санҷиш → деплой.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1–2</b><span>танзим ва SQL</span><code>Supabase</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>3</b><span>клиентҳо ва proxy</span><code>@supabase/ssr</code></div>
+          <div class="ar">→</div>
+          <div class="st ai"><b>4</b><span>саҳифаҳо (AI)</span><code>/login /account /admin</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>5–7</b><span>санҷиши нақшҳо</span><code>user / admin</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>8</b><span>деплой дар Vercel</span><code>Site URL</code></div>
+        </div>
+        <figcaption>Қоидаҳои пойгоҳро пеш аз саҳифаҳо менависем: аввал қулф, баъд дарвоза</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/12-auth/cabinet.svg" alt="Нақшаи саҳифаи кабинети шахсӣ: сарлавҳа бо e-mail ва тугмаи «Баромадан», дар тарафи чап шакли профил бо майдонҳои «Ном» ва «Телефон» ва тугмаи «Захира кардан», дар тарафи рост рӯйхати «Дархостҳои ман» аз ду сатр" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Натиҷа тақрибан чунин бояд бошад. Тарроҳӣ аз они шумост, дар кабинет бошад танҳо дархостҳои худӣ намоён мебошанд</figcaption>
+      </figure>
+
+      <h3>Қадам ба қадам</h3>
+      <ol class="steps">
+        <li><b>Танзимоти Supabase.</b> Дар панел: Authentication → Sign In / Providers → Email. <b>Confirm email</b>-ро хомӯш кунед (сабаб дар бахши 2: почтаи дарунсохт гурӯҳро намекашад) ва дарозии ҳадди ақали паролро на камтар аз 8 гузоред. Сипас Authentication → URL Configuration: дар <b>Site URL</b> суроғаи сайт (то ҳол <code>http://localhost:3000</code>), дар <b>Redirect URLs</b> <code>http://localhost:3000/**</code>-ро илова кунед. Суроғаи Vercel-ро дар қадами 8 илова мекунед. Агар беҳтараш SMTP-и худиро пайваст кардан хоҳед: Authentication → бахши SMTP, аммо барои машғулият ин ҳатмӣ нест.</li>
+        <li><b>Ҷадвалҳо ва қоидаҳо.</b> Дар SQL Editor SQL-ро аз блоки зер (пурра) гузоред ва Run-ро пахш кунед. Интизорӣ: «Success». Агар AI дар дарси 11 қоидаҳоро дигар хел номида бошад, хатои <code>drop policy</code> даҳшатнок нест: номҳоро дар Table Editor → Policies бинед. Дар Table Editor боварӣ ҳосил кунед: дар <code>profiles</code> RLS enabled аст, дар <code>bookings</code> сутуни <code>user_id</code> пайдо шуд.</li>
+        <li><b>Клиентҳо ва <code>proxy.ts</code>.</b> <code>npm install @supabase/ssr</code>-ро иҷро кунед. Чор файлро аз блокҳои зер созед. <code>lib/supabase.ts</code>-и кӯҳнаро аз дарси 11 бо клиенти нав ҳар ҷое, ки истифода мешавад, иваз кунед: клиенти оддӣ дар бораи cookie бо сессия намедонад, ва корбари воридшуда барои он «ворид нашудааст». <code>npm run dev</code>-ро аз нав оғоз кунед.</li>
+        <li><b>Саҳифаҳо (AI).</b> Промптро аз бахши 6 дар реҷаи «Нақша» (дарси 6) фиристед, тағйиротро қадам ба қадам татбиқ кунед. Калиди махфӣ дар саҳифаҳо лозим нест.</li>
+        <li><b>Ду корбар.</b> <b>Мадина</b> (e-mail-и намуди <code>madina@example.com</code>) ва <b>Фирдавс</b>-ро (масалан дар равзанаи инкогнито) бақайд гиред. Паролҳо таълимианд, на аз ҳисобҳои воқеии шумо. Дар панел дар Authentication → Users ҳарду намоёнанд, дар Table Editor → <code>profiles</code> ду сатр бо нақши <code>user</code> пайдо шуд: онҳоро триггер сохт.</li>
+        <li><b>Админ.</b> Дар SQL Editor <code>update</code>-ро аз блоки зер иҷро кунед, e-mail-и Мадинаро ҷойгузин карда. Акнун Мадина — администратор, Фирдавс — корбари оддӣ.</li>
+        <li><b>Санҷиши нақшҳо.</b> Дар инкогнито бе воридшавӣ <code>/account</code>-ро кушоед: шуморо бояд ба <code>/login</code> фиристанд. Ҳамчун Фирдавс ворид шавед: дархост фиристед, он дар «Дархостҳои ман» пайдо шуд; ном ва телефонро тағйир диҳед, саҳифаро нав кунед (захира шуд?). <code>/admin</code>-ро ҳамчун Фирдавс кушоед: бояд «ёфт нашуд» ё равона кардан бошад. Ҳамчун Мадина ворид шавед: <code>/admin</code> дархостҳои ҳамаро нишон медиҳад, дар кабинети ӯ бошад танҳо дархостҳои худаш. «Баромадан»-ро пахш кунед ва боварӣ ҳосил кунед, ки <code>/account</code> боз пӯшида аст.</li>
+        <li><b>Санҷиш аз консол.</b> Зери Фирдавс сайтро кушоед, DevTools (дарси 3), ҷадвали Network-ро бинед ва дархостҳоро ба Supabase ҳангоми кушодани кабинет бинед: дар ҷавоб танҳо сатрҳои ӯ. Сарлавҳаи <code>Authorization: Bearer …</code>-ро ба назар гиред: ин ҳамон access-токен аст. Онро ба ҳеҷ ҷо нусха накунед.</li>
+        <li><b>Деплой.</b> Кодро commit кунед ва ба GitHub фиристед. Дар Supabase дар URL Configuration <b>Site URL</b>-ро ба суроғаи <code>https://…vercel.app</code> иваз кунед ва <code>https://…vercel.app/**</code>-ро ба Redirect URLs илова кунед (суроғаи localhost-ро барои таҳия монед). Дар сайти зинда санҷед: бақайдгирӣ, воридшавӣ, кабинет, <code>/admin</code>. Тағйирёбандаҳои муҳит ҳамонанд, ки дар дарси 11; <code>SUPABASE_SECRET_KEY</code> акнун танҳо он ҷо лозим аст, ки сервер бояд RLS-ро давр занад (дар ин дарс дар ҳеҷ ҷо).</li>
+        <li><b>Шарҳ.</b> Бо суханони худ нақл кунед: воридшавӣ аз ҳуқуқҳо чӣ фарқ дорад, токенҳо дар куҷо ҷойгиранд, се қабати ҳифзи /admin, чаро нақш дар <code>user_metadata</code> нест.</li>
+      </ol>
+
+<pre class="code" data-title="SQL Editor: профилҳо, нақш, соҳиби дархост ва қоидаҳо (як маротиба иҷро кунед)">
+/* 1. Профилҳо: барои ҳар корбар як сатр */
+create table profiles (
+  id uuid primary key references auth.users (id) on delete cascade,
+  full_name text check (char_length(full_name) &lt;= 80),
+  phone text check (char_length(phone) &lt;= 30),
+  role text not null default 'user' check (role in ('user', 'admin')),
+  created_at timestamptz not null default now()
+);
+alter table profiles enable row level security;
+
+/* 2. Триггер: профил ҳангоми бақайдгирӣ худаш сохта мешавад, нақш ҳамеша user аст */
+create function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  insert into public.profiles (id, full_name)
+  values (new.id, left(new.raw_user_meta_data ->&gt; 'full_name', 80));
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+/* 3. Функсия: оё корбари ворид шуда админ аст */
+create function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = (select auth.uid()) and role = 'admin'
+  );
+$$;
+revoke execute on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;
+
+/* 4. Ҳуқуқ ба ҷадвали profiles: хондан, танҳо ном ва телефонро тағйир додан (role не!) */
+grant select on table profiles to authenticated;
+grant update (full_name, phone) on table profiles to authenticated;
+
+create policy "read own profile or admin"
+on profiles for select to authenticated
+using ((select auth.uid()) = id or (select public.is_admin()));
+
+create policy "update own profile"
+on profiles for update to authenticated
+using ((select auth.uid()) = id)
+with check ((select auth.uid()) = id);
+
+/* 5. Дархостҳо соҳиб пайдо мекунанд */
+alter table bookings
+  add column user_id uuid references auth.users (id) on delete set null
+  default auth.uid();
+
+/* дархости беном наметавонад худро дархости корбари бегона вонамуд кунад */
+drop policy if exists "anyone can create a new booking" on bookings;
+create policy "anon creates a new booking"
+on bookings for insert to anon
+with check (status = 'new' and guests between 1 and 20 and user_id is null);
+
+grant select, insert on table bookings to authenticated;
+grant update (status) on table bookings to authenticated;
+grant select on table restaurant_tables to authenticated;
+
+create policy "authenticated creates own booking"
+on bookings for insert to authenticated
+with check (
+  user_id = (select auth.uid())
+  and status = 'new'
+  and guests between 1 and 20
+);
+
+create policy "read own bookings or admin"
+on bookings for select to authenticated
+using (user_id = (select auth.uid()) or (select public.is_admin()));
+
+create policy "admin updates bookings"
+on bookings for update to authenticated
+using ((select public.is_admin()))
+with check ((select public.is_admin()));
+
+create policy "logged-in users read tables"
+on restaurant_tables for select to authenticated
+using (true);
+</pre>
+      <p>Ҷойҳои асосӣ: триггер ҳамеша нақши <code>user</code>-ро мегузорад ва онро аз маълумоти бақайдгирӣ намехонад; ҳуқуқи <code>update</code> танҳо ба ду сутуни профил дода шудааст, барои ҳамин корбар <code>role</code>-ро тағйир дода наметавонад; дархост соҳиби <code>user_id</code> дорад, ки ба таври пешфарз ба <code>auth.uid()</code> баробар аст ва барои беном холӣ мемонад; ҳар қоида нақшро ном мебарад (<code>to authenticated</code>).</p>
+<pre class="code" data-title="SQL Editor: таъин кардани администратор (e-mail-ро ҷойгузин кунед)">
+update profiles
+set role = 'admin'
+where id = (select id from auth.users where email = 'madina@example.com');
+</pre>
+
+      <h3>Клиентҳо ва <code>proxy.ts</code> (тибқи ҳуҷҷатҳои Supabase)</h3>
+<pre class="code" data-title="lib/supabase/client.ts: клиент барои браузер">
+import { createBrowserClient } from "@supabase/ssr";
+
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+  );
+}
+</pre>
+<pre class="code" data-title="lib/supabase/server.ts: клиент барои сервер (барои ҳар дархост сохта мешавад)">
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+
+export async function createClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =&gt;
+              cookieStore.set(name, value, options),
+            );
+          } catch {
+            // аз компоненти серверӣ даъват шуд: даҳшат нест,
+            // токенҳоро proxy.ts нав мекунад
+          }
+        },
+      },
+    },
+  );
+}
+</pre>
+<pre class="code" data-title="lib/supabase/proxy.ts: токенҳоро нав мекунад ва меҳмононро ба /login мефиристад">
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+
+export async function updateSession(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =&gt;
+            request.cookies.set(name, value),
+          );
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =&gt;
+            supabaseResponse.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+
+  // Миёни createServerClient ва getClaims() чизе ворид накунед:
+  // вагарна корбарон тасодуфан аз сессия «бароварда» мешаванд.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
+
+  const path = request.nextUrl.pathname;
+  const isProtected = path.startsWith("/account") || path.startsWith("/admin");
+
+  if (!user &amp;&amp; isProtected) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", path);
+    return NextResponse.redirect(url);
+  }
+
+  // Айнан ҳамин объектро баргардонед: дар он cookie-ҳои навшуда ҳастанд
+  return supabaseResponse;
+}
+</pre>
+<pre class="code" data-title="proxy.ts (дар решаи лоиҳа, дар паҳлӯи app)">
+import { updateSession } from "@/lib/supabase/proxy";
+import { type NextRequest } from "next/server";
+
+export async function proxy(request: NextRequest) {
+  return await updateSession(request);
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+</pre>
+      <p>Порчаҳои асосии саҳифаҳо, ки AI менависад, чунин менамоянд. Натиҷаи худро бо онҳо муқоиса кунед:</p>
+<pre class="code" data-title="app/account/page.tsx: кабинет (порча)">
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function AccountPage() {
+  const supabase = await createClient();
+
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, phone, role")
+    .eq("id", user.sub)
+    .single();
+
+  // филтр аз рӯи user_id лозим аст: RLS ба админ дархостҳои ҳамаро нишон медод
+  const { data: bookings } = await supabase
+    .from("bookings")
+    .select("id, booking_at, guests, status")
+    .eq("user_id", user.sub)
+    .order("booking_at", { ascending: false });
+
+  // ... шакли профил (компоненти клиентӣ) ва рӯйхати bookings
+}
+</pre>
+<pre class="code" data-title="app/admin/page.tsx: танҳо барои admin (порча)">
+import { notFound, redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function AdminPage() {
+  const supabase = await createClient();
+
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.sub)
+    .single();
+  if (profile?.role !== "admin") notFound();
+
+  // сессияи оддӣ: қоидаи RLS «админ ҳамаи дархостҳоро мебинад» худаш кор мекунад
+  const { data: bookings } = await supabase
+    .from("bookings")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  // ... ҷадвали дархостҳо
+}
+</pre>
+<pre class="code" data-title="Дар шаклҳо: воридшавӣ, бақайдгирӣ, захираи профил, баромад (порчаҳо)">
+const supabase = createClient(); // аз lib/supabase/client.ts
+
+// Воридшавӣ
+const { error } = await supabase.auth.signInWithPassword({ email, password });
+if (error) setMessage("Неверный e-mail или пароль");
+
+// Профилро захира кардан
+const { error } = await supabase
+  .from("profiles")
+  .update({ full_name: fullName, phone })
+  .eq("id", userId);
+
+// Баромад
+await supabase.auth.signOut();
+router.push("/");
+router.refresh();
+</pre>
+
+      <div class="yt" data-id="n_sNri8TGGo" data-title="How to Build Authentication with Supabase Auth + Next.js 16 — канали lustoykov" data-start="0"></div>
+      <p class="muted">Видео бо забони англисӣ (субтитрҳоро фаъол кунед), тақрибан 22 дақиқа, ноябри соли 2025: намунаи пурраи воридшавӣ бо Supabase Auth ва Next.js 16. Ин тасвири умумӣ дар баробари амалиёти шумо аст: кодро худатон бинед, он ба ҷадвали <code>profiles</code>-и шумо мутобиқ карда шудааст. Агар муаллиф тарҳи дигар нишон диҳад, ба ҳуҷҷатҳо такя кунед.</p>
+
+      <div class="callout warn">
+        <b>Агар вайрон шуд</b>
+        <p><b><code>Email address not authorized</code> ё <code>email rate limit exceeded</code> ҳангоми бақайдгирӣ.</b> Тасдиқи e-mail фаъол аст, мактубҳо бошанд тавассути почтаи дарунсохти Supabase мераванд. Confirm email-ро хомӯш кунед (қадами 1) ё SMTP-и худиро пайваст кунед.</p>
+        <p><b><code>Invalid login credentials</code>.</b> E-mail ё парол нодуруст аст, ё корбар дар ин лоиҳа бақайд нашудааст (Authentication → Users-ро санҷед).</p>
+        <p><b>Баъди воридшавӣ кабинет боз ба <code>/login</code> мефиристад, ва ҳамин тавр давра мезанад.</b> Санҷед: файл маҳз <code>proxy.ts</code> ном дорад (на <code>middleware.ts</code>) ва дар реша, дар паҳлӯи <code>app</code> меистад, функсия <code>proxy</code> ном дорад; дар шаклҳо <code>createClient</code>-и нав аз <code>lib/supabase/client.ts</code> истифода мешавад, на клиенти оддии кӯҳна; <code>.env.local</code> пур карда шудааст ва <code>npm run dev</code> аз нав оғоз шудааст.</p>
+        <p><b><code>Database error saving new user</code>.</b> Триггери <code>handle_new_user</code> меафтад: функсия нопурра сохта шудааст ё ҷадвали <code>profiles</code> дигар аст. Блоки SQL-ро аз нав аз аввал дар ҷадвали тоза иҷро кунед ва матни пурраи хаторо ба AI фиристед.</p>
+        <p><b><code>permission denied for table profiles</code> (рамзи 42501).</b> <code>grant</code> барои нақши <code>authenticated</code> дода нашудааст. Сатрҳои <code>grant</code>-ро аз SQL иҷро кунед.</p>
+        <p><b>Профил «захира мешавад», хато нест, аммо баъди навсозии саҳифа қиматҳо кӯҳна мебошанд.</b> RLS сатри шуморо наёфт ва хомӯшона сифр сатрро нав кард. Санҷед, ки дар <code>.eq("id", …)</code> id-и корбар (<code>user.sub</code>) аст, ва ки қоидаи <code>update own profile</code> сохта шудааст.</p>
+        <p><b><code>new row violates row-level security policy for table "bookings"</code> дар корбари воридшуда.</b> Барои воридшуда қоидаи <code>to authenticated</code> лозим аст: қоида барои <code>anon</code> ба ӯ амал намекунад. <code>user_id</code>-ро санҷед: шакл набояд id-и бегонаро фиристад, ба таври пешфарз он ба <code>auth.uid()</code> баробар аст.</p>
+        <p><b>Дар корбари воридшуда рӯйхати мизҳо холӣ аст.</b> Қоидаи хондани мизҳо танҳо барои <code>anon</code> навишта шудааст: қоидаи охиринро аз SQL илова кунед (<code>to authenticated</code>).</p>
+        <p><b>Дар localhost ҳама чиз кор мекунад, аммо дар Vercel воридшавӣ кор намекунад.</b> Дар Supabase дар URL Configuration суроғаи Vercel илова нашудааст, ё баъди тағйири тағйирёбандаҳо Redeploy иҷро нашудааст.</p>
+      </div>
+
+      <article class="task" id="cl-built">
+        <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Рӯйхати санҷиш: сайт бо корбарон ва нақшҳо</h4><span class="level mid">миёна</span></header>
+        <p>Иҷрошударо қайд кунед.</p>
+        <ul class="checklist" id="cl-auth">
+          <li>Confirm email хомӯш аст (ё SMTP-и худӣ пайваст шудааст), дарозии ҳадди ақали парол на камтар аз 8</li>
+          <li>SQL иҷро шуд: ҷадвали <code>profiles</code> бо RLS, триггер, функсияи <code>is_admin()</code>, дар <code>bookings</code> <code>user_id</code> ҳаст</li>
+          <li>Файли <code>proxy.ts</code> (на <code>middleware.ts</code>) ва клиентҳои <code>client.ts</code> ва <code>server.ts</code> ҷой доранд</li>
+          <li>Ду корбар бақайд шуданд, дар ҳарду дар <code>profiles</code> сатр бо нақши <code>user</code> пайдо шуд</li>
+          <li>Бе воридшавӣ <code>/account</code> ва <code>/admin</code> ба <code>/login</code> мефиристанд</li>
+          <li>Корбари воридшуда ном ва телефонро таҳрир мекунад, қиматҳо баъди навсозии саҳифа захира мемонанд</li>
+          <li>Дар кабинет танҳо дархостҳои худӣ намоёнанд, <code>/admin</code> ба корбари оддӣ кушода намешавад</li>
+          <li>Як корбар тавассути SQL админ таъин шуд, ва <code>/admin</code> ҳамаи дархостҳоро ба ӯ нишон медиҳад</li>
+          <li>Баромад кор мекунад: баъди «Баромадан» кабинет боз пӯшида аст</li>
+          <li>Дар коди саҳифаҳо калиди secret ва нақш дар <code>user_metadata</code> нест</li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-fix">
+        <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Агар вайрон шуд: сабабро ёбед</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Корбар ворид мешавад, шакл мегӯяд «бомуваффақият», аммо чун <code>/account</code> кушода мешавад, ӯро ба <code>/login</code> мепартоянд. Дар лоиҳаи Next.js 16 файли <code>middleware.ts</code> ҳаст. Сабаби эҳтимолӣ дар чист?</p>
+          <ol class="options">
+            <li>Дар Next.js 16 <code>proxy.ts</code> лозим аст: файл бо номи кӯҳна даъват намешавад, ва сессия дар сервер навсозӣ намешавад</li>
+            <li>Парол аз ҳад дароз аст</li>
+            <li>Дар ҷадвал сутуни <code>phone</code> нест</li>
+            <li>Confirm email-ро фаъол кардан лозим аст</li>
+          </ol>
+          <div class="explain"><p>Ин вайроншавии маъмултарин аз сабаби дастурҳои кӯҳна аст: тағйири номи <code>middleware</code> ба <code>proxy</code> дар Next.js 16.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Мадина (корбари оддӣ) кабинетро кушод ва дархостҳои ҳамаи корбаронро мебинад. Қоидаи <code>select</code> чунин сохта шудааст: <code>using (true)</code>. Чиро ислоҳ кардан лозим?</p>
+          <ol class="options">
+            <li>Дархостҳоро дар интерфейс бо услуб пинҳон кардан</li>
+            <li>Ба Мадина нақши admin додан</li>
+            <li>Шартро ба <code>user_id = (select auth.uid())</code> иваз кардан (ва илова бар ин шохаи алоҳида барои админ тавассути <code>is_admin()</code>)</li>
+            <li>RLS-ро хомӯш кардан</li>
+          </ol>
+          <div class="explain"><p>Шарти қоида муайян мекунад, ки кадом сатрҳо намоёнанд. <code>using (true)</code> — «ҳамаи сатрҳо ба ҳама».</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Баъди воридшавӣ рӯйхати мизҳо дар шакл холӣ аст, ҳол он ки пеш аз воридшавӣ пур буд. Чаро?</p>
+          <ol class="options">
+            <li>Токен мӯҳлаташ гузаштааст</li>
+            <li>Баъди воридшавӣ нақш дар пойгоҳ <code>authenticated</code> аст, қоидаи хондани мизҳо бошад танҳо барои <code>anon</code> навишта шудааст</li>
+            <li>Мизҳо нест шуданд</li>
+            <li>Vercel дархостҳоро маҳдуд мекунад</li>
+          </ol>
+          <div class="explain"><p>Қоидаҳо ба нақшҳо баста шудаанд. Корбари воридшуда аллакай нақши дигар аст, барои ҳамин қоидаро барои <code>authenticated</code> илова кардан лозим.</p></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============ 08 · Google ============ -->
+    <section class="topic" id="google">
+      <h2 data-toc="Бонус: воридшавӣ бо Google"><span class="num">08</span> Бонус: воридшавӣ бо Google (дастури қадам ба қадам)</h2>
+
+      <p>Ин бахш ихтиёрӣ аст. Он тугмаи «Бо Google ворид шудан»-ро медиҳад: корбар набояд парол ихтироъ кунад, шумо бошед мактубҳо лозим надоред. Танзим як маротиба анҷом дода мешавад, тақрибан 30 дақиқа. Google суроғаи бозгашт (redirect URI)-и маҳз лоиҳаи Supabase-и шуморо талаб мекунад, барои ҳамин тартиб чунин аст: суроғаро дар Supabase дарёфт кунед, клиентро дар Google созед, маълумотро ба Supabase баргардонед.</p>
+
+      <div class="callout warn">
+        <b>Сирҳо ва ҳисоб</b>
+        <p>Client Secret аз Google — пароли барномаи шумост: он танҳо ба панели Supabase ва ба менеҷери паролҳо гузошта мешавад, на ба код, на ба Git ва на ба чат. Ҳисоби шахсии Google-ро истифода баред, барои лоиҳаи таълимӣ ҳисоби корӣ лозим нест. Номи бахшҳо дар Google Cloud Console иваз мешаванд: онҳоро аз рӯи маъно ҷӯед ва ба ҳуҷҷатҳои Supabase такя кунед.</p>
+      </div>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/12-auth/google-client.svg" alt="Нақшаи шакли сохтани клиенти OAuth дар Google Cloud Console: навъи Web application, майдони Authorized JavaScript origins бо суроғаҳои localhost ва сайт дар Vercel, майдони Authorized redirect URIs бо суроғаи намуди loyiha.supabase.co/auth/v1/callback ва огоҳӣ дар бораи Client Secret" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Нақшаи соддакардашудаи шакли клиенти OAuth. Асосӣ: ду майдон бо суроғаҳо ва сирре, ки ба ҳеҷ ҷо нашр намешавад</figcaption>
+      </figure>
+
+      <ol class="steps">
+        <li><b>Суроғаи бозгашт аз Supabase.</b> Дар панел: Authentication → Sign In / Providers → Google. <b>Callback URL</b>-ро нусха кунед (намуди <code>https://ЛОИҲАИ-ШУМО.supabase.co/auth/v1/callback</code>). Саҳифаро набандед.</li>
+        <li><b>Лоиҳа дар Google Cloud.</b> Google Cloud Console-ро кушоед (console.cloud.google.com), лоиҳаро бо ҳар ном (масалан <code>mfs-course</code>) созед ва онро интихоб кунед.</li>
+        <li><b>Google Auth Platform.</b> Дар консол бахши Google Auth Platform-ро кушоед ва танзими ибтидоиро гузаред: номи барнома, e-mail-и шумо барои тамос, <b>Audience</b> (барои ҳисобҳои оддии Google External интихоб мешавад). Дар бахши Data Access (Scopes) бояд <code>openid</code>, <code>.../auth/userinfo.email</code> ва <code>.../auth/userinfo.profile</code> бошанд: ин барои воридшавӣ кофӣ аст, ҳуқуқҳои зиёдатиро илова накунед (онҳо санҷиши дарозмуддат талаб мекунанд). Агар барнома дар ҳолати озмоишӣ (Testing) бошад, танҳо корбарони аз рӯйхати Test users ворид шуда метавонанд: суроғаҳои худро ба он илова кунед, ё барномаро нашр кунед.</li>
+        <li><b>Клиенти OAuth.</b> Дар Google Auth Platform бахши Clients → Create client-ро кушоед, навъи барнома <b>Web application</b>, ном ҳар кадом.</li>
+        <li><b>Authorized JavaScript origins.</b> Суроғаҳои сайтро бе роҳ илова кунед: <code>http://localhost:3000</code> ва <code>https://сайти-шумо.vercel.app</code>.</li>
+        <li><b>Authorized redirect URIs.</b> Callback URL-ро аз қадами 1 гузоред (суроғаи Supabase, на сайти шумо!). Create-ро пахш кунед ва <b>Client ID</b> ва <b>Client Secret</b>-ро захира кунед.</li>
+        <li><b>Ба Supabase баргардед.</b> Дар Authentication → Sign In / Providers → Google провайдерро фаъол кунед, Client ID ва Client Secret-ро гузоред, захира кунед. Дар URL Configuration Site URL-ро санҷед ва ба Redirect URLs суроғаи <code>http://localhost:3000/auth/callback</code>-ро илова кунед (ва ҳамонро бо суроғаи Vercel).</li>
+        <li><b>Тугма ва коркардкунанда.</b> Аз AI хоҳиш кунед, ки дар <code>/login</code> тугмаи «Бо Google ворид шудан» ва масири <code>app/auth/callback/route.ts</code>-ро илова кунад, коди зеринро ҳамчун намуна истифода бурда.</li>
+        <li><b>Санҷиш.</b> Тугмаро пахш кунед, ҳисоби Google-ро интихоб кунед: шуморо бояд ба <code>/account</code> баргардонанд, дар Authentication → Users корбар бо провайдери Google пайдо шуд, дар <code>profiles</code> — сатри ӯ (триггер ҳамон тавр кор кард, ки ҳангоми бақайдгирӣ бо парол).</li>
+      </ol>
+<pre class="code" data-title="Тугмаи «Бо Google ворид шудан» (компоненти клиентӣ)">
+const supabase = createClient(); // lib/supabase/client.ts
+
+await supabase.auth.signInWithOAuth({
+  provider: "google",
+  options: { redirectTo: `${window.location.origin}/auth/callback` },
+});
+</pre>
+<pre class="code" data-title="app/auth/callback/route.ts: рамзи якдафъаинаро ба сессия иваз мекунад">
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
+  const next = searchParams.get("next") ?? "/account";
+  // танҳо роҳҳои худӣ: бо як «/» оғоз мешаванд
+  const safeNext = next.startsWith("/") &amp;&amp; !next.startsWith("//") ? next : "/account";
+
+  if (code) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) return NextResponse.redirect(`${origin}${safeNext}`);
+  }
+  return NextResponse.redirect(`${origin}/login?error=oauth`);
+}
+</pre>
+
+      <div class="callout warn">
+        <b>Агар вайрон шуд</b>
+        <p><b><code>Error 400: redirect_uri_mismatch</code>.</b> Суроға дар Authorized redirect URIs бо Callback URL аз Supabase мувофиқат намекунад. Онро аз нав пурра нусха кунед, бе фосила ва бе слеши охирин.</p>
+        <p><b>Google менависад, ки дастрасӣ масдуд аст ё барнома санҷишро нагузаштааст.</b> Барнома дар ҳолати Testing аст, суроғаи шумо бошад дар рӯйхати Test users нест.</p>
+        <p><b>Баъди интихоби ҳисоб шуморо ба <code>/login?error=oauth</code> бармегардонанд.</b> Суроғаи <code>/auth/callback</code> ба Redirect URLs-и Supabase илова нашудааст ё коркардкунанда <code>exchangeCodeForSession</code>-ро даъват намекунад.</p>
+        <p><b>Воридшавӣ дар localhost кор мекунад, аммо дар Vercel не.</b> Дар Google суроғаи Vercel дар Authorized JavaScript origins нест, ё дар Supabase дар Redirect URLs нест.</p>
+      </div>
+
+      <article class="task" id="cl-google">
+        <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Рӯйхати санҷиш: воридшавӣ бо Google (бонус)</h4><span class="level mid">миёна</span></header>
+        <p>Иҷрошударо қайд кунед. Агар имрӯз бонусро мегузаред, баъдтар ба он баргардед.</p>
+        <ul class="checklist" id="cl-g">
+          <li>Лоиҳа дар Google Cloud сохта шуд, Google Auth Platform танзим шуд (Audience, Scopes)</li>
+          <li>Клиенти навъи Web application бо ду суроға сохта шуд: origins ва redirect URI аз Supabase</li>
+          <li>Client ID ва Client Secret ба Supabase гузошта шуданд, сир дар ҷои дигар нест</li>
+          <li>Дар Redirect URLs-и Supabase суроғаи <code>/auth/callback</code> илова шуд</li>
+          <li>Тугмаи «Бо Google ворид шудан» ба кабинет мебарад, дар Users корбари нав намоён аст</li>
+        </ul>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/auth/social-login/auth-google" target="_blank" rel="noopener">Supabase: Login with Google</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 09 · Взломай соседа ============ -->
+    <section class="topic" id="hack">
+      <h2 data-toc="Ҳамсояро шикаст"><span class="num">09</span> Хусусияти дарс: «Ҳамсояро шикаст»</h2>
+
+      <p>Бозӣ барои ҷуфтҳо: аввал шумо ба таври қасдан дар сайти худ қоидаҳои «танбал»-ро бо рахнаҳо месозед, ҳамсоя кӯшиш мекунад онҳоро истифода барад, баъд шумо рахнаҳоро бо қоидаҳо аз рӯи id-и корбар мепӯшед, ва ҳамсоя бори дигар кӯшиш мекунад. Ҳамааш бо маълумоти таълимӣ. Вақт: тақрибан 60 дақиқа. Дар аудитория ё онлайн гузаронида мешавад.</p>
+
+      <div class="callout warn">
+        <b>Қоидаҳои бехатарии бозӣ</b>
+        <p>Мо танҳо <b>сайти ҳамсояро, ки худаш иҷозат додааст</b>, ва танҳо дар пойгоҳи таълимӣ бо маълумоти фарзӣ мешиканем. Инро дар сайтҳои воқеии бегона озмудан мумкин нест: ин вайрон кардани қонун ва қоидаҳои ҳар хизмат аст. Қоидаҳои «танбал» ва саҳифаи <code>/hack</code> танҳо барои вақти бозӣ лозиманд: баъд аз он ҳама нест карда мешавад.</p>
+      </div>
+
+      <div class="yt" data-id="YAor6JTaqXI" data-title="RLS explained in less than 60s! — канали расмии Supabase" data-start="0"></div>
+      <p class="muted">Видео бо забони англисӣ, камтар аз як дақиқа (субтитрҳоро фаъол кунед): RLS чист. Пеш аз бозӣ бинед.</p>
+
+      <h3>Омодагӣ (барои ҳар кас 10 дақиқа)</h3>
+      <ol class="steps">
+        <li><b>Панели ҳамла.</b> Аз AI хоҳиш кунед, ки саҳифаи <code>/hack</code>-ро созад (муваққатӣ, танҳо барои бозӣ): компоненти клиентӣ бо <code>createClient</code> аз <code>lib/supabase/client.ts</code> бо панҷ тугма ва равзанаи натиҷа (JSON). Тугмаҳо: <b>A</b> «ҳамаи профилҳоро хондан» (<code>from("profiles").select("*")</code>); <b>B</b> «ҳамаи дархостҳоро хондан» (<code>from("bookings").select("*")</code>); <b>C</b> «номи профили бегонаро иваз кардан» (майдони id, <code>update({ full_name: "Взломано" }).eq("id", id).select()</code>); <b>D</b> «маро админ кардан» (<code>update({ role: "admin" })</code> барои id-и худ, бо <code>.select()</code>); <b>E</b> «id-и маро нишон бидеҳ» (аз <code>getClaims()</code>). Натиҷа ё хато дар зери тугмаҳо чоп мешавад.</li>
+        <li><b>Қоидаҳои «танбал».</b> Дар SQL Editor блоки зерро иҷро кунед: он қасдан чор рахна илова мекунад. Ин танҳо аз он ҷиҳат мумкин аст, ки пойгоҳи таълимӣ бо маълумоти фарзӣ доред.</li>
+        <li><b>Деплой ва мубодила.</b> Сайтро дар Vercel деплой кунед (ҳамин тавр ҳамсоя истиноди зинда мегирад). Суроғаҳои сайтро иваз кунед. Дар пойгоҳи шумо бояд маълумот барои ҳамсоя барои «дуздӣ» бошад: дар профил ном ва телефони ихтироъкардаро <code>+992 900 00 00 01</code> ва чанд дархости озмоишӣ монед.</li>
+      </ol>
+<pre class="code" data-title="SQL Editor: РАХНАҲО БАРОИ БОЗӢ (баъд мепӯшем)">
+/* рахна 1 ва 2: ҳар корбари ворид шуда ҳамаи профилҳо ва ҳамаи дархостҳоро мехонад */
+create policy "lazy read profiles"
+on profiles for select to authenticated using (true);
+
+create policy "lazy read bookings"
+on bookings for select to authenticated using (true);
+
+/* рахна 3 ва 4: ҳар корбари ворид шуда ҳама майдонҳои ҳар профилро, аз ҷумла role-ро тағйир медиҳад */
+grant update on table profiles to authenticated;
+
+create policy "lazy update profiles"
+on profiles for update to authenticated
+using (true) with check (true);
+</pre>
+
+      <h3>Даври 1: ҳамла (15 дақиқа)</h3>
+      <ol class="steps">
+        <li>Сайти ҳамсояро кушоед, <b>дар он бақайд шавед</b> ҳамчун корбари нав (e-mail ихтироъшуда, масалан <code>hacker1@example.com</code>) ва <code>/hack</code>-ро кушоед.</li>
+        <li>Тугмаҳоро навбат ба навбат пахш кунед ва дар «протоколи шикаст» сабт кунед: чӣ ҳосил шуд, кадом матн баргашт. <b>A</b>: оё профилҳои ҳамсоя бо телефонҳо ва нақшҳо намоёнанд? <b>B</b>: оё дархостҳои бегона намоёнанд? <b>C</b>: оё номи бегона иваз шуд (id-ро дар натиҷаи A ёбед)? <b>D</b>: оё худро админ кардан муяссар шуд, ва оё ҳоло <code>/admin</code> кушода мешавад?</li>
+        <li>Маълумотро нест накунед ва вайрон накунед: танҳо номро ба «Взломано» ва нақшро дар корбари <b>худии</b> шикастгар иваз мекунем.</li>
+      </ol>
+
+      <h3>Даври 2: ҳифз (15 дақиқа)</h3>
+      <p>Протоколро аз ҳамсоя гирифта, рахнаҳоро пӯшед. Блоки зер қоидаҳои «танбал»-ро мебардорад ва ҳуқуқҳоро ба сутунҳо бармегардонад.</p>
+<pre class="code" data-title="SQL Editor: РАХНАҲОРО МЕПӮШЕМ">
+drop policy if exists "lazy read profiles" on profiles;
+drop policy if exists "lazy read bookings" on bookings;
+drop policy if exists "lazy update profiles" on profiles;
+
+/* ҳуқуқи зиёдатиро мегирем ва боз танҳо ду сутунро медиҳем */
+revoke update on table profiles from authenticated;
+grant update (full_name, phone) on table profiles to authenticated;
+</pre>
+      <p>Чӣ монд: корбари воридшуда профили худро (ва барои админ ҳамаро) мебинад; танҳо номи худ ва телефони худро нав мекунад; дархостҳои худро мебинад. Ин қоидаҳо дар амалиёт (бахши 7) навишта шудаанд ва то он даме кор мекунанд, ки онҳоро бо «танбал»-ҳо «давр» накунанд.</p>
+
+      <h3>Даври 3: ҳамлаи такрорӣ (10 дақиқа)</h3>
+      <p>Ҳамсоя боз A–E-ро дар сайти шумо пахш мекунад (метавонад ҳамон корбар бошад: бояд баромада, аз нав ворид шавад, ё танҳо навсозӣ кунад). Натиҷаи интизории ҳифз: <b>A</b> як профили (худии ӯро) бармегардонад; <b>B</b> танҳо дархостҳои ӯро (ё рӯйхати холӣ); <b>C</b> 0 сатрро нав мекунад (рӯйхат холӣ: RLS сатри бегонаро хомӯшона гузаронд); <b>D</b> хатои <code>permission denied</code> (ҳуқуқи тағйири <code>role</code> нест). Агар ягон тугма ҳамоно ҳифзро мешиканад, қоидаро ёбед ва ислоҳ кунед.</p>
+
+      <div class="callout warn">
+        <b>Баъди бозӣ ҳатман</b>
+        <p>Саҳифаи <code>/hack</code>-ро аз лоиҳа нест кунед, commit кунед ва аз нав деплой кунед. Санҷед, ки дар Table Editor → Policies қоидаҳо бо калимаи <code>lazy</code> нестанд, ва корбарони озмоишии «шикастгар»-ро дар Authentication → Users нест кунед.</p>
+      </div>
+
+      <h3>Ҷадвали вақт</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Вақт</th><th>Чӣ мекунанд</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:10</td><td>Қоидаҳо, ҷуфтҳо, видео дар бораи RLS</td></tr>
+            <tr><td>0:10–0:20</td><td>Омодагӣ: <code>/hack</code>, қоидаҳои танбал, деплой, мубодилаи суроғаҳо</td></tr>
+            <tr><td>0:20–0:35</td><td>Даври 1: ҳамла ба сайти ҳамсоя, протокол</td></tr>
+            <tr><td>0:35–0:50</td><td>Даври 2: ҳифз аз рӯи протоколи ҳамсоя</td></tr>
+            <tr><td>0:50–1:00</td><td>Даври 3: ҳамлаи такрорӣ ва натиҷаҳо</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Холҳо</h3>
+      <ul>
+        <li><b>+1</b> барои ҳар рахнаи ёфтшуда дар сайти бегона (A–D, ҳадди аксар 4).</li>
+        <li><b>+2</b> барои шарҳи дақиқи он, ки <b>чаро</b> рахна кор мекард (кадом қоида ё кадом <code>grant</code>).</li>
+        <li><b>+3</b> барои сайте, ки дар даври 3 дар баробари ҳамаи тугмаҳо тоб овард.</li>
+        <li><b>+2</b> барои рахнае, ки дар рӯйхат набуд (масалан, чизе, ки тавассути Network намоён аст).</li>
+      </ul>
+
+      <article class="task" id="cl-hack">
+        <header><span class="task-num">ВАЗИФАИ 9.1</span><h4>Рӯйхати санҷиш: «Ҳамсояро шикаст» бозӣ шуд</h4><span class="level mid">миёна</span></header>
+        <p>Иҷрошударо қайд кунед.</p>
+        <ul class="checklist" id="cl-h">
+          <li>Саҳифаи <code>/hack</code> ва қоидаҳои танбалро сохтам, бо ҳамсоя суроғаҳоро иваз кардам</li>
+          <li>Профилҳо ё дархостҳои бегонаро дар сайти ҳамсоя хондам ва протокол навиштам</li>
+          <li>Кӯшиш кардам, ки админ шавам ва номи бегонаро иваз кунам, натиҷаро сабт кардам</li>
+          <li>Рахнаҳоро аз рӯи протоколи ҳамсоя пӯшидам ва фаҳмондам, ки кадом қоида барои чӣ масъул аст</li>
+          <li>Ҳамсоя бори дигар ҳамла кард, ва ҳифз тоб овард</li>
+          <li><code>/hack</code>, қоидаҳои танбал ва «шикастгар»-ҳои озмоиширо нест кардам</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ ДЗ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">10</span> Вазифаи хонагӣ: қисми пӯшидаи сайт ва нақши администратор (ВХ-12)</h2>
+
+      <p>Сайтро ба ҳолати «маҳсулот бо корбарони воқеӣ ва нақшҳо» расонед: қисми сайт танҳо ба воридшудагон дастрас аст, соҳиб бошад тавассути админка идора мекунад. Супориш: ду истинод (репозиторияи GitHub ва сайт дар Vercel).</p>
+
+      <h3>Талабот</h3>
+      <ul>
+        <li><b>Бақайдгирӣ ва воридшавӣ</b> бо e-mail ва парол: хатоҳои фаҳмо, санҷиши майдонҳо, баромад. Дар сайт <b>тугмаи баромад</b> ҳаст ва дар сарлавҳа намоён аст, ки корбар ворид шудааст ё не. Воридшавӣ бо Google ихтиёрӣ (бонус).</li>
+        <li><b>Қисми пӯшида:</b> ҳадди аққал ду саҳифа танҳо барои воридшудагон (кабинети шахсӣ <code>/account</code> ва боз як саҳифаи худӣ: масалан «Дархостҳои ман» ё «Интихобшудаҳо»). Барои меҳмонон — равона кардан ба воридшавӣ, баъди воридшавӣ бозгашт ба саҳифаи лозимӣ (<code>?next=</code> бо санҷиш).</li>
+        <li><b>Кабинети шахсӣ:</b> дидан ва таҳрири профил (ном, телефон), маълумоти худӣ аз пойгоҳ (дархостҳо), ҳамааш тавассути RLS аз рӯи <code>user_id</code>.</li>
+        <li><b>Нақшҳо:</b> ҷадвали <code>profiles</code> бо <code>role</code> (<code>user</code> / <code>admin</code>), нақш дар <code>user_metadata</code> нест, корбари оддӣ нақши худро иваз карда наметавонад (ҳуқуқҳо ба сутунҳо), админ тавассути SQL таъин шудааст.</li>
+        <li><b>Админка <code>/admin</code>:</b> танҳо барои нақши admin, ҳамаи дархостҳоро мехонад (ё ҳамаи сабтҳои соҳаи мавзӯии шумо), дар саҳифа санҷиши нақш ҳаст, барои дигарон <code>notFound()</code>, аз индексатсия пӯшида (<code>noindex</code>). Калиди secret дар он истифода намешавад.</li>
+        <li><b>Се қабати ҳифз:</b> <code>proxy.ts</code>, санҷиш дар саҳифа, RLS. Дар <code>README.md</code> мухтасар: кадом саҳифаҳо пӯшидаанд, кадом нақшҳо ҳастанд ва кадом қоидаҳо дар ҳар ҷадвал.</li>
+        <li><b>Санҷиши «Ҳамсояро шикаст»</b> гузаронида шуд: дар протокол (README ё ёддошт) номбар шудааст, ки кадом рахнаҳоро ёфтанд ва чӣ тавр пӯшиданд.</li>
+        <li><b>Сирҳо:</b> калидҳо танҳо дар <code>.env.local</code> ва Vercel; <code>.env.example</code> бе қиматҳо; дар репозиторий паролҳо, токенҳо ва калидҳо нестанд; саҳифаи <code>/hack</code> нест.</li>
+        <li><b>Сифат:</b> <code>npm run build</code> бе хато; дар Vercel бақайдгирӣ, воридшавӣ, кабинет ва админка кор мекунанд; шумо метавонед ҳар қоидаи RLS-ро фаҳмонед.</li>
+      </ul>
+
+      <h3>Чӣ кор кардан лозим</h3>
+      <ol class="steps">
+        <li>Амалиёти дарсро дар сайти худ иҷро кунед (тарабхона будани он ҳатмӣ нест: ҳар сайте, ки сабтҳои корбар дорад, мувофиқ аст).</li>
+        <li>Саҳифаи дуюми пӯшида ва маълумоти ба корбар тааллуқдоштаро бо қоидаҳо аз рӯи <code>user_id</code> илова кунед.</li>
+        <li>Ду корбари озмоишӣ ва админ созед, санҷишро аз қадами 7-и амалиёт гузаред.</li>
+        <li>«Ҳамсояро шикаст» бозӣ кунед (ё худатон бо тугмаҳои A–E санҷед) ва протоколро ба README нависед.</li>
+        <li>Деплой кунед, суроғаи Vercel-ро дар URL Configuration-и Supabase нависед, сайти зиндаро санҷед.</li>
+        <li>Истинодҳоро дар зер гузоред ва рӯйхати санҷишро қайд кунед.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмул дар вазифаи хонагӣ</b>
+        <p><b>1.</b> Нақш дар <code>user_metadata</code> ё санҷиши «админ» танҳо дар интерфейс. <b>2.</b> Қоидаи <code>using (true)</code> дар маълумоти шахсӣ. <b>3.</b> Ҳуқуқи фаромӯшшудаи <code>update</code> ба ҳамаи сутунҳои <code>profiles</code>: корбар худро админ мекунад. <b>4.</b> Файли <code>middleware.ts</code> ба ҷои <code>proxy.ts</code>. <b>5.</b> <code>getSession()</code> ба ҷои <code>getClaims()</code> дар сервер. <b>6.</b> Дар репозиторий Client Secret-и Google, парол ё токен. <b>7.</b> Дар Vercel суроғаи сайт ба URL Configuration илова нашудааст. <b>8.</b> Саҳифаи <code>/hack</code> дар сайти зинда монд. <b>9.</b> Маълумоти воқеии дӯстон дар пойгоҳ.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Чӣ тавр месанҷанд</b>
+        <p>Санҷишкунанда сайтро мекушояд, бақайд мешавад, кабинетро мебинад, кӯшиш мекунад <code>/account</code> ва <code>/admin</code>-ро бе воридшавӣ ва аз номи корбари оддӣ кушояд, баъд репозиторийро меомӯзад: <code>proxy.ts</code>, қоидаҳо дар README, набудани сирҳо. Холҳо: барои се қабати ҳифз, барои нигоҳдории дурусти нақш, барои қоидаҳои RLS аз рӯи <code>user_id</code>, барои кабинети корбар ва барои он, ки шумо қарори худро фаҳмонда метавонед.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ВАЗИФАИ 10.1</span><h4>Рӯйхати санҷиши талаботи ВХ-12</h4><span class="level mid">миёна</span></header>
+        <p>Пеш аз супоридан аз рӯи бандҳо санҷед.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Бақайдгирӣ, воридшавӣ ва баромад кор мекунанд, хатоҳо фаҳмо</li>
+          <li>Ҳадди аққал ду саҳифаи пӯшида, меҳмононро ба воридшавӣ мефиристад, бозгашт баъди воридшавӣ бехатар аст</li>
+          <li>Кабинет: профил таҳрир мешавад, маълумоти худӣ нишон дода мешавад, қоидаҳои RLS аз рӯи <code>user_id</code></li>
+          <li>Нақш дар <code>profiles</code> нигоҳ дошта мешавад, корбар онро иваз карда наметавонад, админ тавассути SQL таъин шудааст</li>
+          <li><code>/admin</code> танҳо барои admin, <code>notFound()</code> барои дигарон, noindex, бе калиди secret</li>
+          <li><code>proxy.ts</code>, <code>getClaims()</code> дар сервер истифода мешавад, се қабати ҳифз дар README тасвир шудаанд</li>
+          <li>Протоколи «Ҳамсояро шикаст» навишта шудааст, саҳифаи <code>/hack</code> ва қоидаҳои «танбал» нестанд</li>
+          <li>Дар репозиторий сирҳо нестанд, <code>.env.example</code> ҳаст</li>
+          <li><code>npm run build</code> мегузарад, дар Vercel ҳама чиз кор мекунад, суроғаи сайт дар Supabase навишта шудааст</li>
+          <li>Истинодҳо ба GitHub ва Vercel дар зер гузошта шудаанд</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ВАЗИФАИ 10.2</span><h4>Истинод ба репозиторияи GitHub</h4><span class="level mid">миёна</span></header>
+        <p>Истинодро ба репозиторияи сайт гузоред.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/логини-шумо/restaurant-site"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ВАЗИФАИ 10.3</span><h4>Истинод ба сайт дар Vercel</h4><span class="level mid">миёна</span></header>
+        <p>Истинодро ба сайти нашршуда гузоред (суроға дар намуди <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://restaurant-site.vercel.app"></div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/auth/server-side/nextjs" target="_blank" rel="noopener">Supabase: Server-Side Auth барои Next.js</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Хулоса"><span class="num">✓</span> Хулосаи дарс</h2>
+      <ul>
+        <li><b>Аутентификатсия</b> — «шумо кистед?» (парол, Google). <b>Авторизатсия</b> — «ба шумо чӣ мумкин аст?» (нақшҳо, қоидаҳо). Аввал якум, баъд дуюм.</li>
+        <li><b>Supabase Auth:</b> <code>signUp</code>, <code>signInWithPassword</code>, <code>signOut</code>; паролҳо танҳо ҳамчун хеш нигоҳ дошта мешаванд; корбарон дар <code>auth.users</code>.</li>
+        <li><b>Confirm email:</b> ба таври пешфарз фаъол аст; почтаи дарунсохти Supabase ҳоло тақрибан 2 мактуб дар як соат медиҳад ва танҳо ба аъзоёни гурӯҳи лоиҳа, барои ҳамин дар машғулият тасдиқро хомӯш мекунем, дар маҳсулоти воқеӣ бошад онро баргардонда SMTP-и худиро пайваст мекунем.</li>
+        <li><b>Сессия:</b> access-токен (JWT, ба таври пешфарз як соат) + refresh-токен (ивазшавии якдафъаина ба ҷуфти нав); дар cookie ҷойгиранд. JWT-ро ҳама хонда метавонанд, аммо қалбакӣ кардани он аз сабаби имзо мумкин нест.</li>
+        <li><b>Next.js 16:</b> <code>proxy.ts</code> бо функсияи <code>proxy</code> (пештар <code>middleware.ts</code>). Токенҳоро тавассути <code>getClaims()</code> санҷед, на <code>getSession()</code>. Клиентҳо: <code>createBrowserClient</code> ва <code>createServerClient</code> аз <code>@supabase/ssr</code>.</li>
+        <li><b>Се қабати ҳифз:</b> proxy (монеаи зуд), саҳифа (<code>getClaims()</code> ва нақш), RLS (хатти охирин). Интерфейс ҳифз нест.</li>
+        <li><b>Нақшҳо:</b> ҷадвали <code>profiles</code> бо <code>role</code>; на дар <code>user_metadata</code>; <code>grant update (full_name, phone)</code> <code>role</code>-ро мепӯшад; админро SQL таъин мекунад; <code>is_admin()</code> барои қоидаҳо.</li>
+        <li><b>RLS аз рӯи корбар:</b> <code>using ((select auth.uid()) = user_id)</code>, ҳамеша бо нақш (<code>to authenticated</code>). Қоидаҳо барои <code>anon</code> ба воридшуда амал намекунанд.</li>
+        <li><b>Google (бонус):</b> лоиҳа дар Google Cloud, Google Auth Platform, клиенти Web application, redirect URI = Callback URL аз Supabase, Client ID ва Secret дар Supabase, <code>signInWithOAuth</code> ва коркардкунандаи <code>/auth/callback</code> бо <code>exchangeCodeForSession</code>.</li>
+        <li><b>«Ҳамсояро шикаст»:</b> ҳифзро бо ҳамлаи аз дарун санҷед (тугмаҳои A–E), протокол нависед, рахнаҳоро пӯшед, саҳифаҳо ва қоидаҳои муваққатиро нест кунед.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ВАЗИФАИ 11.1</span><h4>Ман мавзӯъро воқеан фаҳмидам</h4><span class="level easy">осон</span></header>
+        <p>Танҳо он чиро қайд кунед, ки бе ишора карда метавонед.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Фарқи аутентификатсия ва авторизатсияро дар мисоли сайт фаҳмонда метавонам</li>
+          <li>Бақайдгирӣ, воридшавӣ ва баромадро тавассути Supabase Auth карда метавонам ва фаҳмонда метавонам, ки чаро дар машғулият Confirm email-ро хомӯш мекунем</li>
+          <li>Фаҳмонда метавонам, ки сессия, access- ва refresh-токен чист ва дар куҷо ҷойгиранд</li>
+          <li>Саҳифаро бо се қабат пӯшида метавонам: <code>proxy.ts</code>, санҷиш дар саҳифа, RLS</li>
+          <li>Нақшҳоро ворид карда метавонам ва фаҳмонда метавонам, ки чаро нақшро дар <code>user_metadata</code> нигоҳ доштан мумкин нест</li>
+          <li>Қоидаи RLS «танҳо сатрҳои худӣ»-ро навишта ва бо ҳамлаи браузерӣ санҷида метавонам</li>
+          <li>Қадам ба қадам фаҳмонда метавонам, ки воридшавӣ бо Google чӣ тавр танзим карда мешавад (бонус)</li>
+        </ul>
+      </article>
+    </section>

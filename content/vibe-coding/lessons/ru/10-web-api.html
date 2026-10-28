@@ -1,0 +1,1154 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 560px) { .cmp { grid-template-columns: 1fr; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 10 · Модуль 4. Backend без боли</p>
+      <h1>Как устроен веб: клиент, сервер, API, JSON</h1>
+      <p class="lead">К концу урока ваш сайт научится брать данные из интернета: показывать погоду в Душанбе, курс сомони и список фильмов, пока данные грузятся, и честно сообщать об ошибке, если что-то пошло не так. Вы поймёте, что происходит между нажатием Enter в адресной строке и появлением страницы, прочитаете ответ сервера глазами во вкладке Network, спрячете секретный ключ так, чтобы он не попал на GitHub, и добавите переменную окружения на Vercel.</p>
+      <ul class="goals">
+        <li>Объяснить схему «клиент → запрос → сервер → ответ» и назвать главные HTTP-методы и коды ответа</li>
+        <li>Прочитать JSON и достать из него нужное поле, а также отличить настоящий JSON от почти-JSON</li>
+        <li>Написать <code>async</code>-функцию с <code>await fetch(…)</code>, проверить <code>response.ok</code> и поймать ошибку в <code>try/catch</code></li>
+        <li>Вывести на странице Next.js данные публичного API с экранами «загрузка», «ошибка», «успех»</li>
+        <li>Хранить ключи в <code>.env.local</code>, объяснить разницу между обычной переменной и <code>NEXT_PUBLIC_</code> и проверить, что ключ не попал в репозиторий</li>
+        <li>Добавить переменную окружения на Vercel и объяснить, почему после этого нужен новый деплой</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: любой проект Next.js из уроков 5–9 (можно создать новый), Cursor, браузер Chrome с DevTools (урок 3), аккаунты GitHub и Vercel, интернет и около 3–4 часов. Откройте урок в одной половине экрана, а Cursor — в другой. Задачи с кодом выполняются прямо на странице: ничего ставить не нужно, но им нужен интернет, ведь мы обращаемся к настоящим серверам. Практику (раздел 7) делайте за один присест. В конце ждут «API-квест» и домашнее задание: страница-дашборд с живыми данными.</p>
+      <p>Опираемся на предыдущие уроки: JSON вы уже видели в уроке 6, компоненты, state, «загрузка/ошибка/успех» и <code>"use client"</code> — в уроках 7–8, страницы и <code>layout</code> Next.js — в уроке 9. Если что-то из этого забылось, быстро вернитесь к шпаргалке того урока.</p>
+    </div>
+
+    <!-- ============ 01 · Клиент, сервер, HTTP ============ -->
+    <section class="topic" id="http">
+      <h2 data-toc="Клиент, сервер, HTTP"><span class="num">01</span> Клиент и сервер: как страница попадает в браузер</h2>
+
+      <p>До сих пор данные в ваших проектах лежали прямо в коде: массив товаров, список врачей, текст вкладок. Настоящие сайты берут данные у других компьютеров: курс валют, погоду, заказы, сообщения. Эти компьютеры работают постоянно и отвечают на запросы. Их называют <b>серверами</b>, а того, кто спрашивает (ваш браузер или ваша программа), — <b>клиентом</b>.</p>
+
+      <p>Разговор всегда устроен одинаково: клиент отправляет <b>запрос</b> (request), сервер возвращает <b>ответ</b> (response). Ни один не может «просто позвонить» первым: сервер молчит, пока его не спросили. Для такого разговора придумали «язык» с общими правилами — протокол <b>HTTP</b> (его защищённая версия — HTTPS, замочек в адресной строке).</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Схема запроса: браузер отправляет серверу HTTP-запрос GET с адресом и получает ответ с кодом 200 и данными в формате JSON">
+          <rect class="fill-g" x="10" y="40" width="170" height="170" rx="12" /><text x="95" y="68" text-anchor="middle">Клиент</text><text class="sub" x="95" y="90" text-anchor="middle">браузер или</text><text class="sub" x="95" y="108" text-anchor="middle">ваш код</text>
+          <text class="sub" x="95" y="150" text-anchor="middle">«Хочу погоду</text><text class="sub" x="95" y="168" text-anchor="middle">в Душанбе»</text>
+          <rect class="box b" x="540" y="40" width="170" height="170" rx="12" /><text x="625" y="68" text-anchor="middle">Сервер</text><text class="sub" x="625" y="90" text-anchor="middle">чужой компьютер</text><text class="sub" x="625" y="108" text-anchor="middle">в интернете</text>
+          <text class="sub" x="625" y="150" text-anchor="middle">ищет данные,</text><text class="sub" x="625" y="168" text-anchor="middle">собирает ответ</text>
+          <path class="arr" d="M180 80 H530" /><path class="arr-head" d="M534 80 l-10 -6 v12 z" />
+          <rect class="fill-y" x="215" y="52" width="285" height="52" rx="8" />
+          <text class="mono" x="357" y="73" text-anchor="middle">GET /v1/forecast?latitude=38.56</text><text class="sub" x="357" y="92" text-anchor="middle">запрос: метод + адрес + параметры</text>
+          <path class="arr" d="M540 170 H190" /><path class="arr-head" d="M186 170 l10 -6 v12 z" />
+          <rect class="fill-g" x="215" y="140" width="285" height="60" rx="8" />
+          <text class="mono t-g" x="357" y="162" text-anchor="middle">200 OK</text><text class="mono" x="357" y="181" text-anchor="middle">{"temperature_2m": 21.4}</text><text class="sub" x="357" y="196" text-anchor="middle">ответ: код + данные JSON</text>
+          <text class="sub" x="12" y="250">Запрос и ответ — это просто текст, который ходит по сети. Браузер потом превращает его в страницу.</text>
+        </svg>
+        <figcaption>Один «вопрос-ответ»: клиент просит по адресу, сервер отвечает кодом состояния и данными</figcaption>
+      </figure>
+
+      <div class="yt" data-id="lH2a0A6NO34" data-title="Что такое API? Простыми словами для начинающих — канал Vlad Mishustin"></div>
+      <p class="muted">Ролик на русском (около 16 минут, 2025 год): общая картина «клиент, сервер, API» другими словами. Можно посмотреть сейчас или после практики.</p>
+
+      <h3>Из чего состоит запрос</h3>
+      <ul>
+        <li><b>Метод</b> — что вы хотите сделать: получить, создать, изменить, удалить.</li>
+        <li><b>Адрес (URL)</b> — куда: <code>https://api.open-meteo.com/v1/forecast?latitude=38.56&amp;longitude=68.77</code>. Здесь <code>https://</code> — протокол, <code>api.open-meteo.com</code> — домен сервера, <code>/v1/forecast</code> — путь (какой «раздел» нужен), всё после <code>?</code> — параметры через <code>&amp;</code> (какой город, какие поля).</li>
+        <li><b>Заголовки</b> (headers) — служебные записки: в каком формате вы шлёте данные, кто вы. Сюда же часто кладут ключ доступа.</li>
+        <li><b>Тело</b> (body) — сами данные, если вы что-то отправляете (например, заявку из формы). У запроса «дай» тела обычно нет.</li>
+      </ul>
+
+      <h3>Методы HTTP</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Метод</th><th>Что значит</th><th>Пример из жизни сайта</th></tr></thead>
+          <tbody>
+            <tr><td><code>GET</code></td><td>Получить данные, ничего не меняя</td><td>Открыть страницу, загрузить список товаров, узнать погоду</td></tr>
+            <tr><td><code>POST</code></td><td>Отправить данные, чтобы создать новое</td><td>Отправить заявку, оформить заказ, зарегистрироваться</td></tr>
+            <tr><td><code>PUT</code> / <code>PATCH</code></td><td>Заменить запись целиком / изменить её часть</td><td>Сохранить профиль, поменять количество в корзине</td></tr>
+            <tr><td><code>DELETE</code></td><td>Удалить</td><td>Убрать товар из избранного</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Когда вы просто открываете ссылку в браузере, он всегда делает <code>GET</code>. Остальные методы вы «увидите» в действии, когда отправите форму: за кнопкой стоит <code>POST</code>.</p>
+
+      <h3>Коды ответа: сервер сообщает, как всё прошло</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Код</th><th>Смысл</th><th>Чья проблема</th></tr></thead>
+          <tbody>
+            <tr><td><code>200</code>, <code>201</code></td><td>Успех / успешно создано</td><td>Всё хорошо</td></tr>
+            <tr><td><code>400</code></td><td>Запрос составлен неправильно (например, широта 999)</td><td>Клиента: исправьте параметры</td></tr>
+            <tr><td><code>401</code>, <code>403</code></td><td>Нужен ключ или вход / у вас нет прав</td><td>Клиента: ключ, вход, доступ</td></tr>
+            <tr><td><code>404</code></td><td>Такого адреса или записи нет</td><td>Клиента: проверьте адрес</td></tr>
+            <tr><td><code>429</code></td><td>Слишком много запросов, подождите</td><td>Клиента: не спамьте, есть лимит</td></tr>
+            <tr><td><code>500</code>, <code>503</code></td><td>Сервер сломался или перегружен</td><td>Сервера: попробуйте позже</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Запомнить удобно по первой цифре: <b>2</b> — «ок», <b>4</b> — «вы что-то сделали не так», <b>5</b> — «у нас авария».</p>
+
+      <h3>Смотрим запросы своими глазами: вкладка Network</h3>
+      <p>Для проверки API многие ставят отдельную программу. Нам она не нужна: всё есть в браузере. Откройте любой сайт, нажмите <b>F12</b> (в Chrome) и выберите вкладку <b>Network</b>. Обновите страницу (F5): появится список всех запросов. Чтобы оставить только запросы за данными, включите фильтр <b>Fetch/XHR</b>. Щёлкните по строке: справа вкладка <b>Headers</b> покажет метод и код ответа, <b>Preview</b> и <b>Response</b> — сами данные.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/10-web-api/devtools-network.svg" alt="Схема окна Chrome: вверху страница-дашборд с погодой и курсом доллара, внизу открыты DevTools на вкладке Network с включённым фильтром Fetch/XHR; в таблице три запроса со статусами 200, 200 и 404, у выбранного запроса видны метод GET и ответ в формате JSON" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Вкладка Network: каждая строка — один запрос. Смотрим колонку Status и содержимое ответа. Упрощённая схема</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Клиент и сервер — это покупатель и продавец на бозоре. Вы подходите к прилавку и говорите: «Сколько стоят абрикосы?» (запрос <code>GET</code>). Продавец называет цену (ответ <code>200</code> и данные). Если вы спросили про товар, которого нет на рынке, он разводит руками (<code>404</code>). Если просите продать то, что вам не положено, он отвечает «нельзя» (<code>403</code>). А если у продавца закончилась электроэнергия и весы не работают, это уже его авария (<code>500</code>).</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Думать, что страница «содержит» все данные сразу: многие данные приходят отдельными запросами уже после загрузки страницы. <b>2.</b> Путать ошибку клиента (4xx) с ошибкой сервера (5xx): при 404 ищите опечатку в адресе, а не «сломавшийся интернет». <b>3.</b> Не смотреть в Network: половина загадок «почему ничего не показывается» решается за минуту, если открыть вкладку и увидеть красный статус. <b>4.</b> Вставлять в адрес пробелы и кириллицу вручную: в параметрах их кодируют, браузер и <code>fetch</code> обычно делают это сами, но ломать адрес руками не надо.</p>
+      </div>
+
+      <article class="task" id="q-http">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: HTTP</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Пользователь нажал кнопку «Оформить заказ» на сайте, и заказ нужно создать на сервере. Какой метод подходит лучше всего?</p>
+          <ol class="options">
+            <li><code>GET</code>, потому что он самый простой</li>
+            <li><code>DELETE</code>, потому что заказ «исчезает» из корзины</li>
+            <li><code>POST</code>, потому что мы отправляем данные, чтобы создать новую запись</li>
+            <li>Метод не нужен, достаточно открыть страницу</li>
+          </ol>
+          <div class="explain"><p><code>GET</code> только получает данные, а создание новой записи делают через <code>POST</code>: данные едут в теле запроса. <code>DELETE</code> удаляет, а не создаёт.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Запрос к API вернул <code>404</code>. Что это означает и с чего начать поиск ошибки?</p>
+          <ol class="options">
+            <li>Сервер упал; нужно подождать и повторить запрос</li>
+            <li>Такого адреса или записи нет; сначала проверить адрес и параметры на опечатки</li>
+            <li>Нужен ключ доступа; нужно зарегистрироваться</li>
+            <li>Слишком много запросов; нужно подождать минуту</li>
+          </ol>
+          <div class="explain"><p>Код 4xx говорит, что проблема в запросе. <code>404</code> — «не найдено»: опечатка в пути или записи с таким номером нет. Падение сервера — это 5xx, ключ — 401/403, лимит — 429.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Где в браузере посмотреть, какие запросы за данными отправила страница и с каким кодом они завершились?</p>
+          <ol class="options">
+            <li>DevTools (F12), вкладка Network, фильтр Fetch/XHR</li>
+            <li>DevTools, вкладка Elements: там видны только запросы</li>
+            <li>В исходном коде страницы, внутри тега <code>&lt;title&gt;</code></li>
+            <li>Нигде, браузер скрывает запросы от пользователя</li>
+          </ol>
+          <div class="explain"><p>Network записывает каждый запрос: метод, адрес, код, время, заголовки и сам ответ. Это и есть замена отдельным программам для проверки API.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/Overview" target="_blank" rel="noopener">MDN: обзор HTTP</a>, <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/Status" target="_blank" rel="noopener">коды состояния HTTP</a> и <a href="https://developer.chrome.com/docs/devtools/network" target="_blank" rel="noopener">справка по вкладке Network</a> (последняя на английском).</p>
+    </section>
+
+    <!-- ============ 02 · JSON, API, ключ ============ -->
+    <section class="topic" id="json-api">
+      <h2 data-toc="JSON, API и ключ"><span class="num">02</span> JSON, API и ключ доступа</h2>
+
+      <h3>JSON: язык, на котором серверы отдают данные</h3>
+      <p>Ответ сервера — это текст. Чтобы и человек, и программа понимали его одинаково, текст записывают по правилам <b>JSON</b>. В уроке 6 вы уже читали настройки в таком виде, правила те же: фигурные скобки <code>{ }</code> с парами «ключ: значение», ключи в двойных кавычках, списки в квадратных скобках <code>[ ]</code>, никаких комментариев и запятой после последней пары.</p>
+
+<pre class="code" data-lang="json" data-title="Так выглядит ответ погодного API (сокращено)">
+{
+  "latitude": 38.56,
+  "current": {
+    "time": "2026-10-27T15:30",
+    "temperature_2m": 20.4,
+    "weather_code": 2
+  }
+}
+</pre>
+
+      <p>Чтобы достать значение, идём по ключам через точку: <code>data.current.temperature_2m</code>. В JavaScript две функции переводят туда и обратно: <code>JSON.parse(текст)</code> превращает текст в объект, а <code>JSON.stringify(объект)</code> превращает объект в текст, который можно отправить на сервер.</p>
+
+      <p>Тренировка без интернета: вот «ответ сервера» в виде текста. Разберите его и выведите три строки, а затем превратите объект обратно в текст.</p>
+
+      <article class="task" id="pg-json">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Достаём данные из JSON</h4><span class="level easy">лёгкая</span></header>
+        <p>Сделайте четыре шага из комментариев. Формат строк возьмите из блока «Ожидаемый результат».</p>
+<pre class="code" data-run data-lang="js">
+const text = `{
+  "city": "Душанбе",
+  "current": { "temperature": 21.5, "unit": "°C" },
+  "hours": [18, 19, 20]
+}`;
+
+// TODO 1: превратите text в объект: const data = JSON.parse(text);
+
+// TODO 2: выведите «Город: Душанбе» (значение возьмите из data.city)
+
+// TODO 3: выведите «Температура: 21.5 °C» (data.current.temperature и data.current.unit)
+
+// TODO 4: выведите «Часов в прогнозе: 3» (длина массива data.hours)
+
+// TODO 5: выведите JSON.stringify({ ok: true, n: 2 }) с подписью «Обратно в текст:»
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Город: Душанбе
+Температура: 21.5 °C
+Часов в прогнозе: 3
+Обратно в текст: {"ok":true,"n":2}</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>После <code>JSON.parse</code> переменная <code>data</code> ведёт себя как обычный объект: <code>data.city</code>, <code>data.current.unit</code>, <code>data.hours.length</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Строку собирайте шаблонной строкой: <code>`Температура: ${data.current.temperature} ${data.current.unit}`</code>. Последняя строка: <code>console.log("Обратно в текст:", JSON.stringify({ ok: true, n: 2 }));</code></p></details>
+      </article>
+
+      <div class="callout warn">
+        <b>Почти-JSON, который ломает программу</b>
+        <p>Эти записи выглядят похоже, но <code>JSON.parse</code> на них упадёт с ошибкой <code>Unexpected token</code>: ключ без кавычек <code>{name: "Мадина"}</code>; одинарные кавычки <code>{'name': 'Мадина'}</code>; запятая после последнего элемента <code>{"a": 1,}</code>; комментарий внутри. ИИ иногда пишет такие «JSON» в ответах, поэтому при ошибке разбора первым делом смотрите на сам текст.</p>
+      </div>
+
+      <h3>API: «меню» сервера</h3>
+      <p><b>API</b> (Application Programming Interface) — это набор адресов и правил, по которым одна программа может попросить что-то у другой. Сервер как кухня ресторана: вы не заходите на кухню и не берёте продукты сами, вы смотрите меню и делаете заказ официанту. Меню — это документация API, официант — адрес и метод запроса, блюдо на подносе — JSON с данными. Кухня решает, что вам можно получить и в каком виде.</p>
+
+      <p>Бывают три удобных для новичка вида API:</p>
+      <ul>
+        <li><b>Открытые, без ключа.</b> Достаточно знать адрес. В уроке понадобятся такие: <b>Open-Meteo</b> (погода), <b>open.er-api.com</b> (курсы валют, есть сомони), <b>TVMaze</b> (сериалы и фильмы-шоу), <b>JSONPlaceholder</b> (учебные записи для тренировки <code>POST</code>).</li>
+        <li><b>С ключом доступа.</b> Нужно зарегистрироваться на сайте сервиса и получить ключ (API key): длинную строку. Сервер по ней узнаёт, кто спрашивает, и считает ваши запросы по тарифу.</li>
+        <li><b>Платные.</b> Тот же ключ, но за запросы списываются деньги. Пока работаем только с бесплатным.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Ключ доступа — это пароль от вашего «счёта» в сервисе</b>
+        <p>Если ключ утёк, чужие запросы будут идти за ваш счёт или исчерпают ваш бесплатный лимит, а сервис может заблокировать ваш аккаунт. Поэтому ключ нельзя: вставлять в код, который уходит на GitHub; отправлять в чат; показывать на скриншотах. Как хранить его правильно, разберём в разделе 5. Данные пользователей из открытых API тоже не стоит вставлять в чужие сервисы без необходимости.</p>
+      </div>
+
+      <h3>Почему иногда браузер не пускает: CORS</h3>
+      <p>Браузер охраняет пользователя. Если ваша страница на <code>mysite.vercel.app</code> просит данные у другого домена, браузер сначала смотрит в ответ: есть ли там разрешение от сервера для вашего сайта (заголовок <code>Access-Control-Allow-Origin</code>). Нет разрешения? Запрос уходит, но браузер <b>не отдаёт вашему коду ответ</b> и пишет в консоли красную ошибку со словом <b>CORS</b>. Все API из этого урока разрешают запросы с любого сайта, поэтому у вас всё сработает. Если когда-нибудь встретите API без такого разрешения, запрос нужно делать не из браузера, а с вашего сервера (в Next.js это обычная серверная функция, разберём в разделе 4).</p>
+
+      <article class="task" id="q-json-api">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Проверь себя: JSON, API, ключ, CORS</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Какая запись является корректным JSON?</p>
+          <ol class="options">
+            <li><code>{name: "Мадина", age: 22}</code></li>
+            <li><code>{'name': 'Мадина', 'age': 22}</code></li>
+            <li><code>{"name": "Мадина", "age": 22}</code></li>
+            <li><code>{"name": "Мадина", "age": 22,}</code></li>
+          </ol>
+          <div class="explain"><p>В JSON ключи и строки пишутся в двойных кавычках, а после последней пары запятой нет. В первом варианте ключи без кавычек, во втором одинарные кавычки, в четвёртом лишняя запятая.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Для чего сервису нужен ключ доступа (API key)?</p>
+          <ol class="options">
+            <li>Чтобы ответ приходил красиво оформленным</li>
+            <li>Чтобы сервис знал, кто именно делает запросы, и мог ограничить их количество или списывать оплату</li>
+            <li>Чтобы данные приходили быстрее</li>
+            <li>Чтобы код можно было опубликовать на GitHub</li>
+          </ol>
+          <div class="explain"><p>Ключ — это «имя и пароль» вашего приложения для сервиса. Именно поэтому его нельзя публиковать: любой, кто его увидит, сможет пользоваться сервисом от вашего имени.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>В консоли браузера красная ошибка со словом CORS: сервер другого домена не разрешил вашему сайту читать ответ. Что верно?</p>
+          <ol class="options">
+            <li>Нужно переименовать переменную, в которую записан ответ</li>
+            <li>Нужно сменить браузер на более новый</li>
+            <li>Нужно поставить в запрос метод <code>POST</code> вместо <code>GET</code></li>
+            <li>Запрос стоит делать со своего сервера (например, из серверной функции Next.js) или выбрать API, который разрешает запросы с чужих сайтов</li>
+          </ol>
+          <div class="explain"><p>Правило действует только в браузере: сервер к серверу запрашивает данные без этих ограничений. Метод запроса и браузер тут ни при чём, решение у владельца API или в обходе через ваш сервер.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/ru/docs/Learn_web_development/Core/Scripting/JSON" target="_blank" rel="noopener">MDN: работа с JSON</a> и <a href="https://developer.mozilla.org/ru/docs/Web/HTTP/CORS" target="_blank" rel="noopener">MDN: CORS</a>.</p>
+    </section>
+
+    <!-- ============ 03 · async/await и fetch ============ -->
+    <section class="topic" id="fetch">
+      <h2 data-toc="async/await и fetch"><span class="num">03</span> fetch и async/await: «подожди ответ сервера»</h2>
+
+      <p>Ответ сервера приходит не мгновенно: запрос идёт по проводам или по воздуху, сервер думает. Это занимает от десятков миллисекунд до нескольких секунд. Если бы страница в это время «замерзала», пользоваться сайтом было бы невозможно. Поэтому JavaScript работает иначе: он отправляет запрос, получает взамен <b>«талончик»</b> (в программировании его зовут <b>Promise</b>, «обещание») и спокойно занимается другими делами, пока сервер не ответит.</p>
+
+      <p>Нам же в нужный момент надо сказать: «подожди ответ и только потом иди дальше». Это делает слово <b>await</b>. Правила короткие:</p>
+      <ul>
+        <li><code>fetch(адрес)</code> отправляет запрос и возвращает Promise-«талончик».</li>
+        <li><code>await</code> перед ним ставит эту функцию на паузу, пока не придёт ответ. Результат: объект <b>response</b> (ответ целиком: код, заголовки, тело).</li>
+        <li>Тело ответа тоже читается не мгновенно, поэтому <code>await response.json()</code> — вторая пауза: превращаем текст JSON в готовый объект.</li>
+        <li><code>await</code> можно писать только внутри функции, объявленной со словом <code>async</code>. В примерах прямо на этой странице разрешён <code>await</code> и на верхнем уровне, как будто всё внутри <code>async</code>-функции.</li>
+      </ul>
+
+      <p>Нажмите «Запустить». Обратите внимание, в каком порядке выводятся строки: пока идёт запрос, программа не стоит, а второй <code>console.log</code> выполняется сразу.</p>
+
+<pre class="code" data-run data-lang="js" data-title="Талончик и ожидание">
+console.log("1. Отправили запрос");
+
+const url = "https://api.open-meteo.com/v1/forecast?latitude=38.56&longitude=68.77&current=temperature_2m";
+const ticket = fetch(url);                       // запрос ушёл, в руках «талончик»
+console.log("2. Это Promise:", ticket instanceof Promise);
+
+const response = await ticket;                   // ждём ответ сервера
+console.log("3. Ответ пришёл, код:", response.status);
+</pre>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Временная шкала: программа отправляет запрос, продолжает работу, на слове await делает паузу, сервер отвечает, программа возобновляется и показывает данные">
+          <text class="sub" x="12" y="30">Программа</text>
+          <rect class="fill-g" x="100" y="14" width="120" height="30" rx="6" /><text x="160" y="34" text-anchor="middle">fetch(url)</text>
+          <rect class="box" x="220" y="14" width="110" height="30" rx="6" /><text class="sub" x="275" y="34" text-anchor="middle">другой код</text>
+          <rect class="fill-y" x="330" y="14" width="230" height="30" rx="6" /><text x="445" y="34" text-anchor="middle">await: пауза, ждём</text>
+          <rect class="fill-g" x="560" y="14" width="150" height="30" rx="6" /><text x="635" y="34" text-anchor="middle">показали данные</text>
+          <text class="sub" x="12" y="130">Сервер</text>
+          <rect class="box b" x="160" y="114" width="400" height="30" rx="6" /><text class="sub" x="360" y="134" text-anchor="middle">получил запрос, ищет данные, собирает ответ</text>
+          <path class="arr" d="M160 44 V114" /><path class="arr-head" d="M160 118 l-5 -9 h10 z" />
+          <path class="arr" d="M560 114 V48" /><path class="arr-head" d="M560 44 l-5 9 h10 z" />
+          <text class="sub" x="150" y="84" text-anchor="end">запрос</text>
+          <text class="sub" x="572" y="84">ответ</text>
+          <text class="sub" x="12" y="190">Без await программа бы пошла дальше с пустым «талончиком»,</text>
+          <text class="sub" x="12" y="210">а с await дождётся ответа и только потом использует данные.</text>
+        </svg>
+        <figcaption>Страница не зависает: пока идёт запрос, браузер работает. Слово await ставит на паузу только эту функцию</figcaption>
+      </figure>
+
+      <h3>Проверка ответа и ошибки: шаблон из пяти строк</h3>
+      <p>Главная ловушка <code>fetch</code>, о которую спотыкаются почти все: <b>ответ с кодом 404 или 500 для него не ошибка.</b> Запрос дошёл до сервера и вернулся, поэтому Promise завершается «успешно», а <code>response.ok</code> просто равен <code>false</code>. Ошибкой (исключением) <code>fetch</code> считает только случай, когда ответа вообще нет: нет интернета, адрес сервера не существует. Поэтому всегда пишите проверку:</p>
+
+<pre class="code" data-lang="js" data-title="Шаблон: запрос данных с проверкой">
+async function loadData(url) {
+  const response = await fetch(url);                              // 1. ждём ответ
+  if (!response.ok) throw new Error("HTTP " + response.status);   // 2. 404, 500: это тоже ошибка
+  return await response.json();                                   // 3. ждём и разбираем JSON
+}
+
+try {
+  const data = await loadData(url);
+  console.log("Получили", data);
+} catch (error) {                                                 // 4. сюда попадаем при любой ошибке
+  console.log("Не получилось:", error.message);
+}
+</pre>
+
+      <div class="cmp">
+        <div class="new">
+          <h5>Верно</h5>
+          <ul>
+            <li><code>const response = await fetch(url);</code></li>
+            <li><code>const data = await response.json();</code></li>
+            <li><code>if (!response.ok) throw new Error(…)</code></li>
+          </ul>
+        </div>
+        <div>
+          <h5>Неверно</h5>
+          <ul>
+            <li><code>const data = fetch(url).json();</code> — у «талончика» нет метода <code>json</code></li>
+            <li><code>const data = response.json();</code> без <code>await</code> — вместо данных в переменной снова «талончик»</li>
+            <li>Обернуть в <code>try/catch</code> и считать, что 404 попадёт в <code>catch</code>: не попадёт</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>Практика 1: первый запрос к погоде и курсам</h3>
+      <p>Тут же, в редакторе: запросите настоящую погоду в Душанбе и курсы валют. Живые значения (температура, курс) каждый день разные, поэтому проверка смотрит не на них, а на <b>форму</b> ответа: какие там ключи и числа ли они. Так делают и профессионалы, когда проверяют, что API «живое» и отвечает как обычно.</p>
+
+      <article class="task" id="pg-fetch">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Погода и курс сомони из настоящих API</h4><span class="level mid">средняя</span></header>
+        <p>Заполните два пропуска в первой части (<code>await</code> перед <code>fetch</code> и перед <code>.json()</code>). Во второй части сделайте то же с курсами валют самостоятельно: адрес <code>https://open.er-api.com/v6/latest/USD</code> отдаёт курс доллара ко всем валютам в объекте <code>rates</code>.</p>
+<pre class="code" data-run data-lang="js">
+// ЧАСТЬ 1: погода в Душанбе
+const url = "https://api.open-meteo.com/v1/forecast?latitude=38.56&longitude=68.77&current=temperature_2m";
+const response = /* TODO 1: await fetch(url) */ null;
+const weather = /* TODO 2: await response.json() */ null;
+
+console.log("Код ответа:", response.status);
+console.log("Запрос успешен:", response.ok);
+console.log("Ключи current:", Object.keys(weather.current).join(", "));
+console.log("Температура — число:", typeof weather.current.temperature_2m === "number");
+
+// ЧАСТЬ 2: курсы валют
+// TODO 3: запросите https://open.er-api.com/v6/latest/USD и разберите JSON в переменную money
+// TODO 4: выведите «Есть сомони: true» (подсказка: "TJS" in money.rates)
+// TODO 5: выведите «Курс — число: true» (typeof money.rates.TJS === "number")
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Код ответа: 200
+Запрос успешен: true
+Ключи current: time, interval, temperature_2m
+Температура — число: true
+Есть сомони: true
+Курс — число: true</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Часть 1: <code>const response = await fetch(url);</code> и <code>const weather = await response.json();</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Часть 2: <code>const r = await fetch("https://open.er-api.com/v6/latest/USD");</code>, затем <code>const money = await r.json();</code>. Если вместо данных видите <code>Promise</code>, где-то забыт <code>await</code>.</p></details>
+      </article>
+
+      <h3>Практика 2: ошибки живут в двух видах</h3>
+      <p>Теперь проверим то, что только что узнали. Адрес с <b>широтой 999</b> такой сервер отклонит с кодом <code>400</code>, а несуществующий домен вообще не ответит. Это два разных вида ошибки, и выводить их нужно по-разному. Если в <code>catch</code> попал <code>TypeError</code>, значит, до сервера достучаться не удалось (сети нет). Если вы сами бросили <code>Error</code> по коду ответа, сервер ответил, но отказал.</p>
+
+      <article class="task" id="pg-errors">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Ловим ошибки двух видов</h4><span class="level mid">средняя</span></header>
+        <p>Допишите <code>TODO 1</code> в функции <code>load</code> и <code>TODO 2</code> в <code>catch</code>. Три вызова внизу не меняйте.</p>
+<pre class="code" data-run data-lang="js">
+const base = "https://api.open-meteo.com/v1/forecast?longitude=68.77&current=temperature_2m";
+
+async function load(url) {
+  const response = await fetch(url);
+  // TODO 1: если response.ok ложь, бросьте throw new Error("HTTP " + response.status)
+  return await response.json();
+}
+
+async function tryLoad(name, url) {
+  try {
+    await load(url);
+    console.log(name + ": успех");
+  } catch (e) {
+    // TODO 2: если e instanceof TypeError, выведите name + ": нет связи с сервером"
+    //         иначе выведите name + ": ошибка — " + e.message
+  }
+}
+
+await tryLoad("Верные координаты", base + "&latitude=38.56");
+await tryLoad("Неверная широта", base + "&latitude=999");
+await tryLoad("Сервера не существует", "https://not-exists.invalid/data");
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Верные координаты: успех
+Неверная широта: ошибка — HTTP 400
+Сервера не существует: нет связи с сервером</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>TODO 1: <code>if (!response.ok) throw new Error("HTTP " + response.status);</code>. Восклицательный знак значит «не».</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>TODO 2: проверка <code>if (e instanceof TypeError)</code> и в ней вывод <code>name + ": нет связи с сервером"</code>; в ветке <code>else</code> вывод <code>name + ": ошибка — " + e.message</code>.</p></details>
+      </article>
+
+      <h3>Не только GET: отправляем данные</h3>
+      <p>Вторым аргументом <code>fetch</code> принимает объект с настройками. Чтобы отправить данные, указывают метод, заголовок «это JSON» и тело, превращённое в текст через <code>JSON.stringify</code>. Для тренировки есть учебный сервер <b>JSONPlaceholder</b>: он принимает записи, отвечает кодом <code>201</code> и ничего никуда не сохраняет, поэтому ломать нечего.</p>
+
+      <article class="task" id="pg-post">
+        <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Отправляем запись методом POST</h4><span class="level mid">средняя</span></header>
+        <p>Укажите метод и тело запроса. Остальное готово.</p>
+<pre class="code" data-run data-lang="js">
+const response = await fetch("https://jsonplaceholder.typicode.com/posts", {
+  method: /* TODO 1: "POST" */ "GET",
+  headers: { "Content-Type": "application/json" },
+  body: /* TODO 2: JSON.stringify({ title: "Салом", userId: 1 }) */ undefined,
+});
+
+const created = await response.json();
+console.log("Код ответа:", response.status);
+console.log("Название на сервере:", created.title);
+console.log("Сервер выдал id:", typeof created.id === "number");
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Код ответа: 201
+Название на сервере: Салом
+Сервер выдал id: true</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Замените значение у <code>method</code> на строку <code>"POST"</code>. Метод записывают заглавными буквами.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>В <code>body</code> нужен именно текст, а не объект: <code>body: JSON.stringify({ title: "Салом", userId: 1 })</code>.</p></details>
+      </article>
+
+      <div class="yt" data-id="HHjkipppuqo" data-title="Простыми словами про Async Await с примерами — канал Какие-то уроки [Frontend]"></div>
+      <p class="muted">Ролик на русском (около 22 минут, 2024 год): ещё одно объяснение async/await с примерами. Смотрите по желанию, когда сделаете задачи выше.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы заказали плов в чойхоне. Официант не стоит рядом с вами, пока повар готовит: он идёт к другим столам, а вы получаете номерок. Номерок — это Promise. <code>await</code> — это момент, когда вы говорите: «Дальше я без плова не продолжаю» и спокойно ждёте за столом. Когда плов готов, вы получаете тарелку: это <code>response</code>. Если повар сообщает, что рис закончился, это <code>404</code>: плов не выдали, хотя официант вернулся (<code>response.ok === false</code>). А если закрыта сама чойхона и ответа вообще нет, это настоящая ошибка сети, и вы попадаете в <code>catch</code>.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Забыть <code>await</code> и получить в переменной <code>Promise { &lt;pending&gt; }</code> вместо данных. <b>2.</b> Писать <code>await</code> в обычной функции: ошибка «await is only valid in async function», нужно добавить слово <code>async</code> перед функцией. <b>3.</b> Не проверять <code>response.ok</code> и потом падать на <code>undefined</code>, потому что вместо данных пришёл JSON с описанием ошибки. <b>4.</b> Вызывать <code>response.json()</code> два раза: тело читается один раз. <b>5.</b> Выводить в консоль живые данные и сравнивать «у меня 21.4, а в примере 20.4»: значения меняются, смотрите на структуру. <b>6.</b> Отправить объект в <code>body</code> без <code>JSON.stringify</code>: сервер получит строку <code>[object Object]</code>.</p>
+      </div>
+
+      <article class="task" id="q-async">
+        <header><span class="task-num">ЗАДАЧА 3.4</span><h4>Проверь себя: fetch и async/await</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что напечатает код <code>const r = fetch(url); console.log(r);</code> без <code>await</code>?</p>
+          <ol class="options">
+            <li>Данные с сервера</li>
+            <li><code>Promise</code>: запрос ещё идёт, это «талончик», а не ответ</li>
+            <li>Ошибку: без <code>await</code> <code>fetch</code> не работает</li>
+            <li>Число 200</li>
+          </ol>
+          <div class="explain"><p><code>fetch</code> всегда возвращает Promise. Данные появятся только после <code>await</code> (или <code>.then</code>).</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Сервер ответил кодом 404. Что произойдёт в коде <code>const response = await fetch(url);</code>?</p>
+          <ol class="options">
+            <li>Сработает <code>catch</code>, потому что код не 200</li>
+            <li>Программа остановится с красной ошибкой</li>
+            <li>Ничего не сломается: <code>response</code> придёт, а <code>response.ok</code> будет <code>false</code>; проверять нужно самим</li>
+            <li><code>response</code> будет равен <code>null</code></li>
+          </ol>
+          <div class="explain"><p><code>fetch</code> бросает исключение, только если ответа нет вообще (сети нет, домен не найден). Любой ответ сервера, даже 404 или 500, для него успешно полученный: код смотрим в <code>response.ok</code> и <code>response.status</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Почему слово <code>await</code> нельзя написать внутри обычной функции <code>function load() { … }</code>?</p>
+          <ol class="options">
+            <li>Потому что функция должна быть объявлена как <code>async function load()</code>: так JavaScript понимает, что внутри будут паузы</li>
+            <li>Потому что <code>await</code> работает только в Next.js</li>
+            <li>Потому что <code>await</code> нужно писать только после <code>try</code></li>
+            <li>Нельзя только для <code>fetch</code>, для остальных функций можно</li>
+          </ol>
+          <div class="explain"><p><code>await</code> ставит выполнение функции на паузу, а делать паузы умеют только функции со словом <code>async</code> (и верхний уровень модуля). Ошибка так и называется: «await is only valid in async function».</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/ru/docs/Web/API/Fetch_API/Using_Fetch" target="_blank" rel="noopener">MDN: использование Fetch</a> и <a href="https://developer.mozilla.org/ru/docs/Learn_web_development/Core/Scripting/Async_JS" target="_blank" rel="noopener">асинхронный JavaScript</a>.</p>
+    </section>
+
+    <!-- ============ 04 · Next.js: где делать запрос ============ -->
+    <section class="topic" id="next-fetch">
+      <h2 data-toc="Запросы в Next.js"><span class="num">04</span> Запросы в Next.js: в браузере или на сервере</h2>
+
+      <p>В Next.js запрос за данными можно сделать в трёх местах. Из урока 8 вы знаете, что компоненты бывают серверными (по умолчанию) и клиентскими (<code>"use client"</code>). От выбора зависит, где выполняется <code>fetch</code>, кто видит ключ и что видит пользователь, пока данные грузятся.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Где</th><th>Как выглядит</th><th>Когда выбирать</th></tr></thead>
+          <tbody>
+            <tr><td><b>Серверный компонент</b></td><td><code>async</code>-компонент, внутри <code>await fetch(…)</code>. Состояний <code>useState</code> нет</td><td>Данные нужны, чтобы нарисовать страницу; нужен секретный ключ; кликов по данным нет. Самый простой и безопасный вариант</td></tr>
+            <tr><td><b>Клиентский компонент</b></td><td><code>"use client"</code> + <code>useEffect</code> + state <code>status</code> (как в задаче 4.1 ниже)</td><td>Данные зависят от действий пользователя: поиск по кнопке «Найти», обновление, фильтр. API открытое и без ключа</td></tr>
+            <tr><td><b>Route Handler</b> (серверная функция-адрес)</td><td>Файл <code>app/api/…/route.ts</code> с функцией <code>GET</code> или <code>POST</code></td><td>Клиентскому компоненту нужны данные из API с секретным ключом или API без CORS. Браузер зовёт ваш адрес, ваш сервер зовёт чужой API</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 320" role="img" aria-label="Схема: браузер запрашивает страницу у сервера Next.js; сервер Next.js с ключом из .env.local обращается к внешнему API и возвращает браузеру готовые данные, ключ в браузер не попадает">
+          <rect class="fill-g" x="10" y="60" width="170" height="150" rx="12" /><text x="95" y="90" text-anchor="middle">Браузер</text><text class="sub" x="95" y="112" text-anchor="middle">страница, кнопки,</text><text class="sub" x="95" y="130" text-anchor="middle">клиентский код</text>
+          <text class="sub t-r" x="95" y="176" text-anchor="middle">ключа здесь нет</text>
+          <rect class="fill-y" x="275" y="40" width="190" height="190" rx="12" /><text x="370" y="70" text-anchor="middle">Сервер Next.js</text><text class="sub" x="370" y="92" text-anchor="middle">серверные компоненты,</text><text class="sub" x="370" y="110" text-anchor="middle">route handlers</text>
+          <rect class="box o" x="295" y="140" width="150" height="62" rx="8" /><text class="mono t-o" x="370" y="165" text-anchor="middle">.env.local</text><text class="mono" x="370" y="186" text-anchor="middle">WEATHER_KEY=…</text>
+          <rect class="box b" x="560" y="60" width="150" height="150" rx="12" /><text x="635" y="90" text-anchor="middle">Внешний API</text><text class="sub" x="635" y="112" text-anchor="middle">погода, курсы,</text><text class="sub" x="635" y="130" text-anchor="middle">фильмы</text>
+          <text class="sub" x="635" y="176" text-anchor="middle">проверяет ключ</text>
+          <path class="arr" d="M180 110 H270" /><path class="arr-head" d="M274 110 l-10 -6 v12 z" />
+          <path class="arr" d="M270 170 H190" /><path class="arr-head" d="M186 170 l10 -6 v12 z" />
+          <path class="arr" d="M465 110 H555" /><path class="arr-head" d="M559 110 l-10 -6 v12 z" />
+          <path class="arr" d="M555 170 H475" /><path class="arr-head" d="M471 170 l10 -6 v12 z" />
+          <text class="sub" x="225" y="100" text-anchor="middle">страница</text><text class="sub" x="225" y="196" text-anchor="middle">готовый HTML</text>
+          <text class="sub" x="510" y="100" text-anchor="middle">запрос + ключ</text><text class="sub" x="510" y="196" text-anchor="middle">JSON</text>
+          <text class="sub" x="12" y="276">Ключ живёт только на сервере: в браузер отправляются данные, а не секрет.</text>
+          <text class="sub" x="12" y="296">Если запрос сделать из клиентского компонента, то ключ окажется в браузере, и его увидит любой.</text>
+        </svg>
+        <figcaption>Схема «браузер → сервер Next.js → внешний API»: ваш сервер ходит за данными и хранит ключ</figcaption>
+      </figure>
+
+      <h3>Вариант 1: серверный компонент (самый простой)</h3>
+      <p>Страница сама становится <code>async</code> и ждёт данные. Пользователь получает уже готовую страницу, ни <code>useState</code>, ни <code>useEffect</code> не нужны.</p>
+
+<pre class="code" data-lang="tsx" data-title="app/dashboard/page.tsx">
+export default async function DashboardPage() {
+  const response = await fetch(
+    "https://api.open-meteo.com/v1/forecast?latitude=38.56&amp;longitude=68.77&amp;current=temperature_2m",
+    { cache: "no-store" }, // каждый раз свежие данные
+  );
+
+  if (!response.ok) {
+    return &lt;p&gt;Не удалось загрузить погоду (код {response.status}). Попробуйте позже.&lt;/p&gt;;
+  }
+
+  const weather = await response.json();
+
+  return (
+    &lt;main&gt;
+      &lt;h1&gt;Погода в Душанбе&lt;/h1&gt;
+      &lt;p&gt;Сейчас: {weather.current.temperature_2m} °C&lt;/p&gt;
+    &lt;/main&gt;
+  );
+}
+</pre>
+
+      <p>Две важные детали из документации Next.js. Первая: <b>без указания <code>cache</code></b> при сборке проекта (<code>npm run build</code>) страница без динамических данных «запоминает» ответ один раз, и на сайте погода будет застывшей. Для живых данных пишите <code>{ cache: "no-store" }</code>. Вторая: пока сервер ждёт ответ, страница не показывается. Чтобы пользователь видел «Загрузка…», рядом со страницей кладут файл <code>loading.tsx</code>, который Next.js показывает на время ожидания.</p>
+
+<pre class="code" data-lang="tsx" data-title="app/dashboard/loading.tsx">
+export default function Loading() {
+  return &lt;p&gt;Загрузка данных…&lt;/p&gt;;
+}
+</pre>
+
+      <h3>Вариант 2: клиентский компонент с тремя состояниями</h3>
+      <p>Когда данные запрашиваются по клику или зависят от поля ввода, запрос делается в браузере. Тогда «загрузку» и «ошибку» вы рисуете сами через state, как в уроке 8: переменная <code>status</code> принимает значения <code>"loading"</code>, <code>"error"</code>, <code>"success"</code>. Именно это вы сейчас проделаете в задаче ниже.</p>
+
+      <article class="task" id="pg-status">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Карточка погоды: загрузка, ошибка, успех</h4><span class="level mid">средняя</span></header>
+        <p>На странице две карточки погоды: первая запрашивает правильную широту Душанбе, вторая намеренно неправильную (<code>999</code>), чтобы вы увидели ошибку. Допишите три TODO внутри функции <code>load</code>. Блок «ПРОВЕРКА» не трогайте: он дожидается обоих ответов и печатает итог.</p>
+        <div class="playground" data-mode="react" data-title="Карточки погоды">
+<pre class="code" data-lang="jsx">
+import { useState, useEffect } from "react";
+
+function WeatherCard({ lat, label }) {
+  const [status, setStatus] = useState("loading");
+  const [temp, setTemp] = useState(null);
+
+  async function load() {
+    setStatus("loading");
+    try {
+      const url = "https://api.open-meteo.com/v1/forecast?longitude=68.77&amp;current=temperature_2m&amp;latitude=" + lat;
+      const response = await fetch(url);
+      // TODO 1: если response.ok ложь, бросьте throw new Error("HTTP " + response.status)
+      const data = await response.json();
+      // TODO 2: запишите data.current.temperature_2m в temp (setTemp) и поставьте статус "success"
+    } catch (e) {
+      // TODO 3: поставьте статус "error"
+    }
+  }
+
+  useEffect(() =&gt; { load(); }, []);
+
+  return (
+    &lt;div className="card"&gt;
+      {status === "loading" &amp;&amp; &lt;p className="st"&gt;Загрузка…&lt;/p&gt;}
+      {status === "error" &amp;&amp; (
+        &lt;div className="st"&gt;
+          Не удалось загрузить: {label}
+          &lt;button className="retry" onClick={load}&gt;Повторить&lt;/button&gt;
+        &lt;/div&gt;
+      )}
+      {status === "success" &amp;&amp; (
+        &lt;p className="st"&gt;{label}: &lt;b className="temp"&gt;{temp}&lt;/b&gt; °C&lt;/p&gt;
+      )}
+    &lt;/div&gt;
+  );
+}
+
+// ПРОВЕРКА — не меняйте
+function Report() {
+  useEffect(() =&gt; {
+    const wait = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+    const cards = () =&gt; [...document.querySelectorAll(".card")];
+    (async () =&gt; {
+      console.log("Старт: " + cards().map((c) =&gt; c.textContent).join(" | "));
+      for (let i = 0; i &lt; 60; i++) {
+        if (cards().every((c) =&gt; !c.textContent.includes("Загрузка"))) break;
+        await wait(100);
+      }
+      const [a, b] = cards();
+      const t = a.querySelector(".temp");
+      console.log("Карточка 1: температура показана: " + (!!t &amp;&amp; Number.isFinite(Number(t.textContent))));
+      console.log("Карточка 2: кнопка «Повторить»: " + !!b.querySelector(".retry"));
+    })();
+  }, []);
+  return null;
+}
+
+export default function App() {
+  return (
+    &lt;div className="row"&gt;
+      &lt;WeatherCard lat="38.56" label="Душанбе" /&gt;
+      &lt;WeatherCard lat="999" label="Неверная широта" /&gt;
+      &lt;Report /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.card { min-width: 200px; padding: 12px 14px; border: 2px solid #0f766e; border-radius: 12px; background: #f0fdfa; color: #134e4a; }
+.st { margin: 0; }
+.retry { display: block; margin-top: 8px; padding: 6px 12px; border: 0; border-radius: 8px; background: #dc2626; color: #fff; font-weight: 700; cursor: pointer; }
+.temp { font-size: 22px; }
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Старт: Загрузка… | Загрузка…
+Карточка 1: температура показана: true
+Карточка 2: кнопка «Повторить»: true</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>TODO 1: <code>if (!response.ok) throw new Error("HTTP " + response.status);</code> TODO 3 — в <code>catch</code>: <code>setStatus("error");</code></p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>TODO 2: две строки подряд: <code>setTemp(data.current.temperature_2m);</code> и <code>setStatus("success");</code>. Пока карточка вечно «Загрузка…», значит, в нужной ветке статус не меняется.</p></details>
+      </article>
+
+      <h3>Вариант 3: Route Handler, «своя серверная функция»</h3>
+      <p>Это файл с названием <code>route.ts</code> в папке под <code>app/api/…</code>. Он создаёт адрес вашего сайта, по которому отвечает не страница, а данные. Внутри можно безопасно прочитать секретный ключ из переменной окружения, сходить в чужой API и отдать браузеру только то, что нужно. Названия функций совпадают с HTTP-методами: <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>.</p>
+
+<pre class="code" data-lang="ts" data-title="app/api/weather/route.ts">
+export async function GET() {
+  const key = process.env.WEATHER_KEY; // читается на сервере, в браузер не попадает
+
+  const response = await fetch(
+    "https://api.example.com/weather?city=Dushanbe",
+    { headers: { Authorization: "Bearer " + key }, cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    return Response.json({ error: "Сервис погоды недоступен" }, { status: 502 });
+  }
+
+  const data = await response.json();
+  return Response.json({ temperature: data.temp }); // отдаём только нужное
+}
+</pre>
+
+      <p>Адрес <code>api.example.com</code> здесь условный: подставьте адрес и способ передачи ключа из документации вашего API (ключ кладут в параметр адреса, в заголовок <code>Authorization</code> или в свой заголовок: как именно, сказано в документации сервиса). Браузер тогда ходит на <code>/api/weather</code> вашего же сайта, и ключа в его коде нет. Эту схему вы ещё много раз используете в модулях 4 и 5: для базы данных и AI-чата.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Серверный компонент и route handler — это повар на кухне, у которого есть ключ от склада. Клиентский компонент — зал, где сидят гости. Гость (браузер) просит блюдо, а ключ от склада (API-ключ) остаётся у повара: приносить его в зал нельзя, потому что любой гость может его забрать. Поэтому «ходить на склад» (в закрытый API) должен повар, а в зал выносят только готовую тарелку (данные).</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Сделать <code>fetch</code> с ключом в клиентском компоненте: ключ окажется в коде страницы. <b>2.</b> Поставить <code>"use client"</code> и <code>async</code> на один компонент: клиентский компонент не может быть <code>async</code>, а серверные хуки <code>useState</code> и <code>useEffect</code> в серверном не работают. Выбирайте одно. <b>3.</b> Не указать <code>cache: "no-store"</code> и удивляться, что после деплоя погода «застыла». <b>4.</b> Забыть про «Загрузка…» и «Ошибка»: тогда при медленном интернете пользователь видит пустой экран. <b>5.</b> Сделать запрос внутри <code>useEffect</code> без пустого списка зависимостей <code>[]</code>: запросы пойдут бесконечным циклом, а Network покажет сотни строк подряд.</p>
+      </div>
+
+      <article class="task" id="q-next">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Проверь себя: где делать запрос</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Нужно показать на странице курс валют из API с секретным ключом. Где безопаснее всего сделать запрос?</p>
+          <ol class="options">
+            <li>В клиентском компоненте через <code>useEffect</code>, а ключ положить рядом в константу</li>
+            <li>В серверном компоненте или в Route Handler, а ключ читать из <code>process.env</code> на сервере</li>
+            <li>В файле <code>public/key.txt</code>, чтобы браузер мог его прочитать</li>
+            <li>В <code>layout.tsx</code> внутри тега <code>&lt;head&gt;</code></li>
+          </ol>
+          <div class="explain"><p>Код клиентского компонента уходит в браузер вместе с ключом. Серверный код выполняется у вас на сервере, и ключ в браузер не попадает: пользователь получает только готовые данные.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Какой файл создаёт адрес <code>/api/weather</code>, который отвечает JSON-данными?</p>
+          <ol class="options">
+            <li><code>app/api/weather/page.tsx</code> с функцией <code>GET</code></li>
+            <li><code>app/weather.json</code></li>
+            <li><code>app/api/weather/layout.tsx</code></li>
+            <li><code>app/api/weather/route.ts</code> с экспортируемой функцией <code>GET</code></li>
+          </ol>
+          <div class="explain"><p>Файл <code>page.tsx</code> описывает страницу, а <code>route.ts</code> — обработчик запросов (Route Handler). Функции называются как HTTP-методы: <code>GET</code>, <code>POST</code> и другие.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>На странице <code>app/dashboard/page.tsx</code> (серверный компонент) нужна свежая температура при каждом открытии, а не данные, запомненные при сборке. Что добавить?</p>
+          <ol class="options">
+            <li><code>"use client"</code> в первой строке файла</li>
+            <li>Ничего: Next.js всегда обновляет данные при каждом открытии страницы</li>
+            <li>Параметр <code>{ cache: "no-store" }</code> вторым аргументом <code>fetch</code></li>
+            <li>Заменить <code>fetch</code> на <code>JSON.parse</code></li>
+          </ol>
+          <div class="explain"><p>Если не сказать иного, страница без динамических данных может быть подготовлена один раз при сборке, и значения застынут. <code>cache: "no-store"</code> прямо требует брать данные у сервера при каждом запросе.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/fetching-data" target="_blank" rel="noopener">Next.js: получение данных</a>, <a href="https://nextjs.org/docs/app/api-reference/file-conventions/route" target="_blank" rel="noopener">Route Handlers</a> и <a href="https://nextjs.org/docs/app/api-reference/functions/fetch" target="_blank" rel="noopener">справочник по fetch</a> (на английском).</p>
+    </section>
+
+    <!-- ============ 05 · Переменные окружения ============ -->
+    <section class="topic" id="env">
+      <h2 data-toc="Переменные окружения и секреты"><span class="num">05</span> Переменные окружения: где прятать ключи</h2>
+
+      <p>Ключ доступа нужен коду, но показывать его никому нельзя. Решение у всех разработчиков одно: хранить ключ <b>снаружи кода</b>, в <b>переменной окружения</b> (environment variable). В коде остаётся только имя: <code>process.env.WEATHER_KEY</code>, а значение подставляется в момент запуска программы. На вашем компьютере оно берётся из файла, на хостинге (Vercel) — из настроек проекта. Код один, а секреты у каждой среды свои.</p>
+
+      <h3>Файл .env.local</h3>
+      <p>В корне проекта (рядом с <code>package.json</code>) создайте файл с именем <code>.env.local</code>. Точка в начале имени обязательна. Каждая строка — одна переменная в формате <code>ИМЯ=значение</code>, без пробелов вокруг знака равенства и обычно без кавычек:</p>
+
+<pre class="code" data-title=".env.local (пример с выдуманным ключом)">
+WEATHER_KEY=abc123-not-a-real-key
+NEXT_PUBLIC_SITE_NAME=Дашборд Душанбе
+</pre>
+
+      <p>Next.js сам читает такие файлы при запуске и кладёт значения в <code>process.env</code>. Если вы изменили файл, а значение не подхватилось, остановите <code>npm run dev</code> (Ctrl+C) и запустите заново.</p>
+
+      <h3>Главное правило: NEXT_PUBLIC_</h3>
+      <ul>
+        <li><b>Обычная переменная</b> (<code>WEATHER_KEY</code>) доступна только в серверном коде: в серверных компонентах и route handlers. В клиентском компоненте <code>process.env.WEATHER_KEY</code> даст <code>undefined</code>.</li>
+        <li><b>С приставкой <code>NEXT_PUBLIC_</code></b> значение при сборке проекта «вшивается» прямо в JavaScript, который уходит в браузер. Его увидит любой, кто откроет код страницы. Поэтому приставку ставят только на то, что не секрет: название сайта, публичный идентификатор, адрес.</li>
+        <li>Значение с <code>NEXT_PUBLIC_</code> фиксируется на этапе сборки (<code>next build</code>): если поменять его потом, нужна новая сборка.</li>
+      </ul>
+
+      <div class="cmp">
+        <div class="new">
+          <h5>Правильно</h5>
+          <ul>
+            <li><code>WEATHER_KEY=…</code> и чтение в серверном коде</li>
+            <li><code>NEXT_PUBLIC_SITE_NAME=…</code> для названия сайта</li>
+          </ul>
+        </div>
+        <div>
+          <h5>Опасно</h5>
+          <ul>
+            <li><code>NEXT_PUBLIC_WEATHER_KEY=…</code>: секрет попадёт в браузер и в код страницы</li>
+            <li>Ключ прямо в коде: <code>const key = "abc123…"</code></li>
+          </ul>
+        </div>
+      </div>
+
+      <h3>.gitignore: файл, который Git не видит</h3>
+      <p>В уроке 4 вы познакомились с <code>.gitignore</code>: это список файлов и папок, которые Git не добавляет в репозиторий. Проект, созданный командой <code>create-next-app</code>, уже содержит там строку <code>.env*</code>: она закрывает все файлы, имя которых начинается с <code>.env</code>, в том числе <code>.env.local</code>. Поэтому <code>git add .</code> и <code>git push</code> его не отправят. Но надеяться нельзя, надо проверять, особенно если проект создан не вами (например, ИИ-агентом или скопирован из шаблона).</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 290" role="img" aria-label="Схема: на компьютере лежат код и файл .env.local; при git push код уходит на GitHub, а .env.local блокируется файлом .gitignore; на Vercel ключ добавляется вручную в настройках Environment Variables">
+          <rect class="fill-g" x="10" y="20" width="220" height="190" rx="12" /><text x="120" y="48" text-anchor="middle">Ваш компьютер</text>
+          <rect class="box" x="28" y="64" width="184" height="34" rx="8" /><text class="mono" x="120" y="86" text-anchor="middle">app/ · components/</text>
+          <rect class="box o" x="28" y="108" width="184" height="34" rx="8" /><text class="mono t-o" x="120" y="130" text-anchor="middle">.env.local (секрет)</text>
+          <rect class="box v" x="28" y="152" width="184" height="34" rx="8" /><text class="mono t-v" x="120" y="174" text-anchor="middle">.gitignore: .env*</text>
+          <rect class="box b" x="290" y="20" width="190" height="100" rx="12" /><text x="385" y="48" text-anchor="middle">GitHub</text><text class="sub" x="385" y="72" text-anchor="middle">публичный репозиторий:</text><text class="sub" x="385" y="90" text-anchor="middle">только код, без секретов</text>
+          <rect class="fill-y" x="500" y="20" width="210" height="190" rx="12" /><text x="605" y="48" text-anchor="middle">Vercel</text>
+          <text class="sub" x="605" y="72" text-anchor="middle">Settings →</text><text class="mono" x="605" y="96" text-anchor="middle">Environment Variables</text>
+          <rect class="box o" x="518" y="120" width="174" height="34" rx="8" /><text class="mono t-o" x="605" y="142" text-anchor="middle">WEATHER_KEY=•••</text>
+          <text class="sub" x="605" y="180" text-anchor="middle">секрет вводите руками</text><text class="sub" x="605" y="198" text-anchor="middle">и после этого — Redeploy</text>
+          <path class="arr" d="M230 70 H282" /><path class="arr-head" d="M286 70 l-10 -6 v12 z" />
+          <text class="sub" x="258" y="58" text-anchor="middle">git push</text>
+          <path class="arr" d="M480 70 H494" /><path class="arr-head" d="M498 70 l-10 -6 v12 z" />
+          <path class="arr" d="M230 125 H260" />
+          <text class="t-r" x="272" y="131" text-anchor="middle" style="font-size:20px">✕</text>
+          <text class="sub t-r" x="330" y="160" text-anchor="middle">.env.local на GitHub не едет</text>
+          <text class="sub" x="12" y="250">Три места — три копии значения. Обновили ключ в одном месте — обновите в остальных.</text>
+          <text class="sub" x="12" y="270">Файл .env.local живёт только у вас. GitHub получает код, Vercel получает ключ через настройки.</text>
+        </svg>
+        <figcaption>Куда попадает код и куда попадает секрет: git не отправляет .env.local, а на Vercel ключ добавляется отдельно</figcaption>
+      </figure>
+
+      <h3>Проверяем, что ключ не попал на GitHub</h3>
+      <p>Три проверки по порядку. Они занимают минуту, и делать их нужно перед каждым первым <code>git push</code> нового проекта.</p>
+      <ol class="steps">
+        <li><b>Игнорируется ли файл.</b> В терминале в папке проекта:
+<pre class="code" data-title="Терминал">git check-ignore -v .env.local</pre>
+          Команда печатает строку с правилом, например <code>.gitignore:34:.env*    .env.local</code>. Если вывод пустой, файл не игнорируется: добавьте в <code>.gitignore</code> строку <code>.env*</code> и повторите.</li>
+        <li><b>Нет ли файла в репозитории и в истории.</b>
+<pre class="code" data-title="Терминал">git ls-files | grep env
+git log --all --oneline -- .env.local</pre>
+          Обе команды должны ничего не вывести. Первая ищет среди отслеживаемых файлов, вторая — среди всех прошлых коммитов, ведь удалённый файл остаётся в истории. На Windows вместо <code>grep env</code> используйте <code>findstr env</code>.</li>
+        <li><b>Посмотрите глазами.</b> Откройте репозиторий на GitHub в режиме инкогнито (так видно то, что видит любой человек): среди файлов в корне не должно быть <code>.env.local</code>, а в коде не должно быть строки с ключом. Быстрый способ проверки: откройте поиск по коду на странице репозитория и введите начало вашего ключа.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если ключ уже попал на GitHub</b>
+        <p>Удалить файл новым коммитом недостаточно: старый коммит с ключом остаётся в истории, и копии могли уже забрать автоматические боты (они сканируют GitHub круглые сутки). Порядок действий: <b>1.</b> Сразу зайдите на сайт сервиса и <b>отзовите ключ</b> (revoke, delete, regenerate), выпустите новый. Старый ключ с этого момента бесполезен. <b>2.</b> Новый ключ запишите в <code>.env.local</code> и в Vercel. <b>3.</b> Уберите файл из Git: <code>git rm --cached .env.local</code>, убедитесь, что <code>.env*</code> есть в <code>.gitignore</code>, сделайте commit и push. <b>4.</b> Расскажите ИИ-ассистенту, что произошло, но сам ключ в чат не вставляйте.</p>
+      </div>
+
+      <h3>Переменные окружения на Vercel</h3>
+      <p>Ваш сайт на Vercel не видит файл <code>.env.local</code>: он остался у вас на компьютере. Значит, каждую переменную нужно добавить в проект на Vercel вручную. Шаги по официальной документации:</p>
+      <ol class="steps">
+        <li><b>Откройте проект на Vercel</b> (из панели управления, dashboard) и перейдите в его настройки. В боковом меню выберите <b>Environment Variables</b>.</li>
+        <li>В поле <b>Name</b> впишите имя (например, <code>WEATHER_KEY</code>), в поле <b>Value</b> — значение. Имя в точности такое же, как в <code>.env.local</code>, с учётом регистра.</li>
+        <li>Отметьте окружения, к которым относится переменная: <b>Production</b> (боевой сайт), <b>Preview</b> (проверочные версии из других веток), <b>Development</b> (локальная работа). Для ключа обычно достаточно первых двух.</li>
+        <li>Нажмите <b>Save</b>. В зависимости от настроек вам могут предложить тип переменной: <b>Secret</b> (значение после сохранения не показывается) удобнее для ключей.</li>
+        <li><b>Сделайте новый деплой.</b> По документации Vercel изменения переменных не применяются к уже готовым версиям сайта, только к новым. Откройте вкладку <b>Deployments</b>, у последнего деплоя выберите <b>Redeploy</b> или просто сделайте новый <code>git push</code>.</li>
+      </ol>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/10-web-api/vercel-env.svg" alt="Схема страницы настроек проекта на Vercel: слева меню с пунктом Environment Variables, справа форма с полями Name и Value, выбор окружений Production, Preview и Development, кнопка Save и жёлтое предупреждение о том, что новое значение применяется только к новым деплоям" width="720" height="380" loading="lazy" decoding="async">
+        <figcaption>Форма добавления переменной на Vercel. Названия кнопок могут слегка отличаться: сверяйтесь с документацией. Упрощённая схема</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Переменная окружения — это сейф с кодом, который стоит в каждой «комнате»: дома у вас, на сервере Vercel. Код сейфа не пишут на двери (в публичном коде) и не оставляют на проходной (на GitHub). Каждому «помещению» вы передаёте код лично. Сменили код на домашнем сейфе, на работе он сам не поменяется: придётся поменять и там, и перезапустить работу (Redeploy).</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки новичков</b>
+        <p><b>1.</b> Назвать файл <code>env.local</code> или <code>.env.local.txt</code> (без точки, с лишним расширением): Next.js его не увидит. Проверьте имя в проводнике. <b>2.</b> Положить файл не в корень, а в <code>app/</code>. <b>3.</b> Поставить пробелы или лишние кавычки: <code>KEY = "abc"</code>. <b>4.</b> Поставить <code>NEXT_PUBLIC_</code> перед секретом «чтобы заработало»: оно заработает, но ключ станет публичным. Вместо этого вынесите запрос в серверный компонент или route handler. <b>5.</b> Закоммитить <code>.env</code> или <code>.env.local</code> «на минутку». <b>6.</b> Добавить переменную на Vercel и не сделать Redeploy: на сайте всё ещё старое значение или <code>undefined</code>. <b>7.</b> Показать <code>.env.local</code> на скриншоте, в видеозвонке или в чате с ИИ.</p>
+      </div>
+
+      <article class="task" id="q-env">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: .env и секреты</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>В <code>.env.local</code> записано <code>NEXT_PUBLIC_API_KEY=abc123</code>. Что произойдёт?</p>
+          <ol class="options">
+            <li>Ключ будет виден только на сервере, как и раньше</li>
+            <li>Next.js откажется запускаться</li>
+            <li>Значение при сборке окажется в JavaScript для браузера, и любой посетитель сможет его увидеть</li>
+            <li>Ключ автоматически зашифруется</li>
+          </ol>
+          <div class="explain"><p>Приставка <code>NEXT_PUBLIC_</code> означает «отдать в браузер». Секреты с ней писать нельзя: для них серверный код и обычные переменные.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Вы случайно запушили файл <code>.env.local</code> с настоящим ключом в публичный репозиторий. Что делать в первую очередь?</p>
+          <ol class="options">
+            <li>Сразу отозвать (сменить) ключ на сайте сервиса и выпустить новый</li>
+            <li>Удалить файл новым коммитом и считать вопрос закрытым</li>
+            <li>Сделать репозиторий закрытым и больше ничего не менять</li>
+            <li>Подождать несколько дней: вдруг никто не заметил</li>
+          </ol>
+          <div class="explain"><p>Старый коммит остаётся в истории, а боты находят ключи за минуты. Единственная надёжная защита — отозвать утёкший ключ. Остальные шаги (удалить файл, обновить <code>.gitignore</code>) нужны, но после этого.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Вы добавили переменную в Environment Variables на Vercel, но на уже открытом сайте она всё ещё <code>undefined</code>. Почему?</p>
+          <ol class="options">
+            <li>Vercel подхватывает переменные только по ночам</li>
+            <li>Изменения применяются только к новым деплоям: нужен Redeploy или новый push</li>
+            <li>Имя переменной обязательно должно начинаться с <code>NEXT_PUBLIC_</code></li>
+            <li>Переменные работают только в окружении Development</li>
+          </ol>
+          <div class="explain"><p>Готовый деплой «заморожен» со старыми значениями. Новое значение увидят только деплои, созданные после сохранения переменной.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Какая проверка подтверждает, что файл <code>.env.local</code> не попадёт в репозиторий?</p>
+          <ol class="options">
+            <li><code>git add .env.local</code></li>
+            <li><code>npm run build</code></li>
+            <li><code>git push --force</code></li>
+            <li><code>git check-ignore -v .env.local</code>: команда печатает правило из <code>.gitignore</code>, которое закрывает файл</li>
+          </ol>
+          <div class="explain"><p><code>git check-ignore</code> показывает, игнорируется ли файл и каким правилом. Пустой вывод означает, что файл Git видит и может отправить.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/guides/environment-variables" target="_blank" rel="noopener">Next.js: переменные окружения</a>, <a href="https://vercel.com/docs/environment-variables/managing-environment-variables" target="_blank" rel="noopener">Vercel: управление переменными окружения</a> (на английском) и <a href="https://git-scm.com/docs/gitignore" target="_blank" rel="noopener">справка Git по .gitignore</a>.</p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai-prompt">
+      <h2 data-toc="ИИ: промпты"><span class="num">06</span> ИИ-блок: как просить подключить API и не потерять ключ</h2>
+
+      <div class="callout ai">
+        <b>Правила для работы с API через ИИ</b>
+        <p><b>1.</b> <b>Дайте ссылку на документацию</b> или адрес с примером ответа: без этого ИИ выдумывает поля, которых в API нет. Лучше вставить кусок настоящего JSON из вкладки Network. <b>2.</b> <b>Назовите все состояния:</b> загрузка, ошибка сети, ошибка сервера (не <code>ok</code>), пустой результат, успех. По умолчанию ИИ рисует только счастливый путь. <b>3.</b> <b>Где делается запрос:</b> прямо скажите «серверный компонент», «клиентский компонент с кнопкой» или «route handler». <b>4.</b> <b>Про ключи:</b> «ключ только в <code>.env.local</code>, имя <code>WEATHER_KEY</code>, без <code>NEXT_PUBLIC_</code>, запрос с сервера; в код и в чат не вставляй». <b>5.</b> <b>Не показывайте ИИ сам ключ.</b> Просите положить в <code>.env.local</code> заглушку и впишите настоящее значение руками. <b>6.</b> <b>Проверяйте во вкладке Network:</b> метод, код, содержимое ответа и что ключа нет в запросах браузера. <b>7.</b> Исправляем в том же чате: вставьте текст ошибки и строку из Network, а не начинаем сначала.</p>
+      </div>
+
+      <p>Формула промпта та же: <b>контекст → цель → ограничения → примеры → проверка</b>.</p>
+
+      <div class="prompt bad-prompt">подключи погоду и курс валют к сайту</div>
+
+      <div class="prompt good-prompt">Контекст: проект Next.js (App Router, TypeScript) + Tailwind CSS. Есть страница app/dashboard/page.tsx (серверная). Хочу дашборд «Душанбе сегодня».
+Цель: две карточки с живыми данными. 1) Погода: GET https://api.open-meteo.com/v1/forecast?latitude=38.56&amp;longitude=68.77&amp;current=temperature_2m,wind_speed_10m — берём current.temperature_2m и current.wind_speed_10m. 2) Курс сомони: GET https://open.er-api.com/v6/latest/USD — берём rates.TJS, rates.RUB, rates.EUR и считаем, сколько сомони стоит 1 USD, 1 EUR и 1 RUB.
+Ограничения: оба запроса делай в серверных компонентах через async/await, с { cache: "no-store" }. Обязательно проверь response.ok и покажи понятное сообщение, если API не ответил (отдельно для каждой карточки: ошибка в одной не ломает вторую). Пока данные грузятся, показывай loading.tsx со скелетоном. Ключи не нужны, оба API открытые. Без новых библиотек.
+Проверка: запусти npm run build; в конце перечисли файлы и скажи, какие запросы идут с сервера, а какие с браузера.</div>
+
+      <h3>Короткие правки по одной</h3>
+      <div class="prompt">Сначала только план: какие компоненты создашь, где какой запрос, какие состояния у каждой карточки (загрузка, ошибка, успех, пусто). Код пока не пиши.</div>
+      <div class="prompt">Добавь клиентский компонент components/ShowSearch.tsx ("use client") с полем и кнопкой «Найти». По кнопке: GET https://api.tvmaze.com/search/shows?q=ТЕКСТ (ТЕКСТ закодируй через encodeURIComponent). Ответ — массив объектов, у каждого есть score и show (name, rating.average, image.medium, genres). Состояния status: idle, loading, error (с кнопкой «Повторить»), empty («ничего не найдено»), success. Показывай название, рейтинг и постер (если image равен null, подставь серый блок). Остальное не меняй.</div>
+      <div class="prompt">Создай файл .env.local с заглушкой DEMO_API_KEY=demo-12345 и добавь app/api/env-check/route.ts с функцией GET, которая возвращает Response.json({ hasKey: Boolean(process.env.DEMO_API_KEY) }). Само значение ключа в ответ не включай. Убедись, что .env* есть в .gitignore, и покажи вывод git check-ignore -v .env.local.</div>
+      <div class="prompt">Вот ошибка из консоли браузера и строка из вкладки Network (метод, адрес, статус): [вставьте текст]. Объясни простыми словами, в чём причина, и предложи минимальное исправление в одном файле.</div>
+
+      <div class="callout warn">
+        <b>Что проверять в ответах ИИ</b>
+        <p>ИИ любит вставлять настоящий ключ в код «для примера», класть ключ в <code>NEXT_PUBLIC_</code>, забывать <code>response.ok</code> и придумывать поля ответа. Перед commit откройте diff (изменения) и найдите в нём: строки с <code>key</code>, <code>token</code>, <code>secret</code>, <code>NEXT_PUBLIC_</code>, а также <code>fetch(</code> без проверки <code>ok</code>.</p>
+      </div>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: подключаем API"><span class="num">07</span> Практика: подключаем публичные API к сайту</h2>
+
+      <p>Строим мини-дашборд «Душанбе сегодня» в проекте Next.js: серверные карточки погоды и курса, клиентский поиск сериалов с четырьмя состояниями и проверку секретов. Результат — отдельная страница <code>/dashboard</code> в вашем проекте (любом из уроков 5–9) или в новом проекте <code>dashboard-app</code>.</p>
+
+      <h3>Шаг 0. Подготовка</h3>
+      <ol class="steps">
+        <li><b>Откройте проект в Cursor</b> и запустите <code>npm run dev</code>. Если проекта нет, создайте: <code>npx create-next-app@latest dashboard-app</code> (настройки как в уроке 5).</li>
+        <li><b>Сохраните рабочую версию:</b>
+<pre class="code" data-title="Терминал">git add .
+git commit -m "before api lesson"</pre>
+          Если Git пишет «nothing to commit», изменений нет, всё уже сохранено.</li>
+        <li><b>Посмотрите ответ глазами.</b> Вставьте в адресную строку браузера такой адрес:
+<pre class="code" data-title="Адрес для браузера">https://api.open-meteo.com/v1/forecast?latitude=38.56&amp;longitude=68.77&amp;current=temperature_2m,wind_speed_10m</pre>
+          Вы увидите тот самый JSON, который получит ваш код. Найдите в нём <code>current</code> и два поля.</li>
+      </ol>
+
+      <h3>Шаг за шагом</h3>
+      <ol class="steps">
+        <li><b>План.</b> Откройте чат Cursor в режиме Agent и отправьте промпт «Сначала только план». Проверьте: погода и курс идут из серверных компонентов, поиск — из клиентского, ключей нет.</li>
+        <li><b>Карточки погоды и курса.</b> Отправьте основной промпт из раздела 6. Откройте <code>localhost:3000/dashboard</code> и убедитесь, что видите температуру и курсы.</li>
+        <li><b>Посмотрите запросы.</b> Откройте F12 → Network, включите фильтр Fetch/XHR и обновите страницу. Заметьте: <b>запросов к Open-Meteo в списке нет</b>. Они идут с сервера Next.js, а в браузер приходит готовая страница. Переключите фильтр на <b>Doc</b>: вы увидите один запрос страницы <code>dashboard</code>. Это и есть главное различие между серверным и клиентским <code>fetch</code>.</li>
+        <li><b>Поиск сериалов (клиентский <code>fetch</code>).</b> Отправьте промпт про <code>ShowSearch</code>. Введите «office» и нажмите «Найти». Теперь в Network при каждом нажатии появляется запрос <code>search/shows?q=office</code> со статусом 200, а во вкладке Response виден массив.</li>
+        <li><b>Проверьте все состояния поиска.</b> Введите бессмыслицу «qqqzzzxxx»: ожидаем «ничего не найдено». В DevTools во вкладке Network в выпадающем списке «No throttling» выберите <b>Offline</b> и нажмите «Найти»: появляется ошибка с кнопкой «Повторить». Включите сеть обратно и нажмите «Повторить»: результаты появились. Выберите <b>Slow 4G</b> (или похожий пункт) и убедитесь, что «Загрузка…» видна.</li>
+        <li><b>Секреты: заглушка ключа.</b> Отправьте промпт про <code>.env.local</code> и <code>/api/env-check</code>. Откройте <code>localhost:3000/api/env-check</code>: ответ <code>{"hasKey":true}</code>. Если видите <code>false</code>, остановите dev-сервер и запустите заново.</li>
+        <li><b>Проверьте, что ключ не уйдёт на GitHub.</b> Выполните три проверки из раздела 5: <code>git check-ignore -v .env.local</code>, <code>git ls-files | grep env</code>, <code>git log --all --oneline -- .env.local</code>.</li>
+        <li><b>Правило «NEXT_PUBLIC_» в действии.</b> Попросите ИИ добавить в клиентский компонент вывод <code>process.env.DEMO_API_KEY</code> и посмотрите на странице: там пусто (<code>undefined</code>). Затем создайте второе значение <code>NEXT_PUBLIC_SITE_NAME=Дашборд Душанбе</code>, перезапустите сервер и выведите его: теперь оно видно. Уберите оба временных вывода: это только эксперимент.</li>
+        <li><b>Финальные проверки:</b> консоль браузера без красных ошибок, <code>npm run build</code> проходит, окно 390 px без горизонтальной прокрутки.</li>
+        <li><b>Сохраните и отправьте на GitHub:</b>
+<pre class="code" data-title="Терминал">git add .
+git commit -m "add live data dashboard"
+git push</pre>
+          Если проект ещё не опубликован, сначала создайте репозиторий и подключите Vercel, как в уроке 5.</li>
+        <li><b>Добавьте переменную на Vercel.</b> В проекте на Vercel: Settings → Environment Variables → Name <code>DEMO_API_KEY</code>, Value <code>demo-12345</code> → Save. Откройте адрес <code>….vercel.app/api/env-check</code> <b>до</b> нового деплоя: <code>{"hasKey":false}</code>. Затем нажмите Redeploy на вкладке Deployments и откройте адрес снова: <code>{"hasKey":true}</code>. Вы своими глазами увидели, что переменные применяются только к новым деплоям.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось на этом этапе</b>
+        <p><b><code>TypeError: Cannot read properties of undefined (reading 'current')</code>.</b> Вместо данных пришёл JSON с ошибкой или адрес неверный. Откройте адрес в браузере и сравните с примером, добавьте проверку <code>response.ok</code>. Отправьте ИИ ошибку и кусок ответа.</p>
+        <p><b><code>Unexpected token '&lt;', "&lt;!DOCTYPE "… is not valid JSON</code>.</b> Вместо JSON пришла HTML-страница (обычно ошибка 404 или неверный адрес). Проверьте адрес, а в Network посмотрите, что пришло на самом деле.</p>
+        <p><b>Ошибка со словами <code>async/await is not yet supported in Client Components</code>.</b> Компонент с <code>"use client"</code> сделали <code>async</code>. Уберите <code>async</code> и перенесите запрос в <code>useEffect</code> или сделайте компонент серверным.</p>
+        <p><b>В консоли красное <code>blocked by CORS policy</code>.</b> API не разрешает запросы из браузера. Перенесите запрос в серверный компонент или route handler.</p>
+        <p><b>Погода не меняется, хотя вы ждёте новых данных.</b> Нет <code>cache: "no-store"</code> у <code>fetch</code> в серверном компоненте. Кроме того, в режиме разработки данные могут оставаться прежними после горячей перезагрузки: обновите страницу целиком.</p>
+        <p><b><code>process.env.…</code> равно <code>undefined</code>.</b> Файл назван иначе, чем <code>.env.local</code>, лежит не в корне проекта, переменная прочитана в клиентском компоненте без <code>NEXT_PUBLIC_</code> или не перезапущен <code>npm run dev</code>.</p>
+        <p><b>Ответ 429 Too Many Requests.</b> Слишком частые запросы к бесплатному API. Не обновляйте страницу десятки раз подряд и не запрашивайте данные на каждое нажатие клавиши: ждите кнопки.</p>
+        <p><b>Страница выглядит иначе, чем раньше.</b> ИИ мог «заодно» переписать дизайн. Откатите командой <code>git restore .</code> (она отменяет все несохранённые изменения, осторожно) и повторите промпт с жёстким «остальное не менять».</p>
+      </div>
+
+      <article class="task" id="cl-practice-task">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Чек-лист: дашборд с живыми данными</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-practice">
+          <li>Открыл ответ погодного API в адресной строке и нашёл в JSON поле <code>current</code></li>
+          <li>Погода и курсы отображаются из серверных компонентов с <code>async/await</code> и <code>cache: "no-store"</code></li>
+          <li>Во вкладке Network вижу запрос страницы, но не вижу запросов к Open-Meteo: они идут с сервера</li>
+          <li>Поиск сериалов делает запрос из браузера, и в Network виден <code>search/shows?q=…</code> со статусом 200</li>
+          <li>У поиска есть состояния: загрузка, ошибка с кнопкой «Повторить», «ничего не найдено», успех</li>
+          <li>Проверил режим Offline и Slow 4G в DevTools</li>
+          <li>Файл <code>.env.local</code> создан, <code>git check-ignore -v .env.local</code> показывает правило, <code>git ls-files | grep env</code> пуст</li>
+          <li>Добавил переменную в Environment Variables на Vercel, сделал Redeploy и увидел <code>{"hasKey":true}</code></li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ 08 · Фишка ============ -->
+    <section class="topic" id="challenge">
+      <h2 data-toc="«API-квест»"><span class="num">08</span> Фишка урока: «API-квест»</h2>
+
+      <p>В мире сотни бесплатных API: про покемонов, коктейли, собак, космос, рассвет и закат. Квест: за 45 минут <b>выбрать своё API, вытащить из него данные и показать, что получилось</b>. Блок рассчитан на группу с преподавателем и годится для самостоятельного вечера с таймером.</p>
+
+      <div class="callout tip">
+        <b>Правила</b>
+        <p><b>1.</b> Каждый выбирает своё API из списка ниже (по жребию или из двух вариантов); одно API на двоих допускается, но у каждого должен быть свой результат. <b>2.</b> Таймер на 45 минут запускается одновременно. <b>3.</b> Результат — страница в проекте Next.js (можно новая <code>/quest</code>), которая показывает данные <b>минимум из двух разных адресов</b> одного API или двух API. <b>4.</b> Обязательно: состояния «загрузка» и «ошибка» и ссылка на документацию вашего API на странице. <b>5.</b> Код пишет ИИ, а вы проверяете в Network и называете метод, код и поле, из которого взято значение. <b>6.</b> Никаких ключей в коде: берём только открытые API. <b>7.</b> Не опубликовали за 45 минут — результат показывается с localhost.</p>
+      </div>
+
+      <h3>Стартовый список (проверено на момент написания урока)</h3>
+      <ul>
+        <li><b>PokéAPI</b>: <code>https://pokeapi.co/api/v2/pokemon/pikachu</code>: имя, рост, вес, способности.</li>
+        <li><b>Dog CEO</b>: <code>https://dog.ceo/api/breeds/image/random</code>: случайное фото собаки, ключ <code>message</code>.</li>
+        <li><b>TheCocktailDB</b>: <code>https://www.thecocktaildb.com/api/json/v1/1/random.php</code>: случайный коктейль (учебный ключ «1» уже в адресе).</li>
+        <li><b>Agify</b>: <code>https://api.agify.io?name=madina</code>: предполагаемый возраст по имени.</li>
+        <li><b>Sunrise-Sunset</b>: <code>https://api.sunrise-sunset.org/json?lat=38.56&amp;lng=68.77</code>: рассвет и закат в Душанбе.</li>
+        <li><b>TVMaze</b>, <b>Open-Meteo</b>, <b>open.er-api.com</b> из урока: можно взять другие города и валюты (рубль, юань, евро).</li>
+        <li><b>Своё API</b>: найдите на странице <code>github.com/public-apis/public-apis</code> сервис с пометкой «No» в колонке Auth и «Yes» в колонке CORS, откройте пример в браузере и убедитесь, что приходит JSON.</li>
+      </ul>
+      <p>Список живой: сервисы иногда меняют правила или отключаются. Перед стартом откройте адрес в браузере: если видите JSON, берите. Если ошибка, возьмите другое.</p>
+
+      <h3>Расписание (45 минут)</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Время</th><th>Что делают</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:08</td><td>Выбирают API, открывают адрес в браузере, читают JSON, выписывают 3–4 интересных поля</td></tr>
+            <tr><td>0:08–0:13</td><td>Пишут промпт по формуле (адрес, пример JSON, состояния, где запрос), просят сначала план</td></tr>
+            <tr><td>0:13–0:30</td><td>Сборка: карточка с данными, затем второй запрос, затем загрузка и ошибка</td></tr>
+            <tr><td>0:30–0:38</td><td>Проверка: Network (метод, статус), режим Offline, консоль без красного, <code>npm run build</code></td></tr>
+            <tr><td>0:38–0:45</td><td>Подготовка показа: открыть страницу и DevTools, придумать, какое поле показать зрителям</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Показ: «что удалось вытащить»</h3>
+      <p>Каждый показывает результат за 90 секунд: открыть страницу, вызвать ошибку режимом Offline, показать в Network строку запроса и назвать метод, код и поле, откуда взяли самое интересное значение. Сосед заполняет мини-оценку.</p>
+      <ul class="checklist" id="cl-peer">
+        <li>Данные на странице настоящие, а не записаны в коде (видно запрос в Network)</li>
+        <li>Показан минимум второй запрос, и он идёт не на тот же адрес</li>
+        <li>Есть понятные состояния «загрузка» и «ошибка»</li>
+        <li>Автор называет метод, код ответа и поле JSON без подсказок</li>
+        <li>В коде и в репозитории нет ключей и файла <code>.env.local</code></li>
+      </ul>
+
+      <h3>Как считаем очки</h3>
+      <ul>
+        <li><b>+10</b> за работающую страницу, которая показывает данные из API.</li>
+        <li><b>+5</b> за второй запрос (другой адрес или другое API).</li>
+        <li><b>+3</b> за понятное состояние ошибки, проверенное режимом Offline.</li>
+        <li><b>+3</b> за состояние загрузки.</li>
+        <li><b>+5</b> за самое необычное или нужное API по голосу группы.</li>
+        <li><b>−5</b> за ключ или файл <code>.env.local</code> в репозитории.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Для преподавателя</b>
+        <p>Раздайте API жребием из шапки списка, чтобы не получилось пяти одинаковых работ. Первые 15 минут не помогайте с кодом: пусть участники учатся читать JSON и ошибки сами. Если у кого-то «ничего не показывается», попросите соседа открыть вкладку Network и прочитать статус вслух. Победителя попросите показать, в какой строке JSON лежало значение, которое он вывел на экран.</p>
+      </div>
+    </section>
+
+    <!-- ============ Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание: страница-дашборд с живыми данными (ДЗ-10)</h2>
+
+      <p>Соберите страницу-дашборд, которая показывает живые данные минимум из <b>двух разных публичных API</b>. Результат сдаётся двумя ссылками: на репозиторий GitHub и на опубликованный сайт на Vercel.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/10-web-api/dashboard-mock.svg" alt="Схема страницы-дашборда: тёмно-зелёная шапка с названием и временем обновления; три карточки сверху: погода с температурой 21 градус, курс сомони к доллару, рублю и евро, карточка сериалов в состоянии загрузки со скелетоном; внизу карточка с ошибкой и кнопкой Повторить и карточка поиска сериалов с результатами" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Ориентир по структуре: карточки с данными, поиск и разные состояния. Оформление ваше. Упрощённая схема</figcaption>
+      </figure>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Два и больше API:</b> например, погода и курс валют, либо любые из списка квеста. Минимум 3 карточки или блока с данными. Выбор тематики свободный (город, спорт, кино, мода, игры).</li>
+        <li><b>Серверный запрос:</b> минимум одна карточка получает данные в серверном компоненте через <code>async/await</code> с <code>cache: "no-store"</code> (если данные должны быть свежими).</li>
+        <li><b>Клиентский запрос:</b> минимум один блок делает запрос из браузера по действию пользователя (поиск, выбор города, кнопка «Обновить») и показывает состояния <code>loading</code>, <code>error</code> (с кнопкой «Повторить») и пустой результат.</li>
+        <li><b>Ошибки:</b> проверка <code>response.ok</code> везде; ошибка в одной карточке не ломает всю страницу; нет «белого экрана».</li>
+        <li><b>Данные настоящие:</b> по Network видно живые запросы. Захардкоженных (записанных в коде) значений вместо данных API нет.</li>
+        <li><b>Секреты:</b> ключей в коде нет. В проекте есть <code>.env.local</code> (хотя бы с заглушкой), он не в репозитории (<code>git check-ignore -v .env.local</code> подтверждает). Если вы используете API с ключом, ключ читается только на сервере, без <code>NEXT_PUBLIC_</code>, и добавлен в Environment Variables на Vercel.</li>
+        <li><b>Порядок:</b> консоль браузера без красных ошибок, <code>npm run build</code> проходит, вид на 390 px нормальный, источник данных указан в подвале ссылкой на документацию API.</li>
+        <li><b>Бонус:</b> route handler <code>app/api/…/route.ts</code>, через который клиентский компонент получает данные; автообновление раз в минуту; сохранение последнего выбора в <code>localStorage</code>; API с ключом (регистрация на сайте сервиса, ключ только в <code>.env.local</code> и на Vercel).</li>
+      </ul>
+
+      <h3>Что нужно сделать</h3>
+      <ol class="steps">
+        <li><b>Выберите тему и два API.</b> Откройте адреса в браузере и убедитесь, что приходит JSON. Выпишите нужные поля.</li>
+        <li><b>Опишите задачу ИИ по формуле</b> и приложите кусок настоящего JSON. Попросите сначала план: где серверный запрос, где клиентский, какие состояния.</li>
+        <li><b>Стройте по шагам:</b> одна карточка с серверными данными, commit; вторая карточка, commit; клиентский блок с состояниями, commit. После каждого шага проверка во вкладке Network.</li>
+        <li><b>Проверьте руками:</b> режим Offline, неправильный ввод (бессмыслица в поиске), медленная сеть, окно 390 px.</li>
+        <li><b>Проверьте секреты:</b> три команды из раздела 5, поиск ключа в diff перед commit.</li>
+        <li><b>Опубликуйте</b> (push на GitHub, Vercel как в уроке 5), добавьте нужные переменные в Environment Variables, сделайте Redeploy, откройте сайт на телефоне и сдайте две ссылки ниже.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Данные захардкожены, а «API» подключён только в мыслях: во вкладке Network нет запросов. <b>2.</b> Нет проверки <code>response.ok</code>: при ошибке API на экране <code>undefined</code> или белый экран. <b>3.</b> Нет «загрузки» и «ошибки», при медленной сети пустой экран. <b>4.</b> Ключ в коде или в <code>NEXT_PUBLIC_</code>. <b>5.</b> <code>.env.local</code> в репозитории. <b>6.</b> На Vercel не добавлена переменная или не сделан Redeploy: локально работает, на сайте ошибка. <b>7.</b> Серверный запрос без <code>cache: "no-store"</code>: данные «застыли» на момент сборки. <b>8.</b> Ссылка на <code>localhost</code> или на профиль GitHub вместо репозитория; приватный репозиторий. <b>9.</b> Запросы на каждое нажатие клавиши: бесплатные API отвечают ошибкой 429.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист требований к ДЗ-10</h4><span class="level mid">средняя</span></header>
+        <p>Прежде чем сдавать, проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Данные берутся минимум из двух разных публичных API, на странице минимум три блока с данными</li>
+          <li>Минимум один запрос идёт из серверного компонента с <code>async/await</code> и <code>cache: "no-store"</code></li>
+          <li>Минимум один запрос идёт из браузера по действию пользователя, и у него есть «загрузка», «ошибка» с «Повторить» и «пусто»</li>
+          <li>Везде проверяется <code>response.ok</code>; ошибка одной карточки не ломает страницу</li>
+          <li>Во вкладке Network видны живые запросы; режимы Offline и Slow 4G проверены</li>
+          <li>В коде нет ключей; <code>.env.local</code> не в репозитории (<code>git check-ignore -v .env.local</code> проверен)</li>
+          <li>Если есть ключ, он только на сервере, без <code>NEXT_PUBLIC_</code>, и добавлен в Vercel, после чего сделан Redeploy</li>
+          <li>В консоли нет красных ошибок, <code>npm run build</code> проходит, вид на 390 px нормальный, в подвале есть ссылка на документацию API</li>
+          <li>Репозиторий на GitHub публичный, не меньше трёх commit, ссылка Vercel открывается в режиме инкогнито</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на репозиторий вида <code>https://github.com/ваш-логин/dashboard-app</code>. Откройте её в режиме инкогнито: код и папка <code>app</code> должны быть видны, а файла <code>.env.local</code> быть не должно.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dashboard-app"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ЗАДАЧА 9.3</span><h4>Сдача: ссылка на сайт на Vercel</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте адрес опубликованного дашборда вида <code>https://dashboard-app-….vercel.app</code>. Откройте его на телефоне: данные должны загрузиться, а при выключенном интернете показаться ошибка.</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://dashboard-app.vercel.app"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://nextjs.org/docs/app/getting-started/fetching-data" target="_blank" rel="noopener">Next.js: получение данных</a> и <a href="https://github.com/public-apis/public-apis" target="_blank" rel="noopener">каталог публичных API</a> (на английском).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Клиент и сервер:</b> клиент отправляет запрос, сервер возвращает ответ. Запрос: метод + адрес (+ заголовки, тело). Методы: <code>GET</code> получить, <code>POST</code> создать, <code>PUT</code>/<code>PATCH</code> изменить, <code>DELETE</code> удалить. Коды: 2xx успех, 4xx ошибка клиента (400 запрос, 401/403 ключ и права, 404 не найдено, 429 лимит), 5xx ошибка сервера.</li>
+        <li><b>JSON:</b> ключи и строки в двойных кавычках, без запятой в конце. <code>JSON.parse</code> текст → объект, <code>JSON.stringify</code> объект → текст. Значение достаём по ключам: <code>data.current.temperature_2m</code>.</li>
+        <li><b>API и ключ:</b> API — адреса и правила, по которым программа просит данные. Ключ — пароль приложения для сервиса: не в коде, не в чате, не на GitHub. CORS: браузер не отдаёт ответ чужого сервера без разрешения, решение — запрос с вашего сервера.</li>
+        <li><b>async/await:</b> <code>fetch</code> возвращает Promise, <code>await</code> ждёт ответ. <code>await</code> только внутри <code>async</code>. Шаблон: <code>await fetch</code>, <code>if (!response.ok) throw</code>, <code>await response.json()</code>, <code>try/catch</code>. 404 и 500 в <code>catch</code> сами не попадают.</li>
+        <li><b>Next.js:</b> запрос в серверном компоненте (<code>async</code>, <code>cache: "no-store"</code> для свежих данных, <code>loading.tsx</code> на время ожидания), в клиентском (<code>useEffect</code> + <code>status</code>) или в route handler (<code>app/api/…/route.ts</code> с <code>GET</code>). Секретные запросы — только с сервера.</li>
+        <li><b>Состояния:</b> loading, error (с «Повторить»), empty, success. Проверяем режимами Offline и Slow 4G во вкладке Network.</li>
+        <li><b>.env:</b> секреты в <code>.env.local</code> (корень проекта, <code>ИМЯ=значение</code>), читаются через <code>process.env.ИМЯ</code> на сервере. Приставка <code>NEXT_PUBLIC_</code> отдаёт значение в браузер: секреты без неё. После правки файла перезапустите dev-сервер.</li>
+        <li><b>Не на GitHub:</b> <code>git check-ignore -v .env.local</code>, <code>git ls-files | grep env</code>, <code>git log --all --oneline -- .env.local</code>. Ключ утёк: сразу отозвать и выпустить новый.</li>
+        <li><b>Vercel:</b> Settings → Environment Variables → Name, Value, окружения, Save. Новое значение видят только новые деплои: Redeploy или push.</li>
+        <li><b>С ИИ:</b> давать адрес и пример JSON, называть все состояния и место запроса, ключ только в <code>.env.local</code> и не показывать ему сам ключ, проверять во вкладке Network.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, что такое клиент и сервер, назвать методы <code>GET</code> и <code>POST</code> и понять, что означают коды 200, 404 и 500</li>
+          <li>Могу прочитать JSON и достать из него вложенное поле, а также найти «почти-JSON» с ошибкой</li>
+          <li>Могу открыть вкладку Network, найти запрос и прочитать метод, статус и ответ</li>
+          <li>Могу написать <code>async</code>-функцию с <code>await fetch</code>, проверкой <code>response.ok</code> и <code>try/catch</code></li>
+          <li>Могу вывести на странице Next.js данные API с состояниями загрузки, ошибки и успеха</li>
+          <li>Могу объяснить, чем отличается запрос в серверном компоненте, в клиентском и в route handler</li>
+          <li>Могу создать <code>.env.local</code>, объяснить роль <code>NEXT_PUBLIC_</code> и проверить, что ключ не попал на GitHub</li>
+          <li>Могу добавить переменную на Vercel и объяснить, почему нужен Redeploy</li>
+        </ul>
+      </article>
+    </section>

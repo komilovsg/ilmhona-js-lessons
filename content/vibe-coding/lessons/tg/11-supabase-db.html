@@ -1,0 +1,972 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.v { stroke: var(--violet-ink); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-o { fill: var(--accent-2); }
+  .dg text.t-r { fill: var(--red); }
+  .dg text.t-v { fill: var(--violet-ink); }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cmp > div { border: 2px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--bg); }
+  .cmp > div.new { border-color: var(--accent); }
+  .cmp > div.old { border-color: var(--ink-3); }
+  .cmp h5 { margin: 0 0 8px; font: 800 12px var(--font); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cmp > div.new h5 { color: var(--accent); }
+  .cmp ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+  .cmp li { margin: 4px 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .flow .st { flex: 1 1 120px; border: 2px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--bg); }
+  .flow .st b { display: block; font-size: 15px; }
+  .flow .st span { display: block; margin-top: 4px; font-size: 13px; color: var(--ink-3); }
+  .flow .st code { display: block; margin-top: 6px; font-size: 12.5px; }
+  .flow .st.res { border-color: var(--accent); background: var(--accent-soft); }
+  .flow .st.ai { border-color: var(--violet-ink); }
+  .flow .ar { align-self: center; flex: 0 0 auto; font: 800 18px var(--font); color: var(--ink-3); }
+  .timer-tbl td:first-child { white-space: nowrap; font-family: var(--mono); font-weight: 700; }
+  @media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } .flow .ar { display: none; } }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 11 · Модули 4. Backend бе душворӣ</p>
+      <h1>Supabase: пойгоҳи додаи худӣ дар як дарс</h1>
+      <p class="lead">То охири дарс маълумоти сайти шумо дар пойгоҳи додаи воқеӣ нигоҳ дошта мешавад: шакли брон дархостҳоро ба ҷадвали Supabase (Postgres) захира мекунад ва ҷадвали оддии админ онҳоро ба соҳиби сайт нишон медиҳад. Шумо нақшаи пойгоҳро то як сатри код дар коғаз мекашед, ҳифзи RLS-ро фаъол мекунед ва дақиқ медонед, ки кадом калидро ба браузер нишон додан мумкин аст ва кадомро ба ҳеҷ кас.</p>
+      <ul class="goals">
+        <li>Фаҳмонед, ки пойгоҳи дода, ҷадвал, сатр, майдон, калиди аввалӣ ва калиди беруна чист ва нақшаи ду ҷадвали алоқаманд кашед</li>
+        <li>Лоиҳаи Supabase ва ҷадвалро дар Table Editor эҷод кунед, SQL-ро дар SQL Editor иҷро кунед</li>
+        <li>Дархостҳои <code>select</code>, <code>insert</code>, <code>update</code>, <code>delete</code>-ро бихонед ва бигӯед, ки онҳо бо ҷадвал чӣ мекунанд</li>
+        <li>RLS-ро фаъол кунед ва қоида (policy) нависед, ки ба шакл танҳо илова кардани дархостҳоро иҷозат медиҳад</li>
+        <li>Калидҳои publishable (anon) ва secret (service_role)-ро фарқ кунед ва онҳоро танҳо дар <code>.env.local</code> ва дар тағйирёбандаҳои Vercel нигоҳ доред</li>
+        <li>Маълумоти шаклро ба пойгоҳ захира кунед ва дар ҷадвали админ дар сервер нишон диҳед; Supabase ва Firebase-ро муқоиса кунед</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Ин дарсро чӣ тавр гузаштан лозим</b>
+      <p>Лозим мешавад: Cursor, лоиҳаи Next.js ва шакл аз дарсҳои 7–9, дархостҳо ва <code>.env.local</code> аз дарси 10, ҳисоби GitHub (бо он ба Supabase даромадан қулай аст). Вақт: 3–4 соат. Дарсро дар нимаи экран кушоед, Cursor ва панели Supabase-ро дар нимаи дигар. Назарияро (бахшҳои 1–5) қисм-қисм хонед: SQL-ро дар браузери дарс иҷро кардан мумкин нест, барои ҳамин дархостҳоро дар ҷадвалҳои намуна таҳлил мекунед ва бо монандӣ бо массивҳои JavaScript машқ мекунед. Амалиётро (бахши 7) дар як нишаст иҷро кунед: охир шумо шакле доред, ки ба пойгоҳи воқеӣ менависад.</p>
+    </div>
+
+    <!-- ============ 01 · Что такое БД ============ -->
+    <section class="topic" id="db">
+      <h2 data-toc="Пойгоҳи дода чист"><span class="num">01</span> Пойгоҳи дода: ҷадвалҳо, майдонҳо ва алоқаҳо</h2>
+
+      <p>То ҳол маълумоти сайти шумо дар код (массиви хидматҳо) ё дар браузери меҳмон нигоҳ дошта мешуд. Варақро пӯшед, ва он чи ворид шуда буд, нопадид мешавад, соҳиби тарабхона бошад, чизеро намебинад. Барои он ки дархостҳо захира шаванд ва баъд аз ҳар дастгоҳ хонда шаванд, <b>пойгоҳи дода</b> (ПД) лозим аст: барномае дар сервер, ки маълумотро боэътимод нигоҳ медорад ва метавонад зуд ҷустуҷӯ кунад, илова кунад, тағйир диҳад ва нест кунад.</p>
+
+      <p>Аксар вақт пойгоҳ ҳамчун маҷмӯи ҷадвалҳо сохта мешавад, ки ба варақҳои Excel монанданд. Чунин пойгоҳҳоро <b>реляционӣ</b> меноманд (аз relation: алоқа), чунки ҷадвалҳоро байни ҳам алоқаманд кардан мумкин аст.</p>
+
+      <dl class="terms">
+        <dt>Ҷадвал</dt><dd>Маҷмӯи сабтҳои ҳамҷинс: «дархостҳо», «мизҳо», «корбарон». Номи ҷадвал одатан бо шакли ҷамъ ва бо ҳарфҳои лотинӣ навишта мешавад: <code>bookings</code>.</dd>
+        <dt>Сутун (майдон)</dt><dd>Як намуди маълумот ва навъи он: <code>name</code> — матн, <code>guests</code> — адади бутун, <code>booking_at</code> — сана ва вақт.</dd>
+        <dt>Сатр (сабт)</dt><dd>Як дархости пурра: ном, телефон, шумораи меҳмонон ва ғайра.</dd>
+        <dt>Калиди аввалӣ (<code>id</code>)</dt><dd>Рақаме, ки сатрро яктоӣ муайян мекунад. Ду сатр бо як <code>id</code> намешавад. Номҳо ва телефонҳо такрор мешаванд, барои ҳамин сатрро «аз рӯи ном» ҷустан боэътимод нест.</dd>
+        <dt>Калиди беруна</dt><dd>Сутуне, ки дар он <code>id</code>-и сатр аз ҷадвали дигар нигоҳ дошта мешавад. Дархост бо ҳамин «медонад», ки ба кадом миз вобаста аст: <code>bookings.table_id</code> ба <code>restaurant_tables.id</code> ишора мекунад.</dd>
+        <dt>Алоқаи «як ба бисёр»</dt><dd>Як миз дар бисёр дархостҳо вомехӯрад, аммо дархост як миз дорад. Маъмултарин алоқа.</dd>
+      </dl>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 300" role="img" aria-label="Нақшаи пойгоҳ: ҷадвали restaurant_tables бо майдонҳои id, name, seats ва ҷадвали bookings бо майдонҳои id, name, phone, guests, booking_at, table_id; тир аз table_id ба id ҷадвалҳоро мепайвандад">
+          <rect class="box b" x="14" y="20" width="250" height="150" rx="10" />
+          <rect class="fill-y" x="14" y="20" width="250" height="32" rx="10" />
+          <text class="mono" x="28" y="42">restaurant_tables</text>
+          <text class="mono t-o" x="28" y="76">id</text><text class="sub" x="150" y="76">адад, калид</text>
+          <text class="mono" x="28" y="104">name</text><text class="sub" x="150" y="104">матн</text>
+          <text class="mono" x="28" y="132">seats</text><text class="sub" x="150" y="132">шумораи ҷойҳо</text>
+          <rect class="box g" x="400" y="20" width="306" height="266" rx="10" />
+          <rect class="fill-g" x="400" y="20" width="306" height="32" rx="10" />
+          <text class="mono" x="414" y="42">bookings</text>
+          <text class="mono t-o" x="414" y="76">id</text><text class="sub" x="540" y="76">адад, калид</text>
+          <text class="mono" x="414" y="104">created_at</text><text class="sub" x="540" y="104">кай сохта шуд</text>
+          <text class="mono" x="414" y="132">name</text><text class="sub" x="540" y="132">матн</text>
+          <text class="mono" x="414" y="160">phone</text><text class="sub" x="540" y="160">матн</text>
+          <text class="mono" x="414" y="188">guests</text><text class="sub" x="540" y="188">шумораи меҳмон</text>
+          <text class="mono" x="414" y="216">booking_at</text><text class="sub" x="540" y="216">сана ва вақт</text>
+          <text class="mono t-v" x="414" y="244">table_id</text><text class="sub" x="540" y="244">миз аз они кист</text>
+          <text class="mono" x="414" y="272">status</text><text class="sub" x="540" y="272">new / confirmed</text>
+          <path class="arr" style="stroke:var(--violet-ink)" d="M398 244H298V76H276" /><path class="arr-head" style="fill:var(--violet-ink)" d="M266 76l10-5v10z" />
+          <text class="sub t-v" x="306" y="120">1 миз</text>
+          <text class="sub t-v" x="306" y="138">бисёр дархост</text>
+        </svg>
+        <figcaption>Нақшаи аз ду ҷадвал. Тири бунафш: <code>table_id</code> <code>id</code>-и мизро нигоҳ медорад, барои ҳамин ном ва шумораи ҷойҳоро ба ҳар дархост нусха кардан лозим нест</figcaption>
+      </figure>
+
+      <p>Алоқаҳо барои чӣ? Бе онҳо ба ҳар дархост навиштан лозим меомад: «Мизи назди тиреза, 4 ҷой». Агар хоҳед мизро ном иваз кунед, садҳо сатрро тағйир додан лозим мешавад. Бо алоқа ном дар як ҷой нигоҳ дошта мешавад, дархостҳо бошанд танҳо ба рақам ишора мекунанд.</p>
+
+      <div class="yt" data-id="mvpDRH37IBQ" data-title="Пойгоҳи дода чист? Барои навомӯзон — канали GeekBrains" data-start="0"></div>
+      <p class="muted">Видео бо забони русӣ, тақрибан 6 дақиқа: ПД чист ва барои чӣ лозим аст. Соли 2021 сабт шудааст, аммо асосҳои пойгоҳи дода тағйир намеёбанд. Дар бораи Supabase дар он чизе нест, он барои тасвири умумӣ лозим аст.</p>
+
+      <h3>Нақшаро то код мекашем</h3>
+      <p>Одати асосии ин дарс: <b>аввал нақша дар варақ ё тахта, баъд код</b>. Қаламро гиред ва ба се савол ҷавоб диҳед: «Сайт кадом чизҳоро нигоҳ медорад?» (ин ҷадвалҳо), «Дар бораи ҳар кадоме чӣ донистан лозим?» (сутунҳо), «Кӣ ба кӣ ишора мекунад?» (тирҳо). Панҷ дақиқа кашидан соатҳо аз навнависиро сарфа мекунад, AI бошад аз рӯи нақшаи фаҳмо ҷадвалҳоро қариб бе хато месозад.</p>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Дафтари маъмури чойхона. Дар як саҳифа рӯйхати мизҳо: рақам, ном, шумораи ҷойҳо. Дар саҳифаи дигар китоби дархостҳо: номи меҳмон, телефон, вақт ва рақами миз. Рақами миз дар китоби дархостҳо калиди берунаст. Номи «Мизи назди тиреза» як бор навишта шудааст, дар дархостҳо бошад танҳо рақам.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Ҳамаро дар як ҷадвал нигоҳ доштан ва номи мизро ба ҳар сатр нусха кардан: хатои имлоӣ дар як нусха, ва маълумот аз ҳам мехезад. <b>2.</b> Ном ҳамчун калид истифода бурдан: ду Фирдавс, ва пойгоҳ онҳоро омехта мекунад. <b>3.</b> Якчанд қиматро дар як сутун гузоштан («миз 3, миз 4»). <b>4.</b> Санаро ҳамчун матни «фардо шом» нигоҳ доштан: рӯи он ҷудо кардан ва ҷустуҷӯ кардан мумкин нест, барои ин навъи «сана ва вақт» ҳаст. <b>5.</b> Код навиштан бе кашидани нақша ва баъд ҷадвалҳоро ба интерфейси тайёр иваз кардан.</p>
+      </div>
+
+      <article class="task" id="q-tables">
+        <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Худро санҷед: ҷадвалҳо ва алоқаҳо</h4><span class="level easy">осон</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Дар ҷадвали <code>bookings</code> сутуни <code>table_id</code> бо қимати <code>3</code> ҳаст. Ин чӣ маъно дорад?</p>
+          <ol class="options">
+            <li>Меҳмон се миз фармуд</li>
+            <li>Дархост бо сатри ҷадвали мизҳо, ки <code>id = 3</code> дорад, алоқаманд аст</li>
+            <li>Ин дархости сеюм дар ҷадвал аст</li>
+            <li>Дар дархост се меҳмон ҳаст</li>
+          </ol>
+          <div class="explain"><p>Калиди беруна <code>id</code>-и сатрро аз ҷадвали дигар нигоҳ медорад. Шумораи меҳмонон дар <code>guests</code> аст, рақами худи дархост бошад дар <code>id</code>-и худаш.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Чаро сатрҳоро аз рӯи <code>id</code> фарқ мекунанд, на аз рӯи номи меҳмон?</p>
+          <ol class="options">
+            <li>Номҳо такрор мешаванд, <code>id</code> бошад дар ҳар сатр яктост</li>
+            <li>Номҳоро дар пойгоҳ нигоҳ доштан мумкин нест</li>
+            <li>Пойгоҳ бо матн кор карда наметавонад</li>
+            <li>Ин тарз воридкунӣ дар шакл зудтар аст</li>
+          </ol>
+          <div class="explain"><p>Калиди аввалӣ барои он аст, ки як сатрро яктоӣ ном баред: дақиқ ҳамонро иваз кунед ё нест кунед, на ҳамаи ҳамном-ҳоро.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Мизҳоро аз нав ном карданд: «Мизи назди тиреза» шуд «VIP». Пойгоҳ чӣ тавр сохта шудааст, ки ном як бор иваз шавад?</p>
+          <ol class="options">
+            <li>Ном дар ҳар дархост навишта шудааст ва ҳамаи сатрҳоро иваз кардан лозим аст</li>
+            <li>Ном дар браузери меҳмон нигоҳ дошта мешавад</li>
+            <li>Ном дар ҷадвали мизҳост, дархостҳо бошад тавассути <code>table_id</code> ба миз ишора мекунанд</li>
+            <li>Ном дар <code>.env.local</code> аст</li>
+          </ol>
+          <div class="explain"><p>Маънои алоқаҳо ҳамин аст: маълумот як бор нигоҳ дошта мешавад, ҷадвалҳои дигар бо калид ба он ишора мекунанд.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/database/overview" target="_blank" rel="noopener">Supabase: Database overview</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 02 · Supabase и Postgres ============ -->
+    <section class="topic" id="supabase">
+      <h2 data-toc="Supabase ва Postgres"><span class="num">02</span> Supabase: Postgres-и воқеӣ бе сервери худӣ</h2>
+
+      <p><b>Postgres</b> (PostgreSQL) — яке аз маъмултарин ва боэътимодтарин пойгоҳҳои додаи реляционӣ дар ҷаҳон. Танзими сервер, навсозиҳо ва нусхаҳои эҳтиётиро навомӯз лозим нест: <b>Supabase</b> Postgres-ро барои шумо дар абр мегузаронад ва болои он чизҳои қулай илова мекунад: панели веб, интерфейси барномавии (API) тайёр барои ҳар ҷадвал, воридшавӣ (дарси 12) ва анбори файлҳо. Яъне шумо дар код менависед <code>supabase.from("bookings").insert(…)</code>, Supabase бошад инро ба дархости пойгоҳ табдил медиҳад.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>Шакл дар сайт</b><span>браузери меҳмон</span><code>supabase-js</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>API-и Supabase</b><span>калид ва қоидаҳои RLS-ро месанҷад</span><code>HTTPS</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>Postgres</b><span>ҷадвали <code>bookings</code></span><code>сатри нав</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>Саҳифаи админ</b><span>дар сервер мехонад</span><code>select</code></div>
+        </div>
+        <figcaption>Роҳи дархост: шакл → API → ҷадвал → ҷадвали админ. Худи пойгоҳ саҳифаи шуморо намебинад: он танҳо ба дархостҳо ҷавоб медиҳад</figcaption>
+      </figure>
+
+      <h3>Ду қисми панел: Table Editor ва SQL Editor</h3>
+      <p>Дар панели лоиҳа аз чап <b>Table Editor</b> ҳаст: ин «Excel»-и пойгоҳи шумост. Ҷадвалҳо бо тугма сохта мешаванд, сатрҳо дарҳол намоён, ҳуҷайраҳоро бо мушак таҳрир кардан мумкин. Ва <b>SQL Editor</b> ҳаст: майдоне, ки матни дархостҳоро ба забони SQL гузошта, Run-ро пахш мекунанд. Барои ҷадвалҳои таълимӣ дуюм қулайтар аст: дархостро нигоҳ доштан, ба чат нусха кардан ва дар лоиҳаи дигар такрор кардан мумкин аст.</p>
+
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/11-supabase-db/table-editor.svg" alt="Нақшаи тирезаи Table Editor: аз чап рӯйхати ҷадвалҳои bookings ва restaurant_tables ва тугмаи New table; аз рост ҷадвали дархостҳо бо се сатр ва тугмаи Insert row; дар поён лавҳаи сабзи RLS enabled" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>Нақшаи соддакардашудаи Table Editor. Панели воқеӣ метавонад дигар хел намуд дошта бошад: номи тугмаҳо ва ҷойгиршавии онҳоро Supabase тағйир медиҳад</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/11-supabase-db/sql-editor.svg" alt="Нақшаи тирезаи SQL Editor: майдони торик бо дархости create table bookings ва сатри alter table enable row level security, тугмаи Run ва майдони натиҷа Success. No rows returned" width="720" height="400" loading="lazy" decoding="async">
+        <figcaption>SQL Editor: дархостро гузоштед, Run-ро пахш кардед, дар поён натиҷа ё матни хато намоён аст</figcaption>
+      </figure>
+
+      <h3>Нархномаи ройгон ва «як лоиҳа барои тамоми курс»</h3>
+      <p>Нархномаи ройгон барои тамоми курс кифоя аст. Тибқи саҳифаи нархномаҳои Supabase (дар моҳи октябри соли 2026 санҷида шудааст) дар он: то <b>2 лоиҳаи фаъол</b>, пойгоҳ то <b>500 МБ</b>, то 5 ГБ трафик дар як моҳ, то 50 000 корбари фаъол дар як моҳ. Барои шумо муҳим: <b>лоиҳаҳои ройгон баъд аз як ҳафта бе фаъолият ба таваққуф гузошта мешаванд</b>. Таваққуф маълумотро нест намекунад: дар панел барқарорсозиро пахш мекунед, ва лоиҳа бедор мешавад, аммо баъд аз таваққуф сайт муддате кор намекунад. Нусхаҳои эҳтиётии худкор дар нархномаи ройгон нест.</p>
+      <ul>
+        <li><b>Як лоиҳа барои тамоми курс созед.</b> Барои вазифаҳои хонагии 11–15 дар он ҷадвалҳои гуногун бо номҳои фаҳмо созед (<code>bookings</code>, <code>restaurant_tables</code>, баъдтар <code>chat_messages</code> ва дигарон), на лоиҳаҳои нав: лоиҳаи дуюм лимити «2 фаъол»-ро пур мекунад.</li>
+        <li>Лимитҳо ва шартҳо тағйир меёбанд: рақамҳои аслиро дар саҳифаи нархномаҳо бинед. Агар лоиҳа ба таваққуф рафт, панелро кушоед ва онро барқарор кунед.</li>
+        <li>Рамзи пойгоҳ, ки ҳангоми сохтани лоиҳа таъин мекунед, дар менеҷери рамзҳо нигоҳ доред. Он ба Git ва чатҳо намеафтад.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Анбор дар бозор. Пойгоҳи худӣ дар сервери худӣ — гӯё анборро худатон месозед: деворҳо, посбон, қуфлҳо. Supabase — гӯё бахши тайёрро иҷора мегиред: калидро медиҳанд, посбонро ба ҷои шумо киро мекунанд, аммо чӣ нигоҳ доштан ва ба кӣ дарро кушодан — шумо ҳал мекунед. Бахшро пӯшидан фаромӯш кунед (RLS), ва молро мебароранд.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Барои ҳар вазифа лоиҳаи нав сохтан ва ба лимити ду лоиҳаи фаъол расидан. <b>2.</b> Рамзи пойгоҳро гум кардан: барои кори сайт лозим нест, аммо барои пайвастшавии мустақим лозим аст, дар менеҷери рамзҳо нигоҳ доред. <b>3.</b> Ҳайрон шудан, ки сайт баъд аз як ҳафта «вайрон шуд»: лоиҳа дар таваққуф аст, дар панел барқарор кунед. <b>4.</b> Маълумоти шиносномаи бегонагон ва маълумоти пардохтиро дар пойгоҳи ройгон нигоҳ доштан: дар лоиҳаҳои таълимӣ танҳо маълумоти фарзӣ ё ҳадди ақал. <b>5.</b> Ҳангоми сохтани лоиҳа минтақаи дур интихоб кардан: дархостҳо суст мешаванд, наздиктаринро аз пешниҳодшуда интихоб кунед.</p>
+      </div>
+
+      <article class="task" id="q-supabase">
+        <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Худро санҷед: Supabase ва нархномаи ройгон</h4><span class="level easy">осон</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Supabase барои лоиҳаи шумо чӣ мекунад?</p>
+          <ol class="options">
+            <li>Браузерро иваз мекунад ва сайтро ба меҳмонон нишон медиҳад</li>
+            <li>Пойгоҳи абрии Postgres, панели идоракунӣ ва API барои муроҷиат ба ҷадвалҳо аз код медиҳад</li>
+            <li>Рамзи сарчашмаи сайтро ба ҷои GitHub нигоҳ медорад</li>
+            <li>Бо ёрии AI матн тавлид мекунад</li>
+          </ol>
+          <div class="explain"><p>Supabase — «Postgres ҳамчун хизмат» бо панел, API, воридшавӣ ва анбор. Рамзи сайт дар GitHub ва Vercel аст.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Кадом тасдиқҳо дар бораи лоиҳаи ройгони Supabase дурустанд? (ҳамаро интихоб кунед)</p>
+          <ol class="options">
+            <li>Лоиҳае, ки як ҳафта истифода нашуд, ба таваққуф гузошта мешавад, маълумот нест намешавад</li>
+            <li>Нархномаи ройгон нусхаҳои эҳтиётии худкорро дар бар мегирад</li>
+            <li>Барои курс як лоиҳа бо ҷадвалҳои гуногун барои вазифаҳои гуногун кифоя аст</li>
+            <li>Лоиҳаҳои фаъолро ба қадри дилхоҳ сохтан мумкин аст</li>
+          </ol>
+          <div class="explain"><p>Таваққуф баъд аз як ҳафта бе фаъолият — шарти нархномаи ройгон аст, лимит бошад — 2 лоиҳаи фаъол. Нусхаҳои эҳтиётии худкор дар нархномаи ройгон нест: маълумоти муҳимро худатон боргирӣ кунед. Рақамҳои аслиро ҳамеша дар саҳифаи нархномаҳо бинед.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/pricing" target="_blank" rel="noopener">Supabase: нархномаҳо</a> ва <a href="https://supabase.com/docs/guides/getting-started/quickstarts/nextjs" target="_blank" rel="noopener">Supabase: оғози зуд барои Next.js</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 03 · SQL и CRUD ============ -->
+    <section class="topic" id="sql">
+      <h2 data-toc="Ҳадди ақали SQL ва CRUD"><span class="num">03</span> Ҳадди ақали SQL: чор амал бо ҷадвал (CRUD)</h2>
+
+      <p><b>SQL</b> — забоне, ки бо пойгоҳи реляционӣ гап мезананд. Онро пурра омӯхтан лозим нест: ҳар барнома ба чор амал мерасад, ки онҳоро <b>CRUD</b> меноманд: Create (эҷод кардан), Read (хондан), Update (тағйир додан), Delete (нест кардан). AI дархостҳоро ба ҷои шумо менависад, аммо шумо бояд онҳоро хонед ва бифаҳмед, ки онҳо чӣ мекунанд, алалхусус бо маълумоти мизоҷон.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Амал</th><th>SQL</th><th>Дар коди сайт (supabase-js)</th></tr></thead>
+          <tbody>
+            <tr><td><b>C</b>reate</td><td><code>insert into</code></td><td><code>.from("bookings").insert({…})</code></td></tr>
+            <tr><td><b>R</b>ead</td><td><code>select</code></td><td><code>.from("bookings").select("*")</code></td></tr>
+            <tr><td><b>U</b>pdate</td><td><code>update … set … where</code></td><td><code>.update({…}).eq("id", 2)</code></td></tr>
+            <tr><td><b>D</b>elete</td><td><code>delete from … where</code></td><td><code>.delete().eq("id", 2)</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Ҷадвал месозем</h3>
+<pre class="code" data-title="SQL Editor: ҷадвали дархостҳо">
+create table bookings (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  name text not null,
+  phone text not null,
+  guests int not null,
+  status text not null default 'new'
+);
+</pre>
+      <p>Қариб мисли забони одамӣ мехонад: «ҷадвали <code>bookings</code>-ро созед; <code>id</code> — адади бузурги бутун, ки пойгоҳ худаш рақам мегузорад ва ин калиди аввалӣ аст; <code>created_at</code> — сана ва вақт, бо нобаёнӣ «ҳозир»; <code>name</code>, <code>phone</code> — матн, ҳатмӣ (<code>not null</code>); <code>status</code> бо нобаёнӣ <code>'new'</code>».</p>
+
+      <h3>Мехонем, илова мекунем, тағйир медиҳем, нест мекунем</h3>
+<pre class="code" data-title="SQL: чор амал">
+-- Create: добавить строку
+insert into bookings (name, phone, guests)
+values ('Мадина', '+992900000001', 2);
+
+-- Read: прочитать
+select * from bookings;                                -- все строки, все столбцы
+select name, guests from bookings                      -- только два столбца
+where status = 'new' and guests &gt;= 4                   -- фильтр
+order by created_at desc                               -- сначала новые
+limit 10;                                              -- не больше 10 строк
+
+-- Update: изменить (where обязателен!)
+update bookings set status = 'confirmed' where id = 2;
+
+-- Delete: удалить (where обязателен!)
+delete from bookings where id = 2;
+</pre>
+      <p>Қиматҳои матниро дар SQL дар нохунакҳои ягона менависанд. Калимаи <code>where</code> барои «кадом сатрҳо» ҷавобгар аст. Ситора <code>*</code> маънои «ҳамаи сутунҳо»-ро дорад. Барои дар хотир доштани тартиб, дархостро мисли ҷумла бихонед: интихоб кардан (select) чиро, аз (from) кадом ҷадвал, ки (where) шарт иҷро мешавад, мураттаб кардан (order by), маҳдуд кардан (limit).</p>
+
+      <div class="callout warn">
+        <b>update ва delete-и хатарнок бе where</b>
+        <p><code>delete from bookings;</code> бе <code>where</code> <b>ҳамаи</b> сатрҳои ҷадвалро нест мекунад, <code>update bookings set status = 'cancelled';</code> бошад ҳамаи дархостҳоро бекор мекунад. Нусхаҳои эҳтиётӣ дар нархномаи ройгон нест. Пеш аз <code>update</code> ва <code>delete</code> аввал ҳамон дархостро бо <code>select</code> иҷро кунед ва бубинед, кадом сатрҳо ба шарт мувофиқанд. Аз AI хоҳиш кунед, ки чунин дархостҳоро бо <code>where</code> нависад ва нишон диҳад, чанд сатр тағйир ёфт.</p>
+      </div>
+
+      <h3>SQL ба усулҳои массивҳои JavaScript монанд аст</h3>
+      <p>Ҷадвал қариб ба массиви объектҳо аз дарсҳои 7–10 монанд аст, дархостҳо бошанд ба усулҳои массив. Ин як чиз нест, аммо агар <code>filter</code> ва <code>sort</code>-ро мефаҳмед, <code>where</code> ва <code>order by</code>-ро ҳам мефаҳмед. Дар массиви «сатрҳо» машқ кунед.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>SQL</th><th>Монанди JavaScript</th></tr></thead>
+          <tbody>
+            <tr><td><code>where guests &gt;= 4</code></td><td><code>rows.filter((r) =&gt; r.guests &gt;= 4)</code></td></tr>
+            <tr><td><code>select name</code></td><td><code>.map((r) =&gt; r.name)</code></td></tr>
+            <tr><td><code>order by guests desc</code></td><td><code>[...rows].sort((a, b) =&gt; b.guests - a.guests)</code></td></tr>
+            <tr><td><code>limit 2</code></td><td><code>.slice(0, 2)</code></td></tr>
+            <tr><td><code>insert</code> / <code>update</code> / <code>delete</code></td><td><code>push</code> / <code>map</code> бо тағйирот / <code>filter</code> бе иловагӣ</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <article class="task" id="pg-select">
+        <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Read: «ҷадвал»-ро филтр ва мураттаб мекунем</h4><span class="level easy">осон</span></header>
+        <p>Массиви <code>rows</code> нақши ҷадвали <code>bookings</code>-ро мебозад. Се дархостро аз шарҳҳо анҷом диҳед, шакли сатрҳоро аз блоки «Натиҷаи интизоршаванда» гиред.</p>
+<pre class="code" data-run data-lang="js">
+const rows = [
+  { id: 1, name: "Мадина", guests: 2, status: "new" },
+  { id: 2, name: "Фирдавс", guests: 5, status: "confirmed" },
+  { id: 3, name: "Нигина", guests: 4, status: "new" },
+  { id: 4, name: "Рустам", guests: 3, status: "cancelled" },
+  { id: 5, name: "Зарина", guests: 6, status: "new" },
+  { id: 6, name: "Алишер", guests: 2, status: "confirmed" },
+];
+
+// TODO 1: select name from rows where status = 'new'
+// выведите: new: Мадина, Нигина, Зарина
+
+// TODO 2: select name from rows order by guests desc limit 2
+// выведите: top2: Зарина, Фирдавс
+
+// TODO 3: select count(*) from rows where guests >= 4
+// выведите: big: 3
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>new: Мадина, Нигина, Зарина
+top2: Зарина, Фирдавс
+big: 3</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Дархости якум: <code>rows.filter((r) =&gt; r.status === "new").map((r) =&gt; r.name).join(", ")</code>. Натиҷаро ба сатри қолабӣ гузоред: `new: ${…}`.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Дуюм: <code>[...rows].sort((a, b) =&gt; b.guests - a.guests).slice(0, 2)</code>, баъд <code>map</code> ва <code>join</code>. Сеюм: дарозии (<code>length</code>) массиви филтршуда. Нусхаи <code>[...rows]</code> барои он лозим аст, ки <code>sort</code> массиви аслиро тағйир надиҳад.</p></details>
+      </article>
+
+      <article class="task" id="pg-crud">
+        <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Create, Update, Delete дар «ҷадвал»</h4><span class="level mid">миёна</span></header>
+        <p>Се амалро бо массиви <code>table</code> иҷро кунед, рамзи баровардани поёнро тағйир надиҳед. Сатрҳои аслиро бо даст иваз кардан мумкин нест: <code>push</code>, <code>map</code> ва <code>filter</code>-ро истифода баред, чунон ки SQL мекунад.</p>
+<pre class="code" data-run data-lang="js">
+let table = [
+  { id: 1, name: "Мадина", status: "new" },
+  { id: 2, name: "Фирдавс", status: "new" },
+  { id: 3, name: "Нигина", status: "new" },
+];
+
+// TODO 1 (insert): добавьте строку { id: 4, name: "Шахноза", status: "new" }
+
+// TODO 2 (update ... where id = 2): строке с id 2 поставьте status "confirmed"
+// остальные строки не трогайте
+
+// TODO 3 (delete ... where id = 1): уберите строку с id 1
+
+// вывод, не меняйте
+for (const r of table) console.log(r.id, r.name, r.status);
+console.log("rows:", table.length);
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>2 Фирдавс confirmed
+3 Нигина new
+4 Шахноза new
+rows: 3</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Insert: <code>table.push({ id: 4, name: "Шахноза", status: "new" });</code></p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Update: <code>table = table.map((r) =&gt; (r.id === 2 ? { ...r, status: "confirmed" } : r));</code> Delete: <code>table = table.filter((r) =&gt; r.id !== 1);</code> Шарти <code>where</code> дар ин ҷо — санҷиши <code>r.id</code> аст. Бе он ҳамаи сатрҳо тағйир меёфтанд.</p></details>
+      </article>
+
+      <p>Акнун ҳамин чиз, аммо бо SQL-и воқеӣ: дархост чӣ бармегардонад? Дар поён ҷадвал ва саволҳо, дар SQL Editor чизеро иҷро кардан лозим нест.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>id</th><th>name</th><th>guests</th><th>status</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Мадина</td><td>2</td><td>new</td></tr>
+            <tr><td>2</td><td>Фирдавс</td><td>5</td><td>confirmed</td></tr>
+            <tr><td>3</td><td>Нигина</td><td>4</td><td>new</td></tr>
+            <tr><td>4</td><td>Рустам</td><td>3</td><td>cancelled</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <article class="task" id="q-sql">
+        <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Худро санҷед: дархост чӣ бармегардонад</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p><code>select name from bookings where guests &gt;= 4 order by name;</code> барои ҷадвали боло чӣ бармегардонад?</p>
+          <ol class="options">
+            <li>Мадина, Рустам</li>
+            <li>Фирдавс, Нигина, Рустам</li>
+            <li>Нигина, Фирдавс (аз рӯи алифбо)</li>
+            <li>Ҳар чор ном</li>
+          </ol>
+          <div class="explain"><p>Шарти <code>guests &gt;= 4</code> Фирдавс (5) ва Нигина (4)-ро мегузорад. Мураттабкунии <code>order by name</code> онҳоро аз рӯи алифбо мегузорад: Нигина, Фирдавс.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Баъд аз <code>update bookings set status = 'cancelled';</code> (бе <code>where</code>) чӣ мешавад?</p>
+          <ol class="options">
+            <li>Пойгоҳ аз иҷрои дархост даст мекашад</li>
+            <li>Дар ҳар чор сатр статус <code>cancelled</code> мешавад</li>
+            <li>Танҳо сатри якум тағйир меёбад</li>
+            <li>Танҳо сатри <code>id = 1</code> нав мешавад</li>
+          </ol>
+          <div class="explain"><p>Бе <code>where</code> дархост ҳамаи сатрҳои ҷадвалро дарбар мегирад. Барои ҳамин шартро дар <code>update</code> ва <code>delete</code> ҳатман аз нав месанҷанд.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Чӣ тавр аз ҷадвал ду нафареро, ки аз рӯи шумораи меҳмонон бузургтаранд, гирифтан мумкин?</p>
+          <ol class="options">
+            <li><code>select * from bookings order by guests desc limit 2;</code></li>
+            <li><code>select * from bookings where guests = 2;</code></li>
+            <li><code>delete from bookings limit 2;</code></li>
+            <li><code>insert into bookings order by guests;</code></li>
+          </ol>
+          <div class="explain"><p><code>order by guests desc</code> ададҳои калонро якум мегузорад, <code>limit 2</code> ду сатрро мемонад. Вариантҳои дигар ё чизи дигарро меҷӯянд, ё ҷадвалро тағйир медиҳанд.</p></div>
+        </div>
+      </article>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Дафтари фурӯшанда дар бозор. «Сабт илова кардан» — insert, «ҳамаеро, ки зиёда аз 100 сомонӣ қарздор аст, ёфтан» — select бо where, «маблағро ислоҳ кардан» — update, «хат задан» — delete. Ва «хат задан бе нишон додани кӣ» (delete бе where) тамоми дафтарро хат мезанад.</p>
+      </div>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/reference/javascript/select" target="_blank" rel="noopener">Supabase JS: select</a> ва <a href="https://supabase.com/docs/reference/javascript/insert" target="_blank" rel="noopener">Supabase JS: insert</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 04 · RLS и ключи ============ -->
+    <section class="topic" id="rls">
+      <h2 data-toc="RLS ва калидҳо"><span class="num">04</span> Бехатарӣ: RLS ва ду намуди калид</h2>
+
+      <div class="callout warn">
+        <b>Қоидаи асосии дарс</b>
+        <p>Суроғаи лоиҳа ва калиди publishable дар рамзи саҳифа ҳастанд, ҳар меҳмон метавонад онҳоро бубинад. Агар барои ҷадвал <b>RLS фаъол нашуда бошад ва қоидаҳо навишта нашуда бошанд</b>, бо чунин калид маълумотро аз консоли браузер мустақиман хондан, иваз кардан ё нест кардан мумкин аст. RLS-и хомӯшкардашуда ё фаромӯшшуда — маъмултарин сӯрохӣ дар лоиҳаҳоест, ки «бо вайб» ҷамъ шудаанд. Онро ҳамеша, дар ҳар ҷадвал, аз дақиқаи аввал фаъол кардан лозим аст.</p>
+      </div>
+
+      <h3>RLS бо суханони оддӣ чист</h3>
+      <p><b>RLS</b> (Row Level Security, ҳифз дар сатҳи сатрҳо) — санҷиши дар Postgres сохташуда: пеш аз ҳар дархост пойгоҳ мепурсад «ин меҳмон метавонад?» ва ба рӯйхати қоидаҳои шумо (<code>policy</code>) менигарад. Қоидаи мувофиқ нест — дархост рад карда мешавад.</p>
+      <ul>
+        <li>RLS-ро фаъол кардед ва як қоида ҳам нанавиштед: тавассути API бо калиди publishable ҷадвал <b>пурра баста</b> аст (тибқи ҳуҷҷатҳои Supabase). Ин оғози бехатар аст.</li>
+        <li>Ҳар қоида ба як амал (select, insert, update, delete) ва ба як нақш дахл дорад. Меҳмони бе воридшавӣ — нақши <code>anon</code>, корбари даромада (дарси 12) — <code>authenticated</code>.</li>
+        <li>Шарти <code>using</code> ҷавоб медиҳад «кадом сатрҳои мавҷударо дидан ё тағйир додан мумкин», шарти <code>with check</code> — «кадом сатрҳои навро сабт кардан мумкин».</li>
+      </ul>
+
+<pre class="code" data-title="SQL Editor: форма может только добавлять заявки">
+alter table bookings enable row level security;
+
+grant insert on table bookings to anon;
+
+create policy "anon can create bookings"
+on bookings for insert
+to anon
+with check (
+  status = 'new'
+  and guests between 1 and 20
+  and char_length(name) between 2 and 80
+);
+</pre>
+      <p>Дар ин ҷо чӣ рӯй медиҳад. Сатри якум RLS-ро фаъол мекунад. <code>grant insert</code> ба нақши <code>anon</code> худи имкони ба ҷадвал барои илова муроҷиат карданро медиҳад (бе он шумо хатои <code>42501</code>-ро мегиред, ва ин қабати алоҳидаи ҳифз пеш аз қоидаҳост). Қоида ба шакл иҷозат медиҳад, ки танҳо сатри бо статуси <code>new</code>, шумораи оқилонаи меҳмонон ва дарозии муқаррарии ном илова кунад. Меҳмони бе воридшавӣ дархостҳоро <b>хонда</b> наметавонад: қоидаи <code>select</code> нест. Рӯйхати дархостҳоро танҳо коди сервери шумо мебинад (бахши 7).</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 300" role="img" aria-label="Нақша: меҳмон бо калиди publishable тавассути санҷиши RLS ба ҷадвал мерасад, дархости хондан баста мешавад; сервер бо калиди secret мустақиман ба ҷадвал, гузашта аз RLS, меравад">
+          <rect class="box" x="12" y="30" width="150" height="70" rx="10" />
+          <text x="87" y="58" text-anchor="middle">Браузер</text><text class="sub" x="87" y="78" text-anchor="middle">publishable key</text>
+          <rect class="fill-y" x="260" y="20" width="170" height="90" rx="10" />
+          <text x="345" y="52" text-anchor="middle">RLS: қоидаҳо</text><text class="sub" x="345" y="72" text-anchor="middle">insert: мумкин</text><text class="sub t-r" x="345" y="92" text-anchor="middle">select: мумкин нест</text>
+          <rect class="box g" x="530" y="30" width="170" height="70" rx="10" />
+          <text class="mono" x="615" y="58" text-anchor="middle">bookings</text><text class="sub" x="615" y="78" text-anchor="middle">ҷадвал</text>
+          <path class="arr" d="M162 65H254" /><path class="arr-head" d="M254 60l8 5-8 5z" />
+          <path class="arr" d="M430 65H524" /><path class="arr-head" d="M524 60l8 5-8 5z" />
+          <rect class="box" x="12" y="190" width="150" height="70" rx="10" />
+          <text x="87" y="218" text-anchor="middle">Сервери шумо</text><text class="sub t-r" x="87" y="238" text-anchor="middle">secret key</text>
+          <path class="arr" d="M162 225H600V106" /><path class="arr-head" d="M595 106l5-8 5 8z" />
+          <text class="sub t-r" x="300" y="214">secret key аз RLS мегузарад: танҳо дар сервер</text>
+          <text class="sub" x="300" y="246">ба браузер, GitHub, чат ва скриншот — ҳеҷ гоҳ</text>
+        </svg>
+        <figcaption>Браузер аз қоидаҳои RLS мегузарад. Сервер бо калиди secret мустақиман меравад, барои ҳамин калидро ба ҳеҷ кас нишон додан мумкин нест</figcaption>
+      </figure>
+
+      <h3>Ду намуди калид</h3>
+      <p>Дар панел дар бахши <b>Settings → API Keys</b> (калидҳоро тирезаи Connect низ нишон медиҳад) ду калид ҳаст:</p>
+      <figure class="shot">
+        <img src="/lessons/vibe-coding/11-supabase-db/api-keys.svg" alt="Нақшаи саҳифаи API Keys: корти сабзи Publishable key — дар браузер мумкин, ҳуқуқҳоро RLS маҳдуд мекунад; корти сурхи Secret key — танҳо сервер, аз RLS мегузарад; лавҳаи зард дар бораи номҳои кӯҳнаи anon ва service_role" width="720" height="360" loading="lazy" decoding="async">
+        <figcaption>Ду калид бо баҳои гуногуни хато. Нақша соддакардашудааст, саҳифаи воқеиро танҳо дар худатон кушоед ва дар экран нишон надиҳед</figcaption>
+      </figure>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Publishable key</th><th>Secret key</th></tr></thead>
+          <tbody>
+            <tr><td><b>Намуд</b></td><td><code>sb_publishable_…</code></td><td><code>sb_secret_…</code></td></tr>
+            <tr><td><b>Номи кӯҳна</b></td><td><code>anon</code> key</td><td><code>service_role</code> key</td></tr>
+            <tr><td><b>Нақш дар пойгоҳ</b></td><td><code>anon</code> (ё <code>authenticated</code>, агар корбар даромада бошад)</td><td><code>service_role</code></td></tr>
+            <tr><td><b>RLS</b></td><td>амал мекунад: ҳуқуқҳо бо қоидаҳо маҳдуданд</td><td><b>гузашта мешавад</b>: дастрасии пурра ба ҳамаи маълумот</td></tr>
+            <tr><td><b>Дар куҷо мумкин</b></td><td>дар браузер ва дар рамзи саҳифа</td><td>танҳо дар коди сервер</td></tr>
+            <tr><td><b>Тағйирёбанда</b></td><td><code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code></td><td><code>SUPABASE_SECRET_KEY</code> (бе <code>NEXT_PUBLIC_</code>)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Роҳнамоҳои кӯҳна ва ҷавобҳои AI аксар вақт <code>anon</code> ва <code>service_role</code> менависанд: ин калидҳои пешини дароз мебошанд, ки бо <code>eyJ</code> оғоз мешаванд. Supabase ба номҳои нав мегузарад ва ният дорад калидҳои кӯҳнаро то охири соли 2026 хомӯш кунад, барои ҳамин дар лоиҳаҳои нав publishable ва secret-ро гиред. Агар AI <code>SUPABASE_ANON_KEY</code>-ро пешниҳод кард, ба номи ҷорӣ иваз кунед.</p>
+
+<pre class="code" data-title=".env.local (корень проекта; значения выдуманные)">
+NEXT_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_not-a-real-key
+SUPABASE_SECRET_KEY=sb_secret_not-a-real-key
+</pre>
+      <p>Аз дарси 10 медонед: пешоянди <code>NEXT_PUBLIC_</code> қимати онро ба браузер медиҳад, барои ҳамин он танҳо барои суроға ва калиди publishable ҷоиз аст. Калиди secret-ро дар сервер мехонанд (<code>process.env.SUPABASE_SECRET_KEY</code>). Дар Vercel ҳамин се тағйирёбандаро дар Settings → Environment Variables илова кунед ва Redeploy кунед: қиматҳои <code>NEXT_PUBLIC_</code> ҳангоми ҷамъкунӣ дохил карда мешаванд.</p>
+
+      <div class="callout analogy">
+        <b>Монандӣ аз ҳаёт</b>
+        <p>Тарабхона. Калиди publishable — калиди дари даромад барои меҳмонон: меҳмон дохил шуда фармоиш дода метавонад (insert), аммо ба қуттии пул ва ба баҳисобгирӣ роҳ намедиҳанд. Қоидаҳои RLS — посбонест, ки ҳал мекунад меҳмон ба куҷо рафта метавонад. Калиди secret — калиди асосии ҳамаи дарҳо, аз ҷумла қуттии пул ва сейф: он танҳо дар дасти соҳиб аст, на дар девори толор овезон.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Ҷадвалро дар SQL Editor сохтан ва RLS-ро фаъол накардан: ҷадвалҳое, ки бо дархост сохта шудаанд, худатон бояд ҳифз кунед (ҷадвалҳои бо тугма дар панел сохташуда RLS-ро бо нобаёнӣ мегиранд, аммо санҷед). <b>2.</b> Барои <code>select</code> дар ҷадвали дархостҳо қоидаи <code>using (true)</code> навиштан: ин тавр телефонҳои меҳмононро ҳар меҳмон мебинад. <b>3.</b> RLS-ро «то кор кунад» хомӯш кардан: вақте дархост намегузарад, бояд қоида илова кард, на қуфлро бардошт. <b>4.</b> Калиди secret-ро ба <code>NEXT_PUBLIC_…</code>, ба компоненти мизоҷӣ ё ба репозиторияи ҷамъиятӣ гузоштан. <b>5.</b> Калидро ба чат фиристодан ё дар скриншот нишон додан. Агар калид ошкор шуд, дарҳол онро дар панел нест кунед ва нав созед: то калид зинда аст, ҳар касе, ки онро нусха кардааст, метавонад аз он истифода барад.</p>
+      </div>
+
+      <article class="task" id="q-rls">
+        <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Худро санҷед: RLS ва калидҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Шумо ҷадвал сохтед ва RLS-ро фаъол накардед. Бо донистани суроғаи лоиҳа ва калиди publishable аз рамзи сайт, бо он чӣ кардан мумкин?</p>
+          <ol class="options">
+            <li>Ҳеҷ чиз: калиди браузер хеле суст аст</li>
+            <li>Эҳтимол, маълумотро мустақиман хондан ва иваз кардан: қоидаҳое, ки инро манъ кунанд, нестанд</li>
+            <li>Танҳо хондан, нест кардан мумкин нест</li>
+            <li>Ҳеҷ чиз: Supabase худаш дархостҳои браузерро рад мекунад</li>
+          </ol>
+          <div class="explain"><p>Калиди publishable-ро дар рамзи саҳифа ёфтан мумкин аст, барои ҳамин ҳифзро махфии калид не, балки RLS ва қоидаҳо таъмин мекунанд. Бе онҳо ҷадвал барои ҳар касе, ки ин калидро дорад, кушода аст. Пойгоҳҳои лоиҳаҳои вайбкод маҳз ҳамин тавр ошкор мешаванд.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>RLS фаъол аст, қоида нест. <code>.from("bookings").select()</code> бо калиди publishable чӣ бармегардонад?</p>
+          <ol class="options">
+            <li>Ҳамаи сатрҳои ҷадвал</li>
+            <li>Хатои ҷамъкунии Next.js</li>
+            <li>Ҳеҷ чиз: маълумот то сохтани қоидаҳо дастнорас аст (дар ҷавоб рӯйхати холӣ ё хатои дастрасӣ)</li>
+            <li>Танҳо сатри якумро</li>
+          </ol>
+          <div class="explain"><p>RLS бо нобаёнӣ ҳамаро мебандад. Кушодан бояд нуқтавӣ бошад, бо қоида барои амали мушаххас ва нақш.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p><code>SUPABASE_SECRET_KEY</code>-ро дар куҷо истифода бурдан мумкин аст?</p>
+          <ol class="options">
+            <li>Танҳо дар коди сервер (компоненти серверӣ, route handler), қимат дар <code>.env.local</code> ва дар тағйирёбандаҳои Vercel</li>
+            <li>Дар компоненти мизоҷии бо шакл</li>
+            <li>Дар файли <code>.env.local</code> бо пешоянди <code>NEXT_PUBLIC_</code></li>
+            <li>Дар тавсифи репозитория дар GitHub, то санҷанда осонтар бошад</li>
+          </ol>
+          <div class="explain"><p>Калиди secret аз RLS мегузарад, барои ҳамин ҷояш танҳо дар сервер ва дар тағйирёбандаҳои муҳит аст.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Кадом қоидаҳо барои ҷадвали дархостҳо бехатаранд? (ҳамаро интихоб кунед)</p>
+          <ol class="options">
+            <li><code>for select to anon using (true)</code>: «то админка кор кунад»</li>
+            <li><code>for insert to anon with check (…)</code> бо санҷиши майдонҳо</li>
+            <li>RLS-ро барои вақти ислоҳи хатоҳо хомӯш кардан ва фаромӯш кардан</li>
+            <li>Дархостҳоро дар сервер бо калиди secret хондан</li>
+          </ol>
+          <div class="explain"><p>Хондани кушода телефонҳоро ба ҳама медиҳад, RLS-и хомӯшшуда бошад ҷадвалро пурра мекушояд. Бехатар: қоидаи танг барои илова ва хондан дар сервер.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/database/postgres/row-level-security" target="_blank" rel="noopener">Supabase: Row Level Security</a> ва <a href="https://supabase.com/docs/guides/api/api-keys" target="_blank" rel="noopener">Supabase: API keys</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 05 · Firebase ============ -->
+    <section class="topic" id="firebase">
+      <h2 data-toc="Firebase: шарҳ"><span class="num">05</span> Firebase ҳамчун алтернатива (шарҳ)</h2>
+
+      <p><b>Firebase</b> — «бэкенд ҳамчун хизмат»-и монанд аз Google. Фарқи асосӣ дар худи пойгоҳ аст: Supabase Postgres-и реляционӣ дорад (ҷадвалҳо, алоқаҳо, SQL), пойгоҳи асосии Firebase Cloud Firestore бошад — <b>ҳуҷҷатии NoSQL</b>: маълумот бо ҳуҷҷатҳо (объектҳо, мисли JSON) дар дохили коллексияҳо нигоҳ дошта мешавад, ҷадвалҳо бо алоқаҳо нестанд. Firebase дар барномаҳои мобилӣ ва дар навкунии маълумот «зинда» қавӣ аст, қоидаҳои дастрасӣ дар он бо забони худ (Security Rules) навишта мешаванд, на бо SQL.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Supabase</th><th>Firebase</th></tr></thead>
+          <tbody>
+            <tr><td><b>Пойгоҳ</b></td><td>Postgres: ҷадвалҳо, алоқаҳо, SQL</td><td>Firestore: коллексияҳо ва ҳуҷҷатҳо (NoSQL)</td></tr>
+            <tr><td><b>Ҳифзи маълумот</b></td><td>RLS ва қоидаҳо бо SQL</td><td>Security Rules бо забони қоидаҳои худ</td></tr>
+            <tr><td><b>Вобастагӣ ба таъминкунанда</b></td><td>Postgres-ро интиқол додан ва худӣ мустақарр кардан мумкин аст</td><td>Вобастагӣ ба платформаи Google қавитар аст</td></tr>
+            <tr><td><b>Дар куҷо қулай</b></td><td>Сайтҳо ва хизматҳо бо ҷадвалҳо, ҳисоботҳо ва алоқаҳо</td><td>Барномаҳои мобилӣ, прототипҳои зуд бо навкунии зинда</td></tr>
+            <tr><td><b>Барои курс</b></td><td>Интихоби асосӣ: як лоиҳа, SQL, RLS</td><td>Танҳо донистан, ки ин чист</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>«Пойгоҳи беҳтарин» вуҷуд надорад: барои сайти тарабхона бо дархостҳо, мизҳо ва ҳисоботҳо ҷадвал бо алоқаҳо мувофиқ аст, барои чат бо навкуниҳои фаврӣ дар телефон — Firebase комилан мувофиқ аст. Нархномаҳо ва лимитҳои ройгони ҳар ду платформа тағйир меёбанд, пеш аз интихоб онҳоро дар саҳифаҳои расмӣ санҷед. Дар курс минбаъд Supabase истифода мешавад.</p>
+
+      <div class="yt" data-id="XUu2V6j7Nic" data-title="Firebase vs Supabase 2026: чӣ интихоб кардан? — канали Павел Дуглас" data-start="0"></div>
+      <p class="muted">Видео бо забони русӣ, тақрибан 9 дақиқа, августи 2026: муқоисаи ду платформа. Ин ақидаи муаллиф аст, на маълумоти расмӣ: рақамҳои нархномаҳоро дар сайтҳои хизматҳо санҷед. Ҳамчун шарҳ тамошо кунед, такрор кардани чизе аз муаллиф лозим нест.</p>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмули навомӯзон</b>
+        <p><b>1.</b> Платформаро аз рӯи мод, на аз рӯи маълумот интихоб кардан: аввал нақша кашед, баъд ҳал кунед, кадом пойгоҳ мувофиқ аст. <b>2.</b> Фикр кардан, ки дар Firebase ҳифз лозим нест: Security Rules-ро низ навиштан лозим аст, вагарна пойгоҳ кушода аст. <b>3.</b> Дар лоиҳа ҳар ду платформаро бе сабаб омехтан: ду пойгоҳ — ду маҷмӯи калидҳо ва қоидаҳо.</p>
+      </div>
+
+      <article class="task" id="q-firebase">
+        <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Худро санҷед: Supabase ва Firebase</h4><span class="level easy">осон</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Фарқи асосии пойгоҳи Supabase аз Firestore дар Firebase чист?</p>
+          <ol class="options">
+            <li>Supabase — Postgres-и реляционӣ бо ҷадвалҳо ва SQL, Firestore — пойгоҳи ҳуҷҷатии NoSQL аз коллексияҳо</li>
+            <li>Supabase танҳо дар телефонҳо кор мекунад, Firebase танҳо дар сайтҳо</li>
+            <li>Дар Firebase ҳифзи маълумот лозим нест</li>
+            <li>Фарқият нест, ин як пойгоҳ бо номҳои гуногун аст</li>
+          </ol>
+          <div class="explain"><p>Фарқият дар модели маълумот аст: ҷадвалҳо бо алоқаҳо ва SQL дар муқобили ҳуҷҷатҳо дар коллексияҳо. Ҳифз дар ҳарду лозим аст.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Сайти тарабхона мизҳо ва дархостҳоеро нигоҳ медорад, ки ба мизҳо ишора мекунанд. Кадом модели маълумот табиитар аст?</p>
+          <ol class="options">
+            <li>Як файли матнии калон</li>
+            <li>Ҳамаро дар <code>localStorage</code>-и меҳмон нигоҳ доштан</li>
+            <li>Ду ҷадвали алоқаманд дар пойгоҳи реляционӣ</li>
+            <li>Расмҳо бо нақшаҳо</li>
+          </ol>
+          <div class="explain"><p>Моҳиятҳо ва алоқа байни онҳо ҳаст («дархост — миз»), ин ҳолати классикии ҷадвалҳост. <code>localStorage</code> танҳо дар як браузер зиндагӣ мекунад ва ба соҳиб чизеро нишон намедиҳад.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://firebase.google.com/docs/firestore" target="_blank" rel="noopener">Firebase: Cloud Firestore</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai-prompt">
+      <h2 data-toc="AI: аввал нақша, баъд код"><span class="num">06</span> Блоки AI: аввал нақша, баъд код</h2>
+
+      <div class="callout ai">
+        <b>Қоидаҳои кор бо AI ва пойгоҳи дода</b>
+        <p><b>1.</b> Нақшаро шумо мекашед (коғаз, тахта), AI онро ҳамчун матн мегирад: ҷадвалҳо, сутунҳо, навъҳо, алоқаҳо. AI бе нақша ҳамаи худашро иҷод мекунад ва он бо шакли шумо мувофиқ намешавад. <b>2.</b> SQL-ро алоҳида аз коди сайт хоҳиш кунед ва пеш аз иҷро бихонед: алахусус <code>delete</code> ва <code>update</code>. <b>3.</b> Ҳамеша талаб кунед, ки RLS фаъол шавад ва қоидаҳо навишта шаванд, дар ҷавоб бошад рӯйхат шавад, ки ба ҳар нақш чӣ иҷозат дода шудааст. <b>4.</b> Рамзҳои махфӣ танҳо дар <code>.env.local</code>, ба чат ва код нагузоред. <b>5.</b> Нақшаро итератсия-итератсия тағйир диҳед («сутуни comment-ро илова кун»), на ҳамаро аз нав нависед. <b>6.</b> Маълумоти воқеии мизоҷонро ба чат нагузоред: танҳо маълумоти фарзӣ.</p>
+      </div>
+
+      <div class="prompt bad-prompt">Сделай сохранение заявок в supabase</div>
+      <div class="prompt good-prompt">Контекст: проект Next.js 16 (App Router, TypeScript, Tailwind CSS 4), сайт ресторана «Чойхона у Рудаки» (вымышленный). Форма бронирования уже есть в components/BookingForm.tsx (клиентский компонент: имя, телефон, число гостей, дата и время). Правила проекта лежат в AGENTS.md. Проект Supabase создан.
+Цель: сохранять заявки в базу. Схема (нарисована на бумаге):
+- restaurant_tables: id (bigint, identity, primary key), name (text, not null), seats (int, not null, больше 0)
+- bookings: id (bigint, identity, primary key), created_at (timestamptz, default now()), name (text, 2..80 символов), phone (text), guests (int, 1..20), booking_at (timestamptz), table_id (bigint, внешний ключ на restaurant_tables.id, может быть пустым), status (text, default 'new')
+Ограничения: 1) сначала только SQL для SQL Editor (создание таблиц, пять тестовых столиков, включение RLS на ОБЕИХ таблицах, grant и правила: anon может только вставлять в bookings со status = 'new' и проверкой полей, и только читать restaurant_tables); никакого delete и update без where; 2) потом код: пакет @supabase/supabase-js, lib/supabase.ts с клиентом из NEXT_PUBLIC_SUPABASE_URL и NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY; форма вызывает insert без .select(); состояния «отправляется», «ошибка» (понятный текст), «заявка принята»; 3) страница /admin: серверный компонент, читает bookings через SUPABASE_SECRET_KEY (без NEXT_PUBLIC_), export const dynamic = "force-dynamic", таблица с колонками, сортировка по created_at по убыванию, в метаданных robots noindex; 4) никаких ключей в коде, добавь в .env.example имена переменных без значений.
+Примеры: ошибка при пустом телефоне должна показываться под полем, а не alert.
+Проверка: в конце перечисли, что разрешено роли anon на каждой таблице, и покажи, как проверить, что select из браузера с publishable-ключом не возвращает заявки.</div>
+      <p class="muted">Промптро ба забони русӣ нависед ва ба AI диҳед: ба модел бо русӣ беҳтар мефаҳмад, ва санадҳои техникӣ (SQL, номҳои ҷадвалҳо) ҳамоно бо лотинӣ мемонанд.</p>
+
+      <p>Агар ҷавоб мувофиқ набуд, аз аввал нагиред: нависед, ки дақиқ чӣ нодуруст аст («insert бо хатои row-level security меафтад, ин матни он»), ва матни пурраи хаторо бе калидҳо ба AI диҳед.</p>
+
+      <div class="callout warn">
+        <b>Он чи AI аксар вақт нодуруст мекунад</b>
+        <p><b>1.</b> RLS-ро дар ҷадвали дуюм фаъол карданро фаромӯш мекунад. <b>2.</b> Барои <code>select</code> «то кор кунад» <code>using (true)</code> менависад. <b>3.</b> Калиди secret-ро ба коди мизоҷӣ ё ба <code>NEXT_PUBLIC_…</code> мегузорад. <b>4.</b> Ба ҷои ҷуфти нави publishable ва secret <code>SUPABASE_ANON_KEY</code> менависад. <b>5.</b> Калиди воқеиро «барои мисол» ба код мегузорад. <b>6.</b> Баъд аз <code>insert</code> <code>.select()</code> илова мекунад, ва аз ин сабаб илова бе қоидаи хондан меафтад. Пеш аз commit тағйиротро (diff) бинед ва дар онҳо <code>secret</code>, <code>sb_</code>, <code>eyJ</code>, <code>using (true)</code>-ро ҷустуҷӯ кунед.</p>
+      </div>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Амалиёт: дархостҳо дар пойгоҳ"><span class="num">07</span> Амалиёт: дархостҳо ба пойгоҳ захира мешаванд</h2>
+
+      <p>Сайти тарабхонаро мегирем (ҳама версияи шумо: шакли брон аз дарсҳои 8–9 ё нав) ва ба он пойгоҳро мепайвандем. Тартиб: нақша → лоиҳа → ҷадвалҳо ва RLS → калидҳо → шакл → ҷадвали админ → санҷиш → деплой.</p>
+
+      <figure class="diagram">
+        <div class="flow">
+          <div class="st"><b>1</b><span>нақша дар коғаз</span><code>2 ҷадвал</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>2–3</b><span>лоиҳа, SQL, RLS</span><code>SQL Editor</code></div>
+          <div class="ar">→</div>
+          <div class="st"><b>4</b><span>калидҳо</span><code>.env.local</code></div>
+          <div class="ar">→</div>
+          <div class="st ai"><b>5–6</b><span>шакл ва админка (AI)</span><code>insert / select</code></div>
+          <div class="ar">→</div>
+          <div class="st res"><b>7–9</b><span>санҷиш ва деплой</span><code>Vercel env</code></div>
+        </div>
+        <figcaption>Тартиби кор: нақша ва ҳифз пеш аз коди шакл, рамзҳои махфӣ бошанд — танҳо дар тағйирёбандаҳои муҳит</figcaption>
+      </figure>
+
+      <h3>Қадам ба қадам</h3>
+      <ol class="steps">
+        <li><b>Нақша дар коғаз.</b> Дар варақ ё тахта ду ҷадвал ва тирро кашед, мисли нақша аз бахши 1: <code>restaurant_tables</code> ва <code>bookings</code>, дар ҳар сутун навъаш. Барои худатон акс гиред. Бо се савол санҷед: дар ҳар ҷадвал <code>id</code> ҳаст? Сутуне бо якчанд қимат нест? Тир ба куҷо меравад?</li>
+        <li><b>Лоиҳаи Supabase созед.</b> Ба supabase.com равед (воридшавӣ тавассути GitHub қулай аст), лоиҳа созед: ном (масалан <code>mfs-course</code>), рамзи пойгоҳ (ба менеҷери рамзҳо), минтақаи ба шумо наздиктарин. Интизор шавед, ки лоиҳа бархезад. Ин ягона лоиҳа барои тамоми курс аст.</li>
+        <li><b>Ҷадвалҳо ва RLS.</b> SQL Editor-ро кушоед ва SQL-ро аз блоки поён гузоред, Run-ро пахш кунед. Натиҷа: «Success». Баъд дар Table Editor боварӣ ҳосил кунед, ки ҳар ду ҷадвал ҳастанд ва бо RLS enabled қайд шудаанд.</li>
+        <li><b>Калидҳо дар <code>.env.local</code>.</b> Дар панел Settings → API Keys (ё тирезаи Connect)-ро кушоед: суроғаи лоиҳа, publishable key ва secret key-ро нусха кунед. Дар решаи лоиҳа <code>.env.local</code>-ро созед ё бо се тағйирёбандаи бахши 4 пурра кунед. Санҷед, ки <code>.env.local</code> дар <code>.gitignore</code> ҳаст (<code>git check-ignore -v .env.local</code>, дарси 10). <code>npm run dev</code>-ро аз нав оғоз кунед.</li>
+        <li><b>Шакл ва клиент.</b> Пакетро насб кунед: <code>npm install @supabase/supabase-js</code>. Ба AI промпти хубро аз бахши 6 фиристед (дар реҷаи «Нақша», дарси 6) ва тағйиротро қадам ба қадам татбиқ кунед. Шаклро кушоед, дархостро бо маълумоти фарзӣ фиристед: «дархост қабул шуд» пайдо шуд?</li>
+        <li><b>Пойгоҳро санҷед.</b> Дар Table Editor <code>bookings</code>-ро кушоед: сатри нав ҳаст? <code>status</code> чӣ аст, <code>created_at</code> пур шудааст?</li>
+        <li><b>Ҷадвали админ.</b> <code>/admin</code>-ро кушоед: ҳамаи дархостҳо намоёнанд, навҳо дар боло. Аз AI хоҳиш кунед фаҳмонад, ки чаро саҳифа серверӣ аст ва чаро дар ин ҷо калиди secret лозим аст.</li>
+        <li><b>Санҷиши ҳифз.</b> Муваққатан ба дохили async-коркарди шакл <code>console.log(await supabase.from("bookings").select())</code>-ро илова кунед, шаклро фиристед ва консоли браузерро кушоед (дарси 10): бояд рӯйхати холӣ ё хатои дастрасӣ (<code>permission denied</code>, рамзи <code>42501</code>) бошад. Агар дархостҳои бегонаро бинед, ҳифз сӯрохӣ дорад: ба бахши 4 баргардед. <code>console.log</code>-и муваққатиро нест кунед.</li>
+        <li><b>Деплой.</b> Кодро commit кунед ва ба GitHub фиристед. Дар Vercel се тағйирёбандаро дар Settings → Environment Variables илова кунед, Redeploy кунед (дарси 10). Дархости санҷиширо дар сайти <code>…vercel.app</code> фиристед ва онро дар Table Editor ёбед.</li>
+        <li><b>Шарҳ.</b> Бо суханони худатон бигӯед (ё аз AI пурсед ва такрор кунед): кадом ду калид ҳаст, кадомаш ба куҷо мумкин аст, қоидаи шумо чӣ мекунад, чаро <code>/admin</code> дар сервер мехонад.</li>
+      </ol>
+
+<pre class="code" data-title="SQL Editor: таблицы, RLS и правила (вымышленный ресторан)">
+create table restaurant_tables (
+  id bigint generated always as identity primary key,
+  name text not null,
+  seats int not null check (seats &gt; 0)
+);
+
+create table bookings (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  name text not null check (char_length(name) between 2 and 80),
+  phone text not null,
+  guests int not null check (guests between 1 and 20),
+  booking_at timestamptz not null,
+  table_id bigint references restaurant_tables (id),
+  status text not null default 'new'
+);
+
+insert into restaurant_tables (name, seats) values
+  ('У окна', 2), ('Центр', 4), ('Семейный', 6), ('Терраса', 4), ('VIP', 8);
+
+alter table restaurant_tables enable row level security;
+alter table bookings enable row level security;
+
+grant select on table restaurant_tables to anon;
+grant insert on table bookings to anon;
+
+create policy "anyone can read tables"
+on restaurant_tables for select to anon using (true);
+
+create policy "anyone can create a new booking"
+on bookings for insert to anon
+with check (status = 'new' and guests between 1 and 20);
+</pre>
+      <p>Мизҳоро ҳама хонда метавонад (ин маълумоти ҷамъиятӣ: номҳо ва шумораи ҷойҳо), дархостҳоро меҳмони бе воридшавӣ танҳо илова мекунад ва хонда наметавонад. Санҷиши дарозии номи қоидаи бахши 4 дар ин ҷо бо маҳдудияти <code>check</code> дар худи ҷадвал пӯшонида шудааст.</p>
+
+      <h3>Порчаҳои асосии код чӣ гуна менамоянд</h3>
+<pre class="code" data-title="lib/supabase.ts: клиент для браузера (только publishable key)">
+import { createClient } from "@supabase/supabase-js";
+
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+);
+</pre>
+<pre class="code" data-title="В форме: добавляем заявку (без .select() после insert)">
+const { error } = await supabase.from("bookings").insert({
+  name,
+  phone,
+  guests: Number(guests),
+  booking_at: bookingAt,
+});
+if (error) {
+  setMessage("Не удалось отправить заявку. Попробуйте ещё раз.");
+} else {
+  setMessage("Заявка принята!");
+}
+</pre>
+<pre class="code" data-title="app/admin/page.tsx: серверная страница, secret key (фрагмент)">
+import { createClient } from "@supabase/supabase-js";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminPage() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+  );
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .order("created_at", { ascending: false });
+  // ... таблица из data или текст ошибки
+}
+</pre>
+      <p>Дар файл <code>"use client"</code> нест, барои ҳамин он дар сервер иҷро мешавад, <code>SUPABASE_SECRET_KEY</code> бе пешоянди <code>NEXT_PUBLIC_</code> ба браузер намеафтад. <code>force-dynamic</code> Next.js-ро водор мекунад, ки пойгоҳро ҳангоми ҳар кушодан хонад, на як бор ҳангоми ҷамъкунӣ.</p>
+
+      <div class="callout warn">
+        <b>Админка ҳоло барои ҳама кушода аст</b>
+        <p>Суроғаи <code>/admin</code>-ро ҳоло ҳар касе, ки истинодро медонад, кушода метавонад: рамз нест, воридшавӣ дар дарси 12 пайдо мешавад. Барои ҳамин дар пойгоҳи таълимӣ <b>танҳо маълумоти фарзиро</b> нигоҳ доред (номҳои ихтироъшуда, телефонҳо монанди <code>+992 900 00 00 01</code>) ва истинодро нашр накунед. Рақамҳои воқеии дӯстон ва меҳмононро нагузоред.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Агар вайрон шуд</b>
+        <p><b><code>new row violates row-level security policy for table "bookings"</code>.</b> Дархост ба қоида мувофиқ наомад. Санҷед: қоида барои <code>insert</code> сохта шудааст ва ба нақши <code>anon</code> тааллуқ дорад; <code>status</code> ба <code>new</code> баробар аст; <code>guests</code> аз 1 то 20. Аксар вақт <code>.select()</code> баъд аз <code>insert</code> гунаҳкор аст: он ҳуқуқи хондан мепурсад, ки <code>anon</code> надорад. Онро хориҷ кунед.</p>
+        <p><b><code>permission denied for table bookings</code> (рамзи 42501).</b> <code>grant insert … to anon</code> нест. Сатри <code>grant</code>-ро аз SQL-и боло иҷро кунед.</p>
+        <p><b><code>supabaseUrl is required</code> ё <code>Invalid API key</code>.</b> Тағйирёбанда хонда нашуд: дар <code>.env.local</code> номи он хатои имлоӣ дорад, файл дар реша нест, фосилаҳо ё нохунакҳои зиёдатӣ ҳастанд, <code>npm run dev</code> аз нав оғоз нашудааст. Ёдоваранд: коди мизоҷӣ танҳо тағйирёбандаҳои бо <code>NEXT_PUBLIC_</code>-ро мебинад, боқимонда танҳо дар сервер дастрасанд.</p>
+        <p><b><code>null value in column "phone" violates not-null constraint</code>.</b> Шакл сутуни ҳатмиро нафиристод. Номҳои майдонҳои объекти <code>insert</code>-ро бо номҳои сутунҳо муқоиса кунед (<code>booking_at</code>, на <code>bookingAt</code>).</p>
+        <p><b>Дар <code>/admin</code> холӣ аст, гарчанде дар Table Editor сатрҳо ҳастанд.</b> Ё калид secret нест (бо publishable RLS ҳамаро пинҳон мекунад), ё саҳифа ҳангоми ҷамъкунӣ кэш шудааст: <code>export const dynamic = "force-dynamic"</code>-ро илова кунед. Дар Vercel санҷед, ки тағйирёбандаҳо илова шудаанд ва Redeploy анҷом шудааст.</p>
+        <p><b>Ҳама чиз кор мекард, ҳоло «Failed to fetch» ё интизории тӯлонӣ.</b> Лоиҳаи ройгон метавонад баъд аз як ҳафта бе фаъолият ба таваққуф рафта бошад: панели Supabase-ро кушоед ва лоиҳаро барқарор кунед.</p>
+        <p><b>Тасодуфан <code>.env.local</code>-ро commit кардед ё калидро нишон додед.</b> Калидро ошкоршуда ҳисоб кунед: онро дар панел (Settings → API Keys) нест кунед, нав созед, <code>.env.local</code> ва Vercel-ро нав кунед. Танҳо нест кардани файл аз репозиторияи кӯмак намекунад: калид дар таърихи Git мондааст.</p>
+      </div>
+
+      <article class="task" id="cl-built">
+        <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Рӯйхати санҷиш: дархостҳо дар пойгоҳ зиндагӣ мекунанд</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-db">
+          <li>Нақшаи ду ҷадвал бо тири алоқа кашида шудааст, дар ҳар сутун навъаш ҳаст</li>
+          <li>Як лоиҳаи Supabase сохта шудааст, рамзи пойгоҳ дар менеҷери рамзҳо нигоҳ дошта шудааст</li>
+          <li>Ҷадвалҳои <code>restaurant_tables</code> ва <code>bookings</code> сохта шудаанд, дар ҳар дуи онҳо RLS фаъол аст</li>
+          <li>Қоида ба меҳмони бе воридшавӣ танҳо илова кардани дархостҳо ва хондани мизҳоро иҷозат медиҳад</li>
+          <li>Суроға, publishable key ва secret key дар <code>.env.local</code> ҳастанд, файл ба Git нарафтааст, secret бе <code>NEXT_PUBLIC_</code></li>
+          <li>Шакл дархостро захира мекунад, сатр дар Table Editor намоён аст</li>
+          <li>Саҳифаи <code>/admin</code> дархостҳоро дар сервер бо secret key мехонад ва бо ҷадвал нишон медиҳад</li>
+          <li>Санҷида шуд: <code>select</code> аз браузер бо publishable key дархостҳоро намегардонад</li>
+          <li>Тағйирёбандаҳо ба Vercel илова шудаанд, Redeploy анҷом шудааст, дар сайти <code>…vercel.app</code> дархост захира мешавад</li>
+        </ul>
+      </article>
+
+      <article class="task" id="q-fix">
+        <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Агар вайрон шуд: сабабро ёбед</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Шакл <code>new row violates row-level security policy for table "bookings"</code>-ро медиҳад. Дар код <code>insert({ ..., status: "confirmed" })</code>, қоида: <code>with check (status = 'new')</code>. Сабаб?</p>
+          <ol class="options">
+            <li>Лоиҳаи Supabase дар таваққуф аст</li>
+            <li>Сатр аз шарти <code>with check</code> нагузашт: статус бояд <code>new</code> бошад</li>
+            <li>Дар <code>.env.local</code> фосилаи зиёдатӣ ҳаст</li>
+            <li>Дар ҷадвал сатрҳо аз ҳад зиёданд</li>
+          </ol>
+          <div class="explain"><p>Ин хато маънои онро дорад, ки RLS кор мекунад: қоида сатри навро санҷид ва рад кард. RLS-ро хомӯш накунед, маълумот ё шартро бошуурона ислоҳ кунед.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Дар сайти Vercel шакл кор мекунад, дар компютер бошад <code>supabaseUrl is required</code> менависад. Аввал чиро санҷидан лозим?</p>
+          <ol class="options">
+            <li>Лимити нархномаи ройгони Supabase</li>
+            <li>RLS фаъол аст ё не</li>
+            <li>Дар решаи лоиҳа <code>.env.local</code> бо номҳои дуруст ҳаст ва <code>npm run dev</code> аз нав оғоз шудааст</li>
+            <li>Версияи браузер</li>
+          </ol>
+          <div class="explain"><p>Дар Vercel тағйирёбандаҳо дар танзимот илова шудаанд, дар маҳал онҳоро аз <code>.env.local</code> мегиранд. Агар дар он ном нест ё аз нав оғоз нашудааст, қимат <code>undefined</code> мемонад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>AI пешниҳод кард, ки барои саҳифаи <code>/admin</code> дархостҳоро дар компоненти мизоҷӣ бо калиди publishable хонед ва қоидаи <code>for select to anon using (true)</code>-ро илова кунед. Шумо чӣ ҷавоб медиҳед?</p>
+          <ol class="options">
+            <li>Не: ин тавр телефонҳои меҳмононро ҳар меҳмон мебинад. Хондан бояд дар сервер бо калиди secret бошад, баъдтар саҳифа бо воридшавӣ баста мешавад</li>
+            <li>Ҳа, ин аз ҳама осон аст, қоида бехатар аст</li>
+            <li>Ҳа, аммо пеш аз калиди secret <code>NEXT_PUBLIC_</code>-ро илова кунед</li>
+            <li>RLS-ро пурра хомӯш кунед, он гоҳ хатоҳо намешаванд</li>
+          </ol>
+          <div class="explain"><p>Хондани кушода ҳамаи дархостҳоро ба ҳама медиҳад. Коди сервер бо калиди secret дар ин марҳила ягона роҳи бехатар аст.</p></div>
+        </div>
+      </article>
+    </section>
+
+    <!-- ============ 08 · Фишка ============ -->
+    <section class="topic" id="challenge">
+      <h2 data-toc="Нақша дар тахта"><span class="num">08</span> Фишкаи дарс: «Нақша дар тахта» ва шикори сӯрохӣ</h2>
+
+      <p>Аввал нақша, баъд код — одатест, ки онро дар бозӣ беҳтар машқ кардан мумкин аст. Блок барои омӯзгор ҳисоб шудааст ва дар аудитория ё онлайн гузаронида мешавад (тахтаи умумӣ, масалан Miro, ё танҳо коғаз ва акс). Вақт: тақрибан 50 дақиқа.</p>
+
+      <div class="callout tip">
+        <b>Қоидаҳо</b>
+        <p><b>1.</b> Омӯзгор ҳолати ҳаётиро ном мебарад: сартарошхона бо сабт, мактаби рақс, такси, анбор, китобхона. Як ҳолат барои тамоми гурӯҳ ё ҳар ҷуфт ҳолати худ. <b>2.</b> Иштирокчиён дар ҷуфтҳо кор мекунанд. 10 дақиқа: нақшаи пойгоҳро кашед (ҷадвалҳо, сутунҳо бо навъҳо, тирҳои алоқа), компютер хомӯш. <b>3.</b> 5 дақиқа: ҷуфтҳо нақшаҳоро иваз мекунанд ва нақшаи бегонаро бо рӯйхати санҷиши поён месанҷанд. <b>4.</b> 15 дақиқа: муаллиф аз AI хоҳиш мекунад, ки нақшаро ба SQL табдил диҳад (нақшаро бо матн нақл мекунад, мисли промпти бахши 6) ва натиҷаро бо расм муқоиса мекунад. <b>5.</b> Ҳар <code>using (true)</code>, ки AI дар ҷадвал бо маълумоти шахсӣ додааст — сабаби «аҳ-ҳа»-и умумӣ: кӣ ёфт, як хол мегирад.</p>
+      </div>
+
+      <h3>Рӯйхати санҷиши нақшаи бегона</h3>
+      <ul>
+        <li>Дар ҳар ҷадвал калиди аввалии <code>id</code> ҳаст.</li>
+        <li>Сутунҳое нестанд, ки дар онҳо якбора якчанд қимат бошад.</li>
+        <li>Алоқаҳо бо тирҳо нишон дода шудаанд ва маълум аст, кадом ҷадвал «як» аст, кадомаш «бисёр».</li>
+        <li>Навъ оқилона интихоб шудааст: санаҳо — на матн, пул — адад, статус — матни кӯтоҳ аз рӯйхат.</li>
+        <li>Барои ҳар ҷадвал навишта шудааст, ки кӣ хонда метавонад ва кӣ илова карда метавонад (қоидаҳои ояндаи RLS).</li>
+        <li>Дар мисолҳо маълумоти шахсии воқеӣ нест.</li>
+      </ul>
+
+      <h3>Ҷадвали вақт</h3>
+      <div class="table-wrap timer-tbl">
+        <table>
+          <thead><tr><th>Вақт</th><th>Чӣ мекунанд</th></tr></thead>
+          <tbody>
+            <tr><td>0:00–0:05</td><td>Ҳолат, ҷуфтҳо, саволҳо: «Система кадом чизҳоро нигоҳ медорад?»</td></tr>
+            <tr><td>0:05–0:15</td><td>Нақшаро мекашанд, компютерҳо пӯшида</td></tr>
+            <tr><td>0:15–0:20</td><td>Мубодилаи нақшаҳо, санҷиш бо рӯйхат, 3 эродъ</td></tr>
+            <tr><td>0:20–0:35</td><td>Промпт ба AI, SQL, муқоиса бо расм, ҷустуҷӯи сӯрохӣ дар қоидаҳо</td></tr>
+            <tr><td>0:35–0:50</td><td>Намоиш: ду-се ҷуфт нақшаро ва хатои аз ҳама ҷолибро (нақшаи худ ё ҷавоби AI) нишон медиҳанд</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Холҳо (ихтиёрӣ)</h3>
+      <ul>
+        <li><b>+2</b> барои нақшае, ки санҷанда аз рӯи рӯйхат ягон эрод наёфт.</li>
+        <li><b>+1</b> барои ҳар эроде, ки муаллиф қабул кард.</li>
+        <li><b>+2</b> барои сӯрохии дар ҷавоби AI ёфташуда (RLS нест, хондани кушода, калиди secret на дар сервер).</li>
+        <li><b>+1</b> барои SQL, ки бо нақша аз кӯшиши аввал мувофиқ омад.</li>
+      </ul>
+
+      <article class="task" id="cl-schema">
+        <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Рӯйхати санҷиш: «Нақша дар тахта» бозида шуд</h4><span class="level easy">осон</span></header>
+        <p>Иҷрошударо қайд кунед.</p>
+        <ul class="checklist" id="cl-board">
+          <li>Нақшаи пойгоҳро барои ҳолати худ то кушодани компютер кашидам</li>
+          <li>Нақшаи бегонаро бо рӯйхати санҷиш санҷидам ва на камтар аз се эрод навиштам</li>
+          <li>Эродҳоро ба нақшаи худ гирифтам ва ҳадди аққал яктоашро ислоҳ кардам</li>
+          <li>Аз AI хоҳиш кардам, ки аз рӯи нақша SQL нависад, бо расм муқоиса кардам ва ҳадди аққал як ихтилоф ё ҷои хатарнокро ёфтам</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- ============ ДЗ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">09</span> Вазифаи хонагӣ: сайти тарабхона бо брони миз (ВХ-11)</h2>
+
+      <p>Сайти тарабхонаро (фарзӣ ё ҳар муассисаи дигар бо сабт) ба ҳолате расонед, ки дархостҳои брони миз ба пойгоҳи Supabase захира шаванд. Супоридан: ду истинод (репозиторияи GitHub ва сайт дар Vercel).</p>
+
+      <h3>Талабот</h3>
+      <ul>
+        <li><b>Нақша:</b> то код дар коғаз кашида шудааст, дар <code>README.md</code>-и репозитория нусхаи матнии он ҳаст (ҷадвалҳо, сутунҳо, алоқаҳо). Ҳадди аққал ду ҷадвали алоқаманд (масалан <code>restaurant_tables</code> ва <code>bookings</code> бо <code>table_id</code>).</li>
+        <li><b>Як лоиҳаи Supabase</b> барои тамоми курс; ҷадвалҳо бо номи фаҳмо, то баъдтар дар он дигарон низ зиндагӣ кунанд.</li>
+        <li><b>RLS дар ҳамаи ҷадвалҳо фаъол аст.</b> Меҳмони бе воридшавӣ танҳо дархост илова карда метавонад (бо санҷиши маълумот дар қоида ё маҳдудиятҳо) ва маълумоти ҷамъиятиро (рӯйхати мизҳо) хонда метавонад. Дархостҳоро бо калиди publishable хонда намешавад.</li>
+        <li><b>Шакли брон:</b> санҷиши майдонҳо дар саҳифа (дарси 8), ҳолатҳои фаҳмои «фиристода мешавад», «дархост қабул шуд», «хато», маълумот ба <code>bookings</code> меафтад. Миз аз рӯйхати аз пойгоҳ боршуда интихоб мешавад.</li>
+        <li><b>Ҷадвали админ</b> <code>/admin</code>: саҳифаи серверӣ, дархостҳоро бо калиди secret мехонад, навҳо дар боло; аз индексатсия пӯшида (<code>noindex</code>). Ҳоло дар он танҳо маълумоти фарзӣ.</li>
+        <li><b>Калидҳо:</b> суроға ва publishable key бо <code>NEXT_PUBLIC_</code>, secret танҳо бе он; ҳама дар <code>.env.local</code> ва дар тағйирёбандаҳои Vercel; дар репозитория <code>.env.example</code> бе қиматҳо ҳаст, худи калидҳо ва <code>.env.local</code> на дар код ва на дар таърихи Git нестанд.</li>
+        <li><b>Сифат:</b> <code>npm run build</code> бе хато; дар сайти Vercel шакл кор мекунад; шумо ҳар сатри SQL ва ҳар қоидаро фаҳмонда метавонед.</li>
+      </ul>
+
+      <h3>Чӣ кор кардан лозим</h3>
+      <ol class="steps">
+        <li>Аввал нақша дар коғаз, баъд SQL, баъд код (бахши 6 ва амалиёт).</li>
+        <li>RLS-ро дар ҳамаи ҷадвалҳо фаъол кунед, қоидаҳо нависед ва ҳифзро бо санҷиши консолии қадами 8-и амалиёт санҷед.</li>
+        <li>Тағйирёбандаҳоро дар Vercel танзим кунед ва Redeploy кунед.</li>
+        <li>Дар истиноди Vercel дархости санҷиширо бо маълумоти фарзӣ фиристед ва боварӣ ҳосил кунед, ки сатр дар Table Editor ва дар <code>/admin</code> пайдо шуд.</li>
+        <li>Истинодҳоро дар поён гузоред ва рӯйхати санҷишро қайд кунед.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Хатогиҳои маъмул дар вазифаи хонагӣ</b>
+        <p><b>1.</b> RLS хомӯш аст ё танҳо дар як ҷадвал фаъол аст. <b>2.</b> Қоидаи <code>using (true)</code> дар дархостҳо. <b>3.</b> Калиди secret дар компоненти мизоҷӣ ё дар <code>NEXT_PUBLIC_…</code>. <b>4.</b> Калидҳо ё <code>.env.local</code> дар репозиторияи ҷамъиятӣ. <b>5.</b> Шакл дар компютер кор мекунад, дар Vercel не: тағйирёбандаҳо илова нашудаанд ё Redeploy анҷом нашудааст. <b>6.</b> Нақша баъд аз код кашида шудааст ва ба он мувофиқ карда шудааст. <b>7.</b> Дар пойгоҳ телефонҳои воқеии дӯстон. <b>8.</b> Санҷиши майдонҳо нест: дар ҷадвал дархостҳои холӣ меафтанд.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Чӣ тавр месанҷанд</b>
+        <p>Санҷанда сайтро мекушояд, дархост мефиристад, <code>/admin</code>-ро мебинад, баъд репозиторияро месанҷад: оё калидҳо дар код ва дар таърих нестанд, <code>.env.example</code> чӣ гуна тартиб дода шудааст, нақша дар README ва SQL чӣ гуна менамоянд. Холҳо барои нақша, барои ҳифз (RLS ва калидҳо), барои шакли кории шумо ва барои он, ки қарори худро фаҳмонда метавонед.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ВАЗИФАИ 9.1</span><h4>Рӯйхати санҷиши талабот ба ВХ-11</h4><span class="level mid">миёна</span></header>
+        <p>Пеш аз супоридан банд ба банд санҷед.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Нақша то код кашида шудааст, нусхаи матнӣ дар README аст</li>
+          <li>На камтар аз ду ҷадвали алоқаманд, як лоиҳаи Supabase истифода шудааст</li>
+          <li>RLS дар ҳамаи ҷадвалҳо фаъол аст, меҳмонони бе воридшавӣ танҳо дархост илова мекунанд ва маълумоти ҷамъиятиро мехонанд</li>
+          <li>Бо консол санҷида шуд: дархостҳо бо калиди publishable хонда намешаванд</li>
+          <li>Шакл бо санҷиш ва ҳолатҳо дархостҳоро захира мекунад, миз аз пойгоҳ интихоб мешавад</li>
+          <li><code>/admin</code> дар сервер бо калиди secret мехонад, аз индексатсия пӯшида, маълумот фарзӣ</li>
+          <li>Калидҳо танҳо дар <code>.env.local</code> ва Vercel, <code>.env.example</code> ҳаст, дар репозитория ва таърих рамзи махфӣ нест</li>
+          <li><code>npm run build</code> мегузарад, дар Vercel дархост захира мешавад</li>
+          <li>Истинодҳо ба GitHub ва Vercel дар поён гузошта шудаанд</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ВАЗИФАИ 9.2</span><h4>Истинод ба репозиторияи GitHub</h4><span class="level mid">миёна</span></header>
+        <p>Истинод ба репозиторияи сайтро гузоред.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/restaurant-site"></div>
+      </article>
+
+      <article class="task" id="hw-vercel">
+        <header><span class="task-num">ВАЗИФАИ 9.3</span><h4>Истинод ба сайт дар Vercel</h4><span class="level mid">миёна</span></header>
+        <p>Истинод ба сайти нашршударо гузоред (суроғаи намуди <code>https://…vercel.app</code>).</p>
+        <div class="submit-link" data-hosts="vercel.app" data-placeholder="https://restaurant-site.vercel.app"></div>
+      </article>
+
+      <p class="muted">Бештар хонед: <a href="https://supabase.com/docs/guides/api/securing-your-api" target="_blank" rel="noopener">Supabase: ҳифзи API-и шумо</a> (бо забони англисӣ).</p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Хулоса"><span class="num">✓</span> Хулосаи дарс</h2>
+      <ul>
+        <li><b>Пойгоҳи дода:</b> ҷадвалҳо аз сатрҳо ва сутунҳо; ҳар ҷадвал калиди аввалии <code>id</code> дорад; калиди беруна <code>id</code>-ро аз ҷадвали дигар нигоҳ медорад (алоқаи «як ба бисёр»).</li>
+        <li><b>Тартиби кор:</b> нақша дар коғаз → SQL → RLS → код. AI нақшаро ҳамчун матн мегирад.</li>
+        <li><b>Supabase:</b> Postgres-и абрӣ + панел (Table Editor, SQL Editor) + API. Ройгон: то 2 лоиҳаи фаъол, 500 МБ, таваққуф баъд аз як ҳафта бе фаъолият, бе нусхаҳои эҳтиётии худкор. Як лоиҳа барои тамоми курс.</li>
+        <li><b>SQL ва CRUD:</b> <code>insert</code> (эҷод), <code>select … where … order by … limit</code> (хондан), <code>update … set … where</code> (тағйир), <code>delete … where</code> (нест кардан). Бе <code>where</code> ҳамаи сатрҳо тағйир меёбанд.</li>
+        <li><b>RLS:</b> дар ҳар ҷадвал фаъол кунед: <code>alter table … enable row level security</code>. Бе қоидаҳо тавассути API бо калиди publishable ҷадвал баста аст. Қоида: амал + нақш + <code>using</code> / <code>with check</code>. Барои <code>anon</code> боз <code>grant</code> лозим аст. Барои маълумоти шахсӣ <code>using (true)</code> нанависед.</li>
+        <li><b>Калидҳо:</b> publishable (<code>sb_publishable_…</code>, пештар anon) — дар браузер мумкин, ҳуқуқҳоро RLS маҳдуд мекунад; secret (<code>sb_secret_…</code>, пештар service_role) — аз RLS мегузарад, танҳо дар сервер. Ҳар дуи онҳо дар <code>.env.local</code> ва Vercel, secret бе <code>NEXT_PUBLIC_</code>. Ошкор шуд — нест кунед ва нав созед.</li>
+        <li><b>Админка:</b> саҳифаи серверӣ, калиди secret, <code>dynamic = "force-dynamic"</code>. Бе воридшавӣ он барои ҳама кушода аст (воридшавӣ — дарси 12), барои ҳамин маълумот танҳо фарзӣ.</li>
+        <li><b>Firebase:</b> пойгоҳи ҳуҷҷатии NoSQL Firestore, коллексияҳо ва ҳуҷҷатҳо, Security Rules; Supabase — Postgres, ҷадвалҳо ва SQL.</li>
+        <li><b>AI:</b> SQL-ро алоҳида хоҳиш кунед, <code>where</code>, RLS дар ҳамаи ҷадвалҳо, набудани <code>using (true)</code> ва рамзҳои махфиро дар коди мизоҷӣ санҷед; хатоҳоро бо матни пурра бе калидҳо фиристед.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ВАЗИФАИ 10.1</span><h4>Ман мавзӯъро воқеан фаҳмидам</h4><span class="level easy">осон</span></header>
+        <p>Танҳо он чиро қайд кунед, ки бе ишора карда метавонед.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Метавонам нақшаи ду ҷадвали алоқамандро кашам ва калиди аввалӣ ва берунаро фаҳмонам</li>
+          <li>Метавонам лоиҳаи Supabase, ҷадвал созам ва SQL-ро дар SQL Editor иҷро кунам</li>
+          <li>Метавонам <code>select</code>, <code>insert</code>, <code>update</code>, <code>delete</code>-ро бихонам ва фаҳмонам, бе <code>where</code> чӣ мешавад</li>
+          <li>Метавонам RLS-ро фаъол кунам, қоидаи илова нависам ва санҷам, ки дархостҳоро аз браузер хонда намешавад</li>
+          <li>Метавонам фарқи калидҳои publishable ва secret-ро фаҳмонам ва бигӯям, ҳар якро дар куҷо нигоҳ доштан лозим</li>
+          <li>Метавонам маълумоти шаклро ба пойгоҳ захира кунам ва дар ҷадвали админ дар сервер нишон диҳам</li>
+          <li>Метавонам дар ду ҷумла Supabase ва Firebase-ро муқоиса кунам</li>
+        </ul>
+      </article>
+    </section>
