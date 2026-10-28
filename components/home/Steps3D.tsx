@@ -767,7 +767,7 @@ export default function Steps3D(props: Props) {
     };
 
     // ---------- HTML overlay (labels, XP chips, goal chip) anchored to 3D points
-    type Item = { pos: HTMLElement; p: V3; ox: number; oy: number; svgX: number; chip?: HTMLElement; label?: boolean; fade?: boolean };
+    type Item = { pos: HTMLElement; p: V3; ox: number; oy: number; svgX: number; chip?: HTMLElement; label?: boolean; fade?: boolean; clamp?: boolean; w?: number };
     const items: Item[] = [];
     const addOv = (cls: string, p: V3, ox: number, oy: number, svgX = 0) => {
       const pos = h('div', 'hx-pos ' + cls, ov);
@@ -798,16 +798,18 @@ export default function Steps3D(props: Props) {
     props.names.forEach((_, k) => {
       const hp = pose(LAND[k], 0).hip; // chip floats above the head at the moment of landing
       const it = addOv('', new THREE.Vector3(G.LANE, hp[1] + 38.6 * G.BS, G.Y0 - hp[0] - 3), -6, -40);
-      it.pos.style.translate = '-50% -50%';
+      it.pos.style.translate = 'calc(-50% + var(--dx, 0px)) -50%';
+      it.clamp = true;
       h('div', 'ha-xp', it.pos, `+${COURSE_XP[k]} XP`).dataset.k = String(k);
     });
     const goal = addOv('is-chip', MEDAL, 0, -66);
     const goalChip = h('div', 'ha-goal', goal.pos, props.goal);
     goal.chip = goalChip;
+    goal.clamp = true;
 
     // ---------- viewport (same box / aspect as the SVG variant)
     let vb: readonly number[] = VB_DESKTOP;
-    let bw = 1, bh = 1, chipW = 0;
+    let bw = 1, bh = 1;
     const setFrustum = () => {
       const [vx, vy, vw, vh] = vb;
       const [px, py] = iso(PIVOT.x, PIVOT.z, PIVOT.y);
@@ -839,7 +841,7 @@ export default function Steps3D(props: Props) {
       bw = box.clientWidth;
       bh = box.clientHeight;
       renderer.setSize(Math.max(1, bw), Math.max(1, bh), false);
-      chipW = goalChip.offsetWidth;
+      for (const it of items) if (it.clamp) it.w = (it.pos.firstElementChild as HTMLElement).offsetWidth;
       setFrustum();
       needs = true;
     };
@@ -1075,8 +1077,8 @@ export default function Steps3D(props: Props) {
         const x = (Vv.x * 0.5 + 0.5) * bw + it.ox * u;
         const y = (-Vv.y * 0.5 + 0.5) * bh + it.oy * u;
         it.pos.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
-        if (it.label) it.pos.style.maxWidth = Math.max(60, Math.round(x) - 6) + 'px';
-        if (it.chip) it.pos.style.setProperty('--dx', chipShift(bw, x, chipW) + 'px');
+        if (it.label) it.pos.style.maxWidth = Math.max(60, Math.round(x) - 8) + 'px';
+        if (it.clamp && it.w) it.pos.style.setProperty('--dx', chipShift(bw, x, it.w + 12) + 'px'); // keeps an 8px margin inside the canvas
       }
     };
 
@@ -1262,6 +1264,8 @@ export default function Steps3D(props: Props) {
       const ro = new ResizeObserver(() => setVb());
       ro.observe(box.parentElement ?? box);
       document.fonts?.ready.then(setVb);
+      const lateMeasure = setTimeout(setVb, 600); // pill widths after fonts / first layout
+      cleanups.push(() => clearTimeout(lateMeasure));
 
       recolors.forEach((f) => f());
       paintBlocks();
