@@ -1,0 +1,1883 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 3 · TypeScript и модель React</p>
+      <h1>Компоненты, элементы и модель рендера</h1>
+      <p class="lead">К концу урока у вас будет собранный из компонентов каталог ресторанов «Дастархон»: дерево из одиннадцати компонентов на React 19 и TypeScript, стилизованное через CSS Modules и Tailwind CSS 4, с данными из массива. Вы поймёте, что именно происходит между <code>setState</code> и обновлением экрана, и сможете объяснить, почему React перерисовывает компонент и что такое чистый компонент.</p>
+      <ul class="goals">
+        <li>Назвать правила JSX и исправить типичные ошибки разметки по тексту ошибки TypeScript</li>
+        <li>Собирать интерфейс из компонентов через props, <code>children</code> и «слоты» и не определять компоненты внутри компонентов</li>
+        <li>Выводить списки через <code>map</code> с правильным <code>key</code> и объяснить, чем плох индекс в качестве ключа</li>
+        <li>Описать три шага — триггер, рендер, коммит — и предсказать, какие компоненты перерисуются</li>
+        <li>Отличить чистый компонент от нечистого и починить мутацию props</li>
+        <li>Подключить Tailwind CSS 4 и CSS Modules в проекте Vite и выбрать подходящий способ для задачи</li>
+        <li>Разбить макет на дерево компонентов, поспорить об этом с ИИ-агентом и разложить каталог из урока 2 на компоненты со стилями</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: проект <code>dastarkhon</code> после урока 2 (Vite + React + TypeScript, Oxlint, Prettier, <code>AGENTS.md</code>, файлы <code>types.ts</code> и <code>data.ts</code>, компоненты <code>RestaurantCard</code>, <code>CuisineFilter</code>, <code>SearchBox</code>, <code>Section</code>), терминал, редактор и около 3,5 часов. Разделы 1–6 — теория с живыми песочницами: код на тёмном фоне выполняется прямо на странице. Раздел 7 — работа с ИИ-агентом, раздел 8 — практика на вашем компьютере. Результат урока — каталог «Дастархона» на аккуратном дереве компонентов, которое в уроке 4 получит сортировку и корзину.</p>
+      <p>Предполагается, что вы знаете JavaScript и основы React: JSX, props, <code>useState</code>, <code>useEffect</code> (их повторяет самотест урока 1), а также типы props, <code>children</code> и <code>useState</code> из урока 2. Здесь мы разбираем эти же вещи глубже: как они устроены и почему ломаются.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="jsx">
+      <h2 data-toc="JSX и элементы"><span class="num">01</span> JSX и элементы: что на самом деле возвращает компонент</h2>
+
+      <p><b>JSX</b> — это не HTML и не шаблон. Это синтаксис JavaScript, который при сборке превращается в вызовы функций. Vite делает это автоматически: ваш <code>&lt;h1&gt;Navruz&lt;/h1&gt;</code> становится вызовом <code>jsx('h1', …)</code> из пакета <code>react/jsx-runtime</code>. Результат вызова — <b>элемент React</b>: обычный объект, который <b>описывает</b>, что показать. Это не кусок DOM и не готовый HTML.</p>
+
+<pre class="code" data-lang="jsx" data-title="JSX и то, во что он превращается (упрощённо)">
+const element = &lt;h1 className="title"&gt;Navruz&lt;/h1&gt;
+
+// после сборки это вызов jsx('h1', { className: 'title', children: 'Navruz' }),
+// а в итоге обычный объект примерно такого вида:
+const sameElement = {
+  type: 'h1',
+  props: { className: 'title', children: 'Navruz' },
+}
+</pre>
+
+      <p>Элемент дёшево создать и нельзя изменить: чтобы показать другое, компонент просто возвращает новый объект. Из таких объектов складывается дерево, которое React потом сравнивает с предыдущим и переносит различия в DOM (раздел 4).</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 150" role="img" aria-label="Схема: JSX при сборке превращается в вызов функции jsx, вызов возвращает объект-элемент, React сравнивает объекты и обновляет DOM браузера">
+          <rect class="fill-y" x="10" y="40" width="140" height="58" rx="12" /><text x="80" y="64" text-anchor="middle">JSX</text><text class="sub mono" x="80" y="84" text-anchor="middle">&lt;h1&gt;Navruz&lt;/h1&gt;</text>
+          <rect class="box b" x="195" y="40" width="150" height="58" rx="12" /><text x="270" y="64" text-anchor="middle">вызов функции</text><text class="sub mono" x="270" y="84" text-anchor="middle">jsx('h1', {…})</text>
+          <rect class="fill-g" x="390" y="40" width="150" height="58" rx="12" /><text x="465" y="64" text-anchor="middle">элемент</text><text class="sub mono" x="465" y="84" text-anchor="middle">обычный объект</text>
+          <rect class="box g" x="585" y="40" width="125" height="58" rx="12" /><text x="647" y="64" text-anchor="middle">DOM</text><text class="sub mono" x="647" y="84" text-anchor="middle">обновит React</text>
+          <path class="arr" d="M150 69 H187" /><path class="arr-head" d="M195 69 l-10 -5 v10 z" />
+          <path class="arr" d="M345 69 H382" /><path class="arr-head" d="M390 69 l-10 -5 v10 z" />
+          <path class="arr" d="M540 69 H577" /><path class="arr-head" d="M585 69 l-10 -5 v10 z" />
+          <text class="sub" x="172" y="30" text-anchor="middle">сборка</text>
+          <text class="sub" x="367" y="30" text-anchor="middle">вызов</text>
+          <text class="sub" x="562" y="30" text-anchor="middle">коммит</text>
+          <text class="sub" x="12" y="132">Компонент возвращает описание экрана. Рисует его не компонент, а React.</text>
+        </svg>
+        <figcaption>Путь от JSX до экрана: сборка делает из разметки вызовы функций, вызовы создают элементы-объекты, а DOM меняет только React</figcaption>
+      </figure>
+
+      <h3>Семь правил JSX</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Правило</th><th>Как правильно</th><th>Что бывает, если нарушить</th></tr></thead>
+          <tbody>
+            <tr><td><b>1. Один корень</b></td><td>Оберните в <code>&lt;div&gt;</code> или в Fragment <code>&lt;&gt;…&lt;/&gt;</code>, который не добавляет лишний тег в DOM</td><td>Ошибка <code>TS2657</code></td></tr>
+            <tr><td><b>2. Закрывайте все теги</b></td><td><code>&lt;img /&gt;</code>, <code>&lt;br /&gt;</code>, <code>&lt;input /&gt;</code></td><td>Ошибка <code>TS17008</code></td></tr>
+            <tr><td><b>3. Атрибуты в camelCase</b></td><td><code>className</code>, <code>htmlFor</code>, <code>onClick</code>, <code>tabIndex</code></td><td><code>class</code> даёт ошибку типа и предупреждение React</td></tr>
+            <tr><td><b>4. В <code>{}</code> только выражение</b></td><td><code>{price * 2}</code>, <code>{ok ? 'да' : 'нет'}</code>, <code>{items.map(…)}</code></td><td><code>if</code> и <code>for</code> внутрь не попадают: выносите их выше</td></tr>
+            <tr><td><b>5. style — объект</b></td><td><code>style={{ color: 'red', fontSize: 14 }}</code></td><td>Строка вместо объекта: ошибка <code>TS2559</code></td></tr>
+            <tr><td><b>6. Комментарий в JSX</b></td><td><code>{/* комментарий */}</code></td><td>Обычный <code>//</code> в разметке станет текстом на странице</td></tr>
+            <tr><td><b>7. Имя с большой буквы — компонент</b></td><td><code>&lt;RestaurantCard /&gt;</code>; <code>&lt;div&gt;</code> с маленькой — HTML-тег</td><td>Раздел 2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Тексты ошибок, которые покажут <code>tsc</code> и редактор. Они на английском: читайте файл, строку и код (<code>TS2657</code>), по нему легко искать.</p>
+<pre class="code" data-title="Терминал — вывод tsc -b для разметки с ошибками">
+src/Bad.tsx(5,5): error TS2657: JSX expressions must have one parent element.
+src/Bad.tsx(11,26): error TS17008: JSX element 'img' has no corresponding closing tag.
+src/Bad.tsx(4,15): error TS2322: Type '{ class: string; children: string; }' is not assignable to type 'DetailedHTMLProps&lt;HTMLAttributes&lt;HTMLDivElement&gt;, HTMLDivElement&gt;'.
+  Property 'class' does not exist on type 'DetailedHTMLProps&lt;HTMLAttributes&lt;HTMLDivElement&gt;, HTMLDivElement&gt;'. Did you mean 'className'?
+src/Bad.tsx(13,17): error TS2559: Type 'string' has no properties in common with type 'Properties&lt;string | number, string &amp; {}&gt;'.
+</pre>
+
+      <h3>Условный вывод и что React не рисует</h3>
+      <p>Три способа показать что-то по условию: тернарный оператор (<code>{open ? &lt;Open /&gt; : &lt;Closed /&gt;}</code>), оператор <code>&amp;&amp;</code> (<code>{open &amp;&amp; &lt;Badge /&gt;}</code>) и ранний <code>return null</code> в начале компонента. Значения <code>null</code>, <code>undefined</code>, <code>true</code> и <code>false</code> React пропускает, а строки и числа выводит как текст. Объект выводить нельзя: React остановится с ошибкой.</p>
+
+<pre class="code" data-title="Терминал — ошибка в консоли браузера (dev-режим)">
+Uncaught Error: Objects are not valid as a React child (found: object with keys {id, name}). If you meant to render a collection of children, use an array instead.
+</pre>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> <code>{reviews &amp;&amp; &lt;span&gt;…&lt;/span&gt;}</code>, когда <code>reviews</code> равно <code>0</code>: <code>&amp;&amp;</code> возвращает левую часть, а число 0 React выводит на экран. Пишите <code>{reviews &gt; 0 &amp;&amp; …}</code>. <b>2.</b> <code>{restaurant}</code> вместо <code>{restaurant.name}</code>: ошибка про объект выше. <b>3.</b> Строка в <code>style</code>. <b>4.</b> Два соседних элемента в <code>return</code> без общего корня. <b>5.</b> <code>class</code> вместо <code>className</code>: страница работает, но в консоли предупреждение <code>Invalid DOM property `class`. Did you mean `className`?</code>.</p>
+      </div>
+
+      <div class="yt" data-id="8EXUlJ80Vec" data-title="JSX в React: особенности синтаксиса, подводные камни, условный рендеринг и списки — канал Friendly Frontend"></div>
+      <p class="muted">Ролик на русском (сентябрь 2025, 21 минута): правила JSX, условный вывод и списки. Часть про списки пригодится в разделе 3.</p>
+
+      <h3>Попробуйте: условный вывод</h3>
+      <p>Поменяйте <code>open</code> и <code>reviews</code> в данных, запустите и посмотрите, что изменится. Особенно интересен случай <code>reviews: 0</code>.</p>
+
+      <div class="playground" data-mode="react" data-title="Условный вывод">
+<pre class="code" data-lang="jsx">
+function Status({ open, reviews }: { open: boolean; reviews: number }) {
+  return (
+    &lt;p&gt;
+      {open ? "Открыто" : "Закрыто"}
+      {reviews &amp;&amp; &lt;span&gt; · отзывов: {reviews}&lt;/span&gt;}
+    &lt;/p&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Status open={true} reviews={12} /&gt;
+      &lt;Status open={false} reviews={0} /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Элемент React — это бланк заказа в чойхоне: на нём написано «плов, чай, две самбусы». Бланк не еда, его можно быстро написать и выбросить. Вы не меняете старый бланк, а пишете новый, и повар (React) сверяет их и решает, что нужно донести на стол.</p>
+      </div>
+
+      <article class="task" id="q-jsx">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: JSX</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Что возвращает компонент <code>function Card() { return &lt;h1&gt;Navruz&lt;/h1&gt; }</code>?</p>
+          <ol class="options">
+            <li>Строку с HTML-кодом <code>"&lt;h1&gt;Navruz&lt;/h1&gt;"</code></li>
+            <li>Готовый DOM-элемент, вставленный на страницу</li>
+            <li>Элемент React: обычный объект, описывающий, что показать</li>
+            <li>Ничего: компонент только меняет страницу</li>
+          </ol>
+          <div class="explain"><p>Компонент ничего не вставляет в страницу сам. Он возвращает описание (элемент), а DOM обновляет React на шаге коммита.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Компонент получил <code>reviews = 0</code> и вернул <code>&lt;p&gt;{reviews &amp;&amp; &lt;b&gt;есть отзывы&lt;/b&gt;}&lt;/p&gt;</code>. Что появится на странице?</p>
+          <ol class="options">
+            <li>Пустой абзац</li>
+            <li>Абзац с числом <code>0</code></li>
+            <li>Ошибка: нельзя использовать <code>&amp;&amp;</code></li>
+            <li>Абзац с текстом «есть отзывы»</li>
+          </ol>
+          <div class="explain"><p>Выражение <code>0 &amp;&amp; …</code> равно <code>0</code>, а число React выводит. Пустой результат дают только <code>null</code>, <code>undefined</code>, <code>false</code>. Правильно: <code>reviews &gt; 0 &amp;&amp; …</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Какие строки JSX содержат ошибку? Выберите два варианта.</p>
+          <ol class="options">
+            <li><code>&lt;label class="field"&gt;Имя&lt;/label&gt;</code></li>
+            <li><code>&lt;img src="a.png" alt="" /&gt;</code></li>
+            <li><code>&lt;div style={{ color: 'red' }}&gt;Привет&lt;/div&gt;</code></li>
+            <li><code>&lt;input type="text"&gt;</code></li>
+          </ol>
+          <div class="explain"><p>В первой строке <code>class</code> должно быть <code>className</code>, в четвёртой тег <code>input</code> не закрыт: нужно <code>&lt;input type="text" /&gt;</code>. Остальные записаны верно.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-fix">
+        <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Чиним разметку блюда</h4><span class="level easy">лёгкая</span></header>
+        <p>Сейчас код не собирается. Исправьте три ошибки: у <code>return</code> два соседних элемента (оберните их в Fragment <code>&lt;&gt;…&lt;/&gt;</code>), тег <code>hr</code> не закрыт, а <code>style</code> задан строкой, хотя нужен объект.</p>
+        <div class="playground" data-mode="react" data-title="Блюдо">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  const dish = { title: "Плов", price: 28 };
+  return (
+    &lt;h2 style="color: red"&gt;{dish.title}&lt;/h2&gt;
+    &lt;hr&gt;
+    &lt;p&gt;{dish.price} сомони&lt;/p&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>&lt;h2 style="color: red;"&gt;Плов&lt;/h2&gt;
+&lt;hr&gt;
+&lt;p&gt;28 сомони&lt;/p&gt;</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Весь <code>return</code> должен возвращать один элемент: оберните три строки в <code>&lt;&gt;</code> и <code>&lt;/&gt;</code>. Ошибка про «closing tag» указывает на строку с <code>hr</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;h2 style={{ color: "red" }}&gt;</code>: внешние скобки — это выражение JSX, внутренние — объект. Тег пишется <code>&lt;hr /&gt;</code>.</p></details>
+      </article>
+
+      <article class="task" id="t1-cond">
+        <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Статус ресторана и отзывы</h4><span class="level mid">средняя</span></header>
+        <p>В компоненте <code>Status</code> две ошибки. Первая: вместо слова «Открыто» или «Закрыто» (по полю <code>open</code>) выводится заготовка. Вторая: у ресторана без отзывов на экране появляется «0». Покажите <code>span</code> с текстом <code>Отзывов: N</code> только когда <code>reviews</code> больше нуля.</p>
+        <div class="playground" data-mode="react" data-title="Статус ресторана">
+<pre class="code" data-lang="jsx">
+function Status({ open, reviews }) {
+  return (
+    &lt;div&gt;
+      {/* TODO 1: «Открыто» или «Закрыто» в span, в зависимости от open */}
+      &lt;span&gt;???&lt;/span&gt;
+      {/* TODO 2: не показывайте ноль */}
+      {reviews &amp;&amp; &lt;span&gt;Отзывов: {reviews}&lt;/span&gt;}
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;Status open={true} reviews={0} /&gt;
+      &lt;Status open={false} reviews={12} /&gt;
+    &lt;/main&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>&lt;main&gt;
+&lt;div&gt;
+&lt;span&gt;Открыто&lt;/span&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;span&gt;Закрыто&lt;/span&gt;
+&lt;span&gt;Отзывов: 12&lt;/span&gt;
+&lt;/div&gt;
+&lt;/main&gt;</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В первом случае: <code>&lt;span&gt;{open ? "Открыто" : "Закрыто"}&lt;/span&gt;</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Во втором: <code>{reviews &gt; 0 &amp;&amp; &lt;span&gt;…&lt;/span&gt;}</code>. Сравнение даёт <code>false</code>, а <code>false</code> React не выводит.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/writing-markup-with-jsx" target="_blank" rel="noopener">react.dev — Writing Markup with JSX</a> · <a href="https://react.dev/learn/javascript-in-jsx-with-curly-braces" target="_blank" rel="noopener">react.dev — JavaScript in JSX with Curly Braces</a> · <a href="https://react.dev/learn/conditional-rendering" target="_blank" rel="noopener">react.dev — Conditional Rendering</a> · <a href="https://react.dev/reference/react/Fragment" target="_blank" rel="noopener">react.dev — Fragment</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="components">
+      <h2 data-toc="Компоненты и composition"><span class="num">02</span> Компоненты, props, children и композиция</h2>
+
+      <p><b>Функциональный компонент</b> — обычная функция, которая принимает один объект <code>props</code> и возвращает JSX (или <code>null</code>, если показывать нечего). У неё два жёстких правила: имя с <b>большой буквы</b> и вызов только через разметку (<code>&lt;Card /&gt;</code>, а не <code>Card()</code>). Маленькая буква означает «это HTML-тег».</p>
+
+<pre class="code" data-title="Терминал — компонент с маленькой буквы">
+src/Bad.tsx(9,10): error TS2339: Property 'restaurantCard' does not exist on type 'JSX.IntrinsicElements'.
+&lt;restaurantCard /&gt; is using incorrect casing. Use PascalCase for React components, or lowercase for HTML elements.
+</pre>
+
+      <p>Первая строка — ошибка TypeScript, вторая — предупреждение React в консоли браузера. Props только читаются: значения по умолчанию задают в параметрах, а изменять props нельзя (раздел 5).</p>
+
+<pre class="code" data-lang="tsx" data-title="Пример: компонент с необязательным prop">
+type RatingProps = {
+  value: number
+  max?: number // необязательный prop
+}
+
+export default function Rating({ value, max = 5 }: RatingProps) {
+  return (
+    &lt;span&gt;
+      ★ {value.toFixed(1)} / {max}
+    &lt;/span&gt;
+  )
+}
+</pre>
+
+      <h3>children и композиция</h3>
+      <p><code>children</code> — это всё, что вы положили между открывающим и закрывающим тегом компонента. Так делают «обёртки»: <code>Layout</code>, <code>Card</code>, <code>Modal</code>, которые знают, <i>как</i> выглядеть, но не знают, <i>что</i> внутри. Тип <code>children</code> — <code>ReactNode</code> (его вы разобрали в уроке 2): подходит всё, что React умеет показать. Из-за флага <code>verbatimModuleSyntax</code> (урок 1) импортируйте его как тип.</p>
+
+<pre class="code" data-lang="tsx" data-title="src/components/Layout.tsx — обёртка со слотами">
+import type { ReactNode } from 'react'
+
+type LayoutProps = {
+  header: ReactNode // слот: любой JSX
+  children: ReactNode // основное содержимое
+  footer?: ReactNode
+}
+
+export default function Layout({ header, children, footer }: LayoutProps) {
+  return (
+    &lt;div&gt;
+      &lt;header&gt;{header}&lt;/header&gt;
+      &lt;main&gt;{children}&lt;/main&gt;
+      {footer &amp;&amp; &lt;footer&gt;{footer}&lt;/footer&gt;}
+    &lt;/div&gt;
+  )
+}
+
+// использование:
+// &lt;Layout header={&lt;Logo /&gt;} footer={&lt;Contacts /&gt;}&gt;
+//   &lt;RestaurantList /&gt;
+// &lt;/Layout&gt;
+</pre>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Схема композиции: компонент Layout содержит слот header, область children, в которую вложен RestaurantList, и слот footer">
+          <rect class="box g" x="10" y="10" width="700" height="230" rx="14" /><text x="26" y="32">Layout</text>
+          <rect class="fill-y" x="30" y="46" width="660" height="40" rx="10" /><text x="360" y="71" text-anchor="middle">{header} — слот</text>
+          <rect class="box b" x="30" y="98" width="660" height="88" rx="10" /><text class="sub t-b" x="44" y="118">{children} — то, что положили между &lt;Layout&gt; и &lt;/Layout&gt;</text>
+          <rect class="fill-g" x="70" y="128" width="580" height="44" rx="10" /><text x="360" y="155" text-anchor="middle">&lt;RestaurantList /&gt;</text>
+          <rect class="fill-y" x="30" y="198" width="660" height="34" rx="10" /><text x="360" y="220" text-anchor="middle">{footer} — слот</text>
+        </svg>
+        <figcaption>Композиция: Layout отвечает за каркас, а содержимое ему передают снаружи. Один Layout подходит для любой страницы</figcaption>
+      </figure>
+
+      <p>Композиция лучше «настроек»: вместо компонента с десятью prop-флагами (<code>showHeader</code>, <code>showLogo</code>, <code>isCompact</code>…) вы даёте ему слоты, и страница сама решает, что показать. Это основной приём React вместо наследования.</p>
+
+      <h3>Не объявляйте компонент внутри компонента</h3>
+      <p>Если написать <code>function Counter()</code> прямо в теле <code>App</code>, то при каждой перерисовке <code>App</code> создаётся <b>новая</b> функция <code>Counter</code>. Для React это уже другой компонент: старый удаляется вместе со своим состоянием, новый создаётся с нуля. Симптом: «состояние сбрасывается, когда меняется что-то снаружи». Объявляйте компоненты на верхнем уровне файла, а лучше в отдельном файле: один компонент — один файл, имя файла совпадает с именем компонента.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Вызывать компонент как функцию (<code>{Rating({ value: 4 })}</code>) вместо <code>&lt;Rating value={4} /&gt;</code>: хуки и состояние так не работают. <b>2.</b> Компонент в компоненте (см. выше). <b>3.</b> Передавать в <code>children</code> лишние данные: объект вместо JSX даст ошибку «Objects are not valid as a React child». <b>4.</b> Делать компонент-«комбайн» на 400 строк: границы компонента разберём в разделе 7. <b>5.</b> Класть в один файл компонент и обычные константы или функции: правило Oxlint <code>react/only-export-components</code> предупредит, что Fast Refresh (горячая замена) может перестать работать.</p>
+      </div>
+
+      <div class="yt" data-id="jtC_gyCIVdU" data-title="Props в React. Что такое пропсы, как передавать данные и зачем нужен children — канал Friendly Frontend"></div>
+      <p class="muted">Ролик на русском (октябрь 2025, 21 минута): props, передача данных и <code>children</code>. Автор показывает JavaScript, у вас те же приёмы с типами (<code>ReactNode</code>).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Layout — это дастархон: клеёнка, подушки, чайник посередине. Он одинаков для любого застолья. Что принесут на него сегодня (плов или самбусы), решает хозяйка, и это <code>children</code>. А слоты <code>header</code> и <code>footer</code> — места для «начала» и «конца» застолья: чай в начале и сладкое в конце.</p>
+      </div>
+
+      <h3>Попробуйте: обёртка с children</h3>
+      <div class="playground" data-mode="react" data-title="Карточка-обёртка">
+<pre class="code" data-lang="jsx">
+function Card({ title, children }) {
+  return (
+    &lt;section className="card"&gt;
+      &lt;h3&gt;{title}&lt;/h3&gt;
+      {children}
+    &lt;/section&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;Card title="Плов"&gt;&lt;p&gt;28 сомони&lt;/p&gt;&lt;/Card&gt;
+      &lt;Card title="Чай"&gt;&lt;p&gt;5 сомони&lt;/p&gt;&lt;button&gt;Добавить&lt;/button&gt;&lt;/Card&gt;
+    &lt;/main&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.card { border: 1px solid #c9ced6; border-radius: 12px; padding: 8px 14px; margin-bottom: 10px; font-family: system-ui, sans-serif; }
+.card h3 { margin: 0 0 4px; }
+</pre>
+      </div>
+
+      <article class="task" id="q-comp">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: компоненты и children</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Почему компонент <code>function badge()</code> с маленькой буквы нельзя использовать как <code>&lt;badge /&gt;</code>?</p>
+          <ol class="options">
+            <li>Потому что функции в JavaScript нельзя называть с маленькой буквы</li>
+            <li>Потому что JSX считает теги с маленькой буквы HTML-элементами, а не компонентами</li>
+            <li>Потому что React 19 запретил слово badge</li>
+            <li>Потому что компонент обязан быть стрелочной функцией</li>
+          </ol>
+          <div class="explain"><p>Имя с маленькой буквы JSX превращает в строку <code>'badge'</code> (HTML-тег), а с большой — в ссылку на вашу функцию. Поэтому <code>Badge</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что попадёт в <code>children</code> компонента в записи <code>&lt;Card title="Плов"&gt;&lt;p&gt;28 сомони&lt;/p&gt;&lt;/Card&gt;</code>?</p>
+          <ol class="options">
+            <li>Строка «Плов»</li>
+            <li>Весь компонент <code>Card</code></li>
+            <li>Элемент <code>&lt;p&gt;28 сомони&lt;/p&gt;</code>: то, что лежит между тегами</li>
+            <li>Пустое значение: <code>children</code> задают только через атрибут</li>
+          </ol>
+          <div class="explain"><p><code>title</code> — отдельный prop, а <code>children</code> всегда содержимое между тегами.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>В <code>App</code> объявлен <code>function Counter()</code> с собственным <code>useState</code>. Что случится, когда состояние самого <code>App</code> изменится?</p>
+          <ol class="options">
+            <li>Состояние <code>Counter</code> сбросится: при каждой перерисовке <code>App</code> создаётся новая функция, то есть новый компонент</li>
+            <li>Ничего: состояние сохраняется всегда</li>
+            <li>React выдаст ошибку компиляции</li>
+            <li>Компонент <code>Counter</code> перестанет работать навсегда</li>
+          </ol>
+          <div class="explain"><p>React различает компоненты по ссылке на функцию. Новая функция — новый компонент, старый размонтируется вместе с состоянием. Следующая задача покажет это на деле.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t2-card">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Карточка ресторана с children</h4><span class="level easy">лёгкая</span></header>
+        <p>Допишите компонент <code>Card</code>: он получает <code>title</code> и <code>children</code> и возвращает <code>&lt;section className="card"&gt;</code> с заголовком <code>h3</code> (название) и самим содержимым <code>children</code> после него.</p>
+        <div class="playground" data-mode="react" data-title="Card с children">
+<pre class="code" data-lang="jsx">
+function Card(props) {
+  // TODO: section.card, h3 с title, затем children
+  return &lt;section className="card"&gt;&lt;/section&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;Card title="Navruz"&gt;&lt;p&gt;Плов, самбуса&lt;/p&gt;&lt;/Card&gt;
+      &lt;Card title="Rohat"&gt;&lt;p&gt;Шашлык&lt;/p&gt;&lt;button&gt;Заказать&lt;/button&gt;&lt;/Card&gt;
+    &lt;/main&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>&lt;main&gt;
+&lt;section class="card"&gt;
+&lt;h3&gt;Navruz&lt;/h3&gt;
+&lt;p&gt;Плов, самбуса&lt;/p&gt;
+&lt;/section&gt;
+&lt;section class="card"&gt;
+&lt;h3&gt;Rohat&lt;/h3&gt;
+&lt;p&gt;Шашлык&lt;/p&gt;
+&lt;button&gt;Заказать&lt;/button&gt;
+&lt;/section&gt;
+&lt;/main&gt;</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Деструктурируйте props: <code>function Card({ title, children })</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;section className="card"&gt;&lt;h3&gt;{title}&lt;/h3&gt;{children}&lt;/section&gt;</code></p></details>
+      </article>
+
+      <article class="task" id="t2-inner">
+        <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Состояние сбрасывается: компонент внутри компонента</h4><span class="level mid">средняя</span></header>
+        <p>Нажмите «Нажато» пару раз, затем кнопку «Тема»: счётчик обнуляется. Причина: <code>Counter</code> объявлен внутри <code>App</code>. Вынесите его на верхний уровень файла (выше <code>App</code>), чтобы счётчик пережил смену темы.</p>
+        <div class="playground" data-mode="react" data-title="Сброс состояния">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [theme, setTheme] = useState("light");
+
+  // TODO: вынесите Counter из App
+  function Counter() {
+    const [n, setN] = useState(0);
+    return &lt;button onClick={() =&gt; setN(n + 1)}&gt;Нажато: {n}&lt;/button&gt;;
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setTheme(theme === "light" ? "dark" : "light")}&gt;Тема: {theme}&lt;/button&gt;
+      &lt;Counter /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+const buttons = () =&gt; document.querySelectorAll("button");
+(async () =&gt; {
+  await wait();
+  buttons()[1].click(); await wait();
+  buttons()[1].click(); await wait();
+  buttons()[0].click(); await wait();
+  console.log(buttons()[1].textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Нажато: 2</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Перенесите весь блок <code>function Counter() { … }</code> выше строки <code>export default function App()</code>, не меняя его код.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Теперь <code>Counter</code> один и тот же при каждой перерисовке <code>App</code>, поэтому React сохраняет его состояние.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/your-first-component" target="_blank" rel="noopener">react.dev — Your First Component</a> · <a href="https://react.dev/learn/passing-props-to-a-component" target="_blank" rel="noopener">react.dev — Passing Props to a Component</a> · <a href="https://react.dev/learn/preserving-and-resetting-state" target="_blank" rel="noopener">react.dev — Preserving and Resetting State</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="lists">
+      <h2 data-toc="Списки и key"><span class="num">03</span> Списки и key: как React узнаёт элементы</h2>
+
+      <p>Список в React — это обычный массив JavaScript: <code>filter</code> оставляет нужное, <code>map</code> превращает каждый объект в элемент. Единственное, что добавляет React, — <code>key</code>.</p>
+
+<pre class="code" data-lang="tsx" data-title="src/components/RestaurantList.tsx (фрагмент)">
+{restaurants
+  .filter((r) =&gt; r.open)
+  .map((r) =&gt; (
+    &lt;RestaurantCard key={r.id} restaurant={r} /&gt;
+  ))}
+</pre>
+
+      <p><b>Зачем нужен key.</b> При перерисовке React получает новый список элементов и должен понять, <i>кто есть кто</i>: какой элемент остался, какой добавился, какой удалился. Без ключа он сравнивает по позиции, с ключом — по идентичности. Ключ — это «паспорт» элемента.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Какой ключ</th><th>Когда подходит</th><th>Что бывает</th></tr></thead>
+          <tbody>
+            <tr><td><b><code>id</code> из данных</b></td><td>Почти всегда: он уникален и не меняется</td><td>Состояние и DOM привязаны к нужным элементам</td></tr>
+            <tr><td><b>Индекс <code>index</code></b></td><td>Только для статичных списков, которые никогда не сортируют, не фильтруют и не удаляют из середины</td><td>После удаления или перестановки состояние «переезжает» к чужим элементам</td></tr>
+            <tr><td><b><code>Math.random()</code>, <code>crypto.randomUUID()</code> прямо в рендере</b></td><td>Никогда</td><td>Ключ новый при каждой перерисовке: все элементы пересоздаются, состояние теряется, всё медленно</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Правила: ключ уникален <b>среди соседей</b> в одном списке (в разных списках могут совпадать), ставится на элемент, который возвращает <code>map</code> (а не на вложенный), и доступен только React: внутри компонента <code>props.key</code> нет. Если в <code>map</code> нужен Fragment, пишите <code>&lt;Fragment key={id}&gt;</code> (сокращённая запись <code>&lt;&gt;</code> ключ принимать не умеет). Если идентификатора в данных нет, создайте его <b>при создании данных</b> (например, <code>crypto.randomUUID()</code> в момент добавления записи), а не в рендере.</p>
+
+<pre class="code" data-title="Терминал — предупреждение React в консоли браузера и правило Oxlint">
+Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using &lt;li&gt;. See https://react.dev/link/warning-keys for more information.
+
+src/Bad.tsx:18:20: warning react(jsx-key): Missing "key" prop for element in iterator.
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>В зале ожидания на вокзале в Душанбе сидят Алишер, Бахром и Саида. Если «паспорт» человека — номер его места, то после того, как Алишер ушёл, все сдвинулись на одно место, и вы решите, что Бахром — это теперь «место №1», а его вещи и билет достались Алишеру. Если «паспорт» — имя, никакой путаницы. Индекс — номер места, <code>id</code> — имя.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> <code>key={index}</code> в списке, который можно сортировать, фильтровать или удалять из него. <b>2.</b> Ключ не на том элементе: <code>&lt;li&gt;&lt;Card key=… /&gt;&lt;/li&gt;</code>. <b>3.</b> Ожидать, что <code>key</code> можно прочитать внутри компонента. <b>4.</b> Забыть про пустой список: показывайте «Ничего не найдено», а не пустое место.</p>
+      </div>
+
+      <article class="task" id="q-keys">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Проверь себя: key</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="4">
+          <p>Зачем React нужен <code>key</code> в списке?</p>
+          <ol class="options">
+            <li>Чтобы список работал быстрее в любом случае</li>
+            <li>Чтобы подставлять в CSS-класс</li>
+            <li>Чтобы передавать данные внутрь компонента через <code>props.key</code></li>
+            <li>Чтобы при изменении списка сопоставить новые элементы со старыми и сохранить состояние нужных</li>
+          </ol>
+          <div class="explain"><p>Ключ — идентичность элемента между перерисовками. Он не передаётся в props, и быстрее «вообще» не делает: он делает правильно.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Рестораны хранятся в массиве с полем <code>id</code>, и их можно удалять. Что поставить в <code>key</code>?</p>
+          <ol class="options">
+            <li><code>key={index}</code>: он всегда под рукой</li>
+            <li><code>key={restaurant.id}</code>: он уникален и не меняется при удалении других</li>
+            <li><code>key={Math.random()}</code>: он точно уникален</li>
+            <li><code>key={restaurant.name}</code>, даже если названия могут повторяться</li>
+          </ol>
+          <div class="explain"><p>Стабильный уникальный <code>id</code> — лучший выбор. Название может повторяться (две «Навруз» в разных районах), а случайный ключ пересоздаёт все элементы при каждой перерисовке.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t3-list">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Только открытые рестораны</h4><span class="level mid">средняя</span></header>
+        <p>Выведите список <code>ul</code> из <b>открытых</b> ресторанов (поле <code>open</code>): по одному <code>li</code> формата <code>название · кухня</code>, с <code>key</code> из <code>id</code>. Если открытых нет, вместо списка покажите <code>&lt;p&gt;Ничего не найдено&lt;/p&gt;</code>. Список в проверке подменяется, поэтому пустой случай тоже проверяется.</p>
+        <div class="playground" data-mode="react" data-title="Открытые рестораны">
+<pre class="code" data-lang="jsx">
+function OpenList({ restaurants }) {
+  // TODO: filter, затем map с key; если открытых нет, верните p «Ничего не найдено»
+  return &lt;ul&gt;&lt;/ul&gt;;
+}
+
+const all = [
+  { id: 1, name: "Navruz", cuisine: "плов", open: true },
+  { id: 2, name: "Rohat", cuisine: "шашлык", open: false },
+  { id: 3, name: "Samarkand", cuisine: "самбуса", open: true },
+];
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;OpenList restaurants={all} /&gt;
+      &lt;OpenList restaurants={all.map((r) =&gt; ({ ...r, open: false }))} /&gt;
+    &lt;/main&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>&lt;main&gt;
+&lt;ul&gt;
+&lt;li&gt;Navruz · плов&lt;/li&gt;
+&lt;li&gt;Samarkand · самбуса&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Ничего не найдено&lt;/p&gt;
+&lt;/main&gt;</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Сначала <code>const visible = restaurants.filter((r) =&gt; r.open)</code>. Затем ранний выход: <code>if (visible.length === 0) return &lt;p&gt;…&lt;/p&gt;</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;ul&gt;{visible.map((r) =&gt; &lt;li key={r.id}&gt;{r.name} · {r.cuisine}&lt;/li&gt;)}&lt;/ul&gt;</code></p></details>
+      </article>
+
+      <article class="task" id="t3-key">
+        <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Баг индексного ключа: заметка уехала к чужому ресторану</h4><span class="level hard">сложная</span></header>
+        <p>В каждой строке есть поле для заметки (<code>input</code> без состояния React). Автопроверка пишет заметку «острый» у первого ресторана и нажимает «Удалить первый». С ключом-индексом заметка остаётся в первой строке, но теперь это уже <b>другой</b> ресторан. Замените ключ на <code>item.id</code>, чтобы заметка исчезла вместе со своим рестораном.</p>
+        <div class="playground" data-mode="react" data-title="Заметки к ресторанам">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+const initial = [
+  { id: 1, name: "Navruz" },
+  { id: 2, name: "Rohat" },
+  { id: 3, name: "Samarkand" },
+];
+
+export default function App() {
+  const [items, setItems] = useState(initial);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setItems(items.slice(1))}&gt;Удалить первый&lt;/button&gt;
+      &lt;ul&gt;
+        {items.map((item, index) =&gt; (
+          &lt;li key={index}&gt;
+            &lt;span&gt;{item.name}&lt;/span&gt; &lt;input defaultValue="" /&gt;
+          &lt;/li&gt;
+        ))}
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("input").value = "острый";
+  document.querySelector("button").click();
+  await wait();
+  const li = document.querySelector("li");
+  console.log(li.querySelector("span").textContent + " | заметка: [" + li.querySelector("input").value + "]");
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Rohat | заметка: []</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Ключ должен идентифицировать ресторан, а не его позицию в списке: у каждого объекта есть <code>id</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;li key={item.id}&gt;</code>: параметр <code>index</code> тогда не нужен.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/rendering-lists" target="_blank" rel="noopener">react.dev — Rendering Lists</a> · <a href="https://react.dev/learn/preserving-and-resetting-state" target="_blank" rel="noopener">react.dev — Preserving and Resetting State</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="render">
+      <h2 data-toc="Модель рендера"><span class="num">04</span> Когда и как React перерисовывает компонент</h2>
+
+      <p>«Рендер» — самое перегруженное слово в React. Давайте разделим его на три шага. <b>Триггер:</b> что-то запросило показ (первый запуск через <code>createRoot().render()</code> или изменение состояния через <code>setState</code>). <b>Рендер:</b> React вызывает функции ваших компонентов и получает новое дерево элементов. Это только вычисление, экран ещё не тронут. <b>Коммит:</b> React сравнивает новое дерево со старым и вносит в DOM только различия. Если ничего не отличается, DOM не трогают вообще.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 190" role="img" aria-label="Три шага: триггер (первый запуск или setState), рендер (React вызывает функции компонентов и получает дерево элементов), коммит (React вносит различия в DOM). Только на третьем шаге меняется экран">
+          <rect class="fill-y" x="10" y="30" width="200" height="82" rx="12" /><text x="110" y="56" text-anchor="middle">1. Триггер</text><text class="sub" x="110" y="78" text-anchor="middle">первый запуск</text><text class="sub mono" x="110" y="98" text-anchor="middle">или setState(...)</text>
+          <rect class="fill-g" x="260" y="30" width="200" height="82" rx="12" /><text x="360" y="56" text-anchor="middle">2. Рендер</text><text class="sub" x="360" y="78" text-anchor="middle">React вызывает ваши</text><text class="sub" x="360" y="98" text-anchor="middle">функции-компоненты</text>
+          <rect class="fill-g" x="510" y="30" width="200" height="82" rx="12" /><text x="610" y="56" text-anchor="middle">3. Коммит</text><text class="sub" x="610" y="78" text-anchor="middle">различия переносятся</text><text class="sub" x="610" y="98" text-anchor="middle">в DOM браузера</text>
+          <path class="arr" d="M210 71 H252" /><path class="arr-head" d="M260 71 l-10 -5 v10 z" />
+          <path class="arr" d="M460 71 H502" /><path class="arr-head" d="M510 71 l-10 -5 v10 z" />
+          <text class="sub t-b" x="360" y="150" text-anchor="middle">экран ещё прежний</text>
+          <text class="sub t-g" x="610" y="150" text-anchor="middle">экран обновился (если есть различия)</text>
+          <text class="sub" x="12" y="178">Рендер — вызов функций. Он не равен обновлению DOM: вызвали компонент, а на экране ничего не изменилось.</text>
+        </svg>
+        <figcaption>Три шага обновления: триггер, рендер, коммит. Меняет экран только последний шаг</figcaption>
+      </figure>
+
+      <div class="yt" data-id="jcH4ZGdiBGQ" data-title="Что такое Render и Commit в React — канал Dev Surge"></div>
+      <p class="muted">Ролик на русском (2023 год, 10 минут): фазы render и commit на примерах. Идея не изменилась в React 19.</p>
+
+      <h3>Состояние — это снимок</h3>
+      <p>Каждый рендер видит свои значения props и состояния: они «заморожены» на момент вызова функции. <code>setQty(qty + 1)</code> не меняет переменную <code>qty</code> прямо сейчас, а просит React выполнить новый рендер с новым значением. Поэтому три вызова подряд получают одно и то же <code>qty</code>.</p>
+
+<pre class="code" data-lang="tsx" data-title="Три вызова setQty в одном обработчике">
+const [qty, setQty] = useState(0)
+
+function addThree() {
+  setQty(qty + 1) // qty здесь равно 0 → попросили 1
+  setQty(qty + 1) // qty всё ещё 0 → попросили 1
+  setQty(qty + 1) // и снова 1
+}
+// после клика на экране 1, а не 3
+
+function addThreeRight() {
+  setQty((q) =&gt; q + 1) // функция получает последнее значение из очереди
+  setQty((q) =&gt; q + 1)
+  setQty((q) =&gt; q + 1)
+}
+// после клика на экране 3
+</pre>
+
+      <h3>Что перерисуется</h3>
+      <p>Компонент рендерится заново, когда <b>изменилось его состояние</b> или <b>перерисовался его родитель</b>. Второй пункт важен: по умолчанию React перерисовывает <b>всех потомков</b> компонента, у которого поменялось состояние, даже если их props остались прежними. Это не страшно: рендер — дешёвый вызов функции, а коммит всё равно затронет только реальные различия. Чаще всего ничего оптимизировать не нужно. Если же тяжёлый компонент без нужды рендерится на каждый клик, первое лекарство самое простое — <b>опустить состояние ниже</b>: вынести ту часть, которой оно нужно, в отдельный маленький компонент. Инструменты вроде <code>React.memo</code>, Profiler и React Compiler разберём в уроках 6 и 12.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Два дерева компонентов. Слева состояние лежит в App, и при его изменении перерисовываются App, Header, Menu и LikeButton. Справа состояние лежит в LikeButton, и перерисовывается только он">
+          <text x="12" y="20">Состояние в App</text>
+          <rect class="fill-y" x="120" y="34" width="100" height="36" rx="10" /><text x="170" y="57" text-anchor="middle">App</text>
+          <path class="arr" d="M170 70 V84 H65 V110" /><path class="arr" d="M170 84 V110" /><path class="arr" d="M170 84 H275 V110" />
+          <rect class="fill-r" x="20" y="110" width="90" height="36" rx="10" /><text x="65" y="133" text-anchor="middle">Header</text>
+          <rect class="fill-r" x="125" y="110" width="90" height="36" rx="10" /><text x="170" y="133" text-anchor="middle">Menu</text>
+          <rect class="fill-r" x="230" y="110" width="90" height="36" rx="10" /><text x="275" y="133" text-anchor="middle">LikeButton</text>
+          <text class="sub t-r" x="170" y="176" text-anchor="middle">перерисуются все четыре</text>
+
+          <text x="372" y="20">Состояние в LikeButton</text>
+          <rect class="box" x="480" y="34" width="100" height="36" rx="10" /><text x="530" y="57" text-anchor="middle">App</text>
+          <path class="arr" d="M530 70 V84 H425 V110" /><path class="arr" d="M530 84 V110" /><path class="arr" d="M530 84 H635 V110" />
+          <rect class="box" x="380" y="110" width="90" height="36" rx="10" /><text x="425" y="133" text-anchor="middle">Header</text>
+          <rect class="box" x="485" y="110" width="90" height="36" rx="10" /><text x="530" y="133" text-anchor="middle">Menu</text>
+          <rect class="fill-y" x="590" y="110" width="90" height="36" rx="10" /><text x="635" y="133" text-anchor="middle">LikeButton</text>
+          <text class="sub t-g" x="530" y="176" text-anchor="middle">перерисуется только LikeButton</text>
+          <text class="sub" x="12" y="214">Жёлтый: где лежит изменившееся состояние. Красный: что перерисовалось из-за него.</text>
+        </svg>
+        <figcaption>Где лежит состояние, оттуда и идёт перерисовка вниз по дереву. Состояние ближе к месту использования — меньше лишней работы</figcaption>
+      </figure>
+
+      <p>Ещё три факта о рендере. <b>1.</b> Если вызвать <code>setQty</code> с тем же значением (сравнение через <code>Object.is</code>), React пропустит перерисовку. Новый массив или объект с тем же содержимым — это уже новое значение. <b>2.</b> В dev-режиме с <code>StrictMode</code> (он есть в вашем <code>main.tsx</code>) React вызывает каждый компонент <b>дважды</b>, чтобы вскрыть нечистые функции (раздел 5). Поэтому <code>console.log</code> в компоненте печатается дважды (если установлены React DevTools, второй вызов выделен серым). В сборке для пользователей двойного вызова нет. <b>3.</b> Изменить состояние <i>без</i> <code>setState</code> (например, <code>items.push(x)</code>) не запустит рендер вообще: React не узнает об изменении. Про правильное обновление объектов и массивов поговорим в уроке 4.</p>
+
+      <h3>Попробуйте: кто рендерится</h3>
+      <p>Нажмите на кнопку несколько раз и посмотрите в панель консоли: какие компоненты пишут «render». <code>Menu</code> перерисовывается на каждый клик, хотя ему ничего не нужно. В задаче 4.3 вы это исправите.</p>
+
+      <div class="playground" data-mode="react" data-title="Журнал рендеров">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Header() {
+  console.log("render Header");
+  return &lt;h2&gt;Дастархон&lt;/h2&gt;;
+}
+
+function Menu() {
+  console.log("render Menu");
+  return &lt;ul&gt;&lt;li&gt;Плов&lt;/li&gt;&lt;li&gt;Лагман&lt;/li&gt;&lt;/ul&gt;;
+}
+
+export default function App() {
+  console.log("render App");
+  const [count, setCount] = useState(0);
+  return (
+    &lt;div&gt;
+      &lt;Header /&gt;
+      &lt;button onClick={() =&gt; setCount(count + 1)}&gt;Заказов: {count}&lt;/button&gt;
+      &lt;Menu /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>В чойхоне три шага такие. Гость делает заказ: это триггер. Повар на кухне готовит блюдо, пробует, переделывает: это рендер, до стола ничего не дошло. Официант сверяет, что уже стоит на столе, и выносит <b>только новое</b>: это коммит. Повар может приготовить блюдо дважды (StrictMode), но гость получит одно.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные заблуждения</b>
+        <p><b>1.</b> «Рендер — это когда обновляется экран». Нет, экран обновляет коммит, и только если есть различия. <b>2.</b> «<code>setState</code> меняет переменную сразу». Нет, новое значение увидит следующий рендер. <b>3.</b> «Каждая перерисовка тормозит страницу, надо везде ставить <code>memo</code>». Нет, сначала измерьте. <b>4.</b> «Компонент перерисовался, значит, он изменил DOM». Не обязательно. <b>5.</b> «Двойной <code>console.log</code> — баг». Нет, это StrictMode в dev.</p>
+      </div>
+
+      <article class="task" id="q-render">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: модель рендера</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Что происходит на шаге «рендер»?</p>
+          <ol class="options">
+            <li>React вставляет новые элементы в DOM браузера</li>
+            <li>Браузер рисует пиксели на экране</li>
+            <li>React вызывает функции компонентов и получает дерево элементов, DOM при этом не меняется</li>
+            <li>React скачивает данные с сервера</li>
+          </ol>
+          <div class="explain"><p>Рендер — это вычисление. Менять DOM начинает коммит, а пиксели рисует уже браузер.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Что заставляет React снова вызвать функцию компонента <code>Menu</code>? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Изменилось его собственное состояние</li>
+            <li>Прошла одна секунда</li>
+            <li>Перерисовался его родитель (по умолчанию потомки рендерятся вместе с ним)</li>
+            <li>Пользователь навёл мышь на страницу</li>
+          </ol>
+          <div class="explain"><p>Два триггера: своё состояние и перерисовка родителя. Время и мышь сами по себе рендер не запускают.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что выведет компонент после одного клика, если в обработчике три раза подряд вызвано <code>setQty(qty + 1)</code>, а <code>qty</code> было равно 0?</p>
+          <ol class="options">
+            <li>3</li>
+            <li>1</li>
+            <li>0</li>
+            <li>Ошибку</li>
+          </ol>
+          <div class="explain"><p>В одном рендере <code>qty</code> — это снимок, он равен 0 во всех трёх вызовах. Каждый вызов просит «поставь 1». Чтобы получить 3, передайте функцию: <code>setQty((q) =&gt; q + 1)</code>.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t4-snap">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Три порции за один клик</h4><span class="level mid">средняя</span></header>
+        <p>Кнопка «+3» должна добавлять три порции за один клик, но добавляет одну. Исправьте <code>addThree</code>, не меняя остальное: используйте функциональную форму обновления.</p>
+        <div class="playground" data-mode="react" data-title="Порции +3">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [qty, setQty] = useState(0);
+
+  function addThree() {
+    // TODO: сейчас все три вызова видят одно и то же qty
+    setQty(qty + 1);
+    setQty(qty + 1);
+    setQty(qty + 1);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Порций: {qty}&lt;/p&gt;
+      &lt;button onClick={addThree}&gt;+3&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("button").click(); await wait();
+  document.querySelector("button").click(); await wait();
+  console.log(document.querySelector("p").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Порций: 6</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В <code>setQty</code> можно передать функцию: она получает самое свежее значение, а не снимок из рендера.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>setQty((q) =&gt; q + 1);</code> три раза подряд.</p></details>
+      </article>
+
+      <article class="task" id="t4-down">
+        <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Опустите состояние ниже</h4><span class="level hard">сложная</span></header>
+        <p>Сейчас состояние <code>liked</code> лежит в <code>App</code>, поэтому каждый клик по сердечку перерисовывает <code>Menu</code>. Вынесите кнопку вместе с состоянием в новый компонент <code>LikeButton</code> (на верхнем уровне файла), чтобы <code>Menu</code> вывел «render Menu» ровно один раз за три клика.</p>
+        <div class="playground" data-mode="react" data-title="Лишние рендеры меню">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Menu() {
+  console.log("render Menu");
+  return &lt;ul&gt;&lt;li&gt;Плов&lt;/li&gt;&lt;li&gt;Лагман&lt;/li&gt;&lt;li&gt;Самбуса&lt;/li&gt;&lt;/ul&gt;;
+}
+
+// TODO: создайте здесь LikeButton с состоянием liked
+
+export default function App() {
+  const [liked, setLiked] = useState(false);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setLiked(!liked)}&gt;{liked ? "♥" : "♡"}&lt;/button&gt;
+      &lt;Menu /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  for (let i = 0; i &lt; 3; i++) { document.querySelector("button").click(); await wait(); }
+  console.log("кнопка: " + document.querySelector("button").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>render Menu
+кнопка: ♥</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Состояние нужно только кнопке, значит, пусть живёт в ней: <code>function LikeButton() { const [liked, setLiked] = useState(false); … }</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>В <code>App</code> тогда остаётся <code>&lt;div&gt;&lt;LikeButton /&gt;&lt;Menu /&gt;&lt;/div&gt;</code> и нет своего <code>useState</code>: при клике рендерится только <code>LikeButton</code>.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/render-and-commit" target="_blank" rel="noopener">react.dev — Render and Commit</a> · <a href="https://react.dev/learn/state-as-a-snapshot" target="_blank" rel="noopener">react.dev — State as a Snapshot</a> · <a href="https://react.dev/learn/queueing-a-series-of-state-updates" target="_blank" rel="noopener">react.dev — Queueing a Series of State Updates</a> · <a href="https://react.dev/reference/react/StrictMode" target="_blank" rel="noopener">react.dev — StrictMode</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="pure">
+      <h2 data-toc="Чистые компоненты"><span class="num">05</span> Чистые компоненты</h2>
+
+      <p>Компонент должен быть как формула: <b>те же props и то же состояние — тот же JSX</b>. И ещё одно условие: во время рендера он не меняет ничего, что существовало до него. Тогда React может вызывать его в любое время, пропускать, повторять — и результат будет одинаков. Поэтому и работает StrictMode с двойным вызовом.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Нечисто (так нельзя)</th><th>Чисто (так можно)</th></tr></thead>
+          <tbody>
+            <tr><td>Менять переменную вне компонента: <code>guestCount++</code> в теле</td><td>Считать из props и состояния; локальные <code>let</code> и массивы, созданные <b>внутри</b> этого рендера, менять можно</td></tr>
+            <tr><td>Менять props: <code>props.items.sort()</code>, <code>props.name = …</code></td><td>Копия: <code>[...items].sort()</code>, <code>items.toSorted()</code></td></tr>
+            <tr><td><code>Date.now()</code> или <code>Math.random()</code> прямо в JSX</td><td>Время и случайность — в обработчик события или в состояние</td></tr>
+            <tr><td><code>fetch</code>, запись в <code>localStorage</code>, изменение DOM в теле компонента</td><td>Обработчик события или <code>useEffect</code> (урок 5)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre class="code" data-lang="tsx" data-title="Нечистый компонент, который вскрывает StrictMode">
+let guestCount = 0 // переменная ВНЕ компонента
+
+export default function Guest() {
+  guestCount = guestCount + 1 // меняем внешнее во время рендера
+  return &lt;p&gt;Гость № {guestCount}&lt;/p&gt;
+}
+// в dev с StrictMode компонент вызывается дважды: на странице «Гость № 2», а не 1
+</pre>
+
+      <p>Изменение props React запрещает сам: в dev-режиме объект props «заморожен», и попытка присвоить значение даёт ошибку. А вот <code>.sort()</code> на массиве из props работает и тихо портит исходный массив. Эта ошибка встречается чаще всего.</p>
+
+<pre class="code" data-title="Терминал — присвоение в props в dev-режиме">
+TypeError: Cannot assign to read only property 'name' of object '#&lt;Object&gt;'
+</pre>
+
+      <p>Куда деть побочные эффекты? Первое место — <b>обработчик события</b> (<code>onClick</code>, <code>onSubmit</code>): оттуда можно делать что угодно, он вызывается только при действии пользователя. Второе — <code>useEffect</code>, когда нужно синхронизироваться с внешним миром (урок 5). В остальных случаях рендер должен только считать и вернуть JSX.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Чистый компонент — кассир на бозоре с калькулятором: подал «3 кг моркови по 8 сомони», получил «24 сомони». Всегда. Нечистый — кассир, который при каждом подсчёте ещё и берёт морковь с чужого прилавка: у соседа убыток, а у вас два одинаковых расчёта дают разные результаты, если кто-то посчитал дважды.</p>
+      </div>
+
+      <article class="task" id="q-pure">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: чистота</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Какая строка внутри компонента делает его нечистым?</p>
+          <ol class="options">
+            <li><code>const total = price * qty</code></li>
+            <li><code>const copy = [...items]; copy.sort()</code></li>
+            <li><code>items.sort()</code>, где <code>items</code> пришёл из props</li>
+            <li><code>const label = open ? "Открыто" : "Закрыто"</code></li>
+          </ol>
+          <div class="explain"><p>Метод <code>sort</code> меняет массив на месте, а этот массив принадлежит родителю. Копия (второй вариант) — локальные данные, их менять можно.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Куда правильно поместить запись в <code>localStorage</code> при нажатии на «Добавить в избранное»?</p>
+          <ol class="options">
+            <li>Прямо в тело компонента, перед <code>return</code></li>
+            <li>В обработчик <code>onClick</code> этой кнопки</li>
+            <li>В JSX как выражение <code>{localStorage.setItem(…)}</code></li>
+            <li>В <code>index.html</code></li>
+          </ol>
+          <div class="explain"><p>Побочный эффект, вызванный действием пользователя, место в обработчике события. В теле компонента он выполнился бы на каждом рендере, включая двойной вызов в StrictMode.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t5-sort">
+        <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Топ ресторанов без порчи данных</h4><span class="level mid">средняя</span></header>
+        <p>Компонент <code>TopList</code> показывает рестораны по убыванию рейтинга, но при этом <b>меняет порядок массива родителя</b>: вторая строка проверки покажет это. Исправьте так, чтобы список на экране был отсортирован, а исходный массив остался как был.</p>
+        <div class="playground" data-mode="react" data-title="Топ по рейтингу">
+<pre class="code" data-lang="jsx">
+const restaurants = [
+  { id: 1, name: "Navruz", rating: 4.5 },
+  { id: 2, name: "Rohat", rating: 4.8 },
+  { id: 3, name: "Samarkand", rating: 4.1 },
+];
+
+function TopList({ items }) {
+  // TODO: sort меняет items на месте, а это массив родителя
+  const sorted = items.sort((a, b) =&gt; b.rating - a.rating);
+  return (
+    &lt;ol&gt;
+      {sorted.map((r) =&gt; &lt;li key={r.id}&gt;{r.name}&lt;/li&gt;)}
+    &lt;/ol&gt;
+  );
+}
+
+export default function App() {
+  return &lt;TopList items={restaurants} /&gt;;
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+setTimeout(() =&gt; console.log("исходный порядок: " + restaurants.map((r) =&gt; r.name).join(", ")), 150);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>&lt;ol&gt;
+&lt;li&gt;Rohat&lt;/li&gt;
+&lt;li&gt;Navruz&lt;/li&gt;
+&lt;li&gt;Samarkand&lt;/li&gt;
+&lt;/ol&gt;
+исходный порядок: Navruz, Rohat, Samarkand</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Сначала сделайте копию массива, потом сортируйте её.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const sorted = [...items].sort((a, b) =&gt; b.rating - a.rating);</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/keeping-components-pure" target="_blank" rel="noopener">react.dev — Keeping Components Pure</a> · <a href="https://react.dev/reference/react/StrictMode" target="_blank" rel="noopener">react.dev — StrictMode</a></p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="styles">
+      <h2 data-toc="Стили: CSS Modules и Tailwind"><span class="num">06</span> Стили в React: CSS Modules и Tailwind CSS</h2>
+
+      <p>В обычном CSS все классы глобальные: <code>.card</code> из одного файла красит <code>.card</code> во всём приложении, а имена рано или поздно совпадают. В проектах на React с этой проблемой справляются двумя способами, и в «Дастархоне» вы подключите оба. Шаблон Vite умеет и то, и другое.</p>
+
+      <h3>CSS Modules: свой CSS у каждого компонента</h3>
+      <p>Файл с именем <code>Что-то.module.css</code> — это CSS Module. Vite понимает его сам, ничего ставить не нужно. Его классы <b>локальны</b>: при сборке к имени добавляется уникальный хэш, и конфликтовать с чужим <code>.card</code> он не будет.</p>
+
+<pre class="code" data-lang="css" data-title="RestaurantCard.module.css">
+.card {
+  padding: 1rem;
+  border-radius: 1rem;
+}
+
+.closed {
+  opacity: 0.6;
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="RestaurantCard.tsx (фрагмент)">
+import styles from './RestaurantCard.module.css'
+
+// styles.card — это строка вида '_card_yj5l5_1', её и вставляем в className
+const className = open ? styles.card : `${styles.card} ${styles.closed}`
+</pre>
+
+      <p>Хэш в имени класса вы увидите в DevTools. Типы для импорта <code>*.module.css</code> уже подключены: в <code>tsconfig.app.json</code> есть <code>"types": ["vite/client"]</code>. Но обратите внимание: TypeScript знает только, что <code>styles.что-угодно</code> — строка. Опечатка <code>styles.carrd</code> ошибкой типов не станет: класс просто не применится, и вы заметите это глазами. Несколько классов склеивают шаблонной строкой (как выше) или массивом: <code>[styles.card, !open &amp;&amp; styles.closed].filter(Boolean).join(' ')</code>.</p>
+
+      <h3>Tailwind CSS 4: утилитарные классы</h3>
+      <p><b>Tailwind</b> даёт готовые маленькие классы на каждое свойство: <code>p-4</code> (отступ), <code>rounded-xl</code>, <code>text-lg</code>, <code>font-bold</code>, <code>flex</code>, <code>gap-2</code>. Вы собираете вид прямо в <code>className</code>, а Tailwind при сборке находит в исходниках используемые классы и включает в итоговый CSS только их. Текущая версия — 4.3; подключение к Vite занимает три шага (в практике вы выполните их сами):</p>
+
+<pre class="code" data-title="Терминал">
+npm install tailwindcss @tailwindcss/vite
+</pre>
+<pre class="code" data-lang="ts" data-title="vite.config.ts">
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+})
+</pre>
+<pre class="code" data-lang="css" data-title="src/index.css">
+@import 'tailwindcss';
+</pre>
+
+      <p>Файл <code>tailwind.config.js</code> и PostCSS в четвёртой версии не нужны. Все настройки лежат в CSS.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Возможность</th><th>Пример</th><th>Что делает</th></tr></thead>
+          <tbody>
+            <tr><td><b>Адаптивность</b></td><td><code>grid gap-4 sm:grid-cols-2 lg:grid-cols-3</code></td><td>Префикс означает «от этой ширины и шире»: сначала мобильная раскладка, потом дополнения (mobile first)</td></tr>
+            <tr><td><b>Состояния</b></td><td><code>hover:bg-brand-100 focus:ring disabled:opacity-50</code></td><td>Стиль включается при наведении, фокусе, отключённой кнопке</td></tr>
+            <tr><td><b>Тёмная тема</b></td><td><code>bg-white dark:bg-stone-900</code></td><td>По умолчанию следует настройке системы (<code>prefers-color-scheme</code>)</td></tr>
+            <tr><td><b>Своя тема</b></td><td><code>@theme { --color-brand-600: #c2410c; }</code> в CSS</td><td>Создаёт классы <code>bg-brand-600</code>, <code>text-brand-600</code> и переменную <code>var(--color-brand-600)</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Для переключателя темы кнопкой (урок 8) переопределите вариант в CSS: <code>@custom-variant dark (&amp;:where(.dark, .dark *));</code>, и <code>dark:</code> будет срабатывать, когда у <code>html</code> стоит класс <code>dark</code>.</p>
+
+      <div class="callout warn">
+        <b>Важно: Tailwind читает исходники как обычный текст</b>
+        <p>Он ищет в файлах готовые слова-классы. Если собирать имя из кусочков, класса в итоговом CSS не будет, и ошибки тоже не будет: стиль просто не применится.</p>
+      </div>
+
+<pre class="code" data-lang="tsx" data-title="Динамические классы">
+// плохо: Tailwind не найдёт слово 'bg-green-100' целиком
+const bad = `bg-${open ? 'green' : 'stone'}-100`
+
+// хорошо: оба варианта записаны целиком
+const good = open ? 'bg-green-100' : 'bg-stone-100'
+</pre>
+
+      <h3>Что и когда выбирать</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Задача</th><th>Чем стилизуем в «Дастархоне»</th><th>Почему</th></tr></thead>
+          <tbody>
+            <tr><td>Раскладка, отступы, шрифты, цвета, адаптив, тёмная тема</td><td><b>Tailwind</b></td><td>Быстро, не нужно придумывать имена классов, значения берутся из единой темы</td></tr>
+            <tr><td>Компонент со «своим» CSS: анимация, псевдоэлементы, сложное наведение</td><td><b>CSS Modules</b></td><td>Обычный CSS в отдельном файле, изолированный от остального</td></tr>
+            <tr><td>Сброс стилей, глобальные переменные</td><td><b>Глобальный CSS</b> (<code>index.css</code>)</td><td>Это единственное место, где глобальность нужна</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Не стилизуйте одно и то же свойство двумя способами на одном элементе: что победит, решает порядок правил в итоговом CSS, а не порядок в <code>className</code>. Длинный список классов не повод бояться: если он повторяется, делайте компонент (<code>Badge</code>), а не копируйте строку.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>CSS Modules — это отдельная кухня для каждого повара: у каждого свои кастрюли с подписью, чужие не перепутаешь. Tailwind — общий набор приправ в ящике на стене: берёте щепотку «p-4», щепотку «font-bold» и собираете блюдо на месте, а список приправ (тема) один на всю кухню.</p>
+      </div>
+
+      <article class="task" id="q-styles">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь себя: стили</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Чем CSS Module отличается от обычного CSS-файла?</p>
+          <ol class="options">
+            <li>Он работает только в TypeScript</li>
+            <li>Его классы локальны: сборка добавляет хэш, и они не конфликтуют с классами из других файлов</li>
+            <li>Он автоматически делает страницу адаптивной</li>
+            <li>Его нужно устанавливать отдельным пакетом</li>
+          </ol>
+          <div class="explain"><p>Vite поддерживает CSS Modules из коробки. Локальность достигается переименованием классов при сборке.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Вы написали <code>className={`bg-${color}-600`}</code>, а цвет не применился и ошибок нет. Почему?</p>
+          <ol class="options">
+            <li>Tailwind ищет в исходниках готовые имена классов, а собранное из кусочков имя найти нельзя</li>
+            <li>В Tailwind 4 нет цветов</li>
+            <li>TypeScript запретил шаблонные строки</li>
+            <li>Класс нужно объявить в <code>tailwind.config.js</code></li>
+          </ol>
+          <div class="explain"><p>Записывайте классы целиком: <code>color === 'green' ? 'bg-green-600' : 'bg-stone-600'</code>. Конфиг-файл в четвёртой версии по умолчанию не нужен.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что означает <code>grid sm:grid-cols-2 lg:grid-cols-3</code>?</p>
+          <ol class="options">
+            <li>Три колонки на телефоне, две на компьютере</li>
+            <li>Всегда две колонки</li>
+            <li>Одна колонка по умолчанию, две колонки от ширины <code>sm</code>, три от <code>lg</code></li>
+            <li>Три колонки только в тёмной теме</li>
+          </ol>
+          <div class="explain"><p>Tailwind mobile first: класс без префикса действует всегда, префикс <code>sm:</code> и <code>lg:</code> добавляет правила от своей ширины и выше.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/features.html#css-modules" target="_blank" rel="noopener">vite.dev — CSS Modules</a> · <a href="https://tailwindcss.com/docs/installation/using-vite" target="_blank" rel="noopener">tailwindcss.com — Install with Vite</a> · <a href="https://tailwindcss.com/docs/theme" target="_blank" rel="noopener">Tailwind — Theme</a> · <a href="https://tailwindcss.com/docs/dark-mode" target="_blank" rel="noopener">Tailwind — Dark mode</a> · <a href="https://tailwindcss.com/docs/detecting-classes-in-source-files" target="_blank" rel="noopener">Tailwind — Detecting classes</a> · <a href="https://tailwindcss.com/docs/responsive-design" target="_blank" rel="noopener">Tailwind — Responsive design</a></p>
+    </section>
+
+    <!-- ============ 07 · ИИ-блок ============ -->
+    <section class="topic" id="ai-tree">
+      <h2 data-toc="ИИ: дерево компонентов"><span class="num">07</span> ИИ-блок: макет в дерево компонентов и спор с агентом</h2>
+
+      <p>Разбить экран на компоненты — задача, где агент полезен как собеседник: он быстро предлагает вариант, а вы проверяете его границы. Принимать первый ответ нельзя: агент охотно делает либо один гигантский компонент, либо двадцать однострочных. Вот макет каталога, который мы собираем. Поиск и фильтр по кухне уже есть из урока 2, остальное предстоит разбить на компоненты:</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 384" role="img" aria-label="Макет страницы каталога. Сверху шапка с названием Дастархон и городом, ниже заголовок Рестораны Душанбе, строка поиска и кнопки фильтра по кухне, затем сетка из трёх карточек: название, кухня, бейдж открыто или закрыто, рейтинг, время доставки и минимальный заказ. Внизу подвал. Номера отмечают области: 1 шапка, 2 заголовок, 3 поиск, 4 фильтр, 5 сетка, 6 карточка, 7 бейдж, 8 рейтинг, 9 подвал">
+          <rect class="box" x="10" y="10" width="700" height="364" rx="14" />
+          <rect class="fill-y" x="20" y="20" width="680" height="44" rx="10" /><text x="36" y="48">Дастархон</text><text class="sub" x="636" y="48" text-anchor="end">Душанбе</text>
+          <circle class="fill-g" cx="684" cy="42" r="11" /><text x="684" y="46" text-anchor="middle">1</text>
+          <text x="30" y="94">Рестораны Душанбе</text><circle class="fill-g" cx="206" cy="89" r="11" /><text x="206" y="93" text-anchor="middle">2</text>
+          <rect class="box" x="20" y="106" width="220" height="28" rx="8" /><text class="sub" x="32" y="125">Найти ресторан</text><circle class="fill-g" cx="240" cy="106" r="10" /><text x="240" y="110" text-anchor="middle">3</text>
+          <rect class="fill-g" x="262" y="106" width="40" height="28" rx="14" /><text class="sub" x="282" y="125" text-anchor="middle">Все</text>
+          <rect class="box" x="310" y="106" width="56" height="28" rx="14" /><text class="sub" x="338" y="125" text-anchor="middle">плов</text>
+          <rect class="box" x="374" y="106" width="64" height="28" rx="14" /><text class="sub" x="406" y="125" text-anchor="middle">шашлык</text>
+          <rect class="box" x="446" y="106" width="68" height="28" rx="14" /><text class="sub" x="480" y="125" text-anchor="middle">самбуса</text>
+          <circle class="fill-g" cx="522" cy="106" r="10" /><text x="522" y="110" text-anchor="middle">4</text>
+          <rect class="box g" x="16" y="148" width="688" height="168" rx="12" stroke-dasharray="6 4" /><circle class="fill-g" cx="16" cy="148" r="11" /><text x="16" y="152" text-anchor="middle">5</text>
+
+          <rect class="box" x="24" y="156" width="220" height="152" rx="12" /><circle class="fill-g" cx="244" cy="156" r="11" /><text x="244" y="160" text-anchor="middle">6</text>
+          <circle class="fill-y" cx="52" cy="188" r="16" /><text x="76" y="184">Navruz</text><text class="sub" x="76" y="202">плов</text>
+          <rect class="fill-g" x="150" y="174" width="62" height="20" rx="10" /><text class="sub" x="181" y="188" text-anchor="middle">Открыто</text><circle class="fill-g" cx="222" cy="176" r="10" /><text x="222" y="180" text-anchor="middle">7</text>
+          <text class="sub" x="36" y="248">★ 4.8</text><circle class="fill-g" cx="94" cy="243" r="10" /><text x="94" y="247" text-anchor="middle">8</text><text class="sub" x="116" y="248">35 мин · от 60</text>
+          <rect class="fill-g" x="36" y="266" width="196" height="30" rx="8" /><text class="sub" x="134" y="286" text-anchor="middle">Выбрать</text>
+
+          <rect class="box" x="250" y="156" width="220" height="152" rx="12" />
+          <circle class="fill-y" cx="278" cy="188" r="16" /><text x="302" y="184">Rohat</text><text class="sub" x="302" y="202">шашлык</text>
+          <rect class="fill-r" x="376" y="174" width="62" height="20" rx="10" /><text class="sub" x="407" y="188" text-anchor="middle">Закрыто</text>
+          <text class="sub" x="262" y="248">★ 4.5</text><text class="sub" x="342" y="248">45 мин · от 80</text>
+          <rect class="box" x="262" y="266" width="196" height="30" rx="8" /><text class="sub" x="360" y="286" text-anchor="middle">Выбрать</text>
+
+          <rect class="box" x="476" y="156" width="220" height="152" rx="12" />
+          <circle class="fill-y" cx="504" cy="188" r="16" /><text x="528" y="184">Samarkand</text><text class="sub" x="528" y="202">самбуса</text>
+          <rect class="fill-g" x="618" y="174" width="62" height="20" rx="10" /><text class="sub" x="649" y="188" text-anchor="middle">Открыто</text>
+          <text class="sub" x="488" y="248">★ 4.6</text><text class="sub" x="568" y="248">30 мин · от 40</text>
+          <rect class="fill-g" x="488" y="266" width="196" height="30" rx="8" /><text class="sub" x="586" y="286" text-anchor="middle">Выбрать</text>
+
+          <rect class="fill-y" x="20" y="328" width="680" height="38" rx="10" /><text class="sub" x="360" y="352" text-anchor="middle">© 2026 Дастархон · учебный проект MakeFirstStep</text>
+          <circle class="fill-g" cx="684" cy="347" r="11" /><text x="684" y="351" text-anchor="middle">9</text>
+        </svg>
+        <figcaption>Макет каталога: 1 шапка, 2 заголовок страницы, 3 поиск, 4 фильтр по кухне, 5 сетка, 6 карточка, 7 бейдж «Открыто/Закрыто», 8 рейтинг, 9 подвал</figcaption>
+      </figure>
+
+      <h3>Где проходит граница компонента</h3>
+      <ol class="steps">
+        <li><b>Повторяется.</b> Если кусок экрана показан много раз (карточка, бейдж), это компонент: он пишется один раз, а данные идут через props.</li>
+        <li><b>Имеет имя и одну ответственность.</b> Вы можете назвать его одним словом и сказать, что он делает, без «и». «Карточка ресторана» — да, «карточка и фильтр и корзина» — нет.</li>
+        <li><b>Скоро получит своё состояние.</b> В уроке 4 в каталоге появятся фильтры, а у карточки — «избранное»: у такого куска будет своё <code>useState</code>, и лучше сразу дать ему границу (вспомните «опустить состояние ниже» из раздела 4).</li>
+        <li><b>Структура данных подсказывает структуру компонентов.</b> Массив ресторанов — это <code>RestaurantList</code>, один объект — <code>RestaurantCard</code>.</li>
+        <li><b>Не дробите ради дробления.</b> Компонент из одной строки без повторения и без своего смысла только мешает читать. Признак перебора: 6–7 props, которые просто пересылаются вниз.</li>
+      </ol>
+
+      <div class="callout ai">
+        <b>Формула промпта: контекст → задача → ограничения → формат → проверка</b>
+        <p>Сравните два запроса. Хороший явно просит <b>сначала только дерево, без кода</b>, и заставляет агента оправдывать каждую границу. Это превращает агента в оппонента, с которым можно спорить.</p>
+      </div>
+
+      <div class="prompt bad-prompt">разбей этот макет на компоненты и напиши код</div>
+
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), прочитай AGENTS.md. Стили: Tailwind CSS 4 и CSS Modules. Страница каталога состоит из: шапки (название «Дастархон» и город), заголовка «Рестораны Душанбе», поиска и фильтра по кухне, сетки карточек и подвала. Поиск и фильтр уже реализованы компонентами SearchBox и CuisineFilter (урок 2), у карточки уже есть RestaurantCard и обёртка раздела Section: учти их и предложи, что оставить, а что добавить. Карточка ресторана показывает название, кухню, бейдж «Открыто/Закрыто», рейтинг, время доставки и минимальный заказ. Данные лежат в массиве Restaurant[] из src/data.ts.
+Задача: сначала только ДЕРЕВО КОМПОНЕНТОВ, код не пиши.
+Ограничения: новое состояние (useState) не добавлять, без новых библиотек, без any, не больше 12 компонентов в сумме, один компонент на файл.
+Формат ответа: дерево в виде вложенного списка и таблица «компонент — что рисует — props с типами — повторяется ли — почему это отдельная граница».
+Проверка: в конце назови два места, где граница спорная, и объясни, как бы ты поступил иначе.</div>
+
+      <h3>Спорим с агентом</h3>
+      <p>Получив дерево, задайте по очереди три вопроса и оцените ответы. <b>1.</b> «Почему <code>Rating</code> и <code>Badge</code> отдельные компоненты, а не часть карточки?» Хороший ответ ссылается на повторное использование и будущие экраны (меню, корзина), плохой — «так принято». <b>2.</b> «Что будет, если слить <code>RestaurantList</code> и <code>RestaurantCard</code> в один компонент?» Ответ должен упомянуть длину, невозможность дать карточке своё состояние и проблемы с <code>key</code>. <b>3.</b> «Какие props получает <code>Layout</code> и почему <code>children</code>?» Если агент пересылает через <code>Layout</code> данные ресторанов, он перепутал обёртку с контейнером данных.</p>
+
+      <h3>Как проверять код компонентов от агента</h3>
+      <ol class="steps">
+        <li><b>key.</b> В каждом <code>map</code> стоит <code>key</code> из <code>id</code>, а не из индекса. Oxlint подскажет пропущенный.</li>
+        <li><b>Компонент внутри компонента.</b> Нет <code>function X()</code> внутри тела другой функции-компонента.</li>
+        <li><b>Мутации.</b> Нет <code>.sort()</code>, <code>.push()</code>, <code>.reverse()</code> на props и состоянии без копии.</li>
+        <li><b>Типы.</b> Нет <code>any</code>, props описаны типом, <code>ReactNode</code> и другие типы импортированы через <code>import type</code>.</li>
+        <li><b>Классы Tailwind.</b> Нет имён, собранных из кусочков (<code>`bg-${x}-600`</code>), нет двух способов стилизации одного свойства.</li>
+        <li><b>Размер.</b> Компонент длиннее 80–100 строк или с шестью и более props: повод вернуться к границам.</li>
+        <li><b>Лишнее.</b> Нет нового <code>useState</code>, <code>useEffect</code>, новых пакетов и <code>React.memo</code>, о которых вы не просили: в этом уроке мы только раскладываем экран на компоненты.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Просить сразу код: вы не увидите границ и получите 400 строк в одном файле. <b>2.</b> Принять дерево, не поспорив: агент часто делит «по тегам», а не по смыслу. <b>3.</b> Не сверить дерево с макетом: пропал подвал или бейдж. <b>4.</b> Давать агенту картинку или данные с реальными личными данными. <b>5.</b> Считать, что агент «знает» ваши правила: если не сказать про Tailwind и CSS Modules, он выберет сам.</p>
+      </div>
+
+      <article class="task" id="q-tree">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Проверь себя: границы компонентов</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1,3">
+          <p>Какие части макета каталога разумно сделать отдельными компонентами? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Карточку ресторана: она повторяется и скоро получит своё состояние</li>
+            <li>Одну запятую между временем доставки и минимальным заказом</li>
+            <li>Бейдж «Открыто/Закрыто»: он повторяется и пригодится на других экранах</li>
+            <li>Каждый тег <code>&lt;span&gt;</code> внутри карточки</li>
+          </ol>
+          <div class="explain"><p>Границу ставят там, где есть повторение, смысл и будущее состояние. Отдельный компонент на запятую или на каждый <code>span</code> — это дробление ради дробления.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Агент предложил <code>Layout</code> с props <code>restaurants</code>, <code>onFilter</code>, <code>city</code>, <code>theme</code>, <code>user</code>, <code>cartCount</code>, которые он только передаёт дальше. Что это значит?</p>
+          <ol class="options">
+            <li>Всё правильно: так устроена композиция</li>
+            <li>Граница проведена неверно: Layout должен быть обёрткой с <code>children</code> и слотами, а данные нужны тем, кто их показывает</li>
+            <li>Нужно добавить ещё props</li>
+            <li>Нужно заменить <code>Layout</code> на глобальную переменную</li>
+          </ol>
+          <div class="explain"><p>Много props, которые просто пересылаются вниз, — признак того, что обёртка превратилась в «мусорный ящик» для данных. Передайте содержимое через <code>children</code>.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t-argue">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Чек-лист: спор с агентом проведён</h4><span class="level mid">средняя</span></header>
+        <p>Выполняется на вашем компьютере в практике (шаг 2). Отметьте только то, что действительно сделали.</p>
+        <ul class="checklist" id="cl-argue">
+          <li>Я отправил агенту хороший промпт из раздела 7 и просил сначала только дерево, без кода</li>
+          <li>Я сверил его дерево с макетом: все девять областей макета на месте</li>
+          <li>Я задал три вопроса из раздела «Спорим с агентом» и записал, что в ответах убедительно, а что нет</li>
+          <li>Я нашёл минимум одно место, где не согласен с агентом, и записал своё решение и причину в <code>docs/component-tree.md</code></li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a> · <a href="https://react.dev/learn/passing-props-to-a-component" target="_blank" rel="noopener">react.dev — Passing Props to a Component</a></p>
+    </section>
+
+    <!-- ============ 08 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: каталог"><span class="num">08</span> Практика: каталог «Дастархона» на дереве компонентов</h2>
+
+      <p>Продолжаем проект 1. После урока 2 в нём есть типы, данные и четыре компонента, лежащие прямо в <code>src/</code>, а стили заданы одним глобальным классом <code>.card</code>. Сейчас мы наведём порядок: разложим компоненты по папке, добавим недостающие (шапка, подвал, обёртка, список, бейдж, рейтинг), подключим Tailwind и CSS Modules. Новых <code>useState</code> мы не добавляем: поиск и фильтр из урока 2 работают как работали, их состояние разберём в уроке 4. Проверьте старт: <code>git status</code> чистый, <code>npm run typecheck</code>, <code>npm run lint</code> и <code>npm run build</code> проходят.</p>
+
+      <h3>Дерево, которое получится</h3>
+<div class="ftree"><b>App</b> <i>состояние поиска, фильтра и выбора живёт здесь (урок 2)</i>
+└─ <b>Layout</b> <i>children, обёртка</i>
+   ├─ <b>Header</b> <i>шапка</i>
+   ├─ <b>SearchBox</b>, <b>CuisineFilter</b> <i>из урока 2, только стили</i>
+   ├─ <b>Section</b> <i>title, children</i>
+   │  └─ <b>RestaurantList</b> <i>props: restaurants, onSelect; пустой список → «Рестораны не найдены»</i>
+   │     └─ <b>RestaurantCard</b> × 6 <i>props: restaurant, onSelect; CSS Module</i>
+   │        ├─ <b>Badge</b> <i>props: open</i>
+   │        └─ <b>Rating</b> <i>props: value</i>
+   └─ <b>Footer</b> <i>подвал</i></div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 300" role="img" aria-label="Дерево компонентов каталога: App содержит Layout; Layout содержит Header, Footer, SearchBox, CuisineFilter и Section; Section содержит RestaurantList; список содержит несколько RestaurantCard; каждая карточка содержит Badge и Rating. Данные из data.ts приходят в App и спускаются вниз через props">
+          <rect class="fill-y" x="300" y="8" width="120" height="34" rx="10" /><text x="360" y="30" text-anchor="middle">App</text>
+          <path class="arr" d="M360 42 V54" />
+          <rect class="fill-g" x="300" y="54" width="120" height="34" rx="10" /><text x="360" y="76" text-anchor="middle">Layout</text>
+          <path class="arr" d="M360 88 V102 H60 V114" /><path class="arr" d="M360 102 H200 V114" /><path class="arr" d="M360 102 H340 V114" /><path class="arr" d="M360 102 H520 V114" /><path class="arr" d="M360 102 H660 V114" />
+          <rect class="box" x="10" y="114" width="100" height="34" rx="10" /><text x="60" y="136" text-anchor="middle">Header</text>
+          <rect class="box" x="140" y="114" width="120" height="34" rx="10" /><text x="200" y="136" text-anchor="middle">SearchBox</text>
+          <rect class="box" x="275" y="114" width="130" height="34" rx="10" /><text x="340" y="136" text-anchor="middle">CuisineFilter</text>
+          <rect class="fill-g" x="460" y="114" width="120" height="34" rx="10" /><text x="520" y="136" text-anchor="middle">Section</text>
+          <rect class="box" x="610" y="114" width="100" height="34" rx="10" /><text x="660" y="136" text-anchor="middle">Footer</text>
+          <path class="arr" d="M520 148 V162" />
+          <rect class="fill-g" x="445" y="162" width="150" height="34" rx="10" /><text x="520" y="184" text-anchor="middle">RestaurantList</text>
+          <path class="arr" d="M520 196 V210" />
+          <rect class="fill-g" x="430" y="210" width="180" height="34" rx="10" /><text x="520" y="232" text-anchor="middle">RestaurantCard × 6</text>
+          <path class="arr" d="M490 244 V258 H440 V266" /><path class="arr" d="M550 244 V258 H600 V266" />
+          <rect class="box" x="390" y="266" width="100" height="26" rx="8" /><text x="440" y="284" text-anchor="middle">Badge</text>
+          <rect class="box" x="550" y="266" width="100" height="26" rx="8" /><text x="600" y="284" text-anchor="middle">Rating</text>
+          <text class="sub t-b" x="12" y="200">data.ts → App,</text><text class="sub" x="12" y="220">дальше вниз через props</text>
+        </svg>
+        <figcaption>Дерево каталога: 11 компонентов. Данные входят в <code>App</code> и спускаются вниз через props, а <code>Layout</code> и <code>Section</code> получают содержимое через <code>children</code></figcaption>
+      </figure>
+
+      <h3>Шаги</h3>
+      <ol class="steps">
+        <li><b>Ветка.</b> Дальше работаем не в <code>main</code>:
+<pre class="code" data-title="Терминал">
+git switch -c feat/catalog
+</pre>
+        </li>
+        <li><b>Дерево вместе с агентом.</b> Откройте Cursor и отправьте хороший промпт из раздела 7. Прочитайте ответ, задайте три вопроса из «Спорим с агентом» и сравните с деревом выше. Создайте <code>docs/component-tree.md</code>: вставьте итоговое дерево (своё, с учётом спора) и допишите 3–5 предложений: что вы приняли от агента, с чем не согласились и почему. Если ваше дерево отличается от нашего, это нормально, если вы объясняете границы; дальше мы строим дерево из урока.</li>
+        <li><b>Подключите Tailwind.</b>
+<pre class="code" data-title="Терминал">
+npm install tailwindcss @tailwindcss/vite
+</pre>
+          Замените <code>vite.config.ts</code>:
+<pre class="code" data-lang="ts" data-title="vite.config.ts">
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+})
+</pre>
+          Замените <code>src/index.css</code> целиком. Строка <code>@import 'tailwindcss'</code> уже включает сброс стилей, поэтому прежние <code>box-sizing</code>, <code>margin</code> и глобальный <code>.card</code> из урока 2 больше не нужны: карточка получит свой CSS Module. В блоке <code>@theme</code> заданы цвета проекта: по ним Tailwind создаст классы <code>bg-brand-50</code>, <code>text-brand-600</code> и другие.
+<pre class="code" data-lang="css" data-title="src/index.css">
+@import 'tailwindcss';
+
+@theme {
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-600: #c2410c;
+  --color-brand-700: #9a3412;
+  --color-leaf-600: #15803d;
+}
+</pre>
+        </li>
+        <li><b>Расширьте тип и данные.</b> Карточке нужны эмодзи, время доставки и минимальный заказ. Добавьте три поля в <code>Restaurant</code> в <code>src/types.ts</code> (остальное в файле оставьте как есть):
+<pre class="code" data-lang="ts" data-title="src/types.ts (тип Restaurant)">
+export type Restaurant = {
+  id: number
+  name: string
+  cuisine: Cuisine
+  rating: number
+  open: boolean
+  emoji: string
+  deliveryMin: number // минут
+  minOrder: number // в сомони
+  address?: string
+}
+</pre>
+          Запустите <code>npm run typecheck</code>: компилятор сразу покажет все места, где данные не подходят под новый тип. Это и есть польза типов: вы ничего не забудете.
+<pre class="code" data-title="Терминал — вывод tsc -b">
+src/data.ts(4,3): error TS2739: Type '{ id: number; name: string; cuisine: "плов"; rating: number; open: true; address: string; }' is missing the following properties from type 'Restaurant': emoji, deliveryMin, minOrder
+src/data.ts(12,3): error TS2739: Type '{ id: number; name: string; cuisine: "шашлык"; rating: number; open: false; }' is missing the following properties from type 'Restaurant': emoji, deliveryMin, minOrder
+src/data.ts(13,3): error TS2739: Type '{ id: number; name: string; cuisine: "самбуса"; rating: number; open: true; }' is missing the following properties from type 'Restaurant': emoji, deliveryMin, minOrder
+</pre>
+          Замените массив <code>restaurants</code> в <code>src/data.ts</code> на шесть ресторанов с новыми полями (массив <code>menu</code> не трогайте). Первые три ресторана те же, что в уроке 2, добавлены три новых. Если вы добавляли свои рестораны в ДЗ урока 2, оставьте их и просто допишите им поля.
+<pre class="code" data-lang="ts" data-title="src/data.ts">
+import type { MenuItem, Restaurant } from './types'
+
+export const restaurants: Restaurant[] = [
+  {
+    id: 1,
+    name: 'Navruz',
+    cuisine: 'плов',
+    rating: 4.8,
+    open: true,
+    emoji: '🍚',
+    deliveryMin: 35,
+    minOrder: 60,
+    address: 'пр. Рудаки, 45',
+  },
+  {
+    id: 2,
+    name: 'Rohat',
+    cuisine: 'шашлык',
+    rating: 4.5,
+    open: false,
+    emoji: '🍢',
+    deliveryMin: 45,
+    minOrder: 80,
+  },
+  {
+    id: 3,
+    name: 'Samarkand',
+    cuisine: 'самбуса',
+    rating: 4.6,
+    open: true,
+    emoji: '🥟',
+    deliveryMin: 30,
+    minOrder: 40,
+  },
+  {
+    id: 4,
+    name: 'Vatan',
+    cuisine: 'шашлык',
+    rating: 4.3,
+    open: true,
+    emoji: '🍢',
+    deliveryMin: 40,
+    minOrder: 50,
+  },
+  {
+    id: 5,
+    name: 'Shirin',
+    cuisine: 'десерты',
+    rating: 4.7,
+    open: true,
+    emoji: '🍰',
+    deliveryMin: 25,
+    minOrder: 35,
+  },
+  {
+    id: 6,
+    name: 'Bahor',
+    cuisine: 'плов',
+    rating: 3.9,
+    open: false,
+    emoji: '🍚',
+    deliveryMin: 50,
+    minOrder: 90,
+  },
+]
+
+export const menu: MenuItem[] = [
+  { id: 1, restaurantId: 1, title: 'Плов праздничный', price: 45 },
+  { id: 2, restaurantId: 1, title: 'Чай зелёный', price: 8 },
+  { id: 3, restaurantId: 3, title: 'Самбуса с мясом', price: 12 },
+]
+</pre>
+        </li>
+        <li><b>Папка components.</b> В <code>AGENTS.md</code> с урока 1 такая структура запланирована. Перенесите четыре компонента (команда <code>git mv</code> работает в любой оболочке и сохраняет историю):
+<pre class="code" data-title="Терминал">
+mkdir src/components
+git mv src/RestaurantCard.tsx src/CuisineFilter.tsx src/SearchBox.tsx src/Section.tsx src/components/
+</pre>
+          Теперь в перенесённых файлах импорты <code>'./types'</code> нужно заменить на <code>'../types'</code>, а в <code>App.tsx</code> пути на <code>'./components/…'</code>. Это сделают файлы ниже; запомните причину: путь считается от места файла.</li>
+        <li><b>Листья дерева: Badge и Rating.</b> Начинаем с самых простых компонентов. Обратите внимание, что оба варианта классов у <code>Badge</code> записаны целиком.
+<pre class="code" data-lang="tsx" data-title="src/components/Badge.tsx">
+type BadgeProps = {
+  open: boolean
+}
+
+export default function Badge({ open }: BadgeProps) {
+  return (
+    &lt;span
+      className={
+        open
+          ? 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-leaf-600'
+          : 'rounded-full bg-stone-200 px-2 py-0.5 text-xs font-semibold text-stone-600'
+      }
+    &gt;
+      {open ? 'Открыто' : 'Закрыто'}
+    &lt;/span&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/Rating.tsx">
+type RatingProps = {
+  value: number
+}
+
+export default function Rating({ value }: RatingProps) {
+  return (
+    &lt;span className="font-semibold text-brand-600"&gt;★ {value.toFixed(1)}&lt;/span&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>RestaurantCard с CSS Module.</b> Раскладка внутри карточки идёт через Tailwind, а «своё» оформление (наведение, полупрозрачность закрытого ресторана) вынесено в модуль. Кнопка «Выбрать» отключена у закрытого ресторана, как в уроке 2, но статус теперь показывает <code>Badge</code>. Замените файл целиком и создайте модуль рядом:
+<pre class="code" data-lang="css" data-title="src/components/RestaurantCard.module.css">
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid #e7e5e4;
+  border-radius: 1rem;
+  background: white;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.08);
+}
+
+.closed {
+  opacity: 0.6;
+}
+
+.emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: #57534e;
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/RestaurantCard.tsx">
+import type { Restaurant } from '../types'
+import Badge from './Badge'
+import Rating from './Rating'
+import styles from './RestaurantCard.module.css'
+
+type RestaurantCardProps = {
+  restaurant: Restaurant
+  onSelect: (id: number) =&gt; void
+}
+
+export default function RestaurantCard({
+  restaurant,
+  onSelect,
+}: RestaurantCardProps) {
+  const { id, name, cuisine, rating, open, emoji, deliveryMin, minOrder } =
+    restaurant
+  const className = open ? styles.card : `${styles.card} ${styles.closed}`
+
+  return (
+    &lt;article className={className}&gt;
+      &lt;span className={styles.emoji} aria-hidden="true"&gt;
+        {emoji}
+      &lt;/span&gt;
+      &lt;div className="flex items-center justify-between gap-2"&gt;
+        &lt;h3 className="text-lg font-bold"&gt;{name}&lt;/h3&gt;
+        &lt;Badge open={open} /&gt;
+      &lt;/div&gt;
+      &lt;p className="text-stone-600"&gt;{cuisine}&lt;/p&gt;
+      {restaurant.address &amp;&amp; (
+        &lt;p className="text-sm text-stone-500"&gt;{restaurant.address}&lt;/p&gt;
+      )}
+      &lt;div className={styles.meta}&gt;
+        &lt;Rating value={rating} /&gt;
+        &lt;span&gt;{deliveryMin} мин&lt;/span&gt;
+        &lt;span&gt;от {minOrder} сомони&lt;/span&gt;
+      &lt;/div&gt;
+      &lt;button
+        className="rounded-lg bg-brand-600 px-3 py-1.5 font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={!open}
+        onClick={() =&gt; onSelect(id)}
+      &gt;
+        Выбрать
+      &lt;/button&gt;
+    &lt;/article&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>RestaurantList.</b> Список с <code>key</code> из <code>id</code> и пустым состоянием. Обратите внимание, что <code>onSelect</code> просто проходит через список вниз к карточке:
+<pre class="code" data-lang="tsx" data-title="src/components/RestaurantList.tsx">
+import type { Restaurant } from '../types'
+import RestaurantCard from './RestaurantCard'
+
+type RestaurantListProps = {
+  restaurants: Restaurant[]
+  onSelect: (id: number) =&gt; void
+}
+
+export default function RestaurantList({
+  restaurants,
+  onSelect,
+}: RestaurantListProps) {
+  if (restaurants.length === 0) {
+    return (
+      &lt;p className="py-10 text-center text-stone-500"&gt;Рестораны не найдены&lt;/p&gt;
+    )
+  }
+
+  return (
+    &lt;div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"&gt;
+      {restaurants.map((restaurant) =&gt; (
+        &lt;RestaurantCard
+          key={restaurant.id}
+          restaurant={restaurant}
+          onSelect={onSelect}
+        /&gt;
+      ))}
+    &lt;/div&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Header, Footer, Layout.</b> Layout получает содержимое через <code>children</code> и сам ставит вокруг него шапку и подвал.
+<pre class="code" data-lang="tsx" data-title="src/components/Header.tsx">
+export default function Header() {
+  return (
+    &lt;header className="border-b border-brand-100 bg-brand-50"&gt;
+      &lt;div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4"&gt;
+        &lt;span className="text-2xl font-extrabold text-brand-700"&gt;
+          Дастархон
+        &lt;/span&gt;
+        &lt;span className="text-sm text-stone-600"&gt;Душанбе&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/header&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/Footer.tsx">
+export default function Footer() {
+  return (
+    &lt;footer className="border-t border-stone-200 py-6 text-center text-sm text-stone-500"&gt;
+      © 2026 Дастархон · учебный проект MakeFirstStep
+    &lt;/footer&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/Layout.tsx">
+import type { ReactNode } from 'react'
+import Footer from './Footer'
+import Header from './Header'
+
+type LayoutProps = {
+  children: ReactNode
+}
+
+export default function Layout({ children }: LayoutProps) {
+  return (
+    &lt;div className="flex min-h-screen flex-col bg-stone-50 text-stone-900"&gt;
+      &lt;Header /&gt;
+      &lt;main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6"&gt;
+        {children}
+      &lt;/main&gt;
+      &lt;Footer /&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Оформите поиск, фильтр и раздел.</b> Логика этих компонентов та же, что в уроке 2, меняются только классы и пути импорта. Замените три файла:
+<pre class="code" data-lang="tsx" data-title="src/components/SearchBox.tsx">
+import type { ChangeEvent } from 'react'
+
+type SearchBoxProps = {
+  value: string
+  onChange: (value: string) =&gt; void
+}
+
+export default function SearchBox({ value, onChange }: SearchBoxProps) {
+  function handleChange(event: ChangeEvent&lt;HTMLInputElement&gt;) {
+    onChange(event.target.value)
+  }
+  return (
+    &lt;input
+      className="w-full max-w-xs rounded-lg border border-stone-300 bg-white px-3 py-2"
+      value={value}
+      onChange={handleChange}
+      placeholder="Найти ресторан"
+    /&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/CuisineFilter.tsx">
+import { CUISINES, type Cuisine } from '../types'
+
+type CuisineFilterProps = {
+  selected: Cuisine | null
+  onChange: (cuisine: Cuisine | null) =&gt; void
+}
+
+const base = 'rounded-full border px-3 py-1 text-sm font-semibold'
+const active = 'border-brand-600 bg-brand-600 text-white'
+const idle = 'border-stone-300 bg-white text-stone-700 hover:bg-brand-50'
+
+export default function CuisineFilter({
+  selected,
+  onChange,
+}: CuisineFilterProps) {
+  return (
+    &lt;div className="flex flex-wrap gap-2"&gt;
+      &lt;button
+        className={`${base} ${selected === null ? active : idle}`}
+        onClick={() =&gt; onChange(null)}
+        disabled={selected === null}
+      &gt;
+        Все
+      &lt;/button&gt;
+      {CUISINES.map((c) =&gt; (
+        &lt;button
+          key={c}
+          className={`${base} ${selected === c ? active : idle}`}
+          onClick={() =&gt; onChange(c)}
+          disabled={selected === c}
+        &gt;
+          {c}
+        &lt;/button&gt;
+      ))}
+    &lt;/div&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/Section.tsx">
+import type { ReactNode } from 'react'
+
+type SectionProps = {
+  title: string
+  children: ReactNode
+}
+
+export default function Section({ title, children }: SectionProps) {
+  return (
+    &lt;section className="mt-6"&gt;
+      &lt;h2 className="mb-3 text-2xl font-bold"&gt;{title}&lt;/h2&gt;
+      {children}
+    &lt;/section&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Соберите всё в App.</b> Состояния и фильтрация остались прежними, изменилась только разметка: теперь она вложена в <code>Layout</code>. Если вы дописывали <code>App.tsx</code> в ДЗ урока 2, перенесите свои блоки внутрь <code>Layout</code>.
+<pre class="code" data-lang="tsx" data-title="src/App.tsx">
+import { useState } from 'react'
+import CuisineFilter from './components/CuisineFilter'
+import Layout from './components/Layout'
+import RestaurantList from './components/RestaurantList'
+import SearchBox from './components/SearchBox'
+import Section from './components/Section'
+import { restaurants } from './data'
+import type { Cuisine } from './types'
+
+export default function App() {
+  const [cuisine, setCuisine] = useState&lt;Cuisine | null&gt;(null)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState&lt;number | null&gt;(null)
+
+  const visible = restaurants.filter(
+    (r) =&gt;
+      (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+      r.name.toLowerCase().includes(query.toLowerCase()),
+  )
+
+  return (
+    &lt;Layout&gt;
+      &lt;h1 className="mb-4 text-3xl font-bold"&gt;Рестораны Душанбе&lt;/h1&gt;
+      &lt;div className="flex flex-wrap items-center gap-3"&gt;
+        &lt;SearchBox value={query} onChange={setQuery} /&gt;
+        &lt;CuisineFilter selected={cuisine} onChange={setCuisine} /&gt;
+      &lt;/div&gt;
+      &lt;Section title="Все рестораны"&gt;
+        &lt;RestaurantList restaurants={visible} onSelect={setSelectedId} /&gt;
+      &lt;/Section&gt;
+      {selectedId !== null &amp;&amp; (
+        &lt;p className="mt-4 text-sm text-stone-600"&gt;
+          Выбран ресторан №{selectedId}
+        &lt;/p&gt;
+      )}
+    &lt;/Layout&gt;
+  )
+}
+</pre>
+          Запустите <code>npm run dev</code>: на странице шесть карточек, у «Rohat» и «Bahor» бейдж «Закрыто», полупрозрачная карточка и неактивная кнопка. Поиск и фильтр работают. Сузьте окно браузера: сетка перестраивается из трёх колонок в две, а затем в одну.</li>
+        <li><b>Проверки.</b> Все четыре команды должны пройти без ошибок:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+        </li>
+        <li><b>Посмотрите на рендеры.</b> В <code>RestaurantCard.tsx</code> добавьте после строки <code>const className = …</code> вызов <code>console.log('render', restaurant.name)</code> и откройте Console в DevTools. Вы увидите <b>12 строк</b>, а не 6: StrictMode вызывает каждый компонент дважды (с установленными React DevTools вторые строки серые). Теперь наберите букву в поле поиска: карточки рендерятся снова, ведь состояние лежит в <code>App</code>, их родителе (раздел 4). Откройте вкладку Components в React DevTools и найдите дерево из урока. Лог удалите.</li>
+        <li><b>Сломайте нарочно.</b> (а) Уберите <code>key</code> из <code>RestaurantList</code> и запустите <code>npm run lint</code>: прочитайте предупреждение <code>react(jsx-key)</code>. Верните ключ. (б) Допишите в <code>RestaurantCard.tsx</code> опечатку <code>styles.carrd</code> вместо <code>styles.card</code>: TypeScript промолчит, а в браузере карточка потеряет рамку. Это и есть ограничение типов CSS Modules. Исправьте.</li>
+        <li><b>Коммит.</b>
+<pre class="code" data-title="Терминал">
+git add .
+git commit -m "add component tree and styles"
+git push -u origin feat/catalog
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>Страница без стилей, классы Tailwind не работают:</b> проверьте, что в <code>vite.config.ts</code> есть <code>tailwindcss()</code> в <code>plugins</code>, а в <code>index.css</code> строка <code>@import 'tailwindcss'</code>; перезапустите <code>npm run dev</code>. <b>«Cannot find module './types' or its corresponding type declarations» (TS2307):</b> после переноса файла путь импорта остался старым, нужно <code>'../types'</code>. <b>«Cannot find module './RestaurantCard.module.css'»:</b> проверьте имя файла и что в <code>tsconfig.app.json</code> есть <code>"types": ["vite/client"]</code>. <b>TS1484 «is a type and must be imported using a type-only import»:</b> тип нужно импортировать через <code>import type</code>. <b>«Each child in a list should have a unique key»:</b> забыт <code>key</code>. <b>Вместо эмодзи пустое место:</b> шрифт системы не содержит нужный символ, это не ошибка кода.</p>
+      </div>
+
+      <article class="task" id="t-build">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист: каталог собран</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-build">
+          <li>Работа ведётся в ветке <code>feat/catalog</code>, не в <code>main</code></li>
+          <li>Tailwind подключён: в <code>vite.config.ts</code> есть <code>tailwindcss()</code>, в <code>index.css</code> строка <code>@import 'tailwindcss'</code> и блок <code>@theme</code>; глобального <code>.card</code> больше нет</li>
+          <li>В <code>Restaurant</code> добавлены поля <code>emoji</code>, <code>deliveryMin</code>, <code>minOrder</code>, в <code>data.ts</code> шесть ресторанов</li>
+          <li>В <code>src/components</code> одиннадцать компонентов, у каждого свой файл и тип props</li>
+          <li><code>RestaurantCard</code> использует CSS Module и Tailwind, <code>Badge</code> записывает классы целиком</li>
+          <li>На странице шесть карточек, закрытые рестораны выглядят иначе, сетка адаптивна, поиск и фильтр работают</li>
+          <li>В <code>RestaurantList</code> ключ берётся из <code>id</code>, пустой список показывает «Рестораны не найдены»</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> и <code>npm run build</code> проходят без ошибок, нового <code>useState</code> и <code>any</code> нет</li>
+        </ul>
+      </article>
+
+      <article class="task" id="t-observe">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Чек-лист: наблюдения за рендером</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-observe">
+          <li>Я увидел в консоли 12 строк вместо 6 и могу объяснить, что это StrictMode, а не баг</li>
+          <li>Я набрал букву в поиске, увидел новые строки в консоли и объяснил, почему карточки перерисовались</li>
+          <li>Я нашёл дерево компонентов во вкладке Components в React DevTools и сверил его с деревом урока</li>
+          <li>Я убрал <code>key</code>, прочитал предупреждение Oxlint <code>jsx-key</code> и вернул ключ</li>
+          <li>Я сделал опечатку в <code>styles.carrd</code>, убедился, что TypeScript её не поймал, а карточка потеряла рамку, и исправил</li>
+          <li>Я удалил временный <code>console.log</code> перед коммитом</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a> · <a href="https://tailwindcss.com/docs/installation/using-vite" target="_blank" rel="noopener">tailwindcss.com — Install with Vite</a> · <a href="https://react.dev/learn/react-developer-tools" target="_blank" rel="noopener">react.dev — React Developer Tools</a></p>
+    </section>
+
+
+    <!-- ============ 09 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">09</span> Домашнее задание: «Топ рейтинга» и «Закрыто сейчас»</h2>
+
+      <p>Практика разложила каталог на компоненты. В домашнем задании вы повторяете те же приёмы на новом материале: добавляете под каталогом два блока из тех же данных и описываете дерево всего приложения. Работайте в ветке <code>feat/catalog</code>, а в конце сдайте ссылку на репозиторий <code>dastarkhon</code>: ментор откроет эту ветку. Корзину и меню из ДЗ урока 2, если вы их делали, не трогайте.</p>
+
+      <h3>Что сделать</h3>
+      <ol class="steps">
+        <li><b>Данные.</b> Добавьте в <code>src/data.ts</code> ещё минимум три ресторана с полными полями (в сумме не меньше девяти, минимум два закрытых, уникальные <code>id</code>, кухня из списка <code>CUISINES</code>).</li>
+        <li><b>Компонент <code>RestaurantRow</code>.</b> Компактная строка ресторана: эмодзи, название, <code>Rating</code> и <code>Badge</code>. Необязательный prop <code>place?: number</code>: если он есть, перед названием показывается «№1», «№2». Стилизуйте строку через CSS Module (<code>RestaurantRow.module.css</code>), раскладку внутри можно оставить Tailwind.</li>
+        <li><b>Компонент <code>TopRestaurants</code>.</b> Принимает <code>restaurants: Restaurant[]</code> и показывает <b>три ресторана с самым высоким рейтингом</b> по убыванию, каждый строкой <code>RestaurantRow</code> с номером места. Сортируйте <b>копию</b> массива: исходный порядок в <code>data.ts</code> меняться не должен. Блок оформите через <code>Section</code> с заголовком «Топ рейтинга».</li>
+        <li><b>Компонент <code>ClosedRestaurants</code>.</b> Показывает рестораны, которые сейчас закрыты (<code>filter</code>), строками <code>RestaurantRow</code>. Если закрытых нет, выводит «Сейчас работают все рестораны». Тоже внутри <code>Section</code> («Закрыто сейчас»).</li>
+        <li><b>Сборка.</b> В <code>App</code> добавьте оба блока ниже основного списка, внутри <code>Layout</code>. Они всегда используют полный массив <code>restaurants</code>, а не результат поиска. Новое состояние не добавляйте.</li>
+        <li><b>Стили.</b> Хотя бы один свой цвет добавьте в <code>@theme</code> и используйте его классом Tailwind. Проверьте страницу на ширине 375 px: без горизонтальной прокрутки.</li>
+        <li><b>Дерево и ответы.</b> Дополните <code>docs/component-tree.md</code>: дерево всего приложения (14 компонентов), 3–5 предложений о границах и ответы <b>своими словами</b> на пять вопросов ниже.</li>
+        <li><b>Проверки и коммиты.</b> <code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> проходят. В ветке не меньше трёх осмысленных коммитов, ветка отправлена на GitHub.</li>
+      </ol>
+
+      <h3>Пять вопросов для docs/component-tree.md</h3>
+      <ol class="steps">
+        <li>Чем отличаются компонент, элемент React и узел DOM? Что возвращает компонент?</li>
+        <li>Почему нельзя объявлять компонент внутри другого компонента? Что произойдёт с состоянием?</li>
+        <li>Для чего нужен <code>key</code>? Почему индекс — плохой ключ в списке, который можно менять? Приведите пример из своего проекта.</li>
+        <li>Опишите три шага: триггер, рендер, коммит. Что происходит с <code>RestaurantCard</code>, когда в поиске набирают букву, и почему это не проблема для DOM?</li>
+        <li>Что такое чистый компонент? Почему в <code>TopRestaurants</code> нельзя написать <code>restaurants.sort(…)</code> и что нужно сделать вместо этого?</li>
+      </ol>
+
+      <h3>Как проверят</h3>
+      <ul>
+        <li><b>Структура:</b> дерево соответствует коду, у каждого компонента одна задача, нет компонента внутри компонента, один компонент на файл.</li>
+        <li><b>Типы:</b> у каждого компонента описан тип props, <code>any</code> нет, типы импортированы через <code>import type</code>.</li>
+        <li><b>Списки и чистота:</b> ключи из <code>id</code>, сортировка идёт по копии массива, порядок в <code>data.ts</code> не меняется, пустые состояния обработаны.</li>
+        <li><b>Стили:</b> оба способа применены осознанно, классы Tailwind записаны целиком, страница не ломается на 375 px.</li>
+        <li><b>Ответы:</b> написаны своими словами и ссылаются на ваш проект, а не пересказывают урок или ответ агента.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Два блока в одном компоненте на 150 строк. <b>2.</b> <code>key={index}</code> в строках рейтинга. <b>3.</b> Ответ агента вставлен в дерево и в ответы без правок и без своих выводов. <b>4.</b> <code>restaurants.sort(…)</code> в <code>TopRestaurants</code>: исходный массив меняется. <b>5.</b> Цвета собраны из кусочков: <code>`text-${color}-600`</code>. <b>6.</b> Репозиторий приватный или ссылка ведёт на профиль, а не на репозиторий. <b>7.</b> Ветка <code>feat/catalog</code> не отправлена на GitHub.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист требований к ДЗ-3</h4><span class="level mid">средняя</span></header>
+        <p>Перед сдачей проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Каталог из практики работает, в <code>data.ts</code> не меньше девяти ресторанов, минимум два закрытых</li>
+          <li><code>RestaurantRow</code> с необязательным <code>place?: number</code> и CSS Module готов</li>
+          <li><code>TopRestaurants</code> показывает три лучших по рейтингу, сортирует копию, порядок в <code>data.ts</code> не меняется</li>
+          <li><code>ClosedRestaurants</code> показывает закрытые рестораны и сообщение, когда закрытых нет</li>
+          <li>Ключи везде из <code>id</code>, массивы не мутируются, компонентов внутри компонентов нет, нового <code>useState</code> нет</li>
+          <li>Tailwind и CSS Modules оба используются, в <code>@theme</code> есть свой цвет, на ширине 375 px нет горизонтальной прокрутки</li>
+          <li><code>docs/component-tree.md</code> содержит дерево всех 14 компонентов, объяснение границ и пять ответов своими словами</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> проходят, в ветке не меньше трёх коммитов</li>
+          <li>Ветка <code>feat/catalog</code> отправлена на GitHub, репозиторий публичный: я открыл ссылку в режиме инкогнито</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку вида <code>https://github.com/ваш-логин/dastarkhon</code>. Откройте её в режиме инкогнито: ветка <code>feat/catalog</code>, код и <code>docs/component-tree.md</code> должны быть видны.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a> · <a href="https://react.dev/learn/rendering-lists" target="_blank" rel="noopener">react.dev — Rendering Lists</a> · <a href="https://tailwindcss.com/docs/responsive-design" target="_blank" rel="noopener">Tailwind — Responsive design</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>JSX</b> превращается в вызовы функций и даёт <b>элементы</b>: обычные объекты-описания. Правила: один корень (Fragment <code>&lt;&gt;</code>), все теги закрыты, <code>className</code>, <code>style</code> — объект, в <code>{}</code> только выражения, имя компонента с большой буквы.</li>
+        <li><b>Условный вывод:</b> тернарный оператор, <code>&amp;&amp;</code>, <code>return null</code>. <code>{n &amp;&amp; …}</code> при <code>n = 0</code> выведет «0»: пишите <code>n &gt; 0 &amp;&amp; …</code>. <code>null</code>, <code>undefined</code>, <code>true</code>, <code>false</code> не рисуются, объект — ошибка.</li>
+        <li><b>Компонент</b> — функция, принимающая props и возвращающая JSX. <code>children: ReactNode</code> — содержимое между тегами; слоты — props с JSX. Композиция вместо десятка флагов. Компонент внутри компонента не объявляют: состояние сбрасывается.</li>
+        <li><b>Списки:</b> <code>filter</code> + <code>map</code>, <code>key</code> из <code>id</code> на элементе в <code>map</code>, уникален среди соседей. Индекс — только для статичных списков, <code>Math.random()</code> в ключе — никогда. Пустой список обрабатывают отдельно.</li>
+        <li><b>Рендер:</b> триггер (первый запуск или <code>setState</code>) → рендер (вызов функций) → коммит (различия в DOM). Состояние — снимок: для серии обновлений <code>setQty((q) =&gt; q + 1)</code>. Потомки перерисовываются вместе с родителем; лишнюю работу сначала убирают, опуская состояние ниже. StrictMode в dev вызывает компоненты дважды.</li>
+        <li><b>Чистота:</b> те же props и состояние дают тот же JSX, во время рендера ничего внешнего не меняем. Не <code>items.sort()</code>, а <code>[...items].sort()</code>. Побочные эффекты — в обработчиках событий и в <code>useEffect</code> (урок 5).</li>
+        <li><b>CSS Modules:</b> <code>Имя.module.css</code>, <code>import styles from …</code>, классы локальны; опечатка в <code>styles.x</code> типами не ловится. <b>Tailwind 4:</b> <code>tailwindcss</code> и <code>@tailwindcss/vite</code>, <code>@import 'tailwindcss'</code>, тема в <code>@theme</code>, mobile first (<code>sm:</code>, <code>lg:</code>), классы записывают целиком.</li>
+        <li><b>Граница компонента:</b> повторяется, одна ответственность с именем, скоро получит состояние, соответствует структуре данных; не дробите ради дробления. С агентом: сначала только дерево, потом спор, потом код.</li>
+        <li><b>Проект 1 «Дастархон»:</b> 11 компонентов: <code>App</code>, <code>Layout</code>, <code>Header</code>, <code>Footer</code>, <code>SearchBox</code>, <code>CuisineFilter</code>, <code>Section</code>, <code>RestaurantList</code>, <code>RestaurantCard</code>, <code>Badge</code>, <code>Rating</code>. Дальше: сортировка и корзина на <code>useReducer</code> (урок 4).</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, что такое элемент React и что возвращает компонент</li>
+          <li>Могу назвать правила JSX и исправить ошибки <code>TS2657</code> и <code>TS17008</code> по тексту</li>
+          <li>Могу написать обёртку с <code>children</code> и слотами, типизировать её через <code>ReactNode</code></li>
+          <li>Могу объяснить, почему нельзя объявлять компонент внутри компонента</li>
+          <li>Могу вывести список с правильным <code>key</code> и объяснить, чем плох индекс</li>
+          <li>Могу описать три шага рендера и предсказать, какие компоненты перерисуются</li>
+          <li>Могу отличить чистый компонент от нечистого и починить мутацию props</li>
+          <li>Могу подключить Tailwind 4 к Vite и выбрать между ним и CSS Modules</li>
+          <li>Могу разбить макет на дерево компонентов и обосновать каждую границу</li>
+        </ul>
+      </article>
+    </section>
