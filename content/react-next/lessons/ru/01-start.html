@@ -1,0 +1,1114 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 1 · TypeScript и модель React</p>
+      <h1>Старт курса: Vite + React + TypeScript</h1>
+      <p class="lead">К концу урока у вас будет рабочий стек курса: проект «Дастархон» на Vite, React 19 и TypeScript в strict-режиме, с линтером, форматтером, React DevTools и файлом правил <code>AGENTS.md</code> для ИИ-агента. Проект лежит на GitHub, а у вас есть план: из него за уроки 1–14 вырастет React SPA для заказа еды, которую вы покажете в портфолио.</p>
+      <ul class="goals">
+        <li>Объяснить, что такое React, чем он отличается от ручной работы с DOM и от фреймворка вроде Next.js</li>
+        <li>Проверить Node.js, создать проект Vite + React + TS и запустить его командой <code>npm run dev</code></li>
+        <li>Прочитать структуру проекта и сказать, за что отвечает каждый файл и флаг в <code>tsconfig.app.json</code></li>
+        <li>Подключить проверки: <code>tsc</code>, Oxlint, Prettier, и установить React DevTools</li>
+        <li>Назвать главные изменения React 19 и понять, что из них пригодится в курсе</li>
+        <li>Написать <code>AGENTS.md</code> и работать с ИИ-агентом по схеме «план, маленький шаг, проверка»</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: компьютер с терминалом, Git и аккаунт GitHub, браузер Chrome, Firefox или Edge, редактор Cursor (или VS Code) и около 3,5 часов. Теорию (разделы 1–7) читайте по частям. Задачи с кодом на тёмном фоне выполняются прямо на странице. Блоки «Терминал» и файлы с именем в заголовке выполняются на вашем компьютере. Готовый проект из этого урока будете дорабатывать на каждом из уроков 2–14.</p>
+      <p>Предполагается, что вы знаете JavaScript (переменные, функции, массивы, <code>fetch</code>, модули) и основы React: JSX, компоненты, props, <code>useState</code>, <code>useEffect</code>. В разделе 7 есть 15-минутный самотест на это.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="what-react">
+      <h2 data-toc="Что такое React"><span class="num">01</span> Что такое React и зачем он нужен</h2>
+
+      <p>Когда вы пишете интерфейс руками, вы командуете браузеру по шагам: «найди элемент, поменяй текст, добавь класс, вставь новый блок». Чем больше экран, тем больше таких команд, и тем легче забыть одну из них. Экран и данные расходятся, и появляются баги вроде «в корзине 3 товара, а на значке написано 2».</p>
+      <p><b>React</b> меняет подход. Вы описываете, <b>как должен выглядеть экран при данных</b>: «если товаров 3, покажи три строки и цифру 3». Дальше React сам сравнивает новый результат со старым и точечно обновляет DOM. Короткая формула, которую стоит запомнить: <b>UI = функция(состояние)</b>.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 210" role="img" aria-label="Схема цикла React: состояние передаётся в компонент, компонент возвращает описание интерфейса, React обновляет экран, пользователь кликает, обработчик вызывает setState и цикл повторяется">
+          <rect class="fill-y" x="10" y="30" width="150" height="56" rx="12" /><text x="85" y="55" text-anchor="middle">состояние</text><text class="sub mono" x="85" y="74" text-anchor="middle">useState / props</text>
+          <rect class="fill-g" x="285" y="30" width="150" height="56" rx="12" /><text x="360" y="55" text-anchor="middle">компонент</text><text class="sub mono" x="360" y="74" text-anchor="middle">функция → JSX</text>
+          <rect class="fill-g" x="560" y="30" width="150" height="56" rx="12" /><text x="635" y="55" text-anchor="middle">экран (DOM)</text><text class="sub mono" x="635" y="74" text-anchor="middle">React обновляет сам</text>
+          <path class="arr" d="M160 58 H277" /><path class="arr-head" d="M285 58 l-10 -5 v10 z" />
+          <path class="arr" d="M435 58 H552" /><path class="arr-head" d="M560 58 l-10 -5 v10 z" />
+          <rect class="box b" x="285" y="140" width="150" height="48" rx="12" /><text x="360" y="162" text-anchor="middle">событие: клик</text><text class="sub mono" x="360" y="179" text-anchor="middle">onClick</text>
+          <path class="arr" d="M635 86 V164 H443" /><path class="arr-head" d="M435 164 l10 -5 v10 z" />
+          <path class="arr" d="M285 164 H85 V94" /><path class="arr-head" d="M85 86 l-5 10 h10 z" />
+          <text class="sub t-b" x="95" y="132">setState(новое значение)</text>
+        </svg>
+        <figcaption>Цикл React: состояние → компонент → экран → событие пользователя → новое состояние. Вы пишете компонент и обработчики, а обновлением DOM занимается React</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>В чойхоне вы говорите официанту: «Хочу плов и чай». Вы не объясняете, как резать морковь и сколько варить рис. Это декларативный подход, и React работает так же: вы заказываете результат («экран с тремя блюдами»), а как до него добраться, решает кухня. Ручной DOM похож на приготовление самому: каждый шаг на вашей совести.</p>
+      </div>
+
+      <h3>Попробуйте: тот же интерфейс на React</h3>
+      <p>Это живая песочница. Нажимайте на кнопки, затем поменяйте текст и снова запустите. Двоеточия после имён в коде (<code>name: string</code>) — это типы TypeScript. Пока их достаточно <b>узнавать и читать</b>, подробно мы разберём типы в уроке 2.</p>
+
+      <div class="playground" data-mode="react" data-title="Избранные рестораны">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+type CardProps = { name: string; cuisine: string };
+
+function Card({ name, cuisine }: CardProps) {
+  const [liked, setLiked] = useState(false);
+  return (
+    &lt;li className="card"&gt;
+      &lt;b&gt;{name}&lt;/b&gt; · {cuisine}
+      &lt;button onClick={() =&gt; setLiked(!liked)}&gt;{liked ? "♥" : "♡"}&lt;/button&gt;
+    &lt;/li&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;ul&gt;
+      &lt;Card name="Navruz" cuisine="плов" /&gt;
+      &lt;Card name="Chaikhona Rohat" cuisine="шашлык" /&gt;
+      &lt;Card name="Samarkand" cuisine="самбуса" /&gt;
+    &lt;/ul&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+ul { list-style: none; padding: 0; font-family: system-ui, sans-serif; }
+.card { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid #c9ced6; border-radius: 10px; margin-bottom: 8px; }
+.card button { margin-left: auto; border: 0; background: none; font-size: 20px; cursor: pointer; }
+</pre>
+      </div>
+
+      <h3>React — это библиотека, а не фреймворк</h3>
+      <p>React отвечает только за одно: за то, как <b>выглядит интерфейс</b> при данных. Страницы и адреса, глобальное состояние, запросы к серверу, формы, тесты в React не входят: для каждого есть отдельный инструмент. Поэтому курс устроен так: сначала сам React и TypeScript, потом по одному подключаем нужное (формы, Redux Toolkit, RTK Query, React Router, тесты), а в уроках 15–24 переходим на Next.js, где многое уже собрано в одно целое.</p>
+
+      <div class="callout warn">
+        <b>Типичные заблуждения</b>
+        <p><b>1.</b> «React — это фреймворк». Нет, это библиотека для интерфейса; роутинг и данные вы выбираете сами. <b>2.</b> «React сам делает сайт быстрым». Нет, он удобен для поддержки больших интерфейсов, а скорость зависит от вашего кода. <b>3.</b> «React и Next.js — одно и то же». Next.js — фреймворк, построенный на React. <b>4.</b> «Надо выучить весь JavaScript до React». Нужна база из прошлых курсов, остальное доучивается по ходу.</p>
+      </div>
+
+      <article class="task" id="q-why">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: идея React</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что значит, что React «декларативный»?</p>
+          <ol class="options">
+            <li>Код в нём нужно объявлять в начале файла</li>
+            <li>Вы описываете, как выглядит экран при данных, а обновление DOM делает React</li>
+            <li>Он работает только с заранее объявленными типами</li>
+            <li>Он не использует JavaScript, только разметку</li>
+          </ol>
+          <div class="explain"><p>Декларативный подход: «вот результат при таких данных». Императивный (ручной DOM): «вот шаги, как к нему прийти».</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В приложении на React пользователь нажал кнопку, и число в корзине должно измениться. Что делает обработчик?</p>
+          <ol class="options">
+            <li>Находит элемент <code>document.querySelector</code> и меняет его <code>textContent</code></li>
+            <li>Перезагружает страницу</li>
+            <li>Вызывает <code>setState</code> с новым значением, а React сам перерисует экран</li>
+            <li>Меняет файл компонента</li>
+          </ol>
+          <div class="explain"><p>Обработчик меняет <b>состояние</b>. Компонент вызывается заново с новыми данными и возвращает новое описание экрана.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn" target="_blank" rel="noopener">react.dev — Quick Start</a> · <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="ways">
+      <h2 data-toc="Способы создать приложение"><span class="num">02</span> Способы создать приложение: Vite, Next.js и другие</h2>
+
+      <p>Чтобы запустить React, нужна сборка: компиляция JSX и TypeScript, склейка файлов, dev-сервер с мгновенным обновлением. Её готовые варианты:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Способ</th><th>Что это</th><th>Когда выбирают</th><th>В курсе</th></tr></thead>
+          <tbody>
+            <tr><td><b>Vite</b> (<code>react-ts</code>)</td><td>Сборщик и dev-сервер. Рисует интерфейс в браузере (SPA). Роутинг, данные и состояние вы подключаете сами</td><td>Приложение за логином, админки, дашборды, обучение и прототипы; статический хостинг</td><td>Уроки 1–14</td></tr>
+            <tr><td><b>Next.js</b></td><td>Фреймворк на React: роутинг по папкам, серверный рендеринг, серверные компоненты, оптимизации из коробки</td><td>Сайты и магазины, которым важны поиск Google, скорость первой загрузки и серверная логика</td><td>Уроки 15–24</td></tr>
+            <tr><td><b>React Router</b> (framework mode), Expo</td><td>Другие фреймворки: Router совмещает Vite и серверные возможности, Expo делает мобильные приложения</td><td>Когда нужен другой набор возможностей или мобильная разработка</td><td>Только знать</td></tr>
+            <tr><td><b>Create React App</b></td><td>Старый стартовый шаблон на Webpack</td><td>Не выбирают: с 14 февраля 2025 он объявлен устаревшим для новых проектов</td><td>Не используем</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Документация React сегодня советует <b>начинать новые приложения с фреймворка</b> (Next.js, React Router, Expo), а Vite называет вариантом для тех, кто хочет разобраться в основах или собирает свой набор инструментов. В нашем курсе так и сделано: на Vite вы поймёте сам React без серверной магии, а затем на Next.js увидите, зачем нужен фреймворк.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 280" role="img" aria-label="Сравнение двух схем. SPA на Vite: сервер отдаёт почти пустой HTML и JavaScript-бандл, браузер сам рисует интерфейс и запрашивает данные у API. Next.js: сервер заранее готовит HTML с данными, браузер получает готовую страницу и затем оживляет её">
+          <text x="12" y="22">SPA на Vite (уроки 1–14)</text>
+          <rect class="box" x="10" y="36" width="130" height="50" rx="10" /><text x="75" y="66" text-anchor="middle">Браузер</text>
+          <rect class="fill-y" x="300" y="36" width="170" height="50" rx="10" /><text x="385" y="58" text-anchor="middle">Статический хостинг</text><text class="sub mono" x="385" y="76" text-anchor="middle">index.html + app.js</text>
+          <rect class="fill-g" x="580" y="36" width="130" height="50" rx="10" /><text x="645" y="58" text-anchor="middle">API</text><text class="sub mono" x="645" y="76" text-anchor="middle">JSON</text>
+          <path class="arr" d="M140 52 H292" /><path class="arr-head" d="M300 52 l-10 -5 v10 z" />
+          <path class="arr" d="M300 72 H148" /><path class="arr-head" d="M140 72 l10 -5 v10 z" />
+          <path class="arr" d="M75 86 V108 H645 V94" /><path class="arr-head" d="M645 86 l-5 10 h10 z" />
+          <text class="sub" x="12" y="128">Браузер получает пустую страницу и код, сам рисует экран и сам ходит за данными в API.</text>
+
+          <text x="12" y="172">Next.js (уроки 15–24)</text>
+          <rect class="box" x="10" y="186" width="130" height="50" rx="10" /><text x="75" y="216" text-anchor="middle">Браузер</text>
+          <rect class="fill-y" x="300" y="186" width="170" height="50" rx="10" /><text x="385" y="208" text-anchor="middle">Сервер Next.js</text><text class="sub mono" x="385" y="226" text-anchor="middle">готовит HTML</text>
+          <rect class="fill-g" x="580" y="186" width="130" height="50" rx="10" /><text x="645" y="208" text-anchor="middle">БД / API</text><text class="sub mono" x="645" y="226" text-anchor="middle">данные</text>
+          <path class="arr" d="M140 202 H292" /><path class="arr-head" d="M300 202 l-10 -5 v10 z" />
+          <path class="arr" d="M300 222 H148" /><path class="arr-head" d="M140 222 l10 -5 v10 z" />
+          <path class="arr" d="M470 211 H572" /><path class="arr-head" d="M580 211 l-10 -5 v10 z" />
+          <text class="sub" x="12" y="262">Сервер сам берёт данные и отдаёт браузеру готовый HTML, затем страницу «оживляют».</text>
+        </svg>
+        <figcaption>Где собирается экран: в SPA на Vite всё делает браузер, в Next.js часть работы переезжает на сервер</figcaption>
+      </figure>
+
+      <div class="yt" data-id="KCrXgy8qtjM" data-title="Vite in 100 Seconds — канал Fireship"></div>
+      <p class="muted">Ролик на английском, включите субтитры (2,5 минуты): что такое Vite и чем он отличается от Webpack. Ролик 2022 года, он объясняет идею, а команды берите из этого урока.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>SPA на Vite — это набор для плова, который вам продают сырым: рис, мясо, морковь, всё готовите на своей кухне (в браузере). Next.js — плов, который часть пути проходит на кухне ресторана, и к вам приезжает почти готовое блюдо. Чтобы научиться готовить, сначала нужно один раз сварить его самому, поэтому начинаем с Vite.</p>
+      </div>
+
+      <article class="task" id="q-ways">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: что выбрать</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Вы делаете закрытую панель для администратора ресторана: вход по паролю, поисковики её не индексируют. Какой старт разумнее для обучения и прототипа?</p>
+          <ol class="options">
+            <li>Vite + React + TypeScript: SPA без сервера, проще понять основы</li>
+            <li>Create React App, потому что он самый свежий</li>
+            <li>Ничего: React нельзя запускать без сервера</li>
+            <li>Только Next.js, потому что без него React не работает</li>
+          </ol>
+          <div class="explain"><p>Для закрытых приложений SEO не нужен, так что SPA подходит. Create React App объявлен устаревшим, а React работает и без Next.js.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Что из этого правда про Next.js в сравнении со SPA на Vite? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Next.js не требует знать React</li>
+            <li>Next.js даёт роутинг по папкам и серверный рендеринг из коробки</li>
+            <li>SPA на Vite всегда быстрее</li>
+            <li>В Next.js первая страница может прийти с сервера уже готовым HTML</li>
+          </ol>
+          <div class="explain"><p>Next.js построен на React и поэтому требует его знания. Какой вариант быстрее, зависит от задачи: у SPA проще хостинг, у Next.js лучше первая загрузка и индексация.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/creating-a-react-app" target="_blank" rel="noopener">react.dev — Creating a React App</a> · <a href="https://react.dev/blog/2025/02/14/sunsetting-create-react-app" target="_blank" rel="noopener">react.dev — Sunsetting Create React App</a> · <a href="https://vite.dev/guide/" target="_blank" rel="noopener">vite.dev — Getting Started</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="create">
+      <h2 data-toc="Node и создание проекта"><span class="num">03</span> Проверяем Node.js и создаём проект</h2>
+
+      <p>Все инструменты курса (Vite, TypeScript, Prettier, позже Next.js) работают на Node.js. Vite 8 требует <b>Node.js 20.19+ или 22.12+</b>. На 28 октября 2026 года долгосрочную поддержку (LTS) имеют линейки 22 и 24, берите свежую LTS с <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a>.</p>
+
+      <ol class="steps">
+        <li><b>Проверьте версии.</b> Откройте терминал (в Cursor: <code>Ctrl + `</code>) и выполните:
+<pre class="code" data-title="Терминал">
+node -v
+npm -v
+git --version
+</pre>
+          Нужно увидеть <code>v22.12</code> и выше (или <code>v24.x</code>), версию npm и версию Git. Если версия Node ниже или команда не найдена, установите LTS с nodejs.org и перезапустите терминал.</li>
+        <li><b>Выберите папку для проектов.</b> Путь без кириллицы и пробелов, не внутри OneDrive или iCloud. Перейдите в неё командой <code>cd</code>.</li>
+        <li><b>Создайте проект.</b>
+<pre class="code" data-title="Терминал">
+npm create vite@latest dastarkhon -- --template react-ts
+</pre>
+          Если мастер задаст вопросы: на «Which linter to use?» выберите <b>Oxlint</b> (почему, объясним в разделе 5), на «Install with npm and start now?» ответьте <b>No</b>: установку сделаем сами.</li>
+        <li><b>Установите зависимости и запустите.</b>
+<pre class="code" data-title="Терминал">
+cd dastarkhon
+npm install
+npm run dev
+</pre>
+          В терминале появится адрес <code>http://localhost:5173/</code>. Откройте его в браузере: вы увидите стартовую страницу Vite со счётчиком. Нажмите на кнопку, потом измените любой текст в <code>src/App.tsx</code> и сохраните: страница обновится без перезагрузки (это HMR). Остановить сервер: <code>Ctrl + C</code>.</li>
+        <li><b>Откройте проект в редакторе:</b> <code>cursor .</code> или «File → Open Folder».</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>«You are using Node.js 18.x. Vite requires Node.js version 20.19+ or 22.12+. Please upgrade your Node.js version.»</b> Версия Node слишком старая: поставьте LTS и перезапустите терминал. <b>«npm: command not found»</b>: Node.js не установлен или терминал не перезапущен. <b>Порт занят:</b> Vite сам выберет 5174 и напишет адрес в терминале. <b>«Target directory "dastarkhon" is not empty»</b>: папка уже существует, выберите другое имя или удалите её. <b>Страница пустая:</b> откройте DevTools (F12), вкладку Console: там указан файл и строка ошибки.</p>
+      </div>
+
+      <div class="callout tip">
+        <b>Про шаблоны</b>
+        <p>Кроме <code>react-ts</code> у Vite есть <code>react-compiler-ts</code>: он сразу включает React Compiler (раздел 6). Мы берём обычный <code>react-ts</code>, чтобы видеть код без автоматической оптимизации. Шаблоны без <code>-ts</code> — это тот же React на чистом JavaScript, в курсе они не нужны.</p>
+      </div>
+
+      <article class="task" id="t-setup">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Чек-лист: проект запущен</h4><span class="level easy">лёгкая</span></header>
+        <ul class="checklist" id="cl-setup">
+          <li><code>node -v</code> показывает 22.12 или выше (или 24.x), я проверил именно в своём терминале</li>
+          <li>Проект <code>dastarkhon</code> создан командой <code>npm create vite@latest dastarkhon -- --template react-ts</code></li>
+          <li><code>npm install</code> прошёл без ошибок, <code>npm run dev</code> показал адрес <code>localhost:5173</code></li>
+          <li>Страница открывается в браузере, и счётчик на ней работает</li>
+          <li>Я поменял текст в <code>src/App.tsx</code>, сохранил, и страница обновилась без перезагрузки</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/" target="_blank" rel="noopener">vite.dev — Getting Started</a> · <a href="https://nodejs.org/en/about/previous-releases" target="_blank" rel="noopener">nodejs.org — Releases</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="structure">
+      <h2 data-toc="Структура проекта"><span class="num">04</span> Структура проекта: файл за файлом</h2>
+
+      <p>Откройте проект и найдите эти файлы. Каждый из них вам придётся трогать или хотя бы понимать.</p>
+
+<div class="ftree"><b>dastarkhon/</b>
+├─ <b>index.html</b>          <i>единственная HTML-страница SPA, в ней &lt;div id="root"&gt;</i>
+├─ <b>package.json</b>        <i>зависимости и команды (scripts)</i>
+├─ <b>vite.config.ts</b>      <i>настройки Vite, подключён плагин React</i>
+├─ <b>tsconfig.json</b>       <i>точка входа: ссылается на два файла ниже</i>
+├─ <b>tsconfig.app.json</b>   <i>настройки TypeScript для кода в src/</i>
+├─ <b>tsconfig.node.json</b>  <i>настройки TypeScript для vite.config.ts</i>
+├─ <b>.oxlintrc.json</b>      <i>правила линтера</i>
+├─ <b>public/</b>             <i>файлы «как есть»: favicon и т. п.</i>
+└─ <b>src/</b>
+   ├─ <b>main.tsx</b>         <i>точка входа: запускает React</i>
+   ├─ <b>App.tsx</b>          <i>корневой компонент</i>
+   └─ <b>index.css</b>        <i>глобальные стили</i></div>
+
+      <h3>Как запускается приложение</h3>
+      <p>Браузер открывает <code>index.html</code>. В нём тег <code>&lt;script type="module" src="/src/main.tsx"&gt;</code> подключает точку входа. Вот она целиком:</p>
+
+<pre class="code" data-lang="tsx" data-title="src/main.tsx">
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.tsx'
+
+createRoot(document.getElementById('root')!).render(
+  &lt;StrictMode&gt;
+    &lt;App /&gt;
+  &lt;/StrictMode&gt;,
+)
+</pre>
+
+      <dl class="terms">
+        <dt>createRoot</dt><dd>Говорит React: «вот элемент <code>#root</code>, управляй всем, что внутри него».</dd>
+        <dt>.render(…)</dt><dd>Показывает в этом корне компонент <code>App</code> и всё его дерево.</dd>
+        <dt>StrictMode</dt><dd>Помощник для разработки: в dev-режиме выполняет компоненты и эффекты дважды, чтобы вскрыть скрытые баги. На сайте для пользователей этого двойного запуска нет.</dd>
+        <dt>!</dt><dd>Восклицательный знак после <code>getElementById('root')</code> читается так: «поверь мне, TypeScript, элемент существует». Без него strict-режим потребует проверить, что он не <code>null</code>. Подробно про такие знаки в уроке 2.</dd>
+      </dl>
+
+      <h3>Три файла tsconfig</h3>
+      <p>TypeScript читает настройки из <code>tsconfig*.json</code>. Файлов три, потому что в проекте два разных мира: код приложения (<code>src/</code>) работает в браузере, а <code>vite.config.ts</code> запускается в Node.js. У них разные окружения, поэтому свои настройки. Главные флаги в <code>tsconfig.app.json</code>:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Флаг</th><th>Что даёт</th></tr></thead>
+          <tbody>
+            <tr><td><code>"jsx": "react-jsx"</code></td><td>JSX компилируется без <code>import React</code> в каждом файле</td></tr>
+            <tr><td><code>"moduleResolution": "bundler"</code></td><td>Импорты ищутся так, как это делает сборщик Vite</td></tr>
+            <tr><td><code>"verbatimModuleSyntax": true</code></td><td>Типы нужно импортировать явно: <code>import type { Foo } from './types'</code></td></tr>
+            <tr><td><code>"erasableSyntaxOnly": true</code></td><td>Запрещает конструкции, которые не стираются при удалении типов, например <code>enum</code></td></tr>
+            <tr><td><code>"noUnusedLocals"</code>, <code>"noUnusedParameters"</code></td><td>Неиспользуемые переменные и параметры становятся ошибкой</td></tr>
+            <tr><td><code>"noEmit": true</code></td><td><code>tsc</code> только проверяет типы, файлы не создаёт: собирает Vite</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><b>Strict-режим.</b> В шаблоне нет строки <code>"strict": true</code>, потому что в современных версиях TypeScript (6 и выше) он включён по умолчанию. Мы проверили это на практике: в проекте на TypeScript 7.0 неописанный параметр функции даёт ошибку <code>TS7006: Parameter 'x' implicitly has an 'any' type</code>. Для наглядности вы добавите строку <code>"strict": true</code> в конфиг сами, в практике.</p>
+
+      <div class="callout">
+        <b>Важно: Vite не проверяет типы</b>
+        <p>Vite только вырезает типы из кода и запускает его, а проверка идёт отдельно: командой <code>tsc -b</code> и в редакторе. Поэтому <code>npm run dev</code> может работать при ошибках типов. Команда <code>npm run build</code> (<code>tsc -b &amp;&amp; vite build</code>) сначала проверяет типы, и с ошибкой сборка остановится.</p>
+      </div>
+
+      <h3>Реальные ошибки, которые вы увидите</h3>
+      <p>Их тексты на английском, и это нормально: читайте их целиком, код ошибки (<code>TS1484</code>) пригодится для поиска.</p>
+<pre class="code" data-title="Терминал — вывод tsc -b">
+src/Bad.tsx(1,20): error TS1484: 'ReactNode' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/Bad.tsx(3,6): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.
+</pre>
+      <p>Первая: <code>ReactNode</code> — тип, его нужно импортировать как <code>import type { ReactNode } from 'react'</code> (или <code>import { type ReactNode } from 'react'</code>). Вторая: в файле использован <code>enum</code>, вместо него берут объект с <code>as const</code> или union-тип (про них в уроке 2).</p>
+
+      <div class="yt" data-id="Rku2F5OGPzU" data-title="Как создать проект на React через Vite. Установка, настройка и структура проекта — канал Friendly Frontend" data-start="173"></div>
+      <p class="muted">Ролик на русском (сентябрь 2025), начинается с создания проекта и разбирает структуру. Автор выбирает шаблон на JavaScript, поэтому у него <code>main.jsx</code>, а у вас <code>main.tsx</code>: логика одна и та же. Если шаблон спросит про линтер, берите Oxlint.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Проект — это бозор. <code>index.html</code> — ворота, через которые входят все. <code>main.tsx</code> — администратор, который открывает рынок и ставит первый прилавок (<code>App</code>). <code>package.json</code> — список поставщиков (пакетов), а <code>tsconfig</code> — правила рынка, которые проверяет контролёр: что можно ставить на прилавок, а что нельзя.</p>
+      </div>
+
+      <article class="task" id="q-structure">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: читаем проект</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Что делает команда <code>npm run build</code> в этом шаблоне?</p>
+          <ol class="options">
+            <li>Только запускает dev-сервер</li>
+            <li>Только форматирует код Prettier</li>
+            <li>Сначала проверяет типы командой <code>tsc -b</code>, и только если ошибок нет, собирает приложение через Vite</li>
+            <li>Загружает проект на GitHub</li>
+          </ol>
+          <div class="explain"><p>В <code>package.json</code>: <code>"build": "tsc -b &amp;&amp; vite build"</code>. Знак <code>&amp;&amp;</code> означает «вторую команду запускай, только если первая прошла успешно».</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Ошибка <code>TS1484: 'ReactNode' is a type and must be imported using a type-only import</code>. Как её исправить?</p>
+          <ol class="options">
+            <li>Написать <code>import type { ReactNode } from 'react'</code></li>
+            <li>Выключить TypeScript в проекте</li>
+            <li>Заменить тип на <code>any</code></li>
+            <li>Удалить файл <code>tsconfig.app.json</code></li>
+          </ol>
+          <div class="explain"><p>Флаг <code>verbatimModuleSyntax</code> требует явно помечать импорт типов. Это помогает сборщику: импорт типов полностью стирается из итогового кода.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Почему <code>npm run dev</code> может запуститься, хотя в коде есть ошибка типа?</p>
+          <ol class="options">
+            <li>Потому что TypeScript в Vite не установлен</li>
+            <li>Потому что Vite только стирает типы и запускает код, а проверку типов выполняет <code>tsc</code> отдельно</li>
+            <li>Потому что dev-режим всегда игнорирует ошибки</li>
+            <li>Потому что ошибки типов не бывают в React</li>
+          </ol>
+          <div class="explain"><p>Поэтому проверяйте типы редактором и командой <code>npm run typecheck</code> (её добавим в практике) и всегда запускайте <code>npm run build</code> перед коммитом.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/features.html#typescript" target="_blank" rel="noopener">vite.dev — TypeScript</a> · <a href="https://www.typescriptlang.org/tsconfig/" target="_blank" rel="noopener">typescriptlang.org — TSConfig Reference</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="tools">
+      <h2 data-toc="Инструменты"><span class="num">05</span> Инструменты: tsc, Oxlint, Prettier, React DevTools</h2>
+
+      <p>Четыре помощника ловят разные вещи. Запомните, кто за что отвечает:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Инструмент</th><th>Что проверяет</th><th>Команда</th></tr></thead>
+          <tbody>
+            <tr><td><b>tsc</b> (TypeScript)</td><td>Типы: строку вместо числа, пропущенный prop, обращение к полю, которого нет</td><td><code>npm run typecheck</code></td></tr>
+            <tr><td><b>Oxlint</b></td><td>Подозрительный код: хук внутри <code>if</code>, неиспользуемые переменные</td><td><code>npm run lint</code></td></tr>
+            <tr><td><b>Prettier</b></td><td>Только оформление: отступы, кавычки, переносы. Правил логики у него нет</td><td><code>npm run format</code></td></tr>
+            <tr><td><b>React DevTools</b></td><td>Живое дерево компонентов в браузере: props, состояние, перерисовки</td><td>Вкладки Components и Profiler</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Линтер: Oxlint и ESLint</h3>
+      <p><b>Линтер</b> читает код и находит места, где он, скорее всего, ошибочен. Исторически стандарт — <b>ESLint</b>, и вы встретите его в большинстве существующих проектов. Шаблон Vite сегодня по умолчанию ставит <b>Oxlint</b>: он написан на Rust и по заявлению разработчиков в 50–100 раз быстрее ESLint, а встроенные правила уже включают <code>react/rules-of-hooks</code>. Конфиг лежит в <code>.oxlintrc.json</code>.</p>
+      <p>Шаблон умеет генерировать и вариант с ESLint (флаг <code>--eslint</code> или выбор в мастере). Мы проверили его 28 октября 2026 года, и он не работает: <code>npm install</code> падает, потому что <code>typescript-eslint</code> пока не поддерживает TypeScript 7.</p>
+<pre class="code" data-title="Терминал — вывод npm install в шаблоне с ESLint">
+npm error code ERESOLVE
+npm error ERESOLVE unable to resolve dependency tree
+npm error Found: typescript@7.0.2
+npm error Could not resolve dependency:
+npm error peer typescript@"&gt;=4.8.4 &lt;6.1.0" from typescript-eslint@8.72.1
+</pre>
+      <p>Ключ <code>--legacy-peer-deps</code> установку проведёт, но <code>npm run lint</code> после этого всё равно падает, так что использовать его не стоит. Поэтому в курсе остаёмся на Oxlint. Когда в <code>typescript-eslint</code> появится поддержка TypeScript 7, вариант с ESLint снова заработает, понимать его всё равно нужно: правила, которые вы видите в Oxlint, те же, что и в ESLint.</p>
+
+<pre class="code" data-title="Терминал — вывод npm run lint, когда хук вызван внутри if">
+src/Bad.tsx:7:17: error react-hooks(rules-of-hooks): React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render.
+</pre>
+
+      <h3>Prettier</h3>
+      <p>Prettier приводит весь код к одному виду, чтобы в командной работе не спорить о кавычках и отступах и чтобы в историях Git не было шума от форматирования. Он не знает про ошибки: «красивый» код всё равно может быть неверным. Команды установки вы выполните в практике (раздел 9). Чтобы редактор форматировал при сохранении, поставьте расширение Prettier (<code>esbenp.prettier-vscode</code>) и включите в настройках <code>"editor.formatOnSave": true</code>.</p>
+
+      <h3>React DevTools</h3>
+      <p>Расширение для браузера, которое показывает, как React видит вашу страницу. Установка: <a href="https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi" target="_blank" rel="noopener">Chrome</a>, <a href="https://addons.mozilla.org/en-US/firefox/addon/react-devtools/" target="_blank" rel="noopener">Firefox</a>, <a href="https://microsoftedge.microsoft.com/addons/detail/react-developer-tools/gpphkfbcpidddadnkolkpfckpihlkkil" target="_blank" rel="noopener">Edge</a>. После установки откройте DevTools (F12) на странице с React: появятся вкладки <b>Components</b> (дерево компонентов, их props и состояние, которое можно менять руками) и <b>Profiler</b> (запись перерисовок). Вкладкой Profiler мы займёмся в уроке 6, а сейчас достаточно Components.</p>
+
+      <div class="yt" data-id="tTvbc1x6Jao" data-title="Тестирование и отладка React-компонентов: React DevTools на практике — канал Friendly Frontend" data-start="57"></div>
+      <p class="muted">Ролик на русском (январь 2026, 21 минута). На сейчас нужны минуты 1–6: установка и вкладка Components. Про Profiler и оптимизацию посмотрите перед уроком 6.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Путать линтер и форматтер: Prettier не найдёт баг, Oxlint не расставит отступы. <b>2.</b> Считать, что «в dev всё работает, значит, типы в порядке»: проверка типов идёт только в <code>tsc</code> и <code>build</code>. <b>3.</b> Подавлять ошибки комментарием <code>// @ts-ignore</code> или заменой на <code>any</code>: ошибка остаётся, просто вы её больше не видите. <b>4.</b> Устанавливать расширение DevTools «от неизвестного разработчика»: берите по ссылкам с react.dev.</p>
+      </div>
+
+      <article class="task" id="q-tools">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: кто за что отвечает</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="4">
+          <p>Компонент вызывает <code>useState</code> внутри <code>if</code>. Какой инструмент это покажет?</p>
+          <ol class="options">
+            <li>Prettier</li>
+            <li>React DevTools</li>
+            <li>Браузер сам исправит</li>
+            <li>Линтер (Oxlint) с правилом <code>rules-of-hooks</code></li>
+          </ol>
+          <div class="explain"><p>Prettier только форматирует. Правило <code>rules-of-hooks</code> проверяет, что хуки вызываются на верхнем уровне компонента и всегда в одном порядке.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Вы передали в компонент <code>price="сто"</code>, а он ждёт число. Кто это поймает ещё до запуска страницы?</p>
+          <ol class="options">
+            <li>TypeScript (<code>tsc</code> или редактор)</li>
+            <li>Prettier</li>
+            <li>Vite при запуске dev-сервера</li>
+            <li>React DevTools</li>
+          </ol>
+          <div class="explain"><p>Типы проверяет TypeScript. Vite их только удаляет, поэтому полагаться на него нельзя.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://oxc.rs/docs/guide/usage/linter" target="_blank" rel="noopener">oxc.rs — Oxlint</a> · <a href="https://prettier.io/docs/install" target="_blank" rel="noopener">prettier.io — Install</a> · <a href="https://react.dev/learn/react-developer-tools" target="_blank" rel="noopener">react.dev — React Developer Tools</a></p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="react19">
+      <h2 data-toc="React 19"><span class="num">06</span> Что изменилось в React 19</h2>
+
+      <p>Текущая версия React в курсе — <b>19.3</b> (в шаблоне Vite на 28 октября 2026 года: <code>react@^19.3.1</code>). Все изменения линейки 19 собраны в одной таблице. Звёздочкой отмечено то, что мы будем использовать на курсе.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Версия</th><th>Что появилось</th><th>Где пригодится</th></tr></thead>
+          <tbody>
+            <tr><td><b>19.0</b><br>5 декабря 2024</td><td>Actions и <code>useActionState</code>; <code>useOptimistic</code>; <code>useFormStatus</code>; хук <code>use</code>; <b>ref как обычный prop</b> (<code>forwardRef</code> больше не нужен); <b>&lt;Context&gt; сразу как провайдер</b>; теги <code>&lt;title&gt;</code> и <code>&lt;meta&gt;</code> в любом компоненте; серверные компоненты и Server Functions</td><td>★ ref и Context: уроки 5 и 8. ★ Формы и Actions: уроки 7, 18, 20. Серверные компоненты: уроки 16–18</td></tr>
+            <tr><td><b>19.2</b><br>1 октября 2025</td><td><code>&lt;Activity&gt;</code> (скрытые, но живые части интерфейса), <code>useEffectEvent</code> (отделяет «событие» от эффекта), дорожки React в Chrome Performance</td><td>★ <code>useEffectEvent</code>: урок 5. Performance: уроки 6 и 12</td></tr>
+            <tr><td><b>19.3</b><br>9 сентября 2026</td><td>Стабильные <code>&lt;ViewTransition&gt;</code> (анимация переходов) и ref на <code>&lt;Fragment&gt;</code>, <code>browser()</code> для кода только для браузера, поддержка Trusted Types</td><td>Анимации и переходы: по желанию в проектах</td></tr>
+            <tr><td><b>React Compiler 1.0</b><br>7 октября 2025</td><td>Отдельный инструмент: на сборке сам расставляет мемоизацию, которую раньше писали руками через <code>useMemo</code>, <code>useCallback</code>, <code>React.memo</code></td><td>★ Урок 6 и 12: когда мемоизация нужна, а когда её делает компилятор</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Что из React 19 вам сразу бросится в глаза</h3>
+      <p><b>ref — обычный prop.</b> Раньше компонент, который принимает ref, нужно было оборачивать в <code>forwardRef</code>. Теперь достаточно взять <code>ref</code> из props:</p>
+
+      <div class="playground" data-mode="react" data-title="ref как prop в React 19">
+<pre class="code" data-lang="jsx">
+import { useRef } from "react";
+
+function SearchInput({ placeholder, ref }) {
+  return &lt;input placeholder={placeholder} ref={ref} /&gt;;
+}
+
+export default function App() {
+  const inputRef = useRef(null);
+  return (
+    &lt;div&gt;
+      &lt;SearchInput placeholder="Найти ресторан" ref={inputRef} /&gt;
+      &lt;button onClick={() =&gt; inputRef.current?.focus()}&gt;В поиск&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <p><b>Context без .Provider.</b> Вместо <code>&lt;ThemeContext.Provider value="dark"&gt;</code> пишем <code>&lt;ThemeContext value="dark"&gt;</code>. Старая запись пока работает, но будет объявлена устаревшей. Подробности в уроке 8.</p>
+      <p><b>Удалено.</b> <code>propTypes</code> и <code>defaultProps</code> у функциональных компонентов (проверку props теперь делает TypeScript, значения по умолчанию задаются в параметрах), <code>ReactDOM.render</code> (вместо него <code>createRoot</code>, как в вашем <code>main.tsx</code>), строковые refs и устаревший Context. Если ИИ или старый туториал предлагает такой код, это сигнал: пример устарел.</p>
+      <p><b>TypeScript и React 19.</b> <code>useRef</code> теперь всегда требует начальное значение (<code>useRef(null)</code>), а ref-callback не должен возвращать значение неявно: пишем <code>ref={(el) =&gt; { node = el }}</code>, а не <code>ref={(el) =&gt; (node = el)}</code>. Тексты ошибок в таких случаях сами подскажут исправление.</p>
+
+      <div class="callout warn">
+        <b>Безопасность: держите зависимости свежими</b>
+        <p>В декабре 2025 команда React закрыла критическую уязвимость в серверных компонентах (удалённое выполнение кода без авторизации). Исправления вышли в 19.0.1, 19.1.2 и 19.2.1. Шаблон Vite сегодня ставит 19.3.x, где она закрыта; в SPA серверных компонентов нет, но привычка важна: <code>npm install</code> свежего шаблона, а не копирование старого <code>package.json</code>, и регулярно <code>npm outdated</code>. В Next.js (уроки 15–24) это критично.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Версии React 19.x — как обновления маршруток на линии: маршрут (основной принцип «UI = функция от состояния») прежний, но добавили кондиционер (<code>useEffectEvent</code>), безналичную оплату (Actions) и убрали старые сиденья, которые ломались (<code>propTypes</code>, <code>ReactDOM.render</code>). Ездить по-старому можно, пока не наступит момент, когда сиденья нет.</p>
+      </div>
+
+      <article class="task" id="q-react19">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь себя: React 19</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Туториал советует <code>ReactDOM.render(&lt;App /&gt;, document.getElementById('root'))</code>. Что делать в React 19?</p>
+          <ol class="options">
+            <li>Использовать как есть, всё работает</li>
+            <li>Использовать <code>createRoot(...).render(...)</code> из <code>react-dom/client</code>: <code>ReactDOM.render</code> удалён</li>
+            <li>Заменить <code>render</code> на <code>propTypes</code></li>
+            <li>Ничего: в Vite этот код подставляется автоматически</li>
+          </ol>
+          <div class="explain"><p><code>ReactDOM.render</code> удалён в 19.0. Ваш <code>main.tsx</code> уже использует <code>createRoot</code>. Туториал, где этого нет, написан для React 17 и старше.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Какие утверждения о React 19 верны? Выберите два.</p>
+          <ol class="options">
+            <li>Компонент может принять <code>ref</code> как обычный prop, без <code>forwardRef</code></li>
+            <li>Хуки теперь можно вызывать внутри условий</li>
+            <li><code>propTypes</code> у функциональных компонентов больше не проверяются, вместо них используют TypeScript</li>
+            <li>React Compiler встроен в React и включён всегда</li>
+          </ol>
+          <div class="explain"><p>Правила хуков не изменились (<code>use</code> можно вызывать в условии, но это отдельный хук). Compiler — отдельный необязательный инструмент сборки.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/blog/2024/12/05/react-19" target="_blank" rel="noopener">React v19</a> · <a href="https://react.dev/blog/2024/04/25/react-19-upgrade-guide" target="_blank" rel="noopener">React 19 Upgrade Guide</a> · <a href="https://react.dev/blog/2025/10/01/react-19-2" target="_blank" rel="noopener">React 19.2</a> · <a href="https://react.dev/blog/2026/09/09/react-19-3" target="_blank" rel="noopener">React 19.3</a> · <a href="https://react.dev/learn/react-compiler/introduction" target="_blank" rel="noopener">React Compiler</a></p>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="selftest">
+      <h2 data-toc="Самотест React Lite"><span class="num">07</span> Самотест на 15 минут: JSX, props, useState, useEffect</h2>
+
+      <p>Прежде чем строить проект, проверим фундамент. Четыре маленькие задачи на то, что вы уже умеете: JSX, props, состояние, эффект, список. <b>Не пользуйтесь подсказками первые 3–4 минуты на задачу.</b> Если какая-то задача не получается совсем, вернитесь к повторению: <a href="https://react.dev/learn" target="_blank" rel="noopener">react.dev/learn</a>, разделы «Describing the UI» и «Adding Interactivity». Это нормально: за урок 2 вы узнаете ещё много нового.</p>
+      <p>Нижние строки с <code>setTimeout</code> и <code>console.log</code> в задачах — служебная автопроверка, в задачах её не удаляйте.</p>
+
+      <div class="practice">
+        <h3>Практика: самотест</h3>
+
+        <article class="task" id="t7-1">
+          <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Карточка ресторана: JSX и props</h4><span class="level easy">лёгкая</span></header>
+          <p>Компонент <code>RestaurantCard</code> получает props <code>name</code>, <code>cuisine</code>, <code>rating</code> и возвращает <code>&lt;article className="card"&gt;</code> с заголовком <code>h3</code> (название) и абзацем <code>p</code> вида <code>кухня · рейтинг</code>.</p>
+          <div class="playground" data-mode="react" data-title="Карточка ресторана">
+<pre class="code" data-lang="jsx">
+function RestaurantCard(props) {
+  // TODO: верните article.card с h3 и p
+  return &lt;div&gt;&lt;/div&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;RestaurantCard name="Navruz" cuisine="plov" rating={4.8} /&gt;
+      &lt;RestaurantCard name="Rohat" cuisine="kebab" rating={4.5} /&gt;
+    &lt;/main&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;main&gt;
+&lt;article class="card"&gt;
+&lt;h3&gt;Navruz&lt;/h3&gt;
+&lt;p&gt;plov · 4.8&lt;/p&gt;
+&lt;/article&gt;
+&lt;article class="card"&gt;
+&lt;h3&gt;Rohat&lt;/h3&gt;
+&lt;p&gt;kebab · 4.5&lt;/p&gt;
+&lt;/article&gt;
+&lt;/main&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Значения props берите из объекта: <code>props.name</code>, или сразу деструктурируйте <code>{ name, cuisine, rating }</code> в параметрах.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;p&gt;{cuisine} · {rating}&lt;/p&gt;</code>. Класс в JSX пишется как <code>className</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-2">
+          <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Порции: useState</h4><span class="level easy">лёгкая</span></header>
+          <p>Оживите счётчик порций. Кнопка «+» прибавляет 1, кнопка «−» вычитает 1, но число не должно опускаться ниже нуля.</p>
+          <div class="playground" data-mode="react" data-title="Порции">
+<pre class="code" data-lang="jsx">
+// Не забудьте импорт: import { useState } from "react";
+export default function App() {
+  // TODO: состояние qty, начальное значение 0
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Порций: 0&lt;/p&gt;
+      &lt;button&gt;−&lt;/button&gt; &lt;button&gt;+&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+const btn = (t) =&gt; [...document.querySelectorAll("button")].find((b) =&gt; b.textContent.trim() === t);
+const show = () =&gt; console.log(document.querySelector("p").textContent);
+(async () =&gt; {
+  await wait();
+  show();
+  for (let i = 0; i &lt; 3; i++) { btn("+").click(); await wait(); }
+  show();
+  for (let i = 0; i &lt; 5; i++) { btn("−").click(); await wait(); }
+  show();
+})();
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Порций: 0
+Порций: 3
+Порций: 0</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>const [qty, setQty] = useState(0);</code> и вывод <code>{qty}</code> в абзаце. Обработчики вешаются на кнопки через <code>onClick</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Уменьшение: <code>onClick={() =&gt; setQty(Math.max(0, qty - 1))}</code>.</p></details>
+        </article>
+
+        <article class="task" id="t7-3">
+          <header><span class="task-num">ЗАДАЧА 7.3</span><h4>Город: useEffect и зависимости</h4><span class="level mid">средняя</span></header>
+          <p>Добавьте эффект, который выводит в консоль <code>load: &lt;город&gt;</code> при первом показе компонента и каждый раз, когда город сменился. Других запусков быть не должно. Это заготовка для загрузки списка ресторанов города.</p>
+          <div class="playground" data-mode="react" data-title="Город">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+// Не забудьте добавить useEffect в импорт
+
+export default function App() {
+  const [city, setCity] = useState("Dushanbe");
+
+  // TODO: useEffect с выводом "load: <город>" и правильным массивом зависимостей
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;{city}&lt;/p&gt;
+      &lt;button onClick={() =&gt; setCity(city === "Dushanbe" ? "Khujand" : "Dushanbe")}&gt;Сменить&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("button").click();
+  await wait();
+  document.querySelector("button").click();
+  await wait();
+})();
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>load: Dushanbe
+load: Khujand
+load: Dushanbe</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Эффект должен срабатывать при изменении <code>city</code>, значит, <code>city</code> нужно положить в массив зависимостей.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>useEffect(() =&gt; { console.log("load: " + city); }, [city]);</code></p></details>
+        </article>
+
+        <article class="task" id="t7-4">
+          <header><span class="task-num">ЗАДАЧА 7.4</span><h4>Открытые рестораны: список и key</h4><span class="level mid">средняя</span></header>
+          <p>Выведите список <code>ul</code> только из <b>открытых</b> ресторанов (поле <code>open: true</code>): по одному <code>li</code> с названием. У каждого <code>li</code> должен быть <code>key</code> из <code>id</code>, а не из индекса.</p>
+          <div class="playground" data-mode="react" data-title="Открытые рестораны">
+<pre class="code" data-lang="jsx">
+const restaurants = [
+  { id: 1, name: "Navruz", open: true },
+  { id: 2, name: "Rohat", open: false },
+  { id: 3, name: "Samarkand", open: true },
+];
+
+export default function App() {
+  // TODO: отфильтруйте открытые и выведите через map с key
+  return &lt;ul&gt;&lt;/ul&gt;;
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+          </div>
+          <div class="expected"><b>Ожидаемый результат</b><pre>&lt;ul&gt;
+&lt;li&gt;Navruz&lt;/li&gt;
+&lt;li&gt;Samarkand&lt;/li&gt;
+&lt;/ul&gt;</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Сначала <code>restaurants.filter((r) =&gt; r.open)</code>, затем <code>.map(...)</code> результата прямо внутри <code>&lt;ul&gt;</code> в фигурных скобках.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p><code>{restaurants.filter((r) =&gt; r.open).map((r) =&gt; &lt;li key={r.id}&gt;{r.name}&lt;/li&gt;)}</code></p></details>
+        </article>
+      </div>
+
+      <div class="callout tip">
+        <b>Как прочитать результат самотеста</b>
+        <p>Все четыре задачи сразу: вы готовы к уроку 2. Не получились 7.2 и 7.3: перед уроком 4 повторите состояние и эффекты (<a href="https://react.dev/learn/state-a-components-memory" target="_blank" rel="noopener">State</a>, <a href="https://react.dev/learn/synchronizing-with-effects" target="_blank" rel="noopener">Effects</a>). Не получилась 7.1: повторите JSX и props до урока 3. Эти темы мы разбираем ещё раз и глубже, но уже быстро.</p>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/describing-the-ui" target="_blank" rel="noopener">react.dev — Describing the UI</a> · <a href="https://react.dev/learn/adding-interactivity" target="_blank" rel="noopener">react.dev — Adding Interactivity</a></p>
+    </section>
+
+    <!-- ============ 08 · ИИ-блок ============ -->
+    <section class="topic" id="ai-agent">
+      <h2 data-toc="ИИ-агент и AGENTS.md"><span class="num">08</span> ИИ-блок: агент в проекте, AGENTS.md и режим «сначала план»</h2>
+
+      <p>На курсе вы работаете в редакторе <b>Cursor</b> с его встроенным агентом: он видит весь проект, читает файлы, запускает команды и правит код. У Cursor есть тариф <b>Free</b>: 0 долларов в месяц, с ограниченным числом запросов агента (на cursor.com/pricing, проверено 28 октября 2026). Если лимиты закончились, это не повод останавливаться: все задачи урока решаются руками, а агент нужен для скорости и разбора. Агент — исполнитель, а решения и ответственность за код остаются за вами.</p>
+
+      <div class="callout ai">
+        <b>Правила работы с агентом в проекте</b>
+        <p><b>1.</b> Сначала <b>правила</b> (файл <code>AGENTS.md</code>), потом задачи: агент читает его при каждом запросе и не гадает про стек. <b>2.</b> <b>Сначала план</b>: просите перечислить файлы и шаги, код пока не писать. В Cursor для этого есть режим Plan. <b>3.</b> Один небольшой шаг за раз: чем больше изменение, тем труднее его проверить. <b>4.</b> После каждого шага: <code>npm run build</code> и <code>npm run lint</code>. <b>5.</b> Перед большой задачей делайте <code>git commit</code>: откатить удачнее, чем разбираться. <b>6.</b> Не принимайте код, который не можете объяснить: просите разобрать построчно. <b>7.</b> Ошибку копируйте в чат целиком, вместе с кодом ошибки.</p>
+      </div>
+
+      <h3>AGENTS.md: инструкция для нового сотрудника</h3>
+      <p><code>AGENTS.md</code> — обычный текстовый файл в корне проекта. Cursor читает его, и другие агенты тоже: это общий формат. Представьте инструкцию для сотрудника, который каждое утро приходит заново и ничего не помнит. Что там должно быть: <b>стек и версии, команды, правила кода, порядок работы</b>. Файл должен быть коротким: чем он длиннее, тем хуже его соблюдают.</p>
+
+<pre class="code" data-title="AGENTS.md (шаблон для проекта «Дастархон»)">
+# Дастархон — React SPA для заказа еды
+
+## Стек
+- Vite 8, React 19, TypeScript 7 (strict), npm
+- Новые зависимости не добавлять без моего разрешения
+
+## Команды
+- npm run dev — dev-сервер (localhost:5173)
+- npm run build — проверка типов (tsc -b) и сборка
+- npm run lint — Oxlint
+- npm run format — Prettier
+
+## Правила кода
+- Только функциональные компоненты, один компонент на файл,
+  имя файла совпадает с именем компонента (RestaurantCard.tsx)
+- TypeScript strict: без any и без @ts-ignore
+- Типы импортировать через import type
+- enum не использовать (в tsconfig включён erasableSyntaxOnly)
+- Секреты в код не писать. В браузер попадают только
+  переменные с префиксом VITE_, и они публичные
+
+## Структура (план)
+src/components, src/pages, src/hooks, src/store, src/api, src/types.ts
+
+## Как работать
+1. Сначала план: перечисли файлы и шаги. Код не пиши, пока я не подтвержу.
+2. Один небольшой шаг за раз. После шага запускай npm run build и npm run lint.
+3. Коротко объясни, что изменил и зачем.
+4. Не трогай файлы вне задачи и не переформатируй чужой код.
+</pre>
+
+      <h3>Промпт: от «почисти» к понятной задаче</h3>
+      <p>Формула промпта: <b>контекст → задача → ограничения → формат ответа → проверка</b>. Сравните два запроса на уборку стартового шаблона.</p>
+
+      <div class="prompt bad-prompt">почисти проект</div>
+
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), создан из шаблона react-ts. В корне лежит AGENTS.md, прочитай его.
+Задача: сначала только ПЛАН, код не пиши. Какие файлы стартового шаблона нужно удалить или изменить, чтобы осталась чистая заготовка: App.tsx выводит заголовок «Дастархон», а стили лежат в одном src/index.css.
+Ограничения: не трогай tsconfig*.json, vite.config.ts и package.json, не добавляй зависимости.
+Формат ответа: таблица «файл — удалить / изменить / оставить — причина в одну строку».
+Проверка: после моего подтверждения выполни npm run build и npm run lint и покажи вывод целиком.</div>
+
+      <p>Хороший промпт отвечает на вопросы «где мы», «что именно», «чего не трогать», «как выглядит ответ» и «как проверить». Плохой оставляет их агенту, и агент отвечает наугад: может удалить конфиги, добавить зависимость или переписать половину файлов.</p>
+
+      <h3>Как проверять код, который написал агент</h3>
+      <ol class="steps">
+        <li><b>Типы.</b> Нет <code>any</code>, <code>as unknown as</code>, <code>// @ts-ignore</code>. Если ошибка типа «исчезла» такой ценой, она не исправлена.</li>
+        <li><b>Эффекты.</b> Нужен ли <code>useEffect</code> вообще? Полный ли массив зависимостей? Есть ли очистка? (Подробно в уроке 5.)</li>
+        <li><b>Списки.</b> У каждого элемента <code>key</code> из <code>id</code>, а не из индекса.</li>
+        <li><b>Устаревший код.</b> Нет <code>ReactDOM.render</code>, <code>propTypes</code>, <code>forwardRef</code> в новом коде, шаблонов Create React App.</li>
+        <li><b>Зависимости.</b> Агент добавил пакет? Проверьте, что он существует, нужен и поддерживается. Выдуманные названия пакетов — реальная проблема.</li>
+        <li><b>Секреты.</b> Ни ключей, ни токенов в коде. Всё, что имеет префикс <code>VITE_</code>, попадёт в браузер и станет публичным.</li>
+        <li><b>Граница клиент/сервер.</b> В SPA её нет, а в Next.js (уроки 15–24) вы будете проверять, что секреты и доступ к базе остались на сервере.</li>
+        <li><b>Проверка.</b> <code>npm run build</code>, <code>npm run lint</code>, страница в браузере и пустая вкладка Console.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Просить «сделай всё» вместо одного шага: на выходе 15 изменённых файлов, которые никто не читал. <b>2.</b> Не коммитить перед большой правкой. <b>3.</b> Принять «готово», не запустив build. <b>4.</b> Давать агенту ключи и пароли в чат. <b>5.</b> Длинный <code>AGENTS.md</code> с общими словами («пиши хороший код»): нужны конкретные команды и правила.</p>
+      </div>
+
+      <article class="task" id="q-ai">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Проверь себя: работа с агентом</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Агент предложил исправить ошибку TS7006 («implicitly has an any type») так: <code>function f(x: any)</code>. Что вы ответите?</p>
+          <ol class="options">
+            <li>Принять: ошибка пропала</li>
+            <li>Отключить strict-режим в <code>tsconfig</code></li>
+            <li>Отклонить и попросить объяснить ошибку и дать конкретный тип параметра без <code>any</code></li>
+            <li>Удалить функцию</li>
+          </ol>
+          <div class="explain"><p><code>any</code> выключает проверку для этого значения: ошибка спрятана, а не исправлена. Правило из <code>AGENTS.md</code>: без <code>any</code>. Конкретные типы разберём в уроке 2.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Агент в ответе на задачу выполнил <code>npm install some-unknown-lib</code>, хотя вы просили обойтись без новых зависимостей. Что делаете?</p>
+          <ol class="options">
+            <li>Откатываете изменения (<code>git restore</code> / <code>git checkout</code>), напоминаете правило из <code>AGENTS.md</code> и просите решение без пакета</li>
+            <li>Оставляете: раз установился, значит, пакет надёжный</li>
+            <li>Добавляете ещё пять пакетов для надёжности</li>
+            <li>Копируете в чат пароль от GitHub, чтобы агент разобрался</li>
+          </ol>
+          <div class="explain"><p>Каждая зависимость — это чужой код в вашем проекте и новая поверхность для уязвимостей. Правила проекта и коммит перед задачей как раз для таких случаев.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://cursor.com/docs/context/rules" target="_blank" rel="noopener">Cursor — Rules и AGENTS.md</a> · <a href="https://cursor.com/pricing" target="_blank" rel="noopener">Cursor — тарифы</a> · <a href="https://agents.md" target="_blank" rel="noopener">agents.md</a></p>
+    </section>
+
+    <!-- ============ 09 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: старт проекта"><span class="num">09</span> Практика: стартуем проект «Дастархон»</h2>
+
+      <h3>Что мы строим</h3>
+      <p><b>«Дастархон»</b> — React SPA для заказа еды из ресторанов Душанбе: каталог ресторанов с фильтрами и поиском, меню, корзина, оформление заказа, избранное, тема оформления, страницы с маршрутами. Данные придут с тестового API (его адрес и формат дадим в уроке 5). Это <b>проект 1</b>: к уроку 14 он будет с типами, Redux Toolkit, RTK Query, React Router, тестами и деплоем на Vercel, а вы защитите его перед ментором. Затем уроки 15–24 посвящены второму большому проекту — магазину на Next.js.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Урок</th><th>Что добавляется в «Дастархон»</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Проект Vite + React + TS, линтер, Prettier, <code>AGENTS.md</code>, репозиторий на GitHub</td></tr>
+            <tr><td>2</td><td>Типы данных: ресторан, блюдо, позиция корзины</td></tr>
+            <tr><td>3</td><td>Дерево компонентов и статичный каталог ресторанов, стили</td></tr>
+            <tr><td>4</td><td>Фильтры, сортировка и корзина на <code>useReducer</code></td></tr>
+            <tr><td>5</td><td>Загрузка ресторанов с API, состояния loading и error</td></tr>
+            <tr><td>6</td><td>Свои хуки, поиск лишних перерисовок в Profiler</td></tr>
+            <tr><td>7</td><td>Форма заказа с валидацией в модальном окне</td></tr>
+            <tr><td>8</td><td>Тема и пользователь через Context</td></tr>
+            <tr><td>9</td><td>Корзина и избранное на Redux Toolkit</td></tr>
+            <tr><td>10</td><td>Сетевой слой на RTK Query</td></tr>
+            <tr><td>11</td><td>React Router: страницы ресторана, меню, корзины, заказа</td></tr>
+            <tr><td>12</td><td>Ленивые маршруты, Error Boundary, оптимизации</td></tr>
+            <tr><td>13</td><td>Тесты корзины, формы и редьюсера</td></tr>
+            <tr><td>14</td><td>Защита проекта, доработка по ревью, деплой на Vercel</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Слои проекта Дастархон: компоненты и страницы, хуки, хранилище Redux Toolkit, слой запросов RTK Query, внешний API; стрелки показывают, что данные идут снизу вверх, а действия пользователя сверху вниз">
+          <rect class="fill-g" x="170" y="10" width="380" height="40" rx="10" /><text x="360" y="35" text-anchor="middle">Страницы и компоненты (уроки 3, 7, 11)</text>
+          <rect class="fill-y" x="170" y="64" width="380" height="40" rx="10" /><text x="360" y="89" text-anchor="middle">Свои хуки и Context (уроки 6, 8)</text>
+          <rect class="box b" x="170" y="118" width="380" height="40" rx="10" /><text x="360" y="143" text-anchor="middle">Redux Toolkit: корзина, избранное (урок 9)</text>
+          <rect class="box g" x="170" y="172" width="380" height="40" rx="10" /><text x="360" y="197" text-anchor="middle">RTK Query: запросы и кэш (урок 10)</text>
+          <rect class="box" x="580" y="172" width="130" height="40" rx="10" /><text x="645" y="197" text-anchor="middle">API (JSON)</text>
+          <path class="arr" d="M550 192 H572" /><path class="arr-head" d="M580 192 l-10 -5 v10 z" />
+          <path class="arr" d="M110 30 V210" /><path class="arr-head" d="M110 218 l-5 -10 h10 z" />
+          <text class="sub" x="10" y="124">действия</text><text class="sub" x="10" y="140">сверху вниз</text>
+          <path class="arr" d="M660 164 V20 H558" /><path class="arr-head" d="M550 20 l10 -5 v10 z" />
+          <text class="sub t-g" x="590" y="100">данные</text><text class="sub t-g" x="590" y="116">снизу вверх</text>
+          <text class="sub" x="12" y="240">Каждый урок добавляет один слой. Тест (урок 13) проверяет слои по отдельности.</text>
+        </svg>
+        <figcaption>Слои проекта 1. Сейчас вы создаёте только пустой каркас, остальное вырастет по урокам</figcaption>
+      </figure>
+
+      <p>Так будут выглядеть данные. Это <b>читаем, не пишем</b>: типы вы напишете сами в уроке 2.</p>
+<pre class="code" data-lang="ts" data-title="src/types.ts (появится в уроке 2)">
+export type Restaurant = {
+  id: number
+  name: string
+  cuisine: string
+  rating: number
+  open: boolean
+}
+
+export type MenuItem = {
+  id: number
+  restaurantId: number
+  title: string
+  price: number // в сомони
+}
+
+export type CartItem = {
+  item: MenuItem
+  qty: number
+}
+</pre>
+
+      <h3>Шаги: от шаблона к чистому каркасу</h3>
+      <ol class="steps">
+        <li><b>Уберите лишнее из шаблона.</b> В корне проекта:
+<pre class="code" data-title="Терминал (macOS / Linux)">
+rm src/App.css public/icons.svg
+rm -r src/assets
+</pre>
+<pre class="code" data-title="Терминал (Windows PowerShell)">
+Remove-Item src\App.css, public\icons.svg
+Remove-Item -Recurse src\assets
+</pre>
+        </li>
+        <li><b>Замените <code>src/App.tsx</code>:</b>
+<pre class="code" data-lang="tsx" data-title="src/App.tsx">
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;h1&gt;Дастархон&lt;/h1&gt;
+      &lt;p&gt;Заказ еды из ресторанов Душанбе&lt;/p&gt;
+    &lt;/main&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Замените <code>src/index.css</code>:</b>
+<pre class="code" data-lang="css" data-title="src/index.css">
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+</pre>
+        </li>
+        <li><b>В <code>index.html</code></b> замените <code>lang="en"</code> на <code>lang="ru"</code>, а <code>&lt;title&gt;dastarkhon&lt;/title&gt;</code> на <code>&lt;title&gt;Дастархон&lt;/title&gt;</code>.</li>
+        <li><b>Добавьте Prettier:</b>
+<pre class="code" data-title="Терминал">
+npm install --save-dev --save-exact prettier
+</pre>
+          Создайте файл <code>.prettierrc</code> (стиль как в шаблоне: без точек с запятой, одинарные кавычки):
+<pre class="code" data-lang="json" data-title=".prettierrc">
+{
+  "semi": false,
+  "singleQuote": true
+}
+</pre>
+          и файл <code>.prettierignore</code> из двух строк:
+<pre class="code" data-title=".prettierignore">
+dist
+node_modules
+</pre>
+          Если на Windows Prettier при проверке сообщает о конце строк, добавьте в <code>.prettierrc</code> строку <code>"endOfLine": "auto"</code>.</li>
+        <li><b>Добавьте команды в <code>package.json</code></b> (раздел <code>scripts</code>, три новые строки после <code>preview</code>):
+<pre class="code" data-lang="json" data-title="package.json (scripts)">
+"scripts": {
+  "dev": "vite",
+  "build": "tsc -b &amp;&amp; vite build",
+  "lint": "oxlint",
+  "preview": "vite preview",
+  "typecheck": "tsc -b",
+  "format": "prettier . --write",
+  "format:check": "prettier . --check"
+}
+</pre>
+        </li>
+        <li><b>Включите strict явно.</b> В <code>tsconfig.app.json</code> в блок «Linting» добавьте строку <code>"strict": true,</code>. Работать будет и без неё, но так режим виден в конфиге.</li>
+        <li><b>Создайте <code>AGENTS.md</code></b> в корне проекта из шаблона раздела 8. Проверьте, что версии и команды в нём совпадают с вашим проектом.</li>
+        <li><b>Запустите все проверки</b> и убедитесь, что везде чисто:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+<pre class="code" data-title="Терминал — ожидаемый итог">
+✓ 20 modules transformed.
+dist/index.html                   0.46 kB │ gzip:  0.32 kB
+dist/assets/index-….css           0.07 kB │ gzip:  0.08 kB
+dist/assets/index-….js          219.68 kB │ gzip: 68.74 kB
+✓ built in …ms
+</pre>
+          Размеры и хэши в именах файлов у вас будут другие. Главное: нет красного текста, а <code>npm run lint</code> не печатает ошибок.</li>
+        <li><b>Сломайте нарочно.</b> Добавьте в <code>App.tsx</code> строку <code>const x: number = 'a'</code> и запустите <code>npm run typecheck</code>: прочитайте текст ошибки и найдите в нём файл, строку и код <code>TS2322</code>. Потом удалите строку.</li>
+        <li><b>Создайте репозиторий и отправьте проект.</b> На github.com создайте пустой публичный репозиторий <code>dastarkhon</code> (без README и .gitignore), затем:
+<pre class="code" data-title="Терминал">
+git init
+git add .
+git commit -m "init vite react ts project"
+git branch -M main
+git remote add origin https://github.com/ВАШ-ЛОГИН/dastarkhon.git
+git push -u origin main
+</pre>
+          Папки <code>node_modules</code> и <code>dist</code> уже перечислены в <code>.gitignore</code> шаблона: проверьте через <code>git status</code>, что их нет в коммите.</li>
+        <li><b>Попросите агента разобрать проект.</b> В Cursor отправьте: «Прочитай AGENTS.md и проект. Объясни по пунктам, что делают <code>index.html</code>, <code>main.tsx</code>, <code>App.tsx</code>, три файла <code>tsconfig</code> и <code>package.json</code>. Код не меняй». Сравните его ответ с разделом 4: что агент упустил или объяснил неточно? Это материал для домашнего задания.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>«fatal: not a git repository»</b>: вы не в папке проекта или не выполнили <code>git init</code>. <b>«remote origin already exists»</b>: команда <code>git remote add</code> уже выполнялась; проверьте <code>git remote -v</code>. <b>«Permission denied» или запрос пароля при push</b>: GitHub не принимает пароль, настройте вход через <code>gh auth login</code> или SSH-ключ. <b>Prettier меняет все файлы:</b> проверьте, что <code>.prettierignore</code> содержит <code>dist</code> и <code>node_modules</code>. <b>«Cannot find module './assets/…'»</b>: вы удалили <code>src/assets</code>, но в <code>App.tsx</code> остался старый код шаблона; замените файл целиком.</p>
+      </div>
+
+      <article class="task" id="t-plan">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Проверь себя: решения проекта</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Почему проект 1 мы начинаем на Vite, а не сразу на Next.js?</p>
+          <ol class="options">
+            <li>Потому что Next.js устарел</li>
+            <li>Чтобы сначала понять сам React (состояние, хуки, данные, роутинг) без серверной части, а затем увидеть, что именно добавляет фреймворк</li>
+            <li>Потому что на Next.js нельзя использовать TypeScript</li>
+            <li>Потому что Vite умеет серверный рендеринг лучше</li>
+          </ol>
+          <div class="explain"><p>Next.js построен на React и требует его знания. Курс идёт от простого к сложному: SPA (уроки 1–14), потом фреймворк (15–24).</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>В каком порядке подключаются слои данных в «Дастархоне»?</p>
+          <ol class="options">
+            <li>Сначала локальное состояние и хуки, затем Redux Toolkit, затем RTK Query, затем роутинг</li>
+            <li>Сначала RTK Query, потом всё остальное</li>
+            <li>Всё сразу в уроке 1</li>
+            <li>Роутинг первым, потому что без него нет страниц</li>
+          </ol>
+          <div class="explain"><p>Каждый инструмент решает задачу, которую вы уже почувствовали руками: сначала useState и useReducer, потом общее состояние, потом серверные данные, потом страницы.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t-practice">
+        <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Чек-лист: чистый каркас проекта</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-practice">
+          <li>Стартовые файлы шаблона удалены (<code>App.css</code>, <code>icons.svg</code>, папка <code>assets</code>), в <code>App.tsx</code> заголовок «Дастархон»</li>
+          <li>В <code>index.html</code> <code>lang="ru"</code> и title «Дастархон»</li>
+          <li>Prettier установлен, есть <code>.prettierrc</code> и <code>.prettierignore</code>, <code>npm run format:check</code> проходит</li>
+          <li>В <code>package.json</code> есть команды <code>typecheck</code>, <code>format</code>, <code>format:check</code></li>
+          <li>В <code>tsconfig.app.json</code> явно включён <code>"strict": true</code></li>
+          <li><code>npm run typecheck</code>, <code>npm run lint</code> и <code>npm run build</code> проходят без ошибок</li>
+          <li>Я нарочно вызвал ошибку типа, прочитал её (файл, строка, код TS2322) и исправил</li>
+          <li>В корне лежит <code>AGENTS.md</code> с командами, правилами кода и порядком работы</li>
+          <li>Репозиторий <code>dastarkhon</code> на GitHub, в нём нет <code>node_modules</code> и <code>dist</code></li>
+          <li>React DevTools установлены, на странице проекта во вкладке Components виден компонент <code>App</code></li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/guide/" target="_blank" rel="noopener">vite.dev — Getting Started</a> · <a href="https://www.typescriptlang.org/tsconfig/#strict" target="_blank" rel="noopener">TSConfig — strict</a> · <a href="https://docs.github.com/en/get-started/start-your-journey/hello-world" target="_blank" rel="noopener">GitHub — Hello World</a></p>
+    </section>
+
+    <!-- ============ 10 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">10</span> Домашнее задание: проект-заготовка и пять вопросов</h2>
+
+      <p>Сдайте ссылку на репозиторий <code>dastarkhon</code> на GitHub. В нём должны быть чистый каркас из практики, ваш <code>AGENTS.md</code> и файл <code>docs/structure.md</code> с ответами на пять вопросов <b>своими словами</b>: не копируйте текст урока и ответ агента, объясните так, как рассказали бы одногруппнику.</p>
+
+      <h3>Пять вопросов для docs/structure.md</h3>
+      <ol class="steps">
+        <li>Что делает <code>index.html</code> и каким образом в него попадает <code>main.tsx</code>?</li>
+        <li>Что делает <code>createRoot(...).render(...)</code> и зачем нужен <code>StrictMode</code>?</li>
+        <li>Зачем в проекте три файла <code>tsconfig</code> и чем они отличаются?</li>
+        <li>Что делает <code>npm run build</code>: какие две команды, в каком порядке и почему именно так?</li>
+        <li>Чем отличаются <code>dependencies</code> и <code>devDependencies</code> в <code>package.json</code>? Что лежит в каждом разделе вашего проекта и почему?</li>
+      </ol>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Проект:</b> Vite + React + TypeScript, <code>npm run build</code> и <code>npm run lint</code> проходят.</li>
+        <li><b>Prettier:</b> <code>npm run format:check</code> проходит.</li>
+        <li><b>AGENTS.md:</b> стек с версиями, команды, не меньше пяти конкретных правил кода и порядок работы «сначала план». Не копия шаблона слово в слово: добавьте хотя бы одно своё правило.</li>
+        <li><b>README.md:</b> название, одно предложение о проекте и команды запуска (<code>npm install</code>, <code>npm run dev</code>).</li>
+        <li><b>Git:</b> минимум два коммита с понятными сообщениями, репозиторий публичный и открывается без входа в аккаунт. Папки <code>node_modules</code> и <code>dist</code> в репозитории нет.</li>
+        <li><b>docs/structure.md:</b> пять ответов своими словами, каждый от двух предложений.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Ответ агента вставлен в <code>docs/structure.md</code> без изменений: на защите вас спросят то же самое устно. <b>2.</b> В репозиторий попал <code>node_modules</code>. <b>3.</b> Ссылка на профиль GitHub вместо репозитория. <b>4.</b> Приватный репозиторий: ментор не сможет его открыть. <b>5.</b> <code>AGENTS.md</code> из общих слов без команд и версий. <b>6.</b> Один коммит «всё»: история должна показывать шаги.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Чек-лист требований к ДЗ-1</h4><span class="level mid">средняя</span></header>
+        <p>Перед сдачей проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Проект собирается: <code>npm run build</code> и <code>npm run lint</code> проходят без ошибок</li>
+          <li><code>npm run format:check</code> проходит</li>
+          <li><code>AGENTS.md</code> содержит стек с версиями, команды, не меньше пяти правил и одно моё собственное правило</li>
+          <li><code>README.md</code> описывает проект и команды запуска</li>
+          <li><code>docs/structure.md</code> содержит пять ответов, написанных своими словами</li>
+          <li>В репозитории не меньше двух осмысленных коммитов, нет <code>node_modules</code> и <code>dist</code></li>
+          <li>Репозиторий публичный: я открыл ссылку в режиме инкогнито и всё видно</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 10.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку вида <code>https://github.com/ваш-логин/dastarkhon</code>. Откройте её в режиме инкогнито: код, <code>AGENTS.md</code> и <code>docs/structure.md</code> должны быть видны.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://docs.npmjs.com/cli/v11/configuring-npm/package-json" target="_blank" rel="noopener">npm — package.json</a> · <a href="https://react.dev/reference/react-dom/client/createRoot" target="_blank" rel="noopener">react.dev — createRoot</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>React</b> — библиотека интерфейса: <b>UI = функция(состояние)</b>. Вы описываете экран при данных, React обновляет DOM. Роутинг, состояние, данные — отдельные инструменты.</li>
+        <li><b>Старт проекта:</b> <code>npm create vite@latest имя -- --template react-ts</code>, затем <code>npm install</code> и <code>npm run dev</code> (порт 5173). Нужен Node.js 20.19+ или 22.12+. Create React App не используем.</li>
+        <li><b>Vite</b> = SPA в браузере (уроки 1–14); <b>Next.js</b> = фреймворк с сервером (уроки 15–24).</li>
+        <li><b>Файлы:</b> <code>index.html</code> → <code>src/main.tsx</code> (<code>createRoot().render()</code>) → <code>src/App.tsx</code>. <code>tsconfig.app.json</code> для <code>src/</code>, <code>tsconfig.node.json</code> для <code>vite.config.ts</code>.</li>
+        <li><b>TypeScript:</b> strict включён по умолчанию; <code>import type</code> для типов (<code>verbatimModuleSyntax</code>); без <code>enum</code> (<code>erasableSyntaxOnly</code>). Vite типы не проверяет: <code>tsc -b</code> и <code>npm run build</code> проверяют.</li>
+        <li><b>Команды:</b> <code>dev</code>, <code>build</code> (<code>tsc -b &amp;&amp; vite build</code>), <code>lint</code> (Oxlint), <code>typecheck</code>, <code>format</code> и <code>format:check</code> (Prettier).</li>
+        <li><b>Инструменты:</b> tsc — типы; Oxlint — подозрительный код (<code>rules-of-hooks</code>); Prettier — оформление; React DevTools — Components и Profiler. Вариант шаблона с ESLint на 28.10.2026 не устанавливается из-за TypeScript 7.</li>
+        <li><b>React 19.x:</b> ref как prop, <code>&lt;Context&gt;</code> без <code>.Provider</code>, Actions и <code>useActionState</code>, <code>use</code>, <code>useEffectEvent</code> (19.2), стабильные <code>&lt;ViewTransition&gt;</code> (19.3); удалены <code>propTypes</code>, <code>ReactDOM.render</code>. React Compiler 1.0 — отдельный инструмент сборки.</li>
+        <li><b>С агентом:</b> <code>AGENTS.md</code> (стек, команды, правила), сначала план, один шаг, <code>build</code> и <code>lint</code> после шага, коммит перед большой задачей, никаких <code>any</code>, новых пакетов и секретов в коде.</li>
+        <li><b>Проект 1 «Дастархон»:</b> SPA для заказа еды, растёт по урокам 1–14 и защищается в уроке 14.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 11.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, что значит «UI = функция от состояния» и чем React отличается от ручной работы с DOM</li>
+          <li>Могу объяснить, когда выбирают SPA на Vite, а когда Next.js, и почему Create React App не используют</li>
+          <li>Могу создать проект Vite + React + TS и запустить его, проверив версию Node</li>
+          <li>Могу рассказать путь от <code>index.html</code> до компонента <code>App</code> и назвать роль каждого файла</li>
+          <li>Могу прочитать ошибку TypeScript (файл, строка, код) и исправить <code>TS1484</code></li>
+          <li>Могу отличить, что проверяет tsc, Oxlint и Prettier, и запустить все три</li>
+          <li>Могу назвать пять изменений React 19 и устаревшие API, которые не нужно писать</li>
+          <li>Могу написать <code>AGENTS.md</code>, попросить у агента план и проверить его работу</li>
+        </ul>
+      </article>
+    </section>
