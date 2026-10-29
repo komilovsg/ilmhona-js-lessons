@@ -1113,9 +1113,26 @@ export const VC_LESSON_META: LessonMeta = {
 };
 
 /** React Pro + Next.js: slugs with content/react-next/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const RN_AVAILABLE = [] as readonly string[];
+export const RN_AVAILABLE = ['start'] as const;
 
 /** React Pro + Next.js task levels, keyed by progress key `rn-<slug>`. */
 export const RN_LESSON_META: LessonMeta = {
-
+  'rn-start': {
+    'q-why': 'e',
+    'q-ways': 'e',
+    't-setup': 'e',
+    'q-structure': 'm',
+    'q-tools': 'e',
+    'q-react19': 'm',
+    't7-1': 'e',
+    't7-2': 'e',
+    't7-3': 'm',
+    't7-4': 'm',
+    'q-ai': 'm',
+    't-plan': 'e',
+    't-practice': 'm',
+    'hw-req': 'm',
+    'hw-github': 'm',
+    't-understood': 'e',
+  },
 };
