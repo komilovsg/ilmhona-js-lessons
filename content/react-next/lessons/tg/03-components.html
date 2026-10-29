@@ -1,0 +1,1882 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 3 · TypeScript ва модели React</p>
+      <h1>Компонентҳо, унсурҳо ва модели рендер</h1>
+      <p class="lead">Дар охири дарс шумо феҳристи аз компонентҳо ҷамъшудаи тарабхонаҳои «Дастархон»-ро хоҳед дошт: дарахти ёздаҳ компонент дар React 19 ва TypeScript, ки бо CSS Modules ва Tailwind CSS 4 услубгузорӣ шудааст ва маълумотро аз массив мегирад. Шумо мефаҳмед, ки дар байни <code>setState</code> ва навшавии экран воқеан чӣ рӯй медиҳад, ва метавонед шарҳ диҳед, ки чаро React компонентро аз нав мекашад ва компонентҳои тоза чист.</p>
+      <ul class="goals">
+        <li>Қоидаҳои JSX-ро номбар кунед ва хатогиҳои маъмули нишонагузориро аз рӯи матни хатои TypeScript ислоҳ намоед</li>
+        <li>Интерфейсро аз компонентҳо тавассути props, <code>children</code> ва «слотҳо» ҷамъ кунед ва компонентҳоро дар дохили компонентҳо эълон накунед</li>
+        <li>Рӯйхатҳоро тавассути <code>map</code> бо <code>key</code>-и дуруст намоиш диҳед ва шарҳ диҳед, ки чаро индекс ҳамчун калид бад аст</li>
+        <li>Се қадамро — триггер, рендер, коммит — тасвир кунед ва пешгӯӣ намоед, ки кадом компонентҳо аз нав кашида мешаванд</li>
+        <li>Компоненти тоза ва ғайритозаро фарқ кунед ва тағйирдиҳии props-ро ислоҳ намоед</li>
+        <li>Tailwind CSS 4 ва CSS Modules-ро дар лоиҳаи Vite пайваст кунед ва усули мувофиқро барои масъала интихоб намоед</li>
+        <li>Макетро ба дарахти компонентҳо ҷудо кунед, дар ин бора бо агенти ЗС баҳс намоед ва феҳристи дарси 2-ро ба компонентҳо бо услубҳо тақсим кунед</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Ин дарсро чӣ тавр гузаштан лозим аст</b>
+      <p>Лозим аст: лоиҳаи <code>dastarkhon</code> баъд аз дарси 2 (Vite + React + TypeScript, Oxlint, Prettier, <code>AGENTS.md</code>, файлҳои <code>types.ts</code> ва <code>data.ts</code>, компонентҳои <code>RestaurantCard</code>, <code>CuisineFilter</code>, <code>SearchBox</code>, <code>Section</code>), терминал, муҳаррир ва тақрибан 3,5 соат. Бахшҳои 1–6 — назария бо майдончаҳои зинда: коди дар замини торик навишташуда бевосита дар худи саҳифа иҷро мешавад. Бахши 7 — кор бо агенти ЗС, бахши 8 — амалиёт дар компютери шумо. Натиҷаи дарс — феҳристи «Дастархон» бо дарахти ботартиби компонентҳо, ки дар дарси 4 саралашавӣ ва сабад мегирад.</p>
+      <p>Фарз мешавад, ки шумо JavaScript ва асосҳои React-ро медонед: JSX, props, <code>useState</code>, <code>useEffect</code> (худсанҷии дарси 1 инро такрор мекунад), инчунин навъҳои props, <code>children</code> ва <code>useState</code>-ро аз дарси 2. Дар ин ҷо ҳамин чизҳоро амиқтар мебинем: чӣ тавр сохта шудаанд ва чаро вайрон мешаванд.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="jsx">
+      <h2 data-toc="JSX ва унсурҳо"><span class="num">01</span> JSX ва унсурҳо: компонент воқеан чӣ бармегардонад</h2>
+
+      <p><b>JSX</b> — на HTML ва на қолаб аст. Ин синтаксиси JavaScript аст, ки ҳангоми ҷамъкунӣ ба даъвати функсияҳо табдил меёбад. Vite инро худкор мекунад: <code>&lt;h1&gt;Navruz&lt;/h1&gt;</code>-и шумо ба даъвати <code>jsx('h1', …)</code> аз бастаи <code>react/jsx-runtime</code> табдил меёбад. Натиҷаи даъват — <b>унсури React</b>: объекти оддӣ, ки <b>тавсиф мекунад</b>, чиро нишон додан лозим. Ин на пораи DOM аст ва на HTML-и тайёр.</p>
+
+<pre class="code" data-lang="jsx" data-title="JSX ва он чизе, ки ба он табдил меёбад (содда карда шуда)">
+const element = &lt;h1 className="title"&gt;Navruz&lt;/h1&gt;
+
+// после сборки это вызов jsx('h1', { className: 'title', children: 'Navruz' }),
+// а в итоге обычный объект примерно такого вида:
+const sameElement = {
+  type: 'h1',
+  props: { className: 'title', children: 'Navruz' },
+}
+</pre>
+
+      <p>Унсурро арзон сохтан мумкин аст ва онро тағйир додан намешавад: барои нишон додани чизи дигар, компонент танҳо объекти нав бармегардонад. Аз чунин объектҳо дарахт сохта мешавад, ки React онро баъд бо пештара муқоиса мекунад ва фарқиятҳоро ба DOM интиқол медиҳад (бахши 4).</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 150" role="img" aria-label="Нақша: JSX ҳангоми ҷамъкунӣ ба даъвати функсияи jsx табдил меёбад, даъват объекти-унсурро бармегардонад, React объектҳоро муқоиса карда, DOM-и браузерро нав мекунад">
+          <rect class="fill-y" x="10" y="40" width="140" height="58" rx="12" /><text x="80" y="64" text-anchor="middle">JSX</text><text class="sub mono" x="80" y="84" text-anchor="middle">&lt;h1&gt;Navruz&lt;/h1&gt;</text>
+          <rect class="box b" x="195" y="40" width="150" height="58" rx="12" /><text x="270" y="64" text-anchor="middle">даъвати функсия</text><text class="sub mono" x="270" y="84" text-anchor="middle">jsx('h1', {…})</text>
+          <rect class="fill-g" x="390" y="40" width="150" height="58" rx="12" /><text x="465" y="64" text-anchor="middle">унсур</text><text class="sub mono" x="465" y="84" text-anchor="middle">объекти оддӣ</text>
+          <rect class="box g" x="585" y="40" width="125" height="58" rx="12" /><text x="647" y="64" text-anchor="middle">DOM</text><text class="sub mono" x="647" y="84" text-anchor="middle">React нав мекунад</text>
+          <path class="arr" d="M150 69 H187" /><path class="arr-head" d="M195 69 l-10 -5 v10 z" />
+          <path class="arr" d="M345 69 H382" /><path class="arr-head" d="M390 69 l-10 -5 v10 z" />
+          <path class="arr" d="M540 69 H577" /><path class="arr-head" d="M585 69 l-10 -5 v10 z" />
+          <text class="sub" x="172" y="30" text-anchor="middle">ҷамъкунӣ</text>
+          <text class="sub" x="367" y="30" text-anchor="middle">даъват</text>
+          <text class="sub" x="562" y="30" text-anchor="middle">коммит</text>
+          <text class="sub" x="12" y="132">Компонент тавсифи экранро бармегардонад. Онро на компонент, балки React мекашад.</text>
+        </svg>
+        <figcaption>Роҳи JSX то экран: ҷамъкунӣ аз нишонагузорӣ даъвати функсияҳо месозад, даъватҳо унсурҳо-объектҳо эҷод мекунанд ва DOM-ро танҳо React тағйир медиҳад</figcaption>
+      </figure>
+
+      <h3>Ҳафт қоидаи JSX</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Қоида</th><th>Чӣ тавр дуруст</th><th>Агар вайрон кунед, чӣ мешавад</th></tr></thead>
+          <tbody>
+            <tr><td><b>1. Як реша</b></td><td>Дар <code>&lt;div&gt;</code> ё дар Fragment <code>&lt;&gt;…&lt;/&gt;</code> печонед, ки дар DOM теги иловагӣ намезанад</td><td>Хатои <code>TS2657</code></td></tr>
+            <tr><td><b>2. Ҳамаи тегҳоро бибандед</b></td><td><code>&lt;img /&gt;</code>, <code>&lt;br /&gt;</code>, <code>&lt;input /&gt;</code></td><td>Хатои <code>TS17008</code></td></tr>
+            <tr><td><b>3. Атрибутҳо бо camelCase</b></td><td><code>className</code>, <code>htmlFor</code>, <code>onClick</code>, <code>tabIndex</code></td><td><code>class</code> хатои навъ ва огоҳии React медиҳад</td></tr>
+            <tr><td><b>4. Дар <code>{}</code> танҳо ифода</b></td><td><code>{price * 2}</code>, <code>{ok ? 'да' : 'нет'}</code>, <code>{items.map(…)}</code></td><td><code>if</code> ва <code>for</code> ба дохил намераванд: онҳоро болотар баред</td></tr>
+            <tr><td><b>5. style — объект</b></td><td><code>style={{ color: 'red', fontSize: 14 }}</code></td><td>Сатр ба ҷои объект: хатои <code>TS2559</code></td></tr>
+            <tr><td><b>6. Шарҳ дар JSX</b></td><td><code>{/* шарҳ */}</code></td><td><code>//</code>-и оддӣ дар нишонагузорӣ дар саҳифа матн мешавад</td></tr>
+            <tr><td><b>7. Ном бо ҳарфи калон — компонент</b></td><td><code>&lt;RestaurantCard /&gt;</code>; <code>&lt;div&gt;</code> бо ҳарфи хурд — теги HTML</td><td>Бахши 2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Матнҳои хатогиҳое, ки <code>tsc</code> ва муҳаррир нишон медиҳанд. Онҳо бо забони англисианд: файл, сатр ва рамзро (<code>TS2657</code>) хонед, аз рӯи рамз ҷустуҷӯ осон аст.</p>
+<pre class="code" data-title="Терминал — натиҷаи tsc -b барои нишонагузорӣ бо хатогӣ">
+src/Bad.tsx(5,5): error TS2657: JSX expressions must have one parent element.
+src/Bad.tsx(11,26): error TS17008: JSX element 'img' has no corresponding closing tag.
+src/Bad.tsx(4,15): error TS2322: Type '{ class: string; children: string; }' is not assignable to type 'DetailedHTMLProps&lt;HTMLAttributes&lt;HTMLDivElement&gt;, HTMLDivElement&gt;'.
+  Property 'class' does not exist on type 'DetailedHTMLProps&lt;HTMLAttributes&lt;HTMLDivElement&gt;, HTMLDivElement&gt;'. Did you mean 'className'?
+src/Bad.tsx(13,17): error TS2559: Type 'string' has no properties in common with type 'Properties&lt;string | number, string &amp; {}&gt;'.
+</pre>
+
+      <h3>Намоиши шартӣ ва он чизе, ки React намекашад</h3>
+      <p>Се роҳи нишон додани чизе аз рӯи шарт: оператори сегона (<code>{open ? &lt;Open /&gt; : &lt;Closed /&gt;}</code>), оператори <code>&amp;&amp;</code> (<code>{open &amp;&amp; &lt;Badge /&gt;}</code>) ва <code>return null</code>-и барвақтӣ дар аввали компонент. Қиматҳои <code>null</code>, <code>undefined</code>, <code>true</code> ва <code>false</code>-ро React фурӯ мегузорад, сатр ва рақамҳоро ҳамчун матн мекашад. Объектро кашидан мумкин нест: React бо хато қатъ мешавад.</p>
+
+<pre class="code" data-title="Терминал — хато дар консоли браузер (реҷаи dev)">
+Uncaught Error: Objects are not valid as a React child (found: object with keys {id, name}). If you meant to render a collection of children, use an array instead.
+</pre>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>{reviews &amp;&amp; &lt;span&gt;…&lt;/span&gt;}</code>, вақте ки <code>reviews</code> ба <code>0</code> баробар аст: <code>&amp;&amp;</code> қисми чапро бармегардонад, ва рақами 0-ро React дар экран мекашад. Нависед <code>{reviews &gt; 0 &amp;&amp; …}</code>. <b>2.</b> <code>{restaurant}</code> ба ҷои <code>{restaurant.name}</code>: хатои дар боло овардашудаи объект. <b>3.</b> Сатр дар <code>style</code>. <b>4.</b> Ду унсури ҳамсоя дар <code>return</code> бе решаи умумӣ. <b>5.</b> <code>class</code> ба ҷои <code>className</code>: саҳифа кор мекунад, аммо дар консол огоҳӣ ҳаст: <code>Invalid DOM property `class`. Did you mean `className`?</code>.</p>
+      </div>
+
+      <div class="yt" data-id="8EXUlJ80Vec" data-title="JSX в React: особенности синтаксиса, подводные камни, условный рендеринг и списки — канал Friendly Frontend"></div>
+      <p class="muted">Ролик бо забони русӣ (сентябри 2025, 21 дақиқа): қоидаҳои JSX, намоиши шартӣ ва рӯйхатҳо. Қисми рӯйхатҳо дар бахши 3 ба кор меояд.</p>
+
+      <h3>Санҷед: намоиши шартӣ</h3>
+      <p><code>open</code> ва <code>reviews</code>-ро дар маълумот тағйир диҳед, иҷро кунед ва бинед, ки чӣ иваз мешавад. Ҳолати <code>reviews: 0</code> махсусан ҷолиб аст.</p>
+
+      <div class="playground" data-mode="react" data-title="Намоиши шартӣ">
+<pre class="code" data-lang="jsx">
+function Status({ open, reviews }: { open: boolean; reviews: number }) {
+  return (
+    &lt;p&gt;
+      {open ? "Открыто" : "Закрыто"}
+      {reviews &amp;&amp; &lt;span&gt; · отзывов: {reviews}&lt;/span&gt;}
+    &lt;/p&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Status open={true} reviews={12} /&gt;
+      &lt;Status open={false} reviews={0} /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Унсури React — варақаи фармоиш дар чойхона аст: дар он навишта шудааст «палав, чой, ду самбӯса». Варақа хӯрок нест, онро зуд навиштан ва партофтан мумкин аст. Шумо варақаи кӯҳнаро тағйир намедиҳед, балки нав менависед, ва ошпаз (React) онҳоро муқоиса карда, ҳал мекунад, ки чиро ба дастархон бурдан лозим.</p>
+      </div>
+
+      <article class="task" id="q-jsx">
+        <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Худро санҷед: JSX</h4><span class="level easy">осон</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Компоненти <code>function Card() { return &lt;h1&gt;Navruz&lt;/h1&gt; }</code> чӣ бармегардонад?</p>
+          <ol class="options">
+            <li>Сатр бо коди HTML <code>"&lt;h1&gt;Navruz&lt;/h1&gt;"</code></li>
+            <li>Унсури DOM-и тайёр, ки ба саҳифа гузошта шудааст</li>
+            <li>Унсури React: объекти оддӣ, ки тавсиф мекунад, чиро нишон додан лозим</li>
+            <li>Ҳеҷ чиз: компонент танҳо саҳифаро тағйир медиҳад</li>
+          </ol>
+          <div class="explain"><p>Компонент худаш чизеро ба саҳифа намегузорад. Он тавсиф (унсур) бармегардонад, ва DOM-ро дар қадами коммит React нав мекунад.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Компонент <code>reviews = 0</code> гирифт ва <code>&lt;p&gt;{reviews &amp;&amp; &lt;b&gt;есть отзывы&lt;/b&gt;}&lt;/p&gt;</code>-ро баргардонд. Дар саҳифа чӣ пайдо мешавад?</p>
+          <ol class="options">
+            <li>Сархати холӣ</li>
+            <li>Сархат бо рақами <code>0</code></li>
+            <li>Хато: истифодаи <code>&amp;&amp;</code> мумкин нест</li>
+            <li>Сархат бо матни «есть отзывы»</li>
+          </ol>
+          <div class="explain"><p>Ифодаи <code>0 &amp;&amp; …</code> ба <code>0</code> баробар аст, ва рақамро React мекашад. Натиҷаи холиро танҳо <code>null</code>, <code>undefined</code>, <code>false</code> медиҳанд. Дуруст: <code>reviews &gt; 0 &amp;&amp; …</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Кадом сатрҳои JSX хато доранд? Ду варианти ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li><code>&lt;label class="field"&gt;Имя&lt;/label&gt;</code></li>
+            <li><code>&lt;img src="a.png" alt="" /&gt;</code></li>
+            <li><code>&lt;div style={{ color: 'red' }}&gt;Привет&lt;/div&gt;</code></li>
+            <li><code>&lt;input type="text"&gt;</code></li>
+          </ol>
+          <div class="explain"><p>Дар сатри аввал <code>class</code> бояд <code>className</code> бошад, дар сатри чорум теги <code>input</code> баста нашудааст: бояд <code>&lt;input type="text" /&gt;</code> бошад. Боқиро дуруст навиштаанд.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-fix">
+        <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Нишонагузории хӯрокро ислоҳ мекунем</h4><span class="level easy">осон</span></header>
+        <p>Ҳоло код ҷамъ намешавад. Се хаторо ислоҳ кунед: дар <code>return</code> ду унсури ҳамсоя ҳаст (онҳоро дар Fragment <code>&lt;&gt;…&lt;/&gt;</code> печонед), теги <code>hr</code> баста нашудааст, ва <code>style</code> бо сатр дода шудааст, дар ҳоле ки объект лозим аст.</p>
+        <div class="playground" data-mode="react" data-title="Хӯрок">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  const dish = { title: "Плов", price: 28 };
+  return (
+    &lt;h2 style="color: red"&gt;{dish.title}&lt;/h2&gt;
+    &lt;hr&gt;
+    &lt;p&gt;{dish.price} сомони&lt;/p&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>&lt;h2 style="color: red;"&gt;Плов&lt;/h2&gt;
+&lt;hr&gt;
+&lt;p&gt;28 сомони&lt;/p&gt;</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Тамоми <code>return</code> бояд як унсур баргардонад: се сатрро дар <code>&lt;&gt;</code> ва <code>&lt;/&gt;</code> печонед. Хато дар бораи «closing tag» ба сатри бо <code>hr</code> ишора мекунад.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>&lt;h2 style={{ color: "red" }}&gt;</code>: қавсҳои беруна — ифодаи JSX, дохилӣ — объект. Тег чунин навишта мешавад: <code>&lt;hr /&gt;</code>.</p></details>
+      </article>
+
+      <article class="task" id="t1-cond">
+        <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Ҳолати тарабхона ва шарҳҳо</h4><span class="level mid">миёна</span></header>
+        <p>Дар компоненти <code>Status</code> ду хато ҳаст. Якум: ба ҷои калимаи «Открыто» ё «Закрыто» (аз рӯи майдони <code>open</code>) қолаби хаёлӣ намоиш дода мешавад. Дуюм: барои тарабхона бе шарҳ дар экран «0» пайдо мешавад. <code>span</code>-ро бо матни <code>Отзывов: N</code> танҳо вақте нишон диҳед, ки <code>reviews</code> аз сифр зиёд бошад.</p>
+        <div class="playground" data-mode="react" data-title="Ҳолати тарабхона">
+<pre class="code" data-lang="jsx">
+function Status({ open, reviews }) {
+  return (
+    &lt;div&gt;
+      {/* TODO 1: «Открыто» или «Закрыто» в span, в зависимости от open */}
+      &lt;span&gt;???&lt;/span&gt;
+      {/* TODO 2: не показывайте ноль */}
+      {reviews &amp;&amp; &lt;span&gt;Отзывов: {reviews}&lt;/span&gt;}
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;Status open={true} reviews={0} /&gt;
+      &lt;Status open={false} reviews={12} /&gt;
+    &lt;/main&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>&lt;main&gt;
+&lt;div&gt;
+&lt;span&gt;Открыто&lt;/span&gt;
+&lt;/div&gt;
+&lt;div&gt;
+&lt;span&gt;Закрыто&lt;/span&gt;
+&lt;span&gt;Отзывов: 12&lt;/span&gt;
+&lt;/div&gt;
+&lt;/main&gt;</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Дар ҳолати аввал: <code>&lt;span&gt;{open ? "Открыто" : "Закрыто"}&lt;/span&gt;</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Дар ҳолати дуюм: <code>{reviews &gt; 0 &amp;&amp; &lt;span&gt;…&lt;/span&gt;}</code>. Муқоиса <code>false</code> медиҳад, ва <code>false</code>-ро React намекашад.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/writing-markup-with-jsx" target="_blank" rel="noopener">react.dev — Writing Markup with JSX</a> · <a href="https://react.dev/learn/javascript-in-jsx-with-curly-braces" target="_blank" rel="noopener">react.dev — JavaScript in JSX with Curly Braces</a> · <a href="https://react.dev/learn/conditional-rendering" target="_blank" rel="noopener">react.dev — Conditional Rendering</a> · <a href="https://react.dev/reference/react/Fragment" target="_blank" rel="noopener">react.dev — Fragment</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="components">
+      <h2 data-toc="Компонентҳо ва composition"><span class="num">02</span> Компонентҳо, props, children ва композитсия</h2>
+
+      <p><b>Компоненти функсионалӣ</b> — функсияи оддӣ, ки як объекти <code>props</code>-ро қабул мекунад ва JSX (ё агар нишон додан чизе набошад, <code>null</code>) бармегардонад. Он ду қоидаи сахт дорад: ном бо <b>ҳарфи калон</b> ва даъват танҳо тавассути нишонагузорӣ (<code>&lt;Card /&gt;</code>, на <code>Card()</code>). Ҳарфи хурд маънои «ин теги HTML аст»-ро дорад.</p>
+
+<pre class="code" data-title="Терминал — компонент бо ҳарфи хурд">
+src/Bad.tsx(9,10): error TS2339: Property 'restaurantCard' does not exist on type 'JSX.IntrinsicElements'.
+&lt;restaurantCard /&gt; is using incorrect casing. Use PascalCase for React components, or lowercase for HTML elements.
+</pre>
+
+      <p>Сатри якум — хатои TypeScript, сатри дуюм — огоҳии React дар консоли браузер. Props танҳо хонда мешаванд: қиматҳои пешфарзро дар параметрҳо месупоранд, ва тағйир додани props мумкин нест (бахши 5).</p>
+
+<pre class="code" data-lang="tsx" data-title="Мисол: компонент бо prop-и ихтиёрӣ">
+type RatingProps = {
+  value: number
+  max?: number // необязательный prop
+}
+
+export default function Rating({ value, max = 5 }: RatingProps) {
+  return (
+    &lt;span&gt;
+      ★ {value.toFixed(1)} / {max}
+    &lt;/span&gt;
+  )
+}
+</pre>
+
+      <h3>children ва композитсия</h3>
+      <p><code>children</code> — ҳама он чизест, ки байни тегҳои кушодашаванда ва пӯшидашавандаи компонент гузоштаед. Ҳамин тавр «печонакҳо» месозанд: <code>Layout</code>, <code>Card</code>, <code>Modal</code>, ки медонанд, <i>чӣ тавр</i> намоён шаванд, аммо намедонанд, дар дохил <i>чӣ</i> ҳаст. Навъи <code>children</code> — <code>ReactNode</code> (онро дар дарси 2 омӯхтед): ҳама чизеро, ки React нишон дода метавонад, қабул мекунад. Аз сабаби парчами <code>verbatimModuleSyntax</code> (дарси 1) онро ҳамчун навъ ворид кунед.</p>
+
+<pre class="code" data-lang="tsx" data-title="src/components/Layout.tsx — печонак бо слотҳо">
+import type { ReactNode } from 'react'
+
+type LayoutProps = {
+  header: ReactNode // слот: любой JSX
+  children: ReactNode // основное содержимое
+  footer?: ReactNode
+}
+
+export default function Layout({ header, children, footer }: LayoutProps) {
+  return (
+    &lt;div&gt;
+      &lt;header&gt;{header}&lt;/header&gt;
+      &lt;main&gt;{children}&lt;/main&gt;
+      {footer &amp;&amp; &lt;footer&gt;{footer}&lt;/footer&gt;}
+    &lt;/div&gt;
+  )
+}
+
+// использование:
+// &lt;Layout header={&lt;Logo /&gt;} footer={&lt;Contacts /&gt;}&gt;
+//   &lt;RestaurantList /&gt;
+// &lt;/Layout&gt;
+</pre>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Нақшаи композитсия: компонент Layout слоти header, ҳудуди children, ки RestaurantList дар он ҷойгир аст, ва слоти footer-ро дар бар мегирад">
+          <rect class="box g" x="10" y="10" width="700" height="230" rx="14" /><text x="26" y="32">Layout</text>
+          <rect class="fill-y" x="30" y="46" width="660" height="40" rx="10" /><text x="360" y="71" text-anchor="middle">{header} — слот</text>
+          <rect class="box b" x="30" y="98" width="660" height="88" rx="10" /><text class="sub t-b" x="44" y="118">{children} — он чизе, ки байни &lt;Layout&gt; ва &lt;/Layout&gt; гузоштаед</text>
+          <rect class="fill-g" x="70" y="128" width="580" height="44" rx="10" /><text x="360" y="155" text-anchor="middle">&lt;RestaurantList /&gt;</text>
+          <rect class="fill-y" x="30" y="198" width="660" height="34" rx="10" /><text x="360" y="220" text-anchor="middle">{footer} — слот</text>
+        </svg>
+        <figcaption>Композитсия: Layout барои чорчӯба масъул аст, ва мундариҷаро ба он аз беруна медиҳанд. Як Layout барои ҳар саҳифа мувофиқ аст</figcaption>
+      </figure>
+
+      <p>Композитсия аз «танзимот» беҳтар аст: ба ҷои компонент бо даҳ парчами prop (<code>showHeader</code>, <code>showLogo</code>, <code>isCompact</code>…) ба он слотҳо медиҳед, ва худи саҳифа ҳал мекунад, чиро нишон диҳад. Ин усули асосии React ба ҷои мерос аст.</p>
+
+      <h3>Компонентро дар дохили компонент эълон накунед</h3>
+      <p>Агар <code>function Counter()</code>-ро бевосита дар бадани <code>App</code> нависед, ҳангоми ҳар аз нав кашидани <code>App</code> функсияи <b>нави</b> <code>Counter</code> сохта мешавад. Барои React ин аллакай компоненти дигар аст: кӯҳна бо ҳолати худ нест мешавад, нав аз сифр сохта мешавад. Аломат: «ҳолат вақте барқарор мешавад, ки чизе дар беруна тағйир меёбад». Компонентҳоро дар сатҳи боло дар файл эълон кунед, беҳтараш дар файли алоҳида: як компонент — як файл, номи файл бо номи компонент мувофиқ аст.</p>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Компонентро ҳамчун функсия даъват кардан (<code>{Rating({ value: 4 })}</code>) ба ҷои <code>&lt;Rating value={4} /&gt;</code>: ҳукҳо ва ҳолат ин тавр кор намекунанд. <b>2.</b> Компонент дар дохили компонент (дар боло бинед). <b>3.</b> Ба <code>children</code> маълумоти нолозим додан: объект ба ҷои JSX хатои «Objects are not valid as a React child» медиҳад. <b>4.</b> Компоненти «комбайн» дар 400 сатр сохтан: ҳудуди компонентро дар бахши 7 таҳлил мекунем. <b>5.</b> Дар як файл компонент ва собитҳо ё функсияҳои оддиро гузоштан: қоидаи Oxlint <code>react/only-export-components</code> огоҳ мекунад, ки Fast Refresh (ивазкунии гарм) метавонад кор карданро бас кунад.</p>
+      </div>
+
+      <div class="yt" data-id="jtC_gyCIVdU" data-title="Props в React. Что такое пропсы, как передавать данные и зачем нужен children — канал Friendly Frontend"></div>
+      <p class="muted">Ролик бо забони русӣ (октябри 2025, 21 дақиқа): props, интиқоли маълумот ва <code>children</code>. Муаллиф JavaScript нишон медиҳад, шумо ҳамин усулҳоро бо навъҳо (<code>ReactNode</code>) доред.</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Layout — дастархон аст: суфра, болиштҳо, чойник дар миёна. Он барои ҳар зиёфат якхела аст. Имрӯз ба он чӣ меоранд (палав ё самбӯса), соҳибхона ҳал мекунад, ва ин <code>children</code> аст. Слотҳои <code>header</code> ва <code>footer</code> — ҷойҳо барои «оғоз» ва «анҷоми» зиёфат: чой дар аввал ва ширинӣ дар охир.</p>
+      </div>
+
+      <h3>Санҷед: печонак бо children</h3>
+      <div class="playground" data-mode="react" data-title="Корт-печонак">
+<pre class="code" data-lang="jsx">
+function Card({ title, children }) {
+  return (
+    &lt;section className="card"&gt;
+      &lt;h3&gt;{title}&lt;/h3&gt;
+      {children}
+    &lt;/section&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;Card title="Плов"&gt;&lt;p&gt;28 сомони&lt;/p&gt;&lt;/Card&gt;
+      &lt;Card title="Чай"&gt;&lt;p&gt;5 сомони&lt;/p&gt;&lt;button&gt;Добавить&lt;/button&gt;&lt;/Card&gt;
+    &lt;/main&gt;
+  );
+}
+</pre>
+<pre class="code" data-lang="css">
+.card { border: 1px solid #c9ced6; border-radius: 12px; padding: 8px 14px; margin-bottom: 10px; font-family: system-ui, sans-serif; }
+.card h3 { margin: 0 0 4px; }
+</pre>
+      </div>
+
+      <article class="task" id="q-comp">
+        <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Худро санҷед: компонентҳо ва children</h4><span class="level easy">осон</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Чаро компоненти <code>function badge()</code>-ро бо ҳарфи хурд ҳамчун <code>&lt;badge /&gt;</code> истифода бурдан мумкин нест?</p>
+          <ol class="options">
+            <li>Зеро дар JavaScript функсияҳоро бо ҳарфи хурд номидан мумкин нест</li>
+            <li>Зеро JSX тегҳои бо ҳарфи хурдро унсурҳои HTML мешуморад, на компонент</li>
+            <li>Зеро React 19 калимаи badge-ро манъ кардааст</li>
+            <li>Зеро компонент бояд ҳатман функсияи тирдор бошад</li>
+          </ol>
+          <div class="explain"><p>Номи бо ҳарфи хурдро JSX ба сатри <code>'badge'</code> (теги HTML) табдил медиҳад, ва бо ҳарфи калонро — ба истинод ба функсияи шумо. Барои ҳамин <code>Badge</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Дар навишти <code>&lt;Card title="Плов"&gt;&lt;p&gt;28 сомони&lt;/p&gt;&lt;/Card&gt;</code> ба <code>children</code>-и компонент чӣ мефарояд?</p>
+          <ol class="options">
+            <li>Сатри «Плов»</li>
+            <li>Тамоми компоненти <code>Card</code></li>
+            <li>Унсури <code>&lt;p&gt;28 сомони&lt;/p&gt;</code>: он чизе, ки байни тегҳост</li>
+            <li>Қимати холӣ: <code>children</code>-ро танҳо тавассути атрибут медиҳанд</li>
+          </ol>
+          <div class="explain"><p><code>title</code> — prop-и алоҳида аст, ва <code>children</code> ҳамеша мундариҷаи байни тегҳост.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Дар <code>App</code> <code>function Counter()</code> бо <code>useState</code>-и худаш эълон шудааст. Вақте ки ҳолати худи <code>App</code> тағйир меёбад, чӣ мешавад?</p>
+          <ol class="options">
+            <li>Ҳолати <code>Counter</code> барқарор мешавад: ҳангоми ҳар аз нав кашидани <code>App</code> функсияи нав, яъне компоненти нав сохта мешавад</li>
+            <li>Ҳеҷ чиз: ҳолат ҳамеша нигоҳ дошта мешавад</li>
+            <li>React хатои тартибдиҳӣ медиҳад</li>
+            <li>Компоненти <code>Counter</code> то абад кор карданро бас мекунад</li>
+          </ol>
+          <div class="explain"><p>React компонентҳоро аз рӯи истинод ба функсия фарқ мекунад. Функсияи нав — компоненти нав, кӯҳна бо ҳолаташ насб мешавад. Вазифаи навбатӣ инро амалан нишон медиҳад.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t2-card">
+        <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Корти тарабхона бо children</h4><span class="level easy">осон</span></header>
+        <p>Компоненти <code>Card</code>-ро анҷом диҳед: он <code>title</code> ва <code>children</code> мегирад ва <code>&lt;section className="card"&gt;</code>-ро бо сарлавҳаи <code>h3</code> (ном) ва баъди он худи мундариҷаи <code>children</code> бармегардонад.</p>
+        <div class="playground" data-mode="react" data-title="Card бо children">
+<pre class="code" data-lang="jsx">
+function Card(props) {
+  // TODO: section.card, h3 с title, затем children
+  return &lt;section className="card"&gt;&lt;/section&gt;;
+}
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;Card title="Navruz"&gt;&lt;p&gt;Плов, самбуса&lt;/p&gt;&lt;/Card&gt;
+      &lt;Card title="Rohat"&gt;&lt;p&gt;Шашлык&lt;/p&gt;&lt;button&gt;Заказать&lt;/button&gt;&lt;/Card&gt;
+    &lt;/main&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>&lt;main&gt;
+&lt;section class="card"&gt;
+&lt;h3&gt;Navruz&lt;/h3&gt;
+&lt;p&gt;Плов, самбуса&lt;/p&gt;
+&lt;/section&gt;
+&lt;section class="card"&gt;
+&lt;h3&gt;Rohat&lt;/h3&gt;
+&lt;p&gt;Шашлык&lt;/p&gt;
+&lt;button&gt;Заказать&lt;/button&gt;
+&lt;/section&gt;
+&lt;/main&gt;</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Props-ро деструктуризатсия кунед: <code>function Card({ title, children })</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>&lt;section className="card"&gt;&lt;h3&gt;{title}&lt;/h3&gt;{children}&lt;/section&gt;</code></p></details>
+      </article>
+
+      <article class="task" id="t2-inner">
+        <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Ҳолат барқарор мешавад: компонент дар дохили компонент</h4><span class="level mid">миёна</span></header>
+        <p>Якчанд маротиба «Нажато»-ро пахш кунед, баъд тугмаи «Тема»-ро: ҳисобкунак сифр мешавад. Сабаб: <code>Counter</code> дар дохили <code>App</code> эълон шудааст. Онро ба сатҳи боло дар файл (болотар аз <code>App</code>) бароред, то ҳисобкунак тағйири мавзӯъро паси сар кунад.</p>
+        <div class="playground" data-mode="react" data-title="Барқароршавии ҳолат">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [theme, setTheme] = useState("light");
+
+  // TODO: вынесите Counter из App
+  function Counter() {
+    const [n, setN] = useState(0);
+    return &lt;button onClick={() =&gt; setN(n + 1)}&gt;Нажато: {n}&lt;/button&gt;;
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setTheme(theme === "light" ? "dark" : "light")}&gt;Тема: {theme}&lt;/button&gt;
+      &lt;Counter /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+const buttons = () =&gt; document.querySelectorAll("button");
+(async () =&gt; {
+  await wait();
+  buttons()[1].click(); await wait();
+  buttons()[1].click(); await wait();
+  buttons()[0].click(); await wait();
+  console.log(buttons()[1].textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Нажато: 2</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Тамоми блоки <code>function Counter() { … }</code>-ро болотар аз сатри <code>export default function App()</code> гузаронед, коди онро тағйир надиҳед.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Акнун <code>Counter</code> ҳангоми ҳар аз нав кашидани <code>App</code> ҳамон як аст, барои ҳамин React ҳолати онро нигоҳ медорад.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/your-first-component" target="_blank" rel="noopener">react.dev — Your First Component</a> · <a href="https://react.dev/learn/passing-props-to-a-component" target="_blank" rel="noopener">react.dev — Passing Props to a Component</a> · <a href="https://react.dev/learn/preserving-and-resetting-state" target="_blank" rel="noopener">react.dev — Preserving and Resetting State</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="lists">
+      <h2 data-toc="Рӯйхатҳо ва key"><span class="num">03</span> Рӯйхатҳо ва key: React унсурҳоро чӣ тавр мешиносад</h2>
+
+      <p>Рӯйхат дар React — массиви оддии JavaScript аст: <code>filter</code> лозимаро нигоҳ медорад, <code>map</code> ҳар объектро ба унсур табдил медиҳад. Ягона чизе, ки React илова мекунад, — <code>key</code> аст.</p>
+
+<pre class="code" data-lang="tsx" data-title="src/components/RestaurantList.tsx (порча)">
+{restaurants
+  .filter((r) =&gt; r.open)
+  .map((r) =&gt; (
+    &lt;RestaurantCard key={r.id} restaurant={r} /&gt;
+  ))}
+</pre>
+
+      <p><b>Барои чӣ key лозим аст.</b> Ҳангоми аз нав кашидан React рӯйхати нави унсурҳоро мегирад ва бояд бифаҳмад, <i>кӣ кист</i>: кадом унсур мондааст, кадом илова шудааст, кадом тоза карда шудааст. Бе калид вай аз рӯи мавқеъ муқоиса мекунад, бо калид — аз рӯи шахсият. Калид — «шиноснома»-и унсур аст.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Кадом калид</th><th>Кай мувофиқ аст</th><th>Чӣ мешавад</th></tr></thead>
+          <tbody>
+            <tr><td><b><code>id</code> аз маълумот</b></td><td>Қариб ҳамеша: он ягона аст ва тағйир намеёбад</td><td>Ҳолат ва DOM ба унсурҳои лозима пайваст мешаванд</td></tr>
+            <tr><td><b>Индекс <code>index</code></b></td><td>Танҳо барои рӯйхатҳои статикӣ, ки ҳеҷ гоҳ саралаву филтр намешаванд ва аз миёна нест карда намешаванд</td><td>Баъди несткунӣ ё иваз кардани тартиб ҳолат ба унсурҳои бегона «кӯч мебандад»</td></tr>
+            <tr><td><b><code>Math.random()</code>, <code>crypto.randomUUID()</code> бевосита дар рендер</b></td><td>Ҳеҷ гоҳ</td><td>Калид ҳангоми ҳар аз нав кашидан нав аст: ҳамаи унсурҳо аз нав сохта мешаванд, ҳолат гум мешавад, ҳама чиз суст мешавад</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Қоидаҳо: калид <b>дар байни ҳамсояҳо</b> дар як рӯйхат ягона аст (дар рӯйхатҳои гуногун метавонанд мувофиқ шаванд), ба унсуре гузошта мешавад, ки <code>map</code> бармегардонад (на ба дохилӣ), ва танҳо барои React дастрас аст: дар дохили компонент <code>props.key</code> нест. Агар дар <code>map</code> Fragment лозим бошад, нависед <code>&lt;Fragment key={id}&gt;</code> (навишти кӯтоҳи <code>&lt;&gt;</code> калидро қабул карда наметавонад). Агар дар маълумот ягон идентификатор набошад, онро <b>ҳангоми сохтани маълумот</b> эҷод кунед (масалан, <code>crypto.randomUUID()</code> дар лаҳзаи илова кардани сабт), на дар рендер.</p>
+
+<pre class="code" data-title="Терминал — огоҳии React дар консоли браузер ва қоидаи Oxlint">
+Each child in a list should have a unique "key" prop.
+
+Check the top-level render call using &lt;li&gt;. See https://react.dev/link/warning-keys for more information.
+
+src/Bad.tsx:18:20: warning react(jsx-key): Missing "key" prop for element in iterator.
+</pre>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Дар толори интизорӣ дар истгоҳи Душанбе Алишер, Баҳром ва Саида нишастаанд. Агар «шиноснома»-и шахс рақами ҷои ӯ бошад, пас баъди рафтани Алишер ҳама як ҷой гузаштанд, ва шумо гумон мекунед, ки Баҳром акнун «ҷои №1» аст, ва ҷома ва чиптаи ӯ ба Алишер расид. Агар «шиноснома» ном бошад, ягон ошуфтагӣ нест. Индекс — рақами ҷой, <code>id</code> — ном.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>key={index}</code> дар рӯйхате, ки онро саралаву филтр кардан ё аз он нест кардан мумкин аст. <b>2.</b> Калид дар унсури нодуруст: <code>&lt;li&gt;&lt;Card key=… /&gt;&lt;/li&gt;</code>. <b>3.</b> Интизор будани он, ки <code>key</code>-ро дар дохили компонент хонда мешавад. <b>4.</b> Рӯйхати холиро фаромӯш кардан: «Ничего не найдено»-ро нишон диҳед, на ҷои холиро.</p>
+      </div>
+
+      <article class="task" id="q-keys">
+        <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Худро санҷед: key</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="4">
+          <p>Барои чӣ React-ро дар рӯйхат <code>key</code> лозим аст?</p>
+          <ol class="options">
+            <li>То ки рӯйхат дар ҳар ҳолат тезтар кор кунад</li>
+            <li>То ки ба синфи CSS гузошта шавад</li>
+            <li>То ки маълумот тавассути <code>props.key</code> ба дохили компонент дода шавад</li>
+            <li>То ки ҳангоми тағйирёбии рӯйхат унсурҳои навро бо кӯҳна муқоиса карда, ҳолати лозимаро нигоҳ дорад</li>
+          </ol>
+          <div class="explain"><p>Калид — шахсияти унсур дар байни аз нав кашидан аст. Он ба props дода намешавад, ва «умуман» тезтар намекунад: он дурустро мекунад.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Тарабхонаҳо дар массив бо майдони <code>id</code> нигоҳ дошта мешаванд ва онҳоро нест кардан мумкин аст. Дар <code>key</code> чиро гузоштан лозим?</p>
+          <ol class="options">
+            <li><code>key={index}</code>: он ҳамеша дар дасти шумост</li>
+            <li><code>key={restaurant.id}</code>: он ягона аст ва ҳангоми нест кардани дигарон тағйир намеёбад</li>
+            <li><code>key={Math.random()}</code>: он яқинан ягона аст</li>
+            <li><code>key={restaurant.name}</code>, ҳатто агар номҳо такрор шуда тавонанд</li>
+          </ol>
+          <div class="explain"><p><code>id</code>-и устувору ягона — беҳтарин интихоб аст. Ном такрор шуда метавонад (ду «Навруз» дар ноҳияҳои гуногун), ва калиди тасодуфӣ ҳамаи унсурҳоро ҳангоми ҳар аз нав кашидан аз нав месозад.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t3-list">
+        <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Танҳо тарабхонаҳои кушода</h4><span class="level mid">миёна</span></header>
+        <p>Рӯйхати <code>ul</code>-ро аз тарабхонаҳои <b>кушода</b> (майдони <code>open</code>) нишон диҳед: як <code>li</code> дар формати <code>ном · таом</code>, бо <code>key</code> аз <code>id</code>. Агар кушодаҳо набошанд, ба ҷои рӯйхат <code>&lt;p&gt;Ничего не найдено&lt;/p&gt;</code>-ро нишон диҳед. Рӯйхат дар санҷиш иваз карда мешавад, барои ҳамин ҳолати холӣ низ санҷида мешавад.</p>
+        <div class="playground" data-mode="react" data-title="Тарабхонаҳои кушода">
+<pre class="code" data-lang="jsx">
+function OpenList({ restaurants }) {
+  // TODO: filter, затем map с key; если открытых нет, верните p «Ничего не найдено»
+  return &lt;ul&gt;&lt;/ul&gt;;
+}
+
+const all = [
+  { id: 1, name: "Navruz", cuisine: "плов", open: true },
+  { id: 2, name: "Rohat", cuisine: "шашлык", open: false },
+  { id: 3, name: "Samarkand", cuisine: "самбуса", open: true },
+];
+
+export default function App() {
+  return (
+    &lt;main&gt;
+      &lt;OpenList restaurants={all} /&gt;
+      &lt;OpenList restaurants={all.map((r) =&gt; ({ ...r, open: false }))} /&gt;
+    &lt;/main&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>&lt;main&gt;
+&lt;ul&gt;
+&lt;li&gt;Navruz · плов&lt;/li&gt;
+&lt;li&gt;Samarkand · самбуса&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Ничего не найдено&lt;/p&gt;
+&lt;/main&gt;</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Аввал <code>const visible = restaurants.filter((r) =&gt; r.open)</code>. Баъд баромади барвақтӣ: <code>if (visible.length === 0) return &lt;p&gt;…&lt;/p&gt;</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>&lt;ul&gt;{visible.map((r) =&gt; &lt;li key={r.id}&gt;{r.name} · {r.cuisine}&lt;/li&gt;)}&lt;/ul&gt;</code></p></details>
+      </article>
+
+      <article class="task" id="t3-key">
+        <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Хатои калиди индексӣ: ёддошт ба тарабхонаи бегона рафт</h4><span class="level hard">душвор</span></header>
+        <p>Дар ҳар сатр майдони ёддошт ҳаст (<code>input</code> бе ҳолати React). Санҷиши худкор дар тарабхонаи аввал ёддошти «острый»-ро менависад ва «Удалить первый»-ро пахш мекунад. Бо калиди-индекс ёддошт дар сатри аввал мемонад, аммо ин ҳоло тарабхонаи <b>дигар</b> аст. Калидро ба <code>item.id</code> иваз кунед, то ёддошт якҷоя бо тарабхонаи худ нопадид шавад.</p>
+        <div class="playground" data-mode="react" data-title="Ёддоштҳо барои тарабхонаҳо">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+const initial = [
+  { id: 1, name: "Navruz" },
+  { id: 2, name: "Rohat" },
+  { id: 3, name: "Samarkand" },
+];
+
+export default function App() {
+  const [items, setItems] = useState(initial);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setItems(items.slice(1))}&gt;Удалить первый&lt;/button&gt;
+      &lt;ul&gt;
+        {items.map((item, index) =&gt; (
+          &lt;li key={index}&gt;
+            &lt;span&gt;{item.name}&lt;/span&gt; &lt;input defaultValue="" /&gt;
+          &lt;/li&gt;
+        ))}
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("input").value = "острый";
+  document.querySelector("button").click();
+  await wait();
+  const li = document.querySelector("li");
+  console.log(li.querySelector("span").textContent + " | заметка: [" + li.querySelector("input").value + "]");
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Rohat | заметка: []</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Калид бояд тарабхонаро муайян кунад, на мавқеи онро дар рӯйхат: ҳар объект <code>id</code> дорад.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>&lt;li key={item.id}&gt;</code>: пас параметри <code>index</code> лозим нест.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/rendering-lists" target="_blank" rel="noopener">react.dev — Rendering Lists</a> · <a href="https://react.dev/learn/preserving-and-resetting-state" target="_blank" rel="noopener">react.dev — Preserving and Resetting State</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="render">
+      <h2 data-toc="Модели рендер"><span class="num">04</span> Кай ва чӣ тавр React компонентро аз нав мекашад</h2>
+
+      <p>«Рендер» — калимаи аз ҳама зиёд сарбор дар React аст. Биёед онро ба се қадам ҷудо кунем. <b>Триггер:</b> чизе намоишро талаб кард (оғози аввал тавассути <code>createRoot().render()</code> ё тағйирёбии ҳолат тавассути <code>setState</code>). <b>Рендер:</b> React функсияҳои компонентҳои шуморо даъват мекунад ва дарахти нави унсурҳоро мегирад. Ин танҳо ҳисобкунӣ аст, экран ҳоло ламс нашудааст. <b>Коммит:</b> React дарахти навро бо пештара муқоиса мекунад ва ба DOM танҳо фарқиятҳоро ворид мекунад. Агар чизе фарқ накунад, DOM умуман ламс намешавад.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 190" role="img" aria-label="Се қадам: триггер (оғози аввал ё setState), рендер (React функсияҳои компонентҳоро даъват карда, дарахти унсурҳоро мегирад), коммит (React фарқиятҳоро ба DOM ворид мекунад). Танҳо дар қадами сеюм экран тағйир меёбад">
+          <rect class="fill-y" x="10" y="30" width="200" height="82" rx="12" /><text x="110" y="56" text-anchor="middle">1. Триггер</text><text class="sub" x="110" y="78" text-anchor="middle">оғози аввал</text><text class="sub mono" x="110" y="98" text-anchor="middle">ё setState(...)</text>
+          <rect class="fill-g" x="260" y="30" width="200" height="82" rx="12" /><text x="360" y="56" text-anchor="middle">2. Рендер</text><text class="sub" x="360" y="78" text-anchor="middle">React функсияҳои</text><text class="sub" x="360" y="98" text-anchor="middle">компонентҳои шуморо даъват мекунад</text>
+          <rect class="fill-g" x="510" y="30" width="200" height="82" rx="12" /><text x="610" y="56" text-anchor="middle">3. Коммит</text><text class="sub" x="610" y="78" text-anchor="middle">фарқиятҳо интиқол мешаванд</text><text class="sub" x="610" y="98" text-anchor="middle">ба DOM-и браузер</text>
+          <path class="arr" d="M210 71 H252" /><path class="arr-head" d="M260 71 l-10 -5 v10 z" />
+          <path class="arr" d="M460 71 H502" /><path class="arr-head" d="M510 71 l-10 -5 v10 z" />
+          <text class="sub t-b" x="360" y="150" text-anchor="middle">экран ҳоло пештара аст</text>
+          <text class="sub t-g" x="610" y="150" text-anchor="middle">экран нав шуд (агар фарқият бошад)</text>
+          <text class="sub" x="12" y="178">Рендер — даъвати функсияҳост. Он бо навсозии DOM баробар нест: компонентро даъват карданд, аммо дар экран чизе тағйир наёфт.</text>
+        </svg>
+        <figcaption>Се қадами навсозӣ: триггер, рендер, коммит. Экранро танҳо қадами охирин тағйир медиҳад</figcaption>
+      </figure>
+
+      <div class="yt" data-id="jcH4ZGdiBGQ" data-title="Что такое Render и Commit в React — канал Dev Surge"></div>
+      <p class="muted">Ролик бо забони русӣ (соли 2023, 10 дақиқа): марҳилаҳои render ва commit дар мисолҳо. Ғоя дар React 19 тағйир наёфтааст.</p>
+
+      <h3>Ҳолат — ин акс аст</h3>
+      <p>Ҳар рендер қиматҳои худи props ва ҳолатро мебинад: онҳо дар лаҳзаи даъвати функсия «яхкарда» мешаванд. <code>setQty(qty + 1)</code> тағйирёбандаи <code>qty</code>-ро ҳамин лаҳза иваз намекунад, балки аз React хоҳиш мекунад, ки рендери нав бо қимати нав иҷро кунад. Барои ҳамин се даъвати пай дар пай як <code>qty</code>-ро мегиранд.</p>
+
+<pre class="code" data-lang="tsx" data-title="Се даъвати setQty дар як коркарди">
+const [qty, setQty] = useState(0)
+
+function addThree() {
+  setQty(qty + 1) // qty здесь равно 0 → попросили 1
+  setQty(qty + 1) // qty всё ещё 0 → попросили 1
+  setQty(qty + 1) // и снова 1
+}
+// после клика на экране 1, а не 3
+
+function addThreeRight() {
+  setQty((q) =&gt; q + 1) // функция получает последнее значение из очереди
+  setQty((q) =&gt; q + 1)
+  setQty((q) =&gt; q + 1)
+}
+// после клика на экране 3
+</pre>
+
+      <h3>Чӣ аз нав кашида мешавад</h3>
+      <p>Компонент аз нав рендер мешавад, вақте ки <b>ҳолати худаш тағйир ёфт</b> ё <b>волидаш аз нав кашида шуд</b>. Банди дуюм муҳим аст: ба таври пешфарз React <b>ҳамаи авлоди</b> компонентеро, ки ҳолаташ тағйир ёфтааст, аз нав мекашад, ҳатто агар props-и онҳо ҳамон монда бошанд. Ин даҳшатнок нест: рендер — даъвати арзони функсия аст, ва коммит ба ҳар ҳол танҳо фарқиятҳои воқеиро ламс мекунад. Аксар вақт чизеро беҳтар кардан лозим нест. Агар компоненти вазнин бе зарурат ба ҳар клик рендер шавад, доруи аввал аз ҳама оддӣ аст — <b>ҳолатро поёнтар фуроварда</b>: он қисматеро, ки ба ҳолат ниёз дорад, ба компоненти хурди алоҳида баред. Абзорҳо чун <code>React.memo</code>, Profiler ва React Compiler-ро дар дарсҳои 6 ва 12 таҳлил мекунем.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Ду дарахти компонентҳо. Дар тарафи чап ҳолат дар App ҷойгир аст ва ҳангоми тағйирёбии он App, Header, Menu ва LikeButton аз нав кашида мешаванд. Дар тарафи рост ҳолат дар LikeButton аст ва танҳо худи он аз нав кашида мешавад">
+          <text x="12" y="20">Ҳолат дар App</text>
+          <rect class="fill-y" x="120" y="34" width="100" height="36" rx="10" /><text x="170" y="57" text-anchor="middle">App</text>
+          <path class="arr" d="M170 70 V84 H65 V110" /><path class="arr" d="M170 84 V110" /><path class="arr" d="M170 84 H275 V110" />
+          <rect class="fill-r" x="20" y="110" width="90" height="36" rx="10" /><text x="65" y="133" text-anchor="middle">Header</text>
+          <rect class="fill-r" x="125" y="110" width="90" height="36" rx="10" /><text x="170" y="133" text-anchor="middle">Menu</text>
+          <rect class="fill-r" x="230" y="110" width="90" height="36" rx="10" /><text x="275" y="133" text-anchor="middle">LikeButton</text>
+          <text class="sub t-r" x="170" y="176" text-anchor="middle">ҳар чор аз нав кашида мешаванд</text>
+
+          <text x="372" y="20">Ҳолат дар LikeButton</text>
+          <rect class="box" x="480" y="34" width="100" height="36" rx="10" /><text x="530" y="57" text-anchor="middle">App</text>
+          <path class="arr" d="M530 70 V84 H425 V110" /><path class="arr" d="M530 84 V110" /><path class="arr" d="M530 84 H635 V110" />
+          <rect class="box" x="380" y="110" width="90" height="36" rx="10" /><text x="425" y="133" text-anchor="middle">Header</text>
+          <rect class="box" x="485" y="110" width="90" height="36" rx="10" /><text x="530" y="133" text-anchor="middle">Menu</text>
+          <rect class="fill-y" x="590" y="110" width="90" height="36" rx="10" /><text x="635" y="133" text-anchor="middle">LikeButton</text>
+          <text class="sub t-g" x="530" y="176" text-anchor="middle">танҳо LikeButton аз нав кашида мешавад</text>
+          <text class="sub" x="12" y="214">Зард: ҷое, ки ҳолати тағйирёфта ҷойгир аст. Сурх: чӣ аз ҳисоби он аз нав кашида шуд.</text>
+        </svg>
+        <figcaption>Ҳолат дар куҷо бошад, аз он ҷо аз нав кашидан ба поён дар дарахт мегузарад. Ҳолат ба ҷои истифода наздиктар — корҳои нолозим камтар</figcaption>
+      </figure>
+
+      <p>Боз се далел дар бораи рендер. <b>1.</b> Агар <code>setQty</code>-ро бо ҳамон қимат даъват кунед (муқоиса тавассути <code>Object.is</code>), React аз нав кашиданро мегузаронад. Массиви нав ё объект бо ҳамон мундариҷа аллакай қимати нав аст. <b>2.</b> Дар реҷаи dev бо <code>StrictMode</code> (он дар <code>main.tsx</code>-и шумо ҳаст) React ҳар компонентро <b>ду маротиба</b> даъват мекунад, то функсияҳои ғайритозаро ошкор кунад (бахши 5). Барои ҳамин <code>console.log</code> дар компонент ду маротиба чоп мешавад (агар React DevTools насб шуда бошад, даъвати дуюм хокистарӣ нишон дода мешавад). Дар созмони барои истифодабарандагон даъвати дугона нест. <b>3.</b> Тағйир додани ҳолат <i>бе</i> <code>setState</code> (масалан, <code>items.push(x)</code>) рендерро умуман оғоз намекунад: React аз тағйирёбӣ огоҳ намешавад. Дар бораи навсозии дурусти объектҳо ва массивҳо дар дарси 4 сухан меравем.</p>
+
+      <h3>Санҷед: кӣ рендер мешавад</h3>
+      <p>Тугмаро якчанд маротиба пахш кунед ва ба панели консол нигаред: кадом компонентҳо «render» менависанд. <code>Menu</code> ба ҳар клик аз нав кашида мешавад, ҳарчанд ба вай чизе лозим нест. Дар вазифаи 4.3 инро ислоҳ мекунед.</p>
+
+      <div class="playground" data-mode="react" data-title="Рӯзномаи рендерҳо">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Header() {
+  console.log("render Header");
+  return &lt;h2&gt;Дастархон&lt;/h2&gt;;
+}
+
+function Menu() {
+  console.log("render Menu");
+  return &lt;ul&gt;&lt;li&gt;Плов&lt;/li&gt;&lt;li&gt;Лагман&lt;/li&gt;&lt;/ul&gt;;
+}
+
+export default function App() {
+  console.log("render App");
+  const [count, setCount] = useState(0);
+  return (
+    &lt;div&gt;
+      &lt;Header /&gt;
+      &lt;button onClick={() =&gt; setCount(count + 1)}&gt;Заказов: {count}&lt;/button&gt;
+      &lt;Menu /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Дар чойхона се қадам чунинанд. Меҳмон фармоиш медиҳад: ин триггер. Ошпаз дар ошхона таом тайёр мекунад, мепазад, аз нав мекунад: ин рендер, ба дастархон ҳанӯз чизе нарасидааст. Пешхизмат он чиро, ки аллакай рӯи миз аст, муқоиса мекунад ва <b>танҳо навро</b> меорад: ин коммит. Ошпаз метавонад таомро ду бор тайёр кунад (StrictMode), аммо меҳмон як бор мегирад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Тасаввуроти хато</b>
+        <p><b>1.</b> «Рендер — вақте ки экран нав мешавад». Не, экранро коммит нав мекунад, ва танҳо агар фарқият бошад. <b>2.</b> «<code>setState</code> тағйирёбандаро фавран иваз мекунад». Не, қимати навро рендери навбатӣ мебинад. <b>3.</b> «Ҳар аз нав кашидан саҳифаро суст мекунад, ҳама ҷо <code>memo</code> гузоштан лозим». Не, аввал чен кунед. <b>4.</b> «Компонент аз нав кашида шуд, пас DOM-ро тағйир дод». На ҳатман. <b>5.</b> «<code>console.log</code>-и дугона — хато». Не, ин StrictMode дар dev аст.</p>
+      </div>
+
+      <article class="task" id="q-render">
+        <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Худро санҷед: модели рендер</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Дар қадами «рендер» чӣ рӯй медиҳад?</p>
+          <ol class="options">
+            <li>React унсурҳои навро ба DOM-и браузер мегузорад</li>
+            <li>Браузер пикселҳоро дар экран мекашад</li>
+            <li>React функсияҳои компонентҳоро даъват мекунад ва дарахти унсурҳоро мегирад, DOM дар ин ҳангом тағйир намеёбад</li>
+            <li>React маълумотро аз сервер зеркашӣ мекунад</li>
+          </ol>
+          <div class="explain"><p>Рендер — ҳисобкунӣ аст. Тағйир додани DOM-ро коммит оғоз мекунад, ва пикселҳоро аллакай браузер мекашад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Чӣ React-ро водор мекунад, ки функсияи компоненти <code>Menu</code>-ро дубора даъват кунад? Ду варианти ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li>Ҳолати худи он тағйир ёфт</li>
+            <li>Як сония гузашт</li>
+            <li>Волидаш аз нав кашида шуд (ба таври пешфарз авлод бо вай якҷоя рендер мешаванд)</li>
+            <li>Истифодабаранда мушро болои саҳифа бурд</li>
+          </ol>
+          <div class="explain"><p>Ду триггер: ҳолати худӣ ва аз нав кашидани волид. Вақт ва муш худ аз худ рендерро оғоз намекунанд.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Агар дар коркард се бор пай дар пай <code>setQty(qty + 1)</code> даъват шуда бошад ва <code>qty</code> ба 0 баробар буд, баъди як клик компонент чӣ нишон медиҳад?</p>
+          <ol class="options">
+            <li>3</li>
+            <li>1</li>
+            <li>0</li>
+            <li>Хато</li>
+          </ol>
+          <div class="explain"><p>Дар як рендер <code>qty</code> — акс аст, он дар ҳар се даъват ба 0 баробар аст. Ҳар даъват мепурсад «1 гузор». Барои гирифтани 3 функсия диҳед: <code>setQty((q) =&gt; q + 1)</code>.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t4-snap">
+        <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Се порсия бо як клик</h4><span class="level mid">миёна</span></header>
+        <p>Тугмаи «+3» бояд бо як клик се порсия илова кунад, аммо як порсия илова мекунад. <code>addThree</code>-ро ислоҳ кунед, боқиро тағйир надиҳед: шакли функсионалии навсозиро истифода баред.</p>
+        <div class="playground" data-mode="react" data-title="Порсияҳо +3">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [qty, setQty] = useState(0);
+
+  function addThree() {
+    // TODO: сейчас все три вызова видят одно и то же qty
+    setQty(qty + 1);
+    setQty(qty + 1);
+    setQty(qty + 1);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Порций: {qty}&lt;/p&gt;
+      &lt;button onClick={addThree}&gt;+3&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("button").click(); await wait();
+  document.querySelector("button").click(); await wait();
+  console.log(document.querySelector("p").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Порций: 6</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Ба <code>setQty</code> функсия додан мумкин аст: вай қимати тозатаринро мегирад, на акси рендерро.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>setQty((q) =&gt; q + 1);</code> се бор пай дар пай.</p></details>
+      </article>
+
+      <article class="task" id="t4-down">
+        <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Ҳолатро поёнтар фуроред</h4><span class="level hard">душвор</span></header>
+        <p>Ҳоло ҳолати <code>liked</code> дар <code>App</code> аст, барои ҳамин ҳар клик ба дилча <code>Menu</code>-ро аз нав мекашад. Тугмаро якҷоя бо ҳолат ба компоненти нави <code>LikeButton</code> (дар сатҳи боло дар файл) бароред, то ки <code>Menu</code> дар се клик ҳамагӣ як бор «render Menu» нависад.</p>
+        <div class="playground" data-mode="react" data-title="Рендерҳои нолозими меню">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Menu() {
+  console.log("render Menu");
+  return &lt;ul&gt;&lt;li&gt;Плов&lt;/li&gt;&lt;li&gt;Лагман&lt;/li&gt;&lt;li&gt;Самбуса&lt;/li&gt;&lt;/ul&gt;;
+}
+
+// TODO: создайте здесь LikeButton с состоянием liked
+
+export default function App() {
+  const [liked, setLiked] = useState(false);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setLiked(!liked)}&gt;{liked ? "♥" : "♡"}&lt;/button&gt;
+      &lt;Menu /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  for (let i = 0; i &lt; 3; i++) { document.querySelector("button").click(); await wait(); }
+  console.log("кнопка: " + document.querySelector("button").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>render Menu
+кнопка: ♥</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Ҳолат танҳо ба тугма лозим аст, пас бигзор дар худи вай зиндагӣ кунад: <code>function LikeButton() { const [liked, setLiked] = useState(false); … }</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Дар <code>App</code> пас <code>&lt;div&gt;&lt;LikeButton /&gt;&lt;Menu /&gt;&lt;/div&gt;</code> мемонад ва <code>useState</code>-и худӣ нест: ҳангоми клик танҳо <code>LikeButton</code> рендер мешавад.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/render-and-commit" target="_blank" rel="noopener">react.dev — Render and Commit</a> · <a href="https://react.dev/learn/state-as-a-snapshot" target="_blank" rel="noopener">react.dev — State as a Snapshot</a> · <a href="https://react.dev/learn/queueing-a-series-of-state-updates" target="_blank" rel="noopener">react.dev — Queueing a Series of State Updates</a> · <a href="https://react.dev/reference/react/StrictMode" target="_blank" rel="noopener">react.dev — StrictMode</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="pure">
+      <h2 data-toc="Компонентҳои тоза"><span class="num">05</span> Компонентҳои тоза</h2>
+
+      <p>Компонент бояд мисли формула бошад: <b>ҳамон props ва ҳамон ҳолат — ҳамон JSX</b>. Ва як шарти дигар: ҳангоми рендер вай чизеро, ки пеш аз вай вуҷуд дошт, тағйир намедиҳад. Он гоҳ React метавонад онро дар ҳар вақт даъват кунад, гузаронад, такрор кунад — ва натиҷа якхела мешавад. Барои ҳамин StrictMode бо даъвати дугона кор мекунад.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ғайритоза (ин тавр намешавад)</th><th>Тоза (ин тавр мешавад)</th></tr></thead>
+          <tbody>
+            <tr><td>Тағйир додани тағйирёбанда берун аз компонент: <code>guestCount++</code> дар бадана</td><td>Аз props ва ҳолат ҳисоб кардан; <code>let</code>-ҳои маҳаллӣ ва массивҳоеро, ки <b>дар дохили</b> ҳамин рендер сохтаед, тағйир додан мумкин аст</td></tr>
+            <tr><td>Тағйир додани props: <code>props.items.sort()</code>, <code>props.name = …</code></td><td>Нусха: <code>[...items].sort()</code>, <code>items.toSorted()</code></td></tr>
+            <tr><td><code>Date.now()</code> ё <code>Math.random()</code> бевосита дар JSX</td><td>Вақт ва тасодуф — ба коркарди ҳодиса ё ба ҳолат</td></tr>
+            <tr><td><code>fetch</code>, навиштан ба <code>localStorage</code>, тағйири DOM дар бадани компонент</td><td>Коркарди ҳодиса ё <code>useEffect</code> (дарси 5)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre class="code" data-lang="tsx" data-title="Компоненти ғайритоза, ки StrictMode онро ошкор мекунад">
+let guestCount = 0 // переменная ВНЕ компонента
+
+export default function Guest() {
+  guestCount = guestCount + 1 // меняем внешнее во время рендера
+  return &lt;p&gt;Гость № {guestCount}&lt;/p&gt;
+}
+// в dev с StrictMode компонент вызывается дважды: на странице «Гость № 2», а не 1
+</pre>
+
+      <p>Тағйир додани props-ро React худаш манъ мекунад: дар реҷаи dev объекти props «яхкарда» аст, ва кӯшиши таъини қимат хато медиҳад. Аммо <code>.sort()</code> дар массиви аз props омада кор мекунад ва массиви аслиро хомӯшона вайрон мекунад. Ин хато аз ҳама бештар вомехӯрад.</p>
+
+<pre class="code" data-title="Терминал — таъин ба props дар реҷаи dev">
+TypeError: Cannot assign to read only property 'name' of object '#&lt;Object&gt;'
+</pre>
+
+      <p>Таъсироти иловагиро ба куҷо бояд гузошт? Ҷои аввал — <b>коркарди ҳодиса</b> (<code>onClick</code>, <code>onSubmit</code>): аз он ҷо ҳар чизро кардан мумкин аст, он танҳо ҳангоми амали истифодабаранда даъват мешавад. Дуюм — <code>useEffect</code>, вақте ки бо олами беруна ҳамоҳанг шудан лозим аст (дарси 5). Дар ҳолатҳои дигар рендер бояд танҳо ҳисоб кунад ва JSX баргардонад.</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Компоненти тоза — хазинадор дар бозор бо ҳисобкунак аст: «3 кг сабзӣ, кило 8 сомонӣ» дод, «24 сомонӣ» гирифт. Ҳамеша. Ғайритоза — хазинадоре, ки ҳангоми ҳар ҳисоб боз аз пештахтаи бегона сабзӣ мегирад: ҳамсоя зарар мебинад, ва шумо ду ҳисоби якхела натиҷаи гуногун медиҳанд, агар касе ду бор ҳисоб карда бошад.</p>
+      </div>
+
+      <article class="task" id="q-pure">
+        <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Худро санҷед: тозагӣ</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Кадом сатр дар дохили компонент онро ғайритоза мекунад?</p>
+          <ol class="options">
+            <li><code>const total = price * qty</code></li>
+            <li><code>const copy = [...items]; copy.sort()</code></li>
+            <li><code>items.sort()</code>, ки <code>items</code> аз props омадааст</li>
+            <li><code>const label = open ? "Открыто" : "Закрыто"</code></li>
+          </ol>
+          <div class="explain"><p>Методи <code>sort</code> массивро дар ҷояш тағйир медиҳад, ва ин массив ба волид тааллуқ дорад. Нусха (варианти дуюм) — маълумоти маҳаллӣ аст, онро тағйир додан мумкин.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Навиштан ба <code>localStorage</code>-ро ҳангоми пахши «Добавить в избранное» ба куҷо гузоштан дуруст аст?</p>
+          <ol class="options">
+            <li>Бевосита ба бадани компонент, пеш аз <code>return</code></li>
+            <li>Ба коркарди <code>onClick</code>-и ҳамин тугма</li>
+            <li>Ба JSX ҳамчун ифодаи <code>{localStorage.setItem(…)}</code></li>
+            <li>Ба <code>index.html</code></li>
+          </ol>
+          <div class="explain"><p>Таъсири иловагии аз амали истифодабаранда ба вуҷудомада ҷояш дар коркарди ҳодиса аст. Дар бадани компонент он дар ҳар рендер, аз ҷумла даъвати дугонаи StrictMode, иҷро мешуд.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t5-sort">
+        <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Топи тарабхонаҳо бе вайрон кардани маълумот</h4><span class="level mid">миёна</span></header>
+        <p>Компоненти <code>TopList</code> тарабхонаҳоро аз рӯи рейтинг бо тартиби камшаванда нишон медиҳад, аммо дар ин ҳол <b>тартиби массиви волидро тағйир медиҳад</b>: сатри дуюми санҷиш инро нишон медиҳад. Чунон ислоҳ кунед, ки рӯйхат дар экран саралашуда бошад, ва массиви аслӣ чун пештара монад.</p>
+        <div class="playground" data-mode="react" data-title="Топ аз рӯи рейтинг">
+<pre class="code" data-lang="jsx">
+const restaurants = [
+  { id: 1, name: "Navruz", rating: 4.5 },
+  { id: 2, name: "Rohat", rating: 4.8 },
+  { id: 3, name: "Samarkand", rating: 4.1 },
+];
+
+function TopList({ items }) {
+  // TODO: sort меняет items на месте, а это массив родителя
+  const sorted = items.sort((a, b) =&gt; b.rating - a.rating);
+  return (
+    &lt;ol&gt;
+      {sorted.map((r) =&gt; &lt;li key={r.id}&gt;{r.name}&lt;/li&gt;)}
+    &lt;/ol&gt;
+  );
+}
+
+export default function App() {
+  return &lt;TopList items={restaurants} /&gt;;
+}
+
+// ---- проверка (не менять) ----
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+setTimeout(() =&gt; console.log("исходный порядок: " + restaurants.map((r) =&gt; r.name).join(", ")), 150);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>&lt;ol&gt;
+&lt;li&gt;Rohat&lt;/li&gt;
+&lt;li&gt;Navruz&lt;/li&gt;
+&lt;li&gt;Samarkand&lt;/li&gt;
+&lt;/ol&gt;
+исходный порядок: Navruz, Rohat, Samarkand</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Аввал нусхаи массивро созед, баъд онро сарала кунед.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>const sorted = [...items].sort((a, b) =&gt; b.rating - a.rating);</code></p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/keeping-components-pure" target="_blank" rel="noopener">react.dev — Keeping Components Pure</a> · <a href="https://react.dev/reference/react/StrictMode" target="_blank" rel="noopener">react.dev — StrictMode</a></p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="styles">
+      <h2 data-toc="Услубҳо: CSS Modules ва Tailwind"><span class="num">06</span> Услубҳо дар React: CSS Modules ва Tailwind CSS</h2>
+
+      <p>Дар CSS-и оддӣ ҳамаи синфҳо глобалианд: <code>.card</code> аз як файл <code>.card</code>-ро дар тамоми барнома ранг мекунад, ва номҳо дер ё зуд мувофиқ меоянд. Дар лоиҳаҳои React ин мушкилро бо ду усул ҳал мекунанд, ва дар «Дастархон» шумо ҳардуро пайваст мекунед. Шаблони Vite ҳам инро ва ҳам онро метавонад.</p>
+
+      <h3>CSS Modules: CSS-и худии ҳар компонент</h3>
+      <p>Файл бо номи <code>Чизе.module.css</code> — CSS Module аст. Vite онро худаш мефаҳмад, чизе насб кардан лозим нест. Синфҳои он <b>маҳаллӣ</b>-анд: ҳангоми ҷамъкунӣ ба ном хэши ягона илова мешавад, ва бо <code>.card</code>-и бегона мухолифат намекунад.</p>
+
+<pre class="code" data-lang="css" data-title="RestaurantCard.module.css">
+.card {
+  padding: 1rem;
+  border-radius: 1rem;
+}
+
+.closed {
+  opacity: 0.6;
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="RestaurantCard.tsx (порча)">
+import styles from './RestaurantCard.module.css'
+
+// styles.card — это строка вида '_card_yj5l5_1', её и вставляем в className
+const className = open ? styles.card : `${styles.card} ${styles.closed}`
+</pre>
+
+      <p>Хэш дар номи синфро дар DevTools мебинед. Навъҳо барои воридоти <code>*.module.css</code> аллакай пайваст шудаанд: дар <code>tsconfig.app.json</code> <code>"types": ["vite/client"]</code> ҳаст. Аммо диққат диҳед: TypeScript танҳо медонад, ки <code>styles.ҳарчи-бошад</code> — сатр аст. Хатои имлои <code>styles.carrd</code> хатои навъ намешавад: синф танҳо татбиқ намешавад, ва шумо инро бо чашм мебинед. Якчанд синфро бо сатри қолабӣ (мисли боло) ё бо массив мепайванданд: <code>[styles.card, !open &amp;&amp; styles.closed].filter(Boolean).join(' ')</code>.</p>
+
+      <h3>Tailwind CSS 4: синфҳои хидматӣ</h3>
+      <p><b>Tailwind</b> барои ҳар хосият синфҳои хурди тайёр медиҳад: <code>p-4</code> (канор), <code>rounded-xl</code>, <code>text-lg</code>, <code>font-bold</code>, <code>flex</code>, <code>gap-2</code>. Шумо намудро бевосита дар <code>className</code> ҷамъ мекунед, ва Tailwind ҳангоми ҷамъкунӣ дар сарчашмаҳо синфҳои истифодашударо меёбад ва танҳо онҳоро ба CSS-и ниҳоӣ дохил мекунад. Версияи ҷорӣ — 4.3; пайвастшавӣ ба Vite се қадам мегирад (дар амалиёт худатон иҷро мекунед):</p>
+
+<pre class="code" data-title="Терминал">
+npm install tailwindcss @tailwindcss/vite
+</pre>
+<pre class="code" data-lang="ts" data-title="vite.config.ts">
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+})
+</pre>
+<pre class="code" data-lang="css" data-title="src/index.css">
+@import 'tailwindcss';
+</pre>
+
+      <p>Файли <code>tailwind.config.js</code> ва PostCSS дар версияи чорум лозим нестанд. Ҳамаи танзимот дар CSS ҷойгиранд.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Имконият</th><th>Мисол</th><th>Чӣ мекунад</th></tr></thead>
+          <tbody>
+            <tr><td><b>Мутобиқшавӣ</b></td><td><code>grid gap-4 sm:grid-cols-2 lg:grid-cols-3</code></td><td>Префикс маънои «аз ин паҳноӣ ва васеътар»-ро дорад: аввал тарҳи мобилӣ, баъд иловаҳо (mobile first)</td></tr>
+            <tr><td><b>Ҳолатҳо</b></td><td><code>hover:bg-brand-100 focus:ring disabled:opacity-50</code></td><td>Услуб ҳангоми наздикшавии муш, фокус, тугмаи ғайрифаъол фаъол мешавад</td></tr>
+            <tr><td><b>Мавзӯи торик</b></td><td><code>bg-white dark:bg-stone-900</code></td><td>Ба таври пешфарз танзимоти системаро мебарад (<code>prefers-color-scheme</code>)</td></tr>
+            <tr><td><b>Мавзӯи худӣ</b></td><td><code>@theme { --color-brand-600: #c2410c; }</code> дар CSS</td><td>Синфҳои <code>bg-brand-600</code>, <code>text-brand-600</code> ва тағйирёбандаи <code>var(--color-brand-600)</code>-ро месозад</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Барои тағйир додани мавзӯъ бо тугма (дарси 8) вариантро дар CSS аз нав муайян кунед: <code>@custom-variant dark (&amp;:where(.dark, .dark *));</code>, ва <code>dark:</code> вақте кор мекунад, ки дар <code>html</code> синфи <code>dark</code> гузошта шудааст.</p>
+
+      <div class="callout warn">
+        <b>Муҳим: Tailwind сарчашмаҳоро ҳамчун матни оддӣ мехонад</b>
+        <p>Вай дар файлҳо калимаҳо-синфҳои тайёрро меҷӯяд. Агар номро аз порчаҳо ҷамъ кунед, синф дар CSS-и ниҳоӣ нахоҳад буд, ва хато низ нахоҳад буд: услуб танҳо татбиқ намешавад.</p>
+      </div>
+
+<pre class="code" data-lang="tsx" data-title="Синфҳои динамикӣ">
+// плохо: Tailwind не найдёт слово 'bg-green-100' целиком
+const bad = `bg-${open ? 'green' : 'stone'}-100`
+
+// хорошо: оба варианта записаны целиком
+const good = open ? 'bg-green-100' : 'bg-stone-100'
+</pre>
+
+      <h3>Чиро ва кай интихоб кунем</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Масъала</th><th>Дар «Дастархон» бо чӣ услубгузорӣ мекунем</th><th>Барои чӣ</th></tr></thead>
+          <tbody>
+            <tr><td>Тарҳбандӣ, канорҳо, ҳуруфот, рангҳо, мутобиқшавӣ, мавзӯи торик</td><td><b>Tailwind</b></td><td>Тез, лозим нест номҳои синфро фикр кунед, қиматҳо аз мавзӯи ягона гирифта мешаванд</td></tr>
+            <tr><td>Компонент бо CSS-и «худӣ»: аниматсия, псевдо-унсурҳо, наздикшавии мураккаб</td><td><b>CSS Modules</b></td><td>CSS-и оддӣ дар файли алоҳида, аз боқӣ ҷудо</td></tr>
+            <tr><td>Аз нав танзимкунии услубҳо (reset), тағйирёбандаҳои глобалӣ</td><td><b>CSS-и глобалӣ</b> (<code>index.css</code>)</td><td>Ин ягона ҷоест, ки глобалӣ будан лозим аст</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Як хосиятро дар як унсур бо ду усул услубгузорӣ накунед: чӣ ғолиб мешавад, тартиби қоидаҳо дар CSS-и ниҳоӣ ҳал мекунад, на тартиби дар <code>className</code>. Рӯйхати дарози синфҳо сабаби тарсидан нест: агар он такрор шавад, компонент созед (<code>Badge</code>), сатрро нусхабардорӣ накунед.</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>CSS Modules — ошхонаи алоҳида барои ҳар ошпаз аст: ҳар кас дегҳои имзодор дорад, бегонаро омехта кардан душвор. Tailwind — маҷмӯаи умумии хушбӯйҳо дар қуттии болои девор аст: як чимдим «p-4», як чимдим «font-bold» мегиред ва таомро дар ҷо ҷамъ мекунед, ва рӯйхати хушбӯйҳо (мавзӯъ) барои тамоми ошхона ягона аст.</p>
+      </div>
+
+      <article class="task" id="q-styles">
+        <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Худро санҷед: услубҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>CSS Module аз файли CSS-и оддӣ чӣ фарқ дорад?</p>
+          <ol class="options">
+            <li>Он танҳо дар TypeScript кор мекунад</li>
+            <li>Синфҳои он маҳаллианд: ҷамъкунӣ хэш илова мекунад, ва онҳо бо синфҳои файлҳои дигар мухолифат намекунанд</li>
+            <li>Он саҳифаро худкор мутобиқшаванда мекунад</li>
+            <li>Онро бо бастаи алоҳида насб кардан лозим аст</li>
+          </ol>
+          <div class="explain"><p>Vite CSS Modules-ро аз қуттӣ дастгирӣ мекунад. Маҳаллӣ будан бо тағйири номи синфҳо ҳангоми ҷамъкунӣ ба даст меояд.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Шумо <code>className={`bg-${color}-600`}</code> навиштед, ва ранг татбиқ нашуд, хато низ нест. Чаро?</p>
+          <ol class="options">
+            <li>Tailwind дар сарчашмаҳо номҳои тайёри синфҳоро меҷӯяд, ва номи аз порчаҳо ҷамъшударо ёфтан мумкин нест</li>
+            <li>Дар Tailwind 4 ранг нест</li>
+            <li>TypeScript сатрҳои қолабиро манъ кард</li>
+            <li>Синфро бояд дар <code>tailwind.config.js</code> эълон кард</li>
+          </ol>
+          <div class="explain"><p>Синфҳоро пурра нависед: <code>color === 'green' ? 'bg-green-600' : 'bg-stone-600'</code>. Файли танзимот дар версияи чорум ба таври пешфарз лозим нест.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p><code>grid sm:grid-cols-2 lg:grid-cols-3</code> чӣ маъно дорад?</p>
+          <ol class="options">
+            <li>Се сутун дар телефон, ду дар компютер</li>
+            <li>Ҳамеша ду сутун</li>
+            <li>Ба таври пешфарз як сутун, аз паҳноии <code>sm</code> ду сутун, аз <code>lg</code> се сутун</li>
+            <li>Се сутун танҳо дар мавзӯи торик</li>
+          </ol>
+          <div class="explain"><p>Tailwind mobile first: синфи бе префикс ҳамеша амал мекунад, префикси <code>sm:</code> ва <code>lg:</code> қоидаҳоро аз паҳноии худ ва васеътар илова мекунад.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://vite.dev/guide/features.html#css-modules" target="_blank" rel="noopener">vite.dev — CSS Modules</a> · <a href="https://tailwindcss.com/docs/installation/using-vite" target="_blank" rel="noopener">tailwindcss.com — Install with Vite</a> · <a href="https://tailwindcss.com/docs/theme" target="_blank" rel="noopener">Tailwind — Theme</a> · <a href="https://tailwindcss.com/docs/dark-mode" target="_blank" rel="noopener">Tailwind — Dark mode</a> · <a href="https://tailwindcss.com/docs/detecting-classes-in-source-files" target="_blank" rel="noopener">Tailwind — Detecting classes</a> · <a href="https://tailwindcss.com/docs/responsive-design" target="_blank" rel="noopener">Tailwind — Responsive design</a></p>
+    </section>
+
+    <!-- ============ 07 · ИИ-блок ============ -->
+    <section class="topic" id="ai-tree">
+      <h2 data-toc="ЗС: дарахти компонентҳо"><span class="num">07</span> Блоки ЗС: макет ба дарахти компонентҳо ва баҳс бо агент</h2>
+
+      <p>Экранро ба компонентҳо ҷудо кардан — масъалаест, ки агент дар он ҳамчун ҳамсуҳбат муфид аст: вай зуд вариантро пешниҳод мекунад, ва шумо ҳудуди онро месанҷед. Ҷавоби аввалро қабул кардан мумкин нест: агент бо майл ё як компоненти азим ё бист компоненти якхатта месозад. Инак макети феҳристе, ки ҷамъ мекунем. Ҷустуҷӯ ва филтр аз рӯи таом аз дарси 2 аллакай ҳаст, боқӣ бояд ба компонентҳо ҷудо шавад:</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 384" role="img" aria-label="Макети саҳифаи феҳрист. Дар боло сарлавҳа бо номи Дастархон ва шаҳр, дар поён унвони Тарабхонаҳои Душанбе, сатри ҷустуҷӯ ва тугмаҳои филтр аз рӯи таомҳо, сипас торчаи се корт: ном, навъи таом, нишони кушода ё баста, рейтинг, вақти расонидан ва ҳадди ақали фармоиш. Дар поён поёни саҳифа. Рақамҳо қисмҳоро нишон медиҳанд: 1 сарлавҳа, 2 унвон, 3 ҷустуҷӯ, 4 филтр, 5 торча, 6 корт, 7 нишон, 8 рейтинг, 9 поёни саҳифа">
+          <rect class="box" x="10" y="10" width="700" height="364" rx="14" />
+          <rect class="fill-y" x="20" y="20" width="680" height="44" rx="10" /><text x="36" y="48">Дастархон</text><text class="sub" x="636" y="48" text-anchor="end">Душанбе</text>
+          <circle class="fill-g" cx="684" cy="42" r="11" /><text x="684" y="46" text-anchor="middle">1</text>
+          <text x="30" y="94">Тарабхонаҳои Душанбе</text><circle class="fill-g" cx="206" cy="89" r="11" /><text x="206" y="93" text-anchor="middle">2</text>
+          <rect class="box" x="20" y="106" width="220" height="28" rx="8" /><text class="sub" x="32" y="125">Тарабхонаро ёбед</text><circle class="fill-g" cx="240" cy="106" r="10" /><text x="240" y="110" text-anchor="middle">3</text>
+          <rect class="fill-g" x="262" y="106" width="40" height="28" rx="14" /><text class="sub" x="282" y="125" text-anchor="middle">Ҳама</text>
+          <rect class="box" x="310" y="106" width="56" height="28" rx="14" /><text class="sub" x="338" y="125" text-anchor="middle">палав</text>
+          <rect class="box" x="374" y="106" width="64" height="28" rx="14" /><text class="sub" x="406" y="125" text-anchor="middle">шашлик</text>
+          <rect class="box" x="446" y="106" width="68" height="28" rx="14" /><text class="sub" x="480" y="125" text-anchor="middle">самбӯса</text>
+          <circle class="fill-g" cx="522" cy="106" r="10" /><text x="522" y="110" text-anchor="middle">4</text>
+          <rect class="box g" x="16" y="148" width="688" height="168" rx="12" stroke-dasharray="6 4" /><circle class="fill-g" cx="16" cy="148" r="11" /><text x="16" y="152" text-anchor="middle">5</text>
+
+          <rect class="box" x="24" y="156" width="220" height="152" rx="12" /><circle class="fill-g" cx="244" cy="156" r="11" /><text x="244" y="160" text-anchor="middle">6</text>
+          <circle class="fill-y" cx="52" cy="188" r="16" /><text x="76" y="184">Navruz</text><text class="sub" x="76" y="202">палав</text>
+          <rect class="fill-g" x="150" y="174" width="62" height="20" rx="10" /><text class="sub" x="181" y="188" text-anchor="middle">Кушода</text><circle class="fill-g" cx="222" cy="176" r="10" /><text x="222" y="180" text-anchor="middle">7</text>
+          <text class="sub" x="36" y="248">★ 4.8</text><circle class="fill-g" cx="94" cy="243" r="10" /><text x="94" y="247" text-anchor="middle">8</text><text class="sub" x="116" y="248">35 дақ · аз 60</text>
+          <rect class="fill-g" x="36" y="266" width="196" height="30" rx="8" /><text class="sub" x="134" y="286" text-anchor="middle">Интихоб</text>
+
+          <rect class="box" x="250" y="156" width="220" height="152" rx="12" />
+          <circle class="fill-y" cx="278" cy="188" r="16" /><text x="302" y="184">Rohat</text><text class="sub" x="302" y="202">шашлик</text>
+          <rect class="fill-r" x="376" y="174" width="62" height="20" rx="10" /><text class="sub" x="407" y="188" text-anchor="middle">Баста</text>
+          <text class="sub" x="262" y="248">★ 4.5</text><text class="sub" x="342" y="248">45 дақ · аз 80</text>
+          <rect class="box" x="262" y="266" width="196" height="30" rx="8" /><text class="sub" x="360" y="286" text-anchor="middle">Интихоб</text>
+
+          <rect class="box" x="476" y="156" width="220" height="152" rx="12" />
+          <circle class="fill-y" cx="504" cy="188" r="16" /><text x="528" y="184">Samarkand</text><text class="sub" x="528" y="202">самбӯса</text>
+          <rect class="fill-g" x="618" y="174" width="62" height="20" rx="10" /><text class="sub" x="649" y="188" text-anchor="middle">Кушода</text>
+          <text class="sub" x="488" y="248">★ 4.6</text><text class="sub" x="568" y="248">30 дақ · аз 40</text>
+          <rect class="fill-g" x="488" y="266" width="196" height="30" rx="8" /><text class="sub" x="586" y="286" text-anchor="middle">Интихоб</text>
+
+          <rect class="fill-y" x="20" y="328" width="680" height="38" rx="10" /><text class="sub" x="360" y="352" text-anchor="middle">© 2026 Дастархон · лоиҳаи таълимии MakeFirstStep</text>
+          <circle class="fill-g" cx="684" cy="347" r="11" /><text x="684" y="351" text-anchor="middle">9</text>
+        </svg>
+        <figcaption>Макети феҳрист: 1 сарлавҳа, 2 унвони саҳифа, 3 ҷустуҷӯ, 4 филтр аз рӯи таом, 5 торча, 6 корт, 7 нишони «Кушода/Баста», 8 рейтинг, 9 поёни саҳифа</figcaption>
+      </figure>
+
+      <h3>Ҳудуди компонент дар куҷо мегузарад</h3>
+      <ol class="steps">
+        <li><b>Такрор мешавад.</b> Агар порчаи экран бисёр маротиба нишон дода шавад (корт, нишон), ин компонент аст: он як маротиба навишта мешавад, ва маълумот тавассути props меравад.</li>
+        <li><b>Ном ва як масъулият дорад.</b> Шумо метавонед онро бо як калима ном баред ва бигӯед, ки вай чӣ мекунад, бе «ва». «Корти тарабхона» — ҳа, «корт ва филтр ва сабад» — не.</li>
+        <li><b>Ба наздикӣ ҳолати худро мегирад.</b> Дар дарси 4 дар феҳрист филтрҳо пайдо мешаванд, ва корт «писандидашуда» мегирад: чунин порча <code>useState</code>-и худро дорад, ва беҳтар аст фавран ба он ҳудуд диҳед («ҳолатро поёнтар фуроред»-ро аз бахши 4 ба ёд оред).</li>
+        <li><b>Сохтори маълумот сохтори компонентҳоро нишон медиҳад.</b> Массиви тарабхонаҳо — ин <code>RestaurantList</code> аст, як объект — <code>RestaurantCard</code>.</li>
+        <li><b>Барои ҷудокунӣ ҷудо накунед.</b> Компоненти якхатта бе такрор ва бе маънои худ танҳо хонданро мушкил мекунад. Аломати аз ҳад гузаштан: 6–7 props, ки танҳо ба поён интиқол дода мешаванд.</li>
+      </ol>
+
+      <div class="callout ai">
+        <b>Формулаи промпт: контекст → вазифа → маҳдудиятҳо → формат → санҷиш</b>
+        <p>Ду дархостро муқоиса кунед. Хубаш ошкоро хоҳиш мекунад, ки <b>аввал танҳо дарахт, бе код</b>, ва агентро водор мекунад, ки ҳар ҳудудро асоснок кунад. Ин агентро ба рақиб табдил медиҳад, ки бо вай баҳс кардан мумкин аст.</p>
+      </div>
+
+      <div class="prompt bad-prompt">разбей этот макет на компоненты и напиши код</div>
+
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), прочитай AGENTS.md. Стили: Tailwind CSS 4 и CSS Modules. Страница каталога состоит из: шапки (название «Дастархон» и город), заголовка «Рестораны Душанбе», поиска и фильтра по кухне, сетки карточек и подвала. Поиск и фильтр уже реализованы компонентами SearchBox и CuisineFilter (урок 2), у карточки уже есть RestaurantCard и обёртка раздела Section: учти их и предложи, что оставить, а что добавить. Карточка ресторана показывает название, кухню, бейдж «Открыто/Закрыто», рейтинг, время доставки и минимальный заказ. Данные лежат в массиве Restaurant[] из src/data.ts.
+Задача: сначала только ДЕРЕВО КОМПОНЕНТОВ, код не пиши.
+Ограничения: новое состояние (useState) не добавлять, без новых библиотек, без any, не больше 12 компонентов в сумме, один компонент на файл.
+Формат ответа: дерево в виде вложенного списка и таблица «компонент — что рисует — props с типами — повторяется ли — почему это отдельная граница».
+Проверка: в конце назови два места, где граница спорная, и объясни, как бы ты поступил иначе.</div>
+
+      <h3>Бо агент баҳс мекунем</h3>
+      <p>Баъди гирифтани дарахт, ба навбат се саволро диҳед ва ҷавобҳоро баҳо диҳед. <b>1.</b> «Чаро <code>Rating</code> ва <code>Badge</code> компонентҳои алоҳида ҳастанд, на қисми корт?» Ҷавоби хуб ба истифодаи такрорӣ ва экранҳои оянда (меню, сабад) ишора мекунад, бад — «ин тавр қабул шудааст». <b>2.</b> «Агар <code>RestaurantList</code> ва <code>RestaurantCard</code>-ро ба як компонент муттаҳид кунем, чӣ мешавад?» Ҷавоб бояд дарозӣ, имконнопазирии додани ҳолати худ ба корт ва мушкилоти <code>key</code>-ро зикр кунад. <b>3.</b> «<code>Layout</code> кадом props-ро мегирад ва чаро <code>children</code>?» Агар агент тавассути <code>Layout</code> маълумоти тарабхонаҳоро интиқол диҳад, вай печонакро бо контейнери маълумот омехта кардааст.</p>
+
+      <h3>Коди компонентҳои аз агент гирифташударо чӣ тавр санҷидан лозим</h3>
+      <ol class="steps">
+        <li><b>key.</b> Дар ҳар <code>map</code> <code>key</code> аз <code>id</code> гузошта шудааст, на аз индекс. Oxlint гузаронидашударо мегӯяд.</li>
+        <li><b>Компонент дар дохили компонент.</b> Дар бадани функсия-компоненти дигар <code>function X()</code> нест.</li>
+        <li><b>Тағйирдиҳӣ.</b> <code>.sort()</code>, <code>.push()</code>, <code>.reverse()</code> бе нусха дар props ва ҳолат нест.</li>
+        <li><b>Навъҳо.</b> <code>any</code> нест, props бо навъ тавсиф шудааст, <code>ReactNode</code> ва навъҳои дигар тавассути <code>import type</code> ворид шудаанд.</li>
+        <li><b>Синфҳои Tailwind.</b> Номҳои аз порчаҳо ҷамъшуда (<code>`bg-${x}-600`</code>) нестанд, ду усули услубгузории як хосият нест.</li>
+        <li><b>Андоза.</b> Компонент аз 80–100 сатр дарозтар ё бо шаш ва зиёд props: сабаб барои бозгашт ба ҳудудҳо.</li>
+        <li><b>Изофа.</b> <code>useState</code>-и нав, <code>useEffect</code>, бастаҳои нав ва <code>React.memo</code>, ки хоҳиш накардаед, нестанд: дар ин дарс мо экранро танҳо ба компонентҳо ҷудо мекунем.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Фавран код хостан: ҳудудҳоро намебинед ва 400 сатр дар як файл мегиред. <b>2.</b> Дарахтро бе баҳс қабул кардан: агент аксар вақт «аз рӯи тегҳо» ҷудо мекунад, на аз рӯи маъно. <b>3.</b> Дарахтро бо макет муқоиса накардан: поёни саҳифа ё нишон гум шуд. <b>4.</b> Ба агент тасвир ё маълумот бо маълумоти шахсии воқеӣ додан. <b>5.</b> Гумон кардан, ки агент қоидаҳои шуморо «медонад»: агар дар бораи Tailwind ва CSS Modules нагӯед, худаш интихоб мекунад.</p>
+      </div>
+
+      <article class="task" id="q-tree">
+        <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Худро санҷед: ҳудуди компонентҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1,3">
+          <p>Кадом қисмҳои макети феҳристро оқилона аст компоненти алоҳида кардан? Ду варианти ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li>Корти тарабхона: он такрор мешавад ва ба наздикӣ ҳолати худро мегирад</li>
+            <li>Як вергул байни вақти расонидан ва ҳадди ақали фармоиш</li>
+            <li>Нишони «Кушода/Баста»: он такрор мешавад ва дар экранҳои дигар ба кор меояд</li>
+            <li>Ҳар як тегӣ <code>&lt;span&gt;</code> дар дохили корт</li>
+          </ol>
+          <div class="explain"><p>Ҳудудро дар ҷое мегузоранд, ки такрор, маъно ва ҳолати оянда ҳаст. Компоненти алоҳида барои вергул ё барои ҳар <code>span</code> — ин ҷудокунӣ барои ҷудокунӣ аст.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Агент <code>Layout</code>-ро бо props-и <code>restaurants</code>, <code>onFilter</code>, <code>city</code>, <code>theme</code>, <code>user</code>, <code>cartCount</code> пешниҳод кард, ки вай онҳоро танҳо ба поён мефиристад. Ин чӣ маъно дорад?</p>
+          <ol class="options">
+            <li>Ҳама чиз дуруст аст: композитсия ин тавр сохта шудааст</li>
+            <li>Ҳудуд нодуруст гузошта шудааст: Layout бояд печонак бо <code>children</code> ва слотҳо бошад, ва маълумот ба онҳо лозим аст, ки онро нишон медиҳанд</li>
+            <li>Бояд боз props илова кард</li>
+            <li>Бояд <code>Layout</code>-ро бо тағйирёбандаи глобалӣ иваз кард</li>
+          </ol>
+          <div class="explain"><p>Бисёр props, ки танҳо ба поён интиқол дода мешаванд, нишонаи он аст, ки печонак ба «қуттии ахлот» барои маълумот табдил ёфтааст. Мундариҷаро тавассути <code>children</code> диҳед.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t-argue">
+        <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Чек-лист: баҳс бо агент гузаронида шуд</h4><span class="level mid">миёна</span></header>
+        <p>Дар компютери шумо дар амалиёт (қадами 2) иҷро мешавад. Танҳо он чизеро қайд кунед, ки воқеан кардаед.</p>
+        <ul class="checklist" id="cl-argue">
+          <li>Ман ба агент промпти хубро аз бахши 7 фиристодам ва хоҳиш кардам, ки аввал танҳо дарахт, бе код</li>
+          <li>Ман дарахти ӯро бо макет муқоиса кардам: ҳамаи нӯҳ қисми макет ҷо ба ҷо ҳастанд</li>
+          <li>Ман се саволи бахши «Бо агент баҳс мекунем»-ро додам ва навиштам, ки дар ҷавобҳо чӣ боварибахш аст ва чӣ не</li>
+          <li>Ман ақаллан як ҷоеро ёфтам, ки бо агент розӣ нестам, ва қарор ва сабаби худро дар <code>docs/component-tree.md</code> навиштам</li>
+        </ul>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a> · <a href="https://react.dev/learn/passing-props-to-a-component" target="_blank" rel="noopener">react.dev — Passing Props to a Component</a></p>
+    </section>
+
+    <!-- ============ 08 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Амалиёт: феҳрист"><span class="num">08</span> Амалиёт: феҳристи «Дастархон» дар дарахти компонентҳо</h2>
+
+      <p>Лоиҳаи 1-ро идома медиҳем. Баъд аз дарси 2 дар он навъҳо, маълумот ва чор компонент ҳаст, ки бевосита дар <code>src/</code> ҷойгиранд, ва услубҳо бо як синфи глобалии <code>.card</code> дода шудаанд. Ҳоло мо тартиб медиҳем: компонентҳоро дар папка ҷойгир мекунем, нопайдоҳоро (сарлавҳа, поёни саҳифа, печонак, рӯйхат, нишон, рейтинг) илова мекунем, Tailwind ва CSS Modules-ро пайваст мекунем. <code>useState</code>-и нав илова намекунем: ҷустуҷӯ ва филтр аз дарси 2 мисли пештара кор мекунанд, ҳолати онҳоро дар дарси 4 таҳлил мекунем. Оғозро санҷед: <code>git status</code> тоза, <code>npm run typecheck</code>, <code>npm run lint</code> ва <code>npm run build</code> мегузаранд.</p>
+
+      <h3>Дарахте, ки ҳосил мешавад</h3>
+<div class="ftree"><b>App</b> <i>ҳолати ҷустуҷӯ, филтр ва интихоб дар ин ҷост (дарси 2)</i>
+└─ <b>Layout</b> <i>children, печонак</i>
+   ├─ <b>Header</b> <i>сарлавҳа</i>
+   ├─ <b>SearchBox</b>, <b>CuisineFilter</b> <i>аз дарси 2, танҳо услубҳо</i>
+   ├─ <b>Section</b> <i>title, children</i>
+   │  └─ <b>RestaurantList</b> <i>props: restaurants, onSelect; рӯйхати холӣ → «Рестораны не найдены»</i>
+   │     └─ <b>RestaurantCard</b> × 6 <i>props: restaurant, onSelect; CSS Module</i>
+   │        ├─ <b>Badge</b> <i>props: open</i>
+   │        └─ <b>Rating</b> <i>props: value</i>
+   └─ <b>Footer</b> <i>поёни саҳифа</i></div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 300" role="img" aria-label="Дарахти компонентҳои феҳрист: App компонент Layout-ро дар бар мегирад; Layout — Header, Footer, SearchBox, CuisineFilter ва Section-ро; Section — RestaurantList-ро; рӯйхат якчанд RestaurantCard-ро; ҳар корт Badge ва Rating-ро. Маълумот аз data.ts ба App меояд ва тавассути props поён мефурояд">
+          <rect class="fill-y" x="300" y="8" width="120" height="34" rx="10" /><text x="360" y="30" text-anchor="middle">App</text>
+          <path class="arr" d="M360 42 V54" />
+          <rect class="fill-g" x="300" y="54" width="120" height="34" rx="10" /><text x="360" y="76" text-anchor="middle">Layout</text>
+          <path class="arr" d="M360 88 V102 H60 V114" /><path class="arr" d="M360 102 H200 V114" /><path class="arr" d="M360 102 H340 V114" /><path class="arr" d="M360 102 H520 V114" /><path class="arr" d="M360 102 H660 V114" />
+          <rect class="box" x="10" y="114" width="100" height="34" rx="10" /><text x="60" y="136" text-anchor="middle">Header</text>
+          <rect class="box" x="140" y="114" width="120" height="34" rx="10" /><text x="200" y="136" text-anchor="middle">SearchBox</text>
+          <rect class="box" x="275" y="114" width="130" height="34" rx="10" /><text x="340" y="136" text-anchor="middle">CuisineFilter</text>
+          <rect class="fill-g" x="460" y="114" width="120" height="34" rx="10" /><text x="520" y="136" text-anchor="middle">Section</text>
+          <rect class="box" x="610" y="114" width="100" height="34" rx="10" /><text x="660" y="136" text-anchor="middle">Footer</text>
+          <path class="arr" d="M520 148 V162" />
+          <rect class="fill-g" x="445" y="162" width="150" height="34" rx="10" /><text x="520" y="184" text-anchor="middle">RestaurantList</text>
+          <path class="arr" d="M520 196 V210" />
+          <rect class="fill-g" x="430" y="210" width="180" height="34" rx="10" /><text x="520" y="232" text-anchor="middle">RestaurantCard × 6</text>
+          <path class="arr" d="M490 244 V258 H440 V266" /><path class="arr" d="M550 244 V258 H600 V266" />
+          <rect class="box" x="390" y="266" width="100" height="26" rx="8" /><text x="440" y="284" text-anchor="middle">Badge</text>
+          <rect class="box" x="550" y="266" width="100" height="26" rx="8" /><text x="600" y="284" text-anchor="middle">Rating</text>
+          <text class="sub t-b" x="12" y="200">data.ts → App,</text><text class="sub" x="12" y="220">минбаъд ба поён тавассути props</text>
+        </svg>
+        <figcaption>Дарахти феҳрист: 11 компонент. Маълумот ба <code>App</code> медарояд ва тавассути props ба поён мефурояд, ва <code>Layout</code> ва <code>Section</code> мундариҷаро тавассути <code>children</code> мегиранд</figcaption>
+      </figure>
+
+      <h3>Қадамҳо</h3>
+      <ol class="steps">
+        <li><b>Шоха.</b> Минбаъд на дар <code>main</code> кор мекунем:
+<pre class="code" data-title="Терминал">
+git switch -c feat/catalog
+</pre>
+        </li>
+        <li><b>Дарахт якҷоя бо агент.</b> Cursor-ро кушоед ва промпти хубро аз бахши 7 фиристед. Ҷавобро хонед, се саволи «Бо агент баҳс мекунем»-ро диҳед ва бо дарахти дар боло овардашуда муқоиса кунед. <code>docs/component-tree.md</code>-ро эҷод кунед: дарахти ниҳоиро (аз они худатон, бо назардошти баҳс) гузоред ва 3–5 ҷумла илова кунед: чиро аз агент қабул кардед, бо чӣ розӣ набудед ва чаро. Агар дарахти шумо аз дарахти мо фарқ кунад, ин муқаррарӣ аст, агар ҳудудҳоро шарҳ диҳед; минбаъд дарахти дарсро месозем.</li>
+        <li><b>Tailwind-ро пайваст кунед.</b>
+<pre class="code" data-title="Терминал">
+npm install tailwindcss @tailwindcss/vite
+</pre>
+          <code>vite.config.ts</code>-ро иваз кунед:
+<pre class="code" data-lang="ts" data-title="vite.config.ts">
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+})
+</pre>
+          <code>src/index.css</code>-ро пурра иваз кунед. Сатри <code>@import 'tailwindcss'</code> аллакай аз нав танзимкунии услубҳоро дар бар мегирад, барои ҳамин қоидаҳои пешинаи <code>box-sizing</code>, <code>margin</code> ва <code>.card</code>-и глобалӣ аз дарси 2 дигар лозим нестанд: корт CSS Module-и худро мегирад. Дар блоки <code>@theme</code> рангҳои лоиҳа дода шудаанд: аз рӯи онҳо Tailwind синфҳои <code>bg-brand-50</code>, <code>text-brand-600</code> ва дигарҳоро месозад.
+<pre class="code" data-lang="css" data-title="src/index.css">
+@import 'tailwindcss';
+
+@theme {
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-600: #c2410c;
+  --color-brand-700: #9a3412;
+  --color-leaf-600: #15803d;
+}
+</pre>
+        </li>
+        <li><b>Навъ ва маълумотро васеъ кунед.</b> Ба корт эмодзи, вақти расонидан ва ҳадди ақали фармоиш лозим аст. Се майдонро ба <code>Restaurant</code> дар <code>src/types.ts</code> илова кунед (боқии файлро тавре ки ҳаст монед):
+<pre class="code" data-lang="ts" data-title="src/types.ts (навъи Restaurant)">
+export type Restaurant = {
+  id: number
+  name: string
+  cuisine: Cuisine
+  rating: number
+  open: boolean
+  emoji: string
+  deliveryMin: number // минут
+  minOrder: number // в сомони
+  address?: string
+}
+</pre>
+          <code>npm run typecheck</code>-ро иҷро кунед: компилятор фавран ҳамаи ҷойҳоеро нишон медиҳад, ки маълумот ба навъи нав мувофиқ нест. Ин фоидаи навъҳост: шумо чизеро аз ёд намебаред.
+<pre class="code" data-title="Терминал — натиҷаи tsc -b">
+src/data.ts(4,3): error TS2739: Type '{ id: number; name: string; cuisine: "плов"; rating: number; open: true; address: string; }' is missing the following properties from type 'Restaurant': emoji, deliveryMin, minOrder
+src/data.ts(12,3): error TS2739: Type '{ id: number; name: string; cuisine: "шашлык"; rating: number; open: false; }' is missing the following properties from type 'Restaurant': emoji, deliveryMin, minOrder
+src/data.ts(13,3): error TS2739: Type '{ id: number; name: string; cuisine: "самбуса"; rating: number; open: true; }' is missing the following properties from type 'Restaurant': emoji, deliveryMin, minOrder
+</pre>
+          Массиви <code>restaurants</code>-ро дар <code>src/data.ts</code> бо шаш тарабхона бо майдонҳои нав иваз кунед (массиви <code>menu</code>-ро нарасонед). Се тарабхонаи аввал ҳамонҳоянд, ки дар дарси 2 буданд, се тарабхонаи нав илова шудааст. Агар дар ВХ-и дарси 2 тарабхонаҳои худатонро илова карда бошед, онҳоро монед ва танҳо майдонҳояшонро илова кунед.
+<pre class="code" data-lang="ts" data-title="src/data.ts">
+import type { MenuItem, Restaurant } from './types'
+
+export const restaurants: Restaurant[] = [
+  {
+    id: 1,
+    name: 'Navruz',
+    cuisine: 'плов',
+    rating: 4.8,
+    open: true,
+    emoji: '🍚',
+    deliveryMin: 35,
+    minOrder: 60,
+    address: 'пр. Рудаки, 45',
+  },
+  {
+    id: 2,
+    name: 'Rohat',
+    cuisine: 'шашлык',
+    rating: 4.5,
+    open: false,
+    emoji: '🍢',
+    deliveryMin: 45,
+    minOrder: 80,
+  },
+  {
+    id: 3,
+    name: 'Samarkand',
+    cuisine: 'самбуса',
+    rating: 4.6,
+    open: true,
+    emoji: '🥟',
+    deliveryMin: 30,
+    minOrder: 40,
+  },
+  {
+    id: 4,
+    name: 'Vatan',
+    cuisine: 'шашлык',
+    rating: 4.3,
+    open: true,
+    emoji: '🍢',
+    deliveryMin: 40,
+    minOrder: 50,
+  },
+  {
+    id: 5,
+    name: 'Shirin',
+    cuisine: 'десерты',
+    rating: 4.7,
+    open: true,
+    emoji: '🍰',
+    deliveryMin: 25,
+    minOrder: 35,
+  },
+  {
+    id: 6,
+    name: 'Bahor',
+    cuisine: 'плов',
+    rating: 3.9,
+    open: false,
+    emoji: '🍚',
+    deliveryMin: 50,
+    minOrder: 90,
+  },
+]
+
+export const menu: MenuItem[] = [
+  { id: 1, restaurantId: 1, title: 'Плов праздничный', price: 45 },
+  { id: 2, restaurantId: 1, title: 'Чай зелёный', price: 8 },
+  { id: 3, restaurantId: 3, title: 'Самбуса с мясом', price: 12 },
+]
+</pre>
+        </li>
+        <li><b>Папкаи components.</b> Дар <code>AGENTS.md</code>-и аз дарси 1 чунин сохтор пешбинӣ шудааст. Чор компонентро гузаронед (фармони <code>git mv</code> дар ҳар қабати фармон кор мекунад ва таърихро нигоҳ медорад):
+<pre class="code" data-title="Терминал">
+mkdir src/components
+git mv src/RestaurantCard.tsx src/CuisineFilter.tsx src/SearchBox.tsx src/Section.tsx src/components/
+</pre>
+          Акнун дар файлҳои гузаронидашуда воридоти <code>'./types'</code>-ро бояд ба <code>'../types'</code> иваз кард, ва дар <code>App.tsx</code> роҳҳоро ба <code>'./components/…'</code>. Инро файлҳои поён мекунанд; сабабро дар хотир доред: роҳ аз ҷои файл ҳисоб карда мешавад.</li>
+        <li><b>Баргҳои дарахт: Badge ва Rating.</b> Аз компонентҳои аз ҳама оддӣ оғоз мекунем. Диққат диҳед, ки ҳарду варианти синфҳо дар <code>Badge</code> пурра навишта шудаанд.
+<pre class="code" data-lang="tsx" data-title="src/components/Badge.tsx">
+type BadgeProps = {
+  open: boolean
+}
+
+export default function Badge({ open }: BadgeProps) {
+  return (
+    &lt;span
+      className={
+        open
+          ? 'rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-leaf-600'
+          : 'rounded-full bg-stone-200 px-2 py-0.5 text-xs font-semibold text-stone-600'
+      }
+    &gt;
+      {open ? 'Открыто' : 'Закрыто'}
+    &lt;/span&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/Rating.tsx">
+type RatingProps = {
+  value: number
+}
+
+export default function Rating({ value }: RatingProps) {
+  return (
+    &lt;span className="font-semibold text-brand-600"&gt;★ {value.toFixed(1)}&lt;/span&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>RestaurantCard бо CSS Module.</b> Тарҳбандии дохили корт тавассути Tailwind меравад, ва оро додани «худӣ» (наздикшавӣ, шаффофии тарабхонаи баста) ба модул гузаронида шудааст. Тугмаи «Выбрать» дар тарабхонаи баста ғайрифаъол аст, мисли дарси 2, аммо акнун ҳолатро <code>Badge</code> нишон медиҳад. Файлро пурра иваз кунед ва модулро дар паҳлӯ эҷод кунед:
+<pre class="code" data-lang="css" data-title="src/components/RestaurantCard.module.css">
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid #e7e5e4;
+  border-radius: 1rem;
+  background: white;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.08);
+}
+
+.closed {
+  opacity: 0.6;
+}
+
+.emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: #57534e;
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/RestaurantCard.tsx">
+import type { Restaurant } from '../types'
+import Badge from './Badge'
+import Rating from './Rating'
+import styles from './RestaurantCard.module.css'
+
+type RestaurantCardProps = {
+  restaurant: Restaurant
+  onSelect: (id: number) =&gt; void
+}
+
+export default function RestaurantCard({
+  restaurant,
+  onSelect,
+}: RestaurantCardProps) {
+  const { id, name, cuisine, rating, open, emoji, deliveryMin, minOrder } =
+    restaurant
+  const className = open ? styles.card : `${styles.card} ${styles.closed}`
+
+  return (
+    &lt;article className={className}&gt;
+      &lt;span className={styles.emoji} aria-hidden="true"&gt;
+        {emoji}
+      &lt;/span&gt;
+      &lt;div className="flex items-center justify-between gap-2"&gt;
+        &lt;h3 className="text-lg font-bold"&gt;{name}&lt;/h3&gt;
+        &lt;Badge open={open} /&gt;
+      &lt;/div&gt;
+      &lt;p className="text-stone-600"&gt;{cuisine}&lt;/p&gt;
+      {restaurant.address &amp;&amp; (
+        &lt;p className="text-sm text-stone-500"&gt;{restaurant.address}&lt;/p&gt;
+      )}
+      &lt;div className={styles.meta}&gt;
+        &lt;Rating value={rating} /&gt;
+        &lt;span&gt;{deliveryMin} мин&lt;/span&gt;
+        &lt;span&gt;от {minOrder} сомони&lt;/span&gt;
+      &lt;/div&gt;
+      &lt;button
+        className="rounded-lg bg-brand-600 px-3 py-1.5 font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={!open}
+        onClick={() =&gt; onSelect(id)}
+      &gt;
+        Выбрать
+      &lt;/button&gt;
+    &lt;/article&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>RestaurantList.</b> Рӯйхат бо <code>key</code> аз <code>id</code> ва ҳолати холӣ. Диққат диҳед, ки <code>onSelect</code> танҳо тавассути рӯйхат ба поён ба корт мегузарад:
+<pre class="code" data-lang="tsx" data-title="src/components/RestaurantList.tsx">
+import type { Restaurant } from '../types'
+import RestaurantCard from './RestaurantCard'
+
+type RestaurantListProps = {
+  restaurants: Restaurant[]
+  onSelect: (id: number) =&gt; void
+}
+
+export default function RestaurantList({
+  restaurants,
+  onSelect,
+}: RestaurantListProps) {
+  if (restaurants.length === 0) {
+    return (
+      &lt;p className="py-10 text-center text-stone-500"&gt;Рестораны не найдены&lt;/p&gt;
+    )
+  }
+
+  return (
+    &lt;div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"&gt;
+      {restaurants.map((restaurant) =&gt; (
+        &lt;RestaurantCard
+          key={restaurant.id}
+          restaurant={restaurant}
+          onSelect={onSelect}
+        /&gt;
+      ))}
+    &lt;/div&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Header, Footer, Layout.</b> Layout мундариҷаро тавассути <code>children</code> мегирад ва худаш дар атрофи он сарлавҳа ва поёни саҳифаро мегузорад.
+<pre class="code" data-lang="tsx" data-title="src/components/Header.tsx">
+export default function Header() {
+  return (
+    &lt;header className="border-b border-brand-100 bg-brand-50"&gt;
+      &lt;div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4"&gt;
+        &lt;span className="text-2xl font-extrabold text-brand-700"&gt;
+          Дастархон
+        &lt;/span&gt;
+        &lt;span className="text-sm text-stone-600"&gt;Душанбе&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/header&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/Footer.tsx">
+export default function Footer() {
+  return (
+    &lt;footer className="border-t border-stone-200 py-6 text-center text-sm text-stone-500"&gt;
+      © 2026 Дастархон · учебный проект MakeFirstStep
+    &lt;/footer&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/Layout.tsx">
+import type { ReactNode } from 'react'
+import Footer from './Footer'
+import Header from './Header'
+
+type LayoutProps = {
+  children: ReactNode
+}
+
+export default function Layout({ children }: LayoutProps) {
+  return (
+    &lt;div className="flex min-h-screen flex-col bg-stone-50 text-stone-900"&gt;
+      &lt;Header /&gt;
+      &lt;main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6"&gt;
+        {children}
+      &lt;/main&gt;
+      &lt;Footer /&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Ҷустуҷӯ, филтр ва бахшро оро диҳед.</b> Мантиқи ин компонентҳо ҳамон аст, ки дар дарси 2, танҳо синфҳо ва роҳҳои воридот тағйир меёбанд. Се файлро иваз кунед:
+<pre class="code" data-lang="tsx" data-title="src/components/SearchBox.tsx">
+import type { ChangeEvent } from 'react'
+
+type SearchBoxProps = {
+  value: string
+  onChange: (value: string) =&gt; void
+}
+
+export default function SearchBox({ value, onChange }: SearchBoxProps) {
+  function handleChange(event: ChangeEvent&lt;HTMLInputElement&gt;) {
+    onChange(event.target.value)
+  }
+  return (
+    &lt;input
+      className="w-full max-w-xs rounded-lg border border-stone-300 bg-white px-3 py-2"
+      value={value}
+      onChange={handleChange}
+      placeholder="Найти ресторан"
+    /&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/CuisineFilter.tsx">
+import { CUISINES, type Cuisine } from '../types'
+
+type CuisineFilterProps = {
+  selected: Cuisine | null
+  onChange: (cuisine: Cuisine | null) =&gt; void
+}
+
+const base = 'rounded-full border px-3 py-1 text-sm font-semibold'
+const active = 'border-brand-600 bg-brand-600 text-white'
+const idle = 'border-stone-300 bg-white text-stone-700 hover:bg-brand-50'
+
+export default function CuisineFilter({
+  selected,
+  onChange,
+}: CuisineFilterProps) {
+  return (
+    &lt;div className="flex flex-wrap gap-2"&gt;
+      &lt;button
+        className={`${base} ${selected === null ? active : idle}`}
+        onClick={() =&gt; onChange(null)}
+        disabled={selected === null}
+      &gt;
+        Все
+      &lt;/button&gt;
+      {CUISINES.map((c) =&gt; (
+        &lt;button
+          key={c}
+          className={`${base} ${selected === c ? active : idle}`}
+          onClick={() =&gt; onChange(c)}
+          disabled={selected === c}
+        &gt;
+          {c}
+        &lt;/button&gt;
+      ))}
+    &lt;/div&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/Section.tsx">
+import type { ReactNode } from 'react'
+
+type SectionProps = {
+  title: string
+  children: ReactNode
+}
+
+export default function Section({ title, children }: SectionProps) {
+  return (
+    &lt;section className="mt-6"&gt;
+      &lt;h2 className="mb-3 text-2xl font-bold"&gt;{title}&lt;/h2&gt;
+      {children}
+    &lt;/section&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Ҳамаро дар App ҷамъ кунед.</b> Ҳолатҳо ва филтркунӣ пештара монданд, танҳо нишонагузорӣ тағйир ёфт: акнун он дар дохили <code>Layout</code> ҷойгир аст. Агар дар ВХ-и дарси 2 <code>App.tsx</code>-ро пурра карда бошед, блокҳои худро ба дохили <code>Layout</code> гузаронед.
+<pre class="code" data-lang="tsx" data-title="src/App.tsx">
+import { useState } from 'react'
+import CuisineFilter from './components/CuisineFilter'
+import Layout from './components/Layout'
+import RestaurantList from './components/RestaurantList'
+import SearchBox from './components/SearchBox'
+import Section from './components/Section'
+import { restaurants } from './data'
+import type { Cuisine } from './types'
+
+export default function App() {
+  const [cuisine, setCuisine] = useState&lt;Cuisine | null&gt;(null)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState&lt;number | null&gt;(null)
+
+  const visible = restaurants.filter(
+    (r) =&gt;
+      (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+      r.name.toLowerCase().includes(query.toLowerCase()),
+  )
+
+  return (
+    &lt;Layout&gt;
+      &lt;h1 className="mb-4 text-3xl font-bold"&gt;Рестораны Душанбе&lt;/h1&gt;
+      &lt;div className="flex flex-wrap items-center gap-3"&gt;
+        &lt;SearchBox value={query} onChange={setQuery} /&gt;
+        &lt;CuisineFilter selected={cuisine} onChange={setCuisine} /&gt;
+      &lt;/div&gt;
+      &lt;Section title="Все рестораны"&gt;
+        &lt;RestaurantList restaurants={visible} onSelect={setSelectedId} /&gt;
+      &lt;/Section&gt;
+      {selectedId !== null &amp;&amp; (
+        &lt;p className="mt-4 text-sm text-stone-600"&gt;
+          Выбран ресторан №{selectedId}
+        &lt;/p&gt;
+      )}
+    &lt;/Layout&gt;
+  )
+}
+</pre>
+          <code>npm run dev</code>-ро иҷро кунед: дар саҳифа шаш корт аст, дар «Rohat» ва «Bahor» нишони «Закрыто», корти нимшаффоф ва тугмаи ғайрифаъол. Ҷустуҷӯ ва филтр кор мекунанд. Тирезаи браузерро танг кунед: торча аз се сутун ба ду ва баъд ба як тағйир меёбад.</li>
+        <li><b>Санҷишҳо.</b> Ҳар чор фармон бояд бе хато гузаранд:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+        </li>
+        <li><b>Ба рендерҳо нигоҳ кунед.</b> Дар <code>RestaurantCard.tsx</code> баъд аз сатри <code>const className = …</code> даъвати <code>console.log('render', restaurant.name)</code>-ро илова кунед ва Console-ро дар DevTools кушоед. Шумо <b>12 сатр</b> мебинед, на 6: StrictMode ҳар компонентро ду маротиба даъват мекунад (бо React DevTools-и насбшуда сатрҳои дуюм хокистарианд). Акнун дар майдони ҷустуҷӯ ҳарфе нависед: кортҳо дубора рендер мешаванд, зеро ҳолат дар <code>App</code>, волиди онҳост (бахши 4). Ҷадвалчаи Components-ро дар React DevTools кушоед ва дарахти дарсро ёбед. Логро нест кунед.</li>
+        <li><b>Қасдан вайрон кунед.</b> (а) <code>key</code>-ро аз <code>RestaurantList</code> гиред ва <code>npm run lint</code>-ро иҷро кунед: огоҳии <code>react(jsx-key)</code>-ро хонед. Калидро баргардонед. (б) Дар <code>RestaurantCard.tsx</code> хатои имлои <code>styles.carrd</code>-ро ба ҷои <code>styles.card</code> нависед: TypeScript хомӯш мемонад, ва дар браузер корт ҳошияи худро гум мекунад. Ин маҳдудияти навъҳои CSS Modules аст. Ислоҳ кунед.</li>
+        <li><b>Коммит.</b>
+<pre class="code" data-title="Терминал">
+git add .
+git commit -m "add component tree and styles"
+git push -u origin feat/catalog
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Агар вайрон шуд</b>
+        <p><b>Саҳифа бе услубҳо, синфҳои Tailwind кор намекунанд:</b> санҷед, ки дар <code>vite.config.ts</code> <code>tailwindcss()</code> дар <code>plugins</code> ҳаст, ва дар <code>index.css</code> сатри <code>@import 'tailwindcss'</code>; <code>npm run dev</code>-ро аз нав оғоз кунед. <b>«Cannot find module './types' or its corresponding type declarations» (TS2307):</b> баъди гузаронидани файл роҳи воридот кӯҳна монд, бояд <code>'../types'</code> бошад. <b>«Cannot find module './RestaurantCard.module.css'»:</b> номи файлро санҷед ва ин ки дар <code>tsconfig.app.json</code> <code>"types": ["vite/client"]</code> ҳаст. <b>TS1484 «is a type and must be imported using a type-only import»:</b> навъро бояд тавассути <code>import type</code> ворид кард. <b>«Each child in a list should have a unique key»:</b> <code>key</code> фаромӯш шудааст. <b>Ба ҷои эмодзи ҷои холӣ:</b> шрифти система рамзи лозимаро надорад, ин хатои код нест.</p>
+      </div>
+
+      <article class="task" id="t-build">
+        <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Чек-лист: феҳрист ҷамъ шуд</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-build">
+          <li>Кор дар шохаи <code>feat/catalog</code> мегузарад, на дар <code>main</code></li>
+          <li>Tailwind пайваст шудааст: дар <code>vite.config.ts</code> <code>tailwindcss()</code> ҳаст, дар <code>index.css</code> сатри <code>@import 'tailwindcss'</code> ва блоки <code>@theme</code>; <code>.card</code>-и глобалӣ дигар нест</li>
+          <li>Ба <code>Restaurant</code> майдонҳои <code>emoji</code>, <code>deliveryMin</code>, <code>minOrder</code> илова шудаанд, дар <code>data.ts</code> шаш тарабхона</li>
+          <li>Дар <code>src/components</code> ёздаҳ компонент аст, ҳар як файли худ ва навъи props дорад</li>
+          <li><code>RestaurantCard</code> CSS Module ва Tailwind-ро истифода мебарад, <code>Badge</code> синфҳоро пурра менависад</li>
+          <li>Дар саҳифа шаш корт аст, тарабхонаҳои баста дигар хел менамоянд, торча мутобиқшаванда аст, ҷустуҷӯ ва филтр кор мекунанд</li>
+          <li>Дар <code>RestaurantList</code> калид аз <code>id</code> гирифта мешавад, рӯйхати холӣ «Рестораны не найдены»-ро нишон медиҳад</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> ва <code>npm run build</code> бе хато мегузаранд, <code>useState</code>-и нав ва <code>any</code> нест</li>
+        </ul>
+      </article>
+
+      <article class="task" id="t-observe">
+        <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Чек-лист: мушоҳидаҳо дар бораи рендер</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-observe">
+          <li>Ман дар консол ба ҷои 6 сатр 12 сатр дидам ва метавонам шарҳ диҳам, ки ин StrictMode аст, на хато</li>
+          <li>Ман дар ҷустуҷӯ ҳарфе навиштам, сатрҳои навро дар консол дидам ва шарҳ додам, ки чаро кортҳо аз нав кашида шуданд</li>
+          <li>Ман дарахти компонентҳоро дар ҷадвалчаи Components дар React DevTools ёфтам ва бо дарахти дарс муқоиса кардам</li>
+          <li>Ман <code>key</code>-ро гирифтам, огоҳии Oxlint-и <code>jsx-key</code>-ро хондам ва калидро баргардонидам</li>
+          <li>Ман хатои имлои <code>styles.carrd</code> кардам, боварӣ ҳосил кардам, ки TypeScript онро нагирифт, ва корт ҳошияро гум кард, ва ислоҳ кардам</li>
+          <li>Ман <code>console.log</code>-и муваққатиро пеш аз коммит нест кардам</li>
+        </ul>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a> · <a href="https://tailwindcss.com/docs/installation/using-vite" target="_blank" rel="noopener">tailwindcss.com — Install with Vite</a> · <a href="https://react.dev/learn/react-developer-tools" target="_blank" rel="noopener">react.dev — React Developer Tools</a></p>
+    </section>
+
+    <!-- ============ 09 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">09</span> Вазифаи хонагӣ: «Топи рейтинг» ва «Ҳоло баста»</h2>
+
+      <p>Амалиёт феҳристро ба компонентҳо ҷудо кард. Дар вазифаи хонагӣ шумо ҳамин усулҳоро дар маводи нав такрор мекунед: дар зери феҳрист ду блокро аз ҳамин маълумот илова мекунед ва дарахти тамоми барномаро тасвир мекунед. Дар шохаи <code>feat/catalog</code> кор кунед, ва дар охир истинодро ба репозиторийи <code>dastarkhon</code> супоред: ментор ҳамин шохаро мекушояд. Сабад ва менюро аз ВХ-и дарси 2, агар онҳоро кардаед, нарасонед.</p>
+
+      <h3>Чӣ кор кардан лозим</h3>
+      <ol class="steps">
+        <li><b>Маълумот.</b> Ба <code>src/data.ts</code> боз ақаллан се тарабхонаро бо майдонҳои пурра илова кунед (дар маҷмӯъ на камтар аз нӯҳ, ақаллан ду баста, <code>id</code>-ҳои ягона, таом аз рӯйхати <code>CUISINES</code>).</li>
+        <li><b>Компоненти <code>RestaurantRow</code>.</b> Сатри паймон дар бораи тарабхона: эмодзи, ном, <code>Rating</code> ва <code>Badge</code>. Prop-и ихтиёрии <code>place?: number</code>: агар вай бошад, пеш аз ном «№1», «№2» нишон дода мешавад. Сатрро тавассути CSS Module (<code>RestaurantRow.module.css</code>) оро диҳед, тарҳбандии дохилиро метавон бо Tailwind гузошт.</li>
+        <li><b>Компоненти <code>TopRestaurants</code>.</b> <code>restaurants: Restaurant[]</code>-ро мегирад ва <b>се тарабхонаи дорои баландтарин рейтинг</b>-ро бо тартиби камшаванда нишон медиҳад, ҳар кадом бо сатри <code>RestaurantRow</code> бо рақами ҷой. <b>Нусхаи</b> массивро сарала кунед: тартиби аслӣ дар <code>data.ts</code> набояд тағйир ёбад. Блокро тавассути <code>Section</code> бо сарлавҳаи «Топ рейтинга» оро диҳед.</li>
+        <li><b>Компоненти <code>ClosedRestaurants</code>.</b> Тарабхонаҳоеро, ки ҳоло баста ҳастанд (<code>filter</code>), бо сатрҳои <code>RestaurantRow</code> нишон медиҳад. Агар бастаҳо набошанд, «Сейчас работают все рестораны»-ро мебарорад. Ин низ дар дохили <code>Section</code> («Закрыто сейчас»).</li>
+        <li><b>Ҷамъкунӣ.</b> Дар <code>App</code> ҳарду блокро дар поёни рӯйхати асосӣ, дар дохили <code>Layout</code> илова кунед. Онҳо ҳамеша массиви пурраи <code>restaurants</code>-ро истифода мебаранд, на натиҷаи ҷустуҷӯро. Ҳолати навро илова накунед.</li>
+        <li><b>Услубҳо.</b> Ақаллан як рангро аз они худатон ба <code>@theme</code> илова кунед ва бо синфи Tailwind истифода баред. Саҳифаро дар паҳноии 375 px санҷед: бе ғелонидани уфуқӣ.</li>
+        <li><b>Дарахт ва ҷавобҳо.</b> <code>docs/component-tree.md</code>-ро пурра кунед: дарахти тамоми барнома (14 компонент), 3–5 ҷумла дар бораи ҳудудҳо ва ҷавобҳо <b>бо суханони худатон</b> ба панҷ саволи поён.</li>
+        <li><b>Санҷишҳо ва коммитҳо.</b> <code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> мегузаранд. Дар шоха на камтар аз се коммити пурмазмун, шоха ба GitHub фиристода шудааст.</li>
+      </ol>
+
+      <h3>Панҷ савол барои docs/component-tree.md</h3>
+      <ol class="steps">
+        <li>Компонент, унсури React ва гиреҳи DOM чӣ фарқ доранд? Компонент чӣ бармегардонад?</li>
+        <li>Чаро компонентро дар дохили компоненти дигар эълон кардан мумкин нест? Бо ҳолат чӣ мешавад?</li>
+        <li><code>key</code> барои чӣ лозим аст? Чаро индекс калиди бад дар рӯйхатест, ки онро тағйир додан мумкин аст? Мисолро аз лоиҳаи худ оред.</li>
+        <li>Се қадамро тасвир кунед: триггер, рендер, коммит. Вақте ки дар ҷустуҷӯ ҳарфе менависанд, бо <code>RestaurantCard</code> чӣ мешавад, ва чаро ин барои DOM мушкил нест?</li>
+        <li>Компоненти тоза чист? Чаро дар <code>TopRestaurants</code> навиштани <code>restaurants.sort(…)</code> мумкин нест ва ба ҷои он чӣ кор кардан лозим?</li>
+      </ol>
+
+      <h3>Чӣ тавр месанҷанд</h3>
+      <ul>
+        <li><b>Сохтор:</b> дарахт ба код мувофиқ аст, ҳар компонент як вазифа дорад, компонент дар дохили компонент нест, як компонент — як файл.</li>
+        <li><b>Навъҳо:</b> барои ҳар компонент навъи props тавсиф шудааст, <code>any</code> нест, навъҳо тавассути <code>import type</code> ворид шудаанд.</li>
+        <li><b>Рӯйхатҳо ва тозагӣ:</b> калидҳо аз <code>id</code>, саралакунӣ аз рӯи нусхаи массив меравад, тартиб дар <code>data.ts</code> тағйир намеёбад, ҳолатҳои холӣ коркард шудаанд.</li>
+        <li><b>Услубҳо:</b> ҳарду усул бошуурона истифода шудаанд, синфҳои Tailwind пурра навишта шудаанд, саҳифа дар 375 px вайрон намешавад.</li>
+        <li><b>Ҷавобҳо:</b> бо суханони худатон навишта шудаанд ва ба лоиҳаи шумо истинод мекунанд, на дарсро ё ҷавоби агентро ҳикоя мекунанд.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул дар вазифаи хонагӣ</b>
+        <p><b>1.</b> Ду блок дар як компоненти 150-сатра. <b>2.</b> <code>key={index}</code> дар сатрҳои рейтинг. <b>3.</b> Ҷавоби агент ба дарахт ва ба ҷавобҳо бе ислоҳ ва бе хулосаҳои худӣ гузошта шудааст. <b>4.</b> <code>restaurants.sort(…)</code> дар <code>TopRestaurants</code>: массиви аслӣ тағйир меёбад. <b>5.</b> Рангҳо аз порчаҳо ҷамъ шудаанд: <code>`text-${color}-600`</code>. <b>6.</b> Репозиторий хусусӣ аст ё истинод ба профил мебарад, на ба репозиторий. <b>7.</b> Шохаи <code>feat/catalog</code> ба GitHub фиристода нашудааст.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ВАЗИФАИ 9.1</span><h4>Чек-листи талабот ба ВХ-3</h4><span class="level mid">миёна</span></header>
+        <p>Пеш аз супоридан банд ба банд санҷед.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Феҳристи амалиёт кор мекунад, дар <code>data.ts</code> на камтар аз нӯҳ тарабхона, ақаллан ду баста</li>
+          <li><code>RestaurantRow</code> бо <code>place?: number</code>-и ихтиёрӣ ва CSS Module омода аст</li>
+          <li><code>TopRestaurants</code> се беҳтаринро аз рӯи рейтинг нишон медиҳад, нусхаро сарала мекунад, тартиб дар <code>data.ts</code> тағйир намеёбад</li>
+          <li><code>ClosedRestaurants</code> тарабхонаҳои бастаро ва вақте ки бастаҳо нестанд, паёмро нишон медиҳад</li>
+          <li>Калидҳо ҳама ҷо аз <code>id</code>, массивҳо тағйир дода намешаванд, компонент дар дохили компонент нест, <code>useState</code>-и нав нест</li>
+          <li>Tailwind ва CSS Modules ҳардуро истифода мебаранд, дар <code>@theme</code> ранги худӣ ҳаст, дар паҳноии 375 px ғелонидани уфуқӣ нест</li>
+          <li><code>docs/component-tree.md</code> дарахти ҳамаи 14 компонент, шарҳи ҳудудҳо ва панҷ ҷавобро бо суханони худӣ дар бар мегирад</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> мегузаранд, дар шоха на камтар аз се коммит аст</li>
+          <li>Шохаи <code>feat/catalog</code> ба GitHub фиристода шудааст, репозиторий оммавӣ аст: ман истинодро дар реҷаи инкогнито кушодам</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ВАЗИФАИ 9.2</span><h4>Супориш: истинод ба репозиторийи GitHub</h4><span class="level mid">миёна</span></header>
+        <p>Истинодро бо намуди <code>https://github.com/ваш-логин/dastarkhon</code> гузоред. Онро дар реҷаи инкогнито кушоед: шохаи <code>feat/catalog</code>, код ва <code>docs/component-tree.md</code> бояд намоён бошанд.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a> · <a href="https://react.dev/learn/rendering-lists" target="_blank" rel="noopener">react.dev — Rendering Lists</a> · <a href="https://tailwindcss.com/docs/responsive-design" target="_blank" rel="noopener">Tailwind — Responsive design</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалкаи дарс</h2>
+      <ul>
+        <li><b>JSX</b> ба даъвати функсияҳо табдил меёбад ва <b>унсурҳо</b> медиҳад: объектҳои-тавсифи оддӣ. Қоидаҳо: як реша (Fragment <code>&lt;&gt;</code>), ҳамаи тегҳо баста, <code>className</code>, <code>style</code> — объект, дар <code>{}</code> танҳо ифодаҳо, номи компонент бо ҳарфи калон.</li>
+        <li><b>Намоиши шартӣ:</b> оператори сегона, <code>&amp;&amp;</code>, <code>return null</code>. <code>{n &amp;&amp; …}</code> ҳангоми <code>n = 0</code> «0»-ро мебарорад: нависед <code>n &gt; 0 &amp;&amp; …</code>. <code>null</code>, <code>undefined</code>, <code>true</code>, <code>false</code> кашида намешаванд, объект — хато.</li>
+        <li><b>Компонент</b> — функсияест, ки props мегирад ва JSX бармегардонад. <code>children: ReactNode</code> — мундариҷаи байни тегҳо; слотҳо — props бо JSX. Композитсия ба ҷои даҳ парчам. Компонентро дар дохили компонент эълон намекунанд: ҳолат барқарор мешавад.</li>
+        <li><b>Рӯйхатҳо:</b> <code>filter</code> + <code>map</code>, <code>key</code> аз <code>id</code> дар унсури дохили <code>map</code>, дар байни ҳамсояҳо ягона. Индекс — танҳо барои рӯйхатҳои статикӣ, <code>Math.random()</code> дар калид — ҳеҷ гоҳ. Рӯйхати холиро алоҳида коркард мекунанд.</li>
+        <li><b>Рендер:</b> триггер (оғози аввал ё <code>setState</code>) → рендер (даъвати функсияҳо) → коммит (фарқиятҳо дар DOM). Ҳолат — акс аст: барои силсилаи навсозиҳо <code>setQty((q) =&gt; q + 1)</code>. Авлод бо волид аз нав кашида мешавад; корҳои нолозимро аввал бо поёнтар фуровардани ҳолат дур мекунанд. StrictMode дар dev компонентҳоро ду бор даъват мекунад.</li>
+        <li><b>Тозагӣ:</b> ҳамон props ва ҳолат ҳамон JSX медиҳанд, ҳангоми рендер ба чизи берунӣ даст намезанем. На <code>items.sort()</code>, балки <code>[...items].sort()</code>. Таъсироти иловагӣ — дар коркарди ҳодисаҳо ва дар <code>useEffect</code> (дарси 5).</li>
+        <li><b>CSS Modules:</b> <code>Ном.module.css</code>, <code>import styles from …</code>, синфҳо маҳаллианд; хатои имло дар <code>styles.x</code> бо навъҳо гирифта намешавад. <b>Tailwind 4:</b> <code>tailwindcss</code> ва <code>@tailwindcss/vite</code>, <code>@import 'tailwindcss'</code>, мавзӯъ дар <code>@theme</code>, mobile first (<code>sm:</code>, <code>lg:</code>), синфҳоро пурра менависанд.</li>
+        <li><b>Ҳудуди компонент:</b> такрор мешавад, як масъулияти номдор, ба наздикӣ ҳолат мегирад, ба сохтори маълумот мувофиқ аст; барои ҷудокунӣ ҷудо накунед. Бо агент: аввал танҳо дарахт, баъд баҳс, баъд код.</li>
+        <li><b>Лоиҳаи 1 «Дастархон»:</b> 11 компонент: <code>App</code>, <code>Layout</code>, <code>Header</code>, <code>Footer</code>, <code>SearchBox</code>, <code>CuisineFilter</code>, <code>Section</code>, <code>RestaurantList</code>, <code>RestaurantCard</code>, <code>Badge</code>, <code>Rating</code>. Минбаъд: саралакунӣ ва сабад бо <code>useReducer</code> (дарси 4).</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ВАЗИФАИ 10.1</span><h4>Ман мавзӯъро воқеан фаҳмидам</h4><span class="level easy">осон</span></header>
+        <p>Танҳо он чизеро қайд кунед, ки бе маслиҳат иҷро карда метавонед.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Метавонам шарҳ диҳам, ки унсури React чист ва компонент чӣ бармегардонад</li>
+          <li>Метавонам қоидаҳои JSX-ро номбар кунам ва хатогиҳои <code>TS2657</code> ва <code>TS17008</code>-ро аз рӯи матн ислоҳ намоям</li>
+          <li>Метавонам печонакро бо <code>children</code> ва слотҳо нависам, онро тавассути <code>ReactNode</code> навъбандӣ кунам</li>
+          <li>Метавонам шарҳ диҳам, ки чаро компонентро дар дохили компонент эълон кардан мумкин нест</li>
+          <li>Метавонам рӯйхатро бо <code>key</code>-и дуруст нишон диҳам ва шарҳ диҳам, ки индекс чаро бад аст</li>
+          <li>Метавонам се қадами рендерро тасвир кунам ва пешгӯӣ намоям, ки кадом компонентҳо аз нав кашида мешаванд</li>
+          <li>Метавонам компоненти тоза ва ғайритозаро фарқ кунам ва тағйирдиҳии props-ро ислоҳ намоям</li>
+          <li>Метавонам Tailwind 4-ро ба Vite пайваст кунам ва байни он ва CSS Modules интихоб намоям</li>
+          <li>Метавонам макетро ба дарахти компонентҳо ҷудо кунам ва ҳар ҳудудро асоснок намоям</li>
+        </ul>
+      </article>
+    </section>
