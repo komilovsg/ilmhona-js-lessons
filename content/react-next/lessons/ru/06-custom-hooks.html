@@ -1,0 +1,2033 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 6 · Хуки, формы, стили</p>
+      <h1>Кастомные хуки и производительность</h1>
+      <p class="lead">К концу урока «Дастархон» будет загружать данные через свой хук <code>useFetch&lt;T&gt;</code>, хранить корзину в браузере через <code>useLocalStorage&lt;T&gt;</code> (она переживёт перезагрузку страницы) и искать с задержкой через <code>useDebounce&lt;T&gt;</code>. Вы запишете сессию в React DevTools Profiler, найдёте лишние перерисовки каталога, уберёте их с помощью <code>memo</code>, <code>useMemo</code> и <code>useCallback</code> и сравните результат с автоматической мемоизацией React Compiler. И вы будете понимать, когда мемоизация нужна, а когда она только усложняет код.</p>
+      <ul class="goals">
+        <li>Выносить логику с состоянием и эффектами в свой хук <code>useЧтоТо</code> и объяснить, почему каждый вызов хука получает своё состояние</li>
+        <li>Использовать дженерики на минимальном уровне: <code>&lt;T&gt;</code> в функциях и типах, ограничение <code>extends</code>, вывод типа, явный тип в угловых скобках</li>
+        <li>Написать <code>useFetch&lt;T&gt;</code>, <code>useLocalStorage&lt;T&gt;</code> и <code>useDebounce&lt;T&gt;</code> с честными зависимостями, очисткой и проверкой данных через type guard</li>
+        <li>Записать сессию в React DevTools Profiler, найти лишние рендеры и ответить, почему компонент перерисовался</li>
+        <li>Применять <code>memo</code>, <code>useMemo</code> и <code>useCallback</code> только там, где эффект измерен, и объяснить, почему ломается стабильность ссылок</li>
+        <li>Включить React Compiler на отдельной ветке, проверить, что он работает, и сравнить результат с ручной мемоизацией</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: проект <code>dastarkhon</code> после практики урока 5 (рестораны приходят с учебного API через <code>fetch</code>, в <code>App</code> три эффекта), терминал с двумя окнами (API и dev-сервер), браузер с расширением React DevTools (его вы ставили в уроке 1) и около 3,5 часов. Разделы 1–7 — теория с живыми песочницами: код на тёмном фоне можно менять и запускать, а в задачах нужно сделать так, чтобы вывод совпал с «Ожидаемым результатом». Раздел 8 — про ИИ-агента, раздел 9 — практика в проекте, раздел 10 — домашнее задание.</p>
+      <p>Предполагается, что вы знаете JavaScript, основы <code>useState</code>, <code>useEffect</code> и <code>useRef</code> и то, как эффект загружает данные (урок 5), модель рендера из урока 3 (компонент — чистая функция, дочерние компоненты рендерятся вместе с родителем) и union-типы из урока 2. Всё, что нужно сверх этого, разбирается здесь: дженерики, мемоизация и работа с Profiler.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="hooks">
+      <h2 data-toc="Свой хук"><span class="num">01</span> Свой хук: функция, которая вызывает другие хуки</h2>
+
+      <p>В уроке 5 вы написали эффект загрузки, эффект горячей клавиши и эффект прокрутки, и все три лежат в <code>App</code>. Компонент растёт: он и рисует интерфейс, и знает, как ходить в сеть, и подписывается на окно браузера. Следующий проект потребует той же загрузки, и вы скопируете эффект целиком. Копипаста логики с состоянием — главный повод для <b>своего хука</b>.</p>
+
+      <p>Свой хук (custom hook) — обычная функция, которая вызывает другие хуки (<code>useState</code>, <code>useEffect</code>, <code>useRef</code>, чужие хуки). Никакой новой возможности в React для этого нет, вы просто даёте логике имя и выносите её из компонента. У хука два признака:</p>
+      <ol class="steps">
+        <li><b>Имя начинается с <code>use</code></b> (<code>useToggle</code>, <code>useFetch</code>). Это не украшение: по префиксу линтер понимает, что внутри вызываются хуки, и применяет к функции правила хуков (урок 4).</li>
+        <li><b>Внутри вызываются хуки.</b> Функция <code>formatPrice(n)</code> без хуков — просто функция, ей не нужен префикс. А <code>useToggle</code> без единого хука внутри — ошибка проектирования: назовите её иначе.</li>
+      </ol>
+
+      <p>Сравните «до» и «после» на самом простом примере. Два переключателя в одном компоненте повторяют одну и ту же пару «состояние + функция»:</p>
+
+<pre class="code" data-lang="tsx" data-title="До: логика переключателя повторяется">
+function Filters() {
+  const [openOnly, setOpenOnly] = useState(false)
+  const [delivery, setDelivery] = useState(false)
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setOpenOnly((v) =&gt; !v)}&gt;Открытые: {String(openOnly)}&lt;/button&gt;
+      &lt;button onClick={() =&gt; setDelivery((v) =&gt; !v)}&gt;Доставка: {String(delivery)}&lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+
+<pre class="code" data-lang="tsx" data-title="После: хук useToggle в отдельном файле src/hooks/useToggle.ts">
+import { useState } from 'react'
+
+export function useToggle(initial = false) {
+  const [on, setOn] = useState(initial)
+
+  function toggle() {
+    setOn((value) =&gt; !value)
+  }
+
+  return [on, toggle] as const
+}
+
+// в компоненте
+const [openOnly, toggleOpenOnly] = useToggle()
+const [delivery, toggleDelivery] = useToggle()
+</pre>
+
+      <h3>Каждый вызов хука получает своё состояние</h3>
+      <p>Главное, что нужно понять про свои хуки: <b>хук делит код, а не состояние</b>. Две строки <code>useToggle()</code> в одном компоненте (или в двух разных) создают два независимых <code>useState</code>. Помните из урока 4: React хранит состояние компонента как список «ячеек» по порядку вызова хуков. Свой хук просто кладёт в этот список свои ячейки. Если нужно, чтобы два компонента видели одно и то же значение, состояние поднимают вверх (урок 4) или выносят в Context (урок 8), а не прячут в хук.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Каждый вызов useToggle получает своё состояние. Компонент Filters вызывает useToggle дважды и получает две независимые ячейки состояния: openOnly и delivery. Компонент Header вызывает useToggle один раз и получает третью, отдельную ячейку. Код хука один, ячеек три">
+          <rect class="fill-y" x="230" y="10" width="260" height="46" rx="12" /><text x="360" y="38" text-anchor="middle">useToggle.ts: код один</text>
+          <rect class="box b" x="10" y="100" width="330" height="90" rx="12" /><text x="175" y="124" text-anchor="middle">Filters</text>
+          <rect class="fill-g" x="30" y="138" width="140" height="40" rx="10" /><text x="100" y="162" text-anchor="middle" class="mono">openOnly: false</text>
+          <rect class="fill-g" x="180" y="138" width="140" height="40" rx="10" /><text x="250" y="162" text-anchor="middle" class="mono">delivery: true</text>
+          <rect class="box b" x="400" y="100" width="310" height="90" rx="12" /><text x="555" y="124" text-anchor="middle">Header</text>
+          <rect class="fill-g" x="480" y="138" width="150" height="40" rx="10" /><text x="555" y="162" text-anchor="middle" class="mono">menuOpen: false</text>
+          <path class="arr" d="M300 56 V78 H100 V130" /><path class="arr-head" d="M100 138 l-5 -10 h10 z" />
+          <path class="arr" d="M330 56 V78 H250 V130" /><path class="arr-head" d="M250 138 l-5 -10 h10 z" />
+          <path class="arr" d="M420 56 V78 H555 V130" /><path class="arr-head" d="M555 138 l-5 -10 h10 z" />
+          <text class="sub" x="360" y="226" text-anchor="middle">три вызова хука — три отдельные ячейки состояния</text>
+        </svg>
+        <figcaption>Хук делит код, но не состояние: у каждого вызова <code>useToggle()</code> своя ячейка</figcaption>
+      </figure>
+
+      <div class="playground" data-mode="react" data-title="Два вызова — два состояния">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function useToggle(initial = false) {
+  const [on, setOn] = useState(initial);
+  function toggle() {
+    setOn((value) =&gt; !value);
+  }
+  return [on, toggle];
+}
+
+export default function App() {
+  const [a, toggleA] = useToggle(false);
+  const [b, toggleB] = useToggle(true);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={toggleA}&gt;A: {String(a)}&lt;/button&gt;
+      &lt;button onClick={toggleB}&gt;B: {String(b)}&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+      <p>Нажмите «A»: меняется только A. У каждого вызова свой <code>useState</code>, и начальные значения у них разные.</p>
+
+      <h3>Что вернуть из хука: кортеж или объект</h3>
+      <p>Если возвращаете два значения в «классическом» порядке (значение и функция), используйте <b>кортеж</b> и <code>as const</code>: тогда TypeScript выведет точный тип <code>readonly [boolean, () =&gt; void]</code>, а вызывающий код сам даст имена при деструктуризации (<code>[openOnly, toggleOpenOnly]</code>), как у <code>useState</code>. Без <code>as const</code> тип получился бы массивом <code>(boolean | (() =&gt; void))[]</code>, и деструктуризация дала бы бесполезный union. Если значений три и больше или они разной природы, возвращайте <b>объект</b> (<code>{ state, retry }</code>): имена видны сразу, порядок не важен. Именно так будет устроен <code>useFetch</code> в разделе 3.</p>
+
+      <h3>Когда выносить, а когда нет</h3>
+      <ul>
+        <li><b>Выносите</b>, если у логики есть состояние или эффект, и она нужна в двух местах (или компонент без неё стал бы заметно проще и читаемее).</li>
+        <li><b>Не выносите</b> код «на всякий случай»: хук из одного вызова одного состояния без эффекта — лишний файл. Три похожие строки лучше преждевременной абстракции.</li>
+        <li><b>Не прячьте в хук</b> то, что должно быть видно в компоненте: например, JSX. Хук возвращает данные и функции, а разметку рисуют компоненты.</li>
+        <li><b>Назовите по смыслу</b>, а не по реализации: <code>useDebounce</code>, а не <code>useTimeoutState</code>.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Хук — как рецепт плова на карточке в чойхоне. Рецепт один и тот же у всех поваров, но казан у каждого повара свой: два повара готовят по одной карточке и получают два разных плова. Скопировать рецепт в другую кухню можно сколько угодно раз, а вот общий казан для двух кухонь — это уже «поднять состояние вверх».</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Назвать хук без <code>use</code> (<code>toggle()</code>): линтер не проверит внутри него правила хуков, а читателю непонятно, что это хук. <b>2.</b> Вызвать хук в условии или после раннего <code>return</code>: в консоли <code>Rendered more hooks than during the previous render</code>, в линтере <code>react-hooks(rules-of-hooks)</code>. <b>3.</b> Ждать, что два компонента с одним и тем же хуком будут видеть одно состояние: оно у каждого своё. <b>4.</b> Вернуть массив без <code>as const</code> и получить в деструктуризации union вместо значения и функции. <b>5.</b> Сделать хук «на случай» — после первой же замены окажется, что он используется в одном месте.</p>
+      </div>
+
+      <article class="task" id="q-hooks">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: свои хуки</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Два разных компонента вызывают <code>useToggle()</code>. Что произойдёт, когда один из них переключит значение?</p>
+          <ol class="options">
+            <li>Значение изменится и во втором компоненте: хук общий</li>
+            <li>Второй компонент ничего не заметит: у каждого вызова хука своё состояние</li>
+            <li>React выдаст ошибку: хук нельзя вызывать из двух мест</li>
+            <li>Оба компонента перерисуются, но значения останутся прежними</li>
+          </ol>
+          <div class="explain"><p>Хук делит только код. Состояние хранится в ячейках конкретного компонента, поэтому у каждого вызова оно своё. Общее состояние поднимают в родителя или кладут в Context.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что из этого можно оформить как свой хук с именем <code>useЧтоТо</code>?</p>
+          <ol class="options">
+            <li>Функцию <code>formatPrice(n)</code>, которая превращает число в строку «45 сомони»</li>
+            <li>Компонент <code>Rating</code>, который возвращает JSX</li>
+            <li>Функцию, которая внутри вызывает <code>useState</code> и <code>useEffect</code> и возвращает значение для компонента</li>
+            <li>Константу <code>CUISINES</code> со списком кухонь</li>
+          </ol>
+          <div class="explain"><p>Хук — это функция, которая вызывает другие хуки. Обычная функция без хуков хуком не является, а компонент возвращает JSX и называется с заглавной буквы.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Зачем писать <code>return [on, toggle] as const</code> вместо <code>return [on, toggle]</code>?</p>
+          <ol class="options">
+            <li>Чтобы тип стал кортежем <code>readonly [boolean, () =&gt; void]</code>, а не массивом union-значений</li>
+            <li>Чтобы хук работал быстрее</li>
+            <li>Чтобы массив нельзя было деструктурировать</li>
+            <li>Это обязательное требование React</li>
+          </ol>
+          <div class="explain"><p>Без <code>as const</code> TypeScript выводит <code>(boolean | (() =&gt; void))[]</code>, и после деструктуризации у <code>on</code> и <code>toggle</code> один и тот же union. С <code>as const</code> позиции получают свои типы.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-toggle">
+        <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Напишите хук useToggle</h4><span class="level mid">средняя</span></header>
+        <p>Компонент <code>Filters</code> уже использует хук <code>useToggle(initial)</code>, но самого хука нет: песочница выдаёт ошибку. Напишите его: он возвращает массив <code>[on, toggle]</code>, где <code>toggle</code> меняет значение на противоположное. Стенд нажмёт «Открытые», а затем «Доставка». Два вызова должны работать независимо.</p>
+        <div class="playground" data-mode="react" data-title="Фильтры с хуком useToggle">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+// TODO: напишите хук useToggle(initial) и верните из него [on, toggle]
+
+function Filters() {
+  const [openOnly, toggleOpenOnly] = useToggle(false);
+  const [delivery, toggleDelivery] = useToggle(false);
+  console.log("открытые:", openOnly, "доставка:", delivery);
+  return (
+    &lt;div&gt;
+      &lt;button id="a" onClick={toggleOpenOnly}&gt;Открытые&lt;/button&gt;
+      &lt;button id="b" onClick={toggleDelivery}&gt;Доставка&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return &lt;Filters /&gt;;
+}
+
+// автопроверка: стенд нажимает кнопки
+setTimeout(() =&gt; document.getElementById("a").click(), 250);
+setTimeout(() =&gt; document.getElementById("b").click(), 450);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>открытые: false доставка: false
+открытые: true доставка: false
+открытые: true доставка: true</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Внутри хука нужен <code>useState(initial)</code>. Функция <code>toggle</code> вызывает <code>setOn((value) =&gt; !value)</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>function useToggle(initial) { const [on, setOn] = useState(initial); function toggle() { setOn((value) =&gt; !value); } return [on, toggle]; }</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/reusing-logic-with-custom-hooks" target="_blank" rel="noopener">react.dev — Reusing Logic with Custom Hooks</a> · <a href="https://react.dev/reference/rules/rules-of-hooks" target="_blank" rel="noopener">react.dev — Rules of Hooks</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="generics">
+      <h2 data-toc="TS: дженерики"><span class="num">02</span> TypeScript: дженерики на минимуме</h2>
+
+      <p>Хуки <code>useFetch</code> и <code>useLocalStorage</code> работают с данными разных типов: рестораны, блюда, корзина. Если написать <code>unknown</code>, вызывающий код получит значение, с которым ничего нельзя делать. Если написать <code>any</code>, пропадёт проверка типов. Для таких случаев в TypeScript есть <b>дженерики</b> (generics): тип-параметр, который подставляется при использовании. Вы уже встречали их: <code>useState&lt;Cuisine | null&gt;(null)</code>, <code>Array&lt;T&gt;</code> и ваш <code>LoadState&lt;T&gt;</code> из урока 5. Теперь научимся писать свои.</p>
+
+      <h3>Функция с типом-параметром</h3>
+      <p>Допустим, нужна функция «первый элемент массива». Для строк, чисел и ресторанов она одна и та же. Тип-параметр <code>T</code> пишут в угловых скобках после имени функции: это «переменная для типа», как параметр функции — переменная для значения.</p>
+
+<pre class="code" data-lang="ts" data-title="Дженерик-функция: T подставляется при вызове">
+function first&lt;T&gt;(items: T[]): T | undefined {
+  return items[0]
+}
+
+const name = first(['Navruz', 'Rohat']) // T = string, тип name: string | undefined
+const rating = first([4.8, 4.5]) // T = number
+const none = first&lt;string&gt;([]) // T указан явно: пустой массив ничего не подсказывает
+</pre>
+
+      <p>Обратите внимание на два способа задать <code>T</code>. Чаще всего TypeScript <b>выводит</b> его сам по аргументам (<code>first(['Navruz', 'Rohat'])</code>), и писать угловые скобки не нужно. <b>Явный</b> тип (<code>first&lt;string&gt;([])</code>) нужен там, где вывести не из чего: пустой массив, <code>useState&lt;User | null&gt;(null)</code>, <code>useLocalStorage&lt;CartItem[]&gt;(…)</code>.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 240" role="img" aria-label="Тип-параметр T подставляется при вызове. Функция findById с параметром T получает массив Restaurant и возвращает Restaurant или undefined. Та же функция получает массив MenuItem и возвращает MenuItem или undefined. Ограничение T extends объект с числовым id допускает оба массива">
+          <rect class="fill-y" x="230" y="10" width="260" height="50" rx="12" /><text x="360" y="32" text-anchor="middle" class="mono">findById&lt;T extends { id: number }&gt;</text><text class="sub" x="360" y="50" text-anchor="middle">один код для любых типов с полем id</text>
+          <rect class="box b" x="10" y="110" width="200" height="46" rx="10" /><text x="110" y="138" text-anchor="middle" class="mono">Restaurant[]</text>
+          <rect class="fill-g" x="10" y="180" width="200" height="46" rx="10" /><text x="110" y="208" text-anchor="middle" class="mono">Restaurant | undefined</text>
+          <rect class="box b" x="510" y="110" width="200" height="46" rx="10" /><text x="610" y="138" text-anchor="middle" class="mono">MenuItem[]</text>
+          <rect class="fill-g" x="510" y="180" width="200" height="46" rx="10" /><text x="610" y="208" text-anchor="middle" class="mono">MenuItem | undefined</text>
+          <path class="arr" d="M110 110 V82 H300 V68" /><path class="arr-head" d="M300 60 l-5 10 h10 z" />
+          <path class="arr" d="M610 110 V82 H420 V68" /><path class="arr-head" d="M420 60 l-5 10 h10 z" />
+          <path class="arr" d="M110 156 V172" /><path class="arr-head" d="M110 180 l-5 -10 h10 z" />
+          <path class="arr" d="M610 156 V172" /><path class="arr-head" d="M610 180 l-5 -10 h10 z" />
+          <text class="sub t-b" x="125" y="100">T = Restaurant</text><text class="sub t-b" x="520" y="100">T = MenuItem</text>
+        </svg>
+        <figcaption>Дженерик — один код и разные типы: <code>T</code> подставляется при вызове, а <code>extends</code> задаёт минимальные требования</figcaption>
+      </figure>
+
+      <h3>Ограничение: T extends</h3>
+      <p>Внутри функции с «голым» <code>T</code> про него ничего не известно, поэтому обращаться к полям нельзя. Нужен <code>id</code>? Ограничьте тип: <code>T extends { id: number }</code> означает «любой тип, у которого есть числовое поле <code>id</code>». Подойдут и <code>Restaurant</code>, и <code>MenuItem</code>, а строка не подойдёт:</p>
+
+<pre class="code" data-lang="ts" data-title="Без ограничения TypeScript не знает про id">
+function findById&lt;T&gt;(items: T[], id: number): T | undefined {
+  return items.find((item) =&gt; item.id === id)
+}
+</pre>
+<pre class="code" data-title="Терминал — вывод tsc -b">
+src/find.ts(2,38): error TS2339: Property 'id' does not exist on type 'T'.
+</pre>
+<pre class="code" data-lang="ts" data-title="С ограничением: тип T обязан иметь id">
+function findById&lt;T extends { id: number }&gt;(items: T[], id: number): T | undefined {
+  return items.find((item) =&gt; item.id === id)
+}
+
+findById(restaurants, 2) // Restaurant | undefined
+findById(menu, 8) // MenuItem | undefined
+findById(['Navruz'], 1) // ошибка: string не имеет поля id
+</pre>
+
+      <h3>Дженерик-тип и значение по умолчанию</h3>
+      <p>Типы тоже бывают параметризованными. Вы уже писали <code>LoadState&lt;T&gt;</code>; вот ещё один популярный шаблон, «результат операции». Второй параметр <code>E = string</code> имеет <b>значение по умолчанию</b>: если его не указать, ошибкой будет строка.</p>
+
+<pre class="code" data-lang="ts" data-title="Дженерик-тип Result">
+type Result&lt;T, E = string&gt; =
+  | { ok: true; value: T }
+  | { ok: false; error: E }
+
+function parsePrice(text: string): Result&lt;number&gt; {
+  const n = Number(text)
+  return Number.isNaN(n) ? { ok: false, error: 'цена не число' } : { ok: true, value: n }
+}
+
+const result = parsePrice('45')
+if (result.ok) {
+  console.log(result.value + 1) // здесь result.value: number
+} else {
+  console.log(result.error) // здесь result.error: string
+}
+</pre>
+
+      <h3>Правило «на минимуме»</h3>
+      <p>Дженерики легко превратить в головоломку. Для курса хватит четырёх приёмов: <b>функция с <code>&lt;T&gt;</code></b>, <b>ограничение <code>extends</code></b>, <b>дженерик-тип</b> (<code>Result&lt;T&gt;</code>, <code>LoadState&lt;T&gt;</code>) и <b>явный тип в скобках</b>, когда вывод не справился. Не заводите <code>&lt;T&gt;</code>, если тип в функции используется один раз и никуда не возвращается: хватит <code>unknown</code> или конкретного типа. И никогда не пишите <code>&lt;T = any&gt;</code>: это тот же <code>any</code> с лишним шагом (раздел 8).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Дженерик — это лепёшка с пустым местом под начинку. Форма теста одна, а начинку вы выбираете при заказе: мясо, тыква, картошка. <code>extends</code> — это условие «лепёшка с чем-нибудь, что можно запечь»: песок в начинку не положишь. А «неизвестная» начинка <code>unknown</code> — это запечатанный пакет: пока не откроете и не проверите, есть его нельзя.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Обратиться к полю у «голого» <code>T</code>: <code>TS2339: Property 'id' does not exist on type 'T'</code>. Нужен <code>extends</code>. <b>2.</b> Писать явный тип там, где TypeScript выводит его сам: <code>first&lt;string&gt;(['a'])</code> — шум. <b>3.</b> Не указать тип там, где вывод не работает: <code>useState(null)</code> даёт тип <code>null</code>, а не «ресторан или null». <b>4.</b> Привести результат <code>JSON.parse</code> к <code>T</code> через <code>as T</code>: компилятор замолчит, а данные могут оказаться чем угодно. Правильный путь в разделе 4: <code>unknown</code> и type guard. <b>5.</b> Сделать всё дженериком: <code>function show&lt;T&gt;(x: T)</code> ничем не лучше <code>unknown</code>.</p>
+      </div>
+
+      <article class="task" id="q-generics">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: дженерики</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Для чего нужно ограничение <code>T extends { id: number }</code> в функции <code>findById</code>?</p>
+          <ol class="options">
+            <li>Чтобы функция работала быстрее</li>
+            <li>Чтобы внутри функции можно было читать <code>item.id</code>, а при вызове нельзя было передать массив без <code>id</code></li>
+            <li>Чтобы тип <code>T</code> нельзя было вывести автоматически</li>
+            <li>Чтобы функция принимала только объект <code>Restaurant</code></li>
+          </ol>
+          <div class="explain"><p>Ограничение задаёт минимальные требования: подойдёт любой тип с числовым <code>id</code> (рестораны, блюда), а внутри функции компилятор знает, что поле есть.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Когда нужно писать тип явно, как в <code>useLocalStorage&lt;CartItem[]&gt;('cart', [], isCartItems)</code>?</p>
+          <ol class="options">
+            <li>Когда TypeScript не может вывести тип по аргументам: например, начальное значение <code>[]</code> или <code>null</code></li>
+            <li>Всегда, иначе код не скомпилируется</li>
+            <li>Никогда: явный тип запрещён</li>
+            <li>Только в файлах <code>.tsx</code></li>
+          </ol>
+          <div class="explain"><p>Пустой массив ничего не говорит о типе элементов. В таких местах вывод не справляется, и тип в угловых скобках нужен. В остальных случаях лишние скобки — шум.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что не так с <code>function read&lt;T&gt;(text: string): T { return JSON.parse(text) as T }</code>?</p>
+          <ol class="options">
+            <li>Ничего, это хороший приём</li>
+            <li>Нельзя использовать <code>&lt;T&gt;</code> в стрелочной функции</li>
+            <li>Компилятор поверит, что внутри лежит <code>T</code>, хотя на самом деле там может быть что угодно: проверки нет</li>
+            <li>Функция вернёт <code>undefined</code></li>
+          </ol>
+          <div class="explain"><p><code>as T</code> — это обещание без проверки. Безопасный вариант: читать значение как <code>unknown</code> и принимать функцию-проверку (type guard), которая подтверждает, что значение имеет тип <code>T</code>.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t2-first">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Первый элемент: сделайте функцию дженериком</h4><span class="level easy">лёгкая</span></header>
+        <p>Функция <code>first</code> возвращает <code>unknown</code>, поэтому с результатом ничего нельзя сделать: компилятор ругается на <code>name?.toUpperCase()</code>. Сделайте функцию дженериком с типом-параметром <code>T</code>: она принимает <code>T[]</code> и возвращает <code>T | undefined</code>.</p>
+<pre class="code" data-run data-lang="ts">
+function first(items: unknown[]): unknown {
+  return items[0];
+}
+
+const name = first(["Navruz", "Rohat"]);
+const rating = first([4.8, 4.5]);
+const nothing = first&lt;string&gt;([]);
+
+console.log(name?.toUpperCase());
+console.log(rating?.toFixed(1));
+console.log(nothing ?? "нет");
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>NAVRUZ
+4.8
+нет</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Добавьте тип-параметр после имени функции: <code>function first&lt;T&gt;(…)</code>, а в параметре и результате замените <code>unknown</code> на <code>T</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>function first&lt;T&gt;(items: T[]): T | undefined { return items[0]; }</code></p></details>
+      </article>
+
+      <article class="task" id="t2-byid">
+        <header><span class="task-num">ЗАДАЧА 2.3</span><h4>findById: добавьте ограничение</h4><span class="level mid">средняя</span></header>
+        <p>Функция <code>findById</code> должна работать и с ресторанами, и с блюдами, но компилятор не знает, что у <code>T</code> есть поле <code>id</code>. Исправьте сигнатуру так, чтобы ошибка исчезла и вывод совпал с ожидаемым.</p>
+<pre class="code" data-run data-lang="ts">
+type Restaurant = { id: number; name: string };
+type MenuItem = { id: number; title: string; price: number };
+
+function findById&lt;T&gt;(items: T[], id: number): T | undefined {
+  return items.find((item) =&gt; item.id === id);
+}
+
+const restaurants: Restaurant[] = [
+  { id: 1, name: "Navruz" },
+  { id: 2, name: "Rohat" },
+];
+const menu: MenuItem[] = [
+  { id: 7, title: "Самбуса с тыквой", price: 10 },
+  { id: 8, title: "Лагман", price: 30 },
+];
+
+console.log(findById(restaurants, 2)?.name);
+console.log(findById(menu, 8)?.title);
+console.log(findById(menu, 99)?.title ?? "нет");
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Rohat
+Лагман
+нет</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Тип-параметру нужно ограничение: «любой тип, у которого есть числовое поле <code>id</code>». Оно пишется через <code>extends</code> прямо в угловых скобках.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>function findById&lt;T extends { id: number }&gt;(items: T[], id: number): T | undefined</code></p></details>
+      </article>
+
+      <article class="task" id="t2-result">
+        <header><span class="task-num">ЗАДАЧА 2.4</span><h4>Дженерик-тип Result</h4><span class="level hard">сложная</span></header>
+        <p>Функция <code>parsePrice</code> возвращает <code>Result&lt;number&gt;</code>, но такого типа ещё нет. Опишите дженерик-тип <code>Result&lt;T, E = string&gt;</code>: либо <code>{ ok: true; value: T }</code>, либо <code>{ ok: false; error: E }</code>. После этого сужение через <code>result.ok</code> должно заработать без ошибок.</p>
+<pre class="code" data-run data-lang="ts">
+// TODO: опишите type Result&lt;T, E = string&gt;
+
+function parsePrice(text: string): Result&lt;number&gt; {
+  const n = Number(text);
+  if (Number.isNaN(n)) {
+    return { ok: false, error: "цена не число" };
+  }
+  return { ok: true, value: n };
+}
+
+for (const text of ["45", "много"]) {
+  const result = parsePrice(text);
+  if (result.ok) {
+    console.log("итого:", result.value + 1);
+  } else {
+    console.log("ошибка:", result.error);
+  }
+}
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>итого: 46
+ошибка: цена не число</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Это union из двух объектов с общим полем <code>ok</code>. Один объект использует <code>T</code>, второй <code>E</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>type Result&lt;T, E = string&gt; = { ok: true; value: T } | { ok: false; error: E };</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://www.typescriptlang.org/docs/handbook/2/generics.html" target="_blank" rel="noopener">TypeScript — Generics</a> · <a href="https://react.dev/learn/typescript" target="_blank" rel="noopener">react.dev — Using TypeScript</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="usefetch">
+      <h2 data-toc="useFetch&lt;T&gt;"><span class="num">03</span> useFetch&lt;T&gt;: загрузка данных в своём хуке</h2>
+
+      <p>В уроке 5 загрузка ресторанов жила прямо в <code>App</code>: состояние <code>load</code>, счётчик <code>attempt</code>, эффект с <code>AbortController</code>, функция <code>retry</code>. Это около 20 строк, которые понадобятся каждому экрану с данными (меню, заказы, профиль). Соберём их в один хук <code>useFetch&lt;T&gt;</code>: он принимает адрес и функцию проверки ответа, а возвращает состояние <code>LoadState&lt;T&gt;</code> и функцию «Повторить».</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 220" role="img" aria-label="Поток данных useFetch. Компонент вызывает useFetch с адресом и функцией parse. Хук вызывает fetchJson, ответ приходит как unknown, функция parse проверяет его и возвращает тип T. Результат сохраняется вместе с ключом запроса и превращается в LoadState из T, который получает компонент">
+          <rect class="fill-y" x="10" y="20" width="150" height="56" rx="12" /><text x="85" y="44" text-anchor="middle">компонент</text><text class="sub mono" x="85" y="62" text-anchor="middle">useFetch(url, parse)</text>
+          <rect class="box b" x="230" y="20" width="170" height="56" rx="12" /><text x="315" y="44" text-anchor="middle">fetchJson&lt;T&gt;</text><text class="sub mono" x="315" y="62" text-anchor="middle">fetch + response.ok</text>
+          <rect class="fill-g" x="470" y="20" width="240" height="56" rx="12" /><text x="590" y="44" text-anchor="middle">parse(data: unknown)</text><text class="sub mono" x="590" y="62" text-anchor="middle">проверка → T или Error</text>
+          <path class="arr" d="M160 48 H222" /><path class="arr-head" d="M230 48 l-10 -5 v10 z" />
+          <path class="arr" d="M400 48 H462" /><path class="arr-head" d="M470 48 l-10 -5 v10 z" />
+          <rect class="box" x="470" y="130" width="240" height="56" rx="12" /><text x="590" y="154" text-anchor="middle">result = { key, state }</text><text class="sub mono" x="590" y="172" text-anchor="middle">ответ + ключ запроса</text>
+          <rect class="fill-g" x="10" y="130" width="390" height="56" rx="12" /><text x="205" y="154" text-anchor="middle">LoadState&lt;T&gt; + retry</text><text class="sub mono" x="205" y="172" text-anchor="middle">key совпал → ответ, иначе loading</text>
+          <path class="arr" d="M590 76 V122" /><path class="arr-head" d="M590 130 l-5 -10 h10 z" />
+          <path class="arr" d="M470 158 H408" /><path class="arr-head" d="M400 158 l10 -5 v10 z" />
+        </svg>
+        <figcaption>Путь данных в <code>useFetch&lt;T&gt;</code>: запрос, проверка, ответ с ключом, производное состояние загрузки</figcaption>
+      </figure>
+
+      <h3>Сигнатура: что хук принимает и возвращает</h3>
+      <p>Хук не знает, что именно он загружает, поэтому тип результата <code>T</code> ему нужен от вызывающего кода. Но писать <code>as T</code> нельзя (раздел 2): проверку данных хук получает аргументом, функцией <code>parse</code>. Её тип <code>(data: unknown) =&gt; T</code> одновременно сообщает TypeScript, чему равен <code>T</code>, так что угловые скобки при вызове не нужны:</p>
+
+<pre class="code" data-lang="ts" data-title="Сигнатура хука и вызов">
+function useFetch&lt;T&gt;(url: string, parse: (data: unknown) =&gt; T): {
+  state: LoadState&lt;T&gt;
+  retry: () =&gt; void
+}
+
+// T выводится из parseRestaurants: (data: unknown) =&gt; Restaurant[]
+const { state, retry } = useFetch('/api/restaurants', parseRestaurants)
+</pre>
+
+      <h3>Загрузка: производное значение вместо setState в эффекте</h3>
+      <p>В уроке 5 было правило: «загрузка» не выставляется внутри эффекта. Но что делать, когда адрес меняется (например, выбрали другой ресторан)? Новый запрос ушёл, а на экране ещё лежит ответ от старого. Хук решает это так: каждый ответ сохраняется <b>вместе с ключом запроса</b> (адрес и номер попытки). Если ключ сохранённого ответа не равен текущему, значит, ответ «чужой» или ещё не пришёл, и состояние — <code>loading</code>. Это вычисляется в рендере, а не хранится.</p>
+
+<pre class="code" data-lang="ts" data-title="src/hooks/useFetch.ts">
+import { useCallback, useEffect, useState } from 'react'
+import { errorMessage, fetchJson, isAbortError } from '../api'
+import type { LoadState } from '../types'
+
+type Result&lt;T&gt; = { key: string; state: LoadState&lt;T&gt; }
+
+export function useFetch&lt;T&gt;(url: string, parse: (data: unknown) =&gt; T) {
+  const [attempt, setAttempt] = useState(0)
+  const [result, setResult] = useState&lt;Result&lt;T&gt; | null&gt;(null)
+  const key = `${url}#${attempt}`
+
+  useEffect(() =&gt; {
+    const controller = new AbortController()
+    fetchJson(url, parse, controller.signal)
+      .then((data) =&gt; setResult({ key, state: { status: 'success', data } }))
+      .catch((error: unknown) =&gt; {
+        if (isAbortError(error)) return
+        const state: LoadState&lt;T&gt; = {
+          status: 'error',
+          message: errorMessage(error),
+        }
+        setResult({ key, state })
+      })
+    return () =&gt; controller.abort()
+  }, [url, parse, key])
+
+  const retry = useCallback(() =&gt; setAttempt((n) =&gt; n + 1), [])
+
+  // ответ относится к другому запросу или ещё не пришёл: показываем загрузку
+  const state: LoadState&lt;T&gt; =
+    result !== null &amp;&amp; result.key === key
+      ? result.state
+      : { status: 'loading' }
+
+  return { state, retry }
+}
+</pre>
+
+      <p>Разберите хук по частям, все они вам знакомы по уроку 5. <b>Эффект</b> синхронизируется с сетью: контроллер создаётся внутри, очистка вызывает <code>abort()</code>, <code>AbortError</code> молча игнорируется. <b>Зависимости честные</b>: адрес, функция проверки и ключ. <b>«Повторить»</b> — это увеличение <code>attempt</code>: ключ меняется, эффект перезапускается, а состояние само становится <code>loading</code>, потому что ключ ответа больше не совпадает. <b>Функция <code>retry</code></b> обёрнута в <code>useCallback</code>: хук возвращает функцию наружу, и стабильная ссылка пригодится вызывающему коду (раздел 5).</p>
+
+      <h3>Ловушка: функция проверки должна быть стабильной</h3>
+      <p><code>parse</code> входит в зависимости эффекта. Если передать стрелку прямо в вызов, она будет новой при каждом рендере (урок 5: функции из тела компонента всегда новые), и эффект начнёт перезапускаться снова и снова:</p>
+
+<pre class="code" data-lang="tsx" data-title="Плохо: новая функция при каждом рендере">
+const { state } = useFetch('/api/restaurants', (data) =&gt; parseRestaurants(data))
+</pre>
+
+      <p>Ответ приходит, состояние меняется, компонент рендерится, создаётся новая стрелка, эффект видит новую зависимость, отменяет запрос и отправляет новый. На экране всё выглядит нормально, а в Network запросы идут бесконечно. Мы проверили: за пять секунд такой вызов отправил 10 запросов вместо двух (два как раз из-за StrictMode). Решение простое: передавайте функцию, объявленную <b>вне компонента</b> (<code>parseRestaurants</code> лежит в <code>api.ts</code>). Линтер такую ошибку не покажет, поэтому правило стоит записать в <code>AGENTS.md</code> и проверять в ревью.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Ключ запроса — это номерок в гардеробе. Вы отдали куртку и получили номерок №17. Когда гардеробщик возвращается с курткой, он сверяет номерок: если №17, куртка ваша, а если в руках номерок прежнего посетителя, он не отдаст её вам, а скажет «ещё ищу». Пока нужной куртки нет, вы видите «загрузку», и никто не хранит отдельный флаг «ищем».</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Стрелка в аргументе <code>parse</code>: запросы идут по кругу. <b>2.</b> <code>as T</code> после <code>response.json()</code> вместо проверки: сервер может прислать что угодно, а компилятор не заметит. <b>3.</b> Три отдельных состояния <code>data</code>, <code>loading</code>, <code>error</code> вместо union: возможны невозможные комбинации (загрузка закончилась, а ни данных, ни ошибки нет). <b>4.</b> <code>setLoad({ status: 'loading' })</code> в эффекте при смене адреса: лишний рендер и предупреждение <code>set-state-in-effect</code>. <b>5.</b> Забытый <code>abort()</code>: при быстрой смене адреса на экране может оказаться ответ на старый запрос.</p>
+      </div>
+
+      <article class="task" id="q-usefetch">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Проверь себя: хук загрузки</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Почему <code>useFetch</code> принимает функцию <code>parse</code>, а не просто возвращает <code>response.json()</code> как <code>T</code>?</p>
+          <ol class="options">
+            <li>Чтобы запрос выполнялся быстрее</li>
+            <li>Потому что <code>fetch</code> не умеет читать JSON</li>
+            <li>Чтобы данные проверялись во время работы программы: тип <code>T</code> сам по себе существует только при компиляции</li>
+            <li>Чтобы хук нельзя было вызвать с неправильным адресом</li>
+          </ol>
+          <div class="explain"><p>Типы TypeScript стираются при сборке. Приведение <code>as T</code> ничего не проверяет, а функция <code>parse</code> реально смотрит на поля и выбрасывает ошибку, если форма ответа не та.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что случится, если вызвать <code>useFetch(url, (data) =&gt; parseRestaurants(data))</code> со стрелкой прямо в компоненте?</p>
+          <ol class="options">
+            <li>Ничего: стрелка и объявленная функция равнозначны</li>
+            <li>Эффект будет перезапускаться после каждого рендера, и запросы пойдут по кругу</li>
+            <li>TypeScript выдаст ошибку компиляции</li>
+            <li>Хук вернёт <code>loading</code> навсегда без запросов</li>
+          </ol>
+          <div class="explain"><p>Стрелка создаётся заново при каждом рендере, а <code>parse</code> входит в зависимости эффекта. Каждая новая ссылка отменяет запрос и запускает следующий. Функцию нужно вынести за компонент.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Как хук понимает, что при смене адреса нужно показать загрузку, не вызывая <code>setState</code> в эффекте? Выберите два утверждения.</p>
+          <ol class="options">
+            <li>Ответ хранится вместе с ключом запроса (адрес и номер попытки)</li>
+            <li>Хук перезагружает страницу</li>
+            <li>Состояние <code>loading</code> записывается в эффект первой строкой</li>
+            <li>Если ключ сохранённого ответа не равен текущему, состояние вычисляется как <code>loading</code></li>
+          </ol>
+          <div class="explain"><p>Загрузка — производное значение: «нет ответа на текущий ключ». Вычисление в рендере не требует лишнего эффекта и лишнего рендера.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t3-usefetch">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Напишите useFetch</h4><span class="level hard">сложная</span></header>
+        <p>Допишите тело хука <code>useFetch(url, parse)</code>. Он возвращает <code>{ state }</code> с состоянием <code>loading</code>, <code>error</code> или <code>success</code>. Ответ храните вместе с ключом <code>url</code> и считайте состояние в рендере: при смене адреса сразу должна быть «загрузка», без старых данных. Стенд сначала запрашивает «быстрый» адрес, затем адрес с ошибкой 500, затем адрес «без сети». Для <code>AbortError</code> ничего не показывайте, а в очистке вызывайте <code>abort()</code>.</p>
+        <div class="playground" data-mode="react" data-title="Свой хук useFetch">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+const LIST = [{ id: 1, name: "Navruz" }, { id: 2, name: "Samarkand" }, { id: 3, name: "Shirin" }];
+
+// стенд: «сервер». /fast отвечает через 30 мс, /broken даёт 500, /offline — сетевая ошибка
+function fakeFetch(url, { signal } = {}) {
+  return new Promise((resolve, reject) =&gt; {
+    const t = setTimeout(() =&gt; {
+      if (url === "/offline") reject(new TypeError("Failed to fetch"));
+      else if (url === "/broken") resolve({ ok: false, status: 500, json: async () =&gt; ({}) });
+      else resolve({ ok: true, status: 200, json: async () =&gt; LIST });
+    }, 30);
+    signal?.addEventListener("abort", () =&gt; {
+      clearTimeout(t);
+      reject(new DOMException("Aborted", "AbortError"));
+    });
+  });
+}
+
+function parseList(data) {
+  if (!Array.isArray(data)) throw new Error("неожиданный формат");
+  return data;
+}
+
+function useFetch(url, parse) {
+  // TODO: const [result, setResult] = useState(null); результат — { key: url, state }
+  // TODO: useEffect: AbortController, fakeFetch(url, { signal }), при !response.ok
+  //   выбросьте Error("Сервер ответил " + response.status), parse(await response.json());
+  //   в catch: AbortError — return, иначе error; в cleanup — controller.abort(). Зависимости: [url, parse]
+  // TODO: верните { state }: если result есть и result.key === url — result.state,
+  //   иначе { status: "loading" }
+  return { state: { status: "loading" } };
+}
+
+function Catalog({ url }) {
+  const { state } = useFetch(url, parseList);
+  if (state.status === "loading") console.log("экран: загрузка");
+  else if (state.status === "error") console.log("экран: ошибка —", state.message);
+  else console.log("экран: список (" + state.data.length + ")");
+  return null;
+}
+
+export default function App() {
+  const [url, setUrl] = useState("/fast");
+  useScript([
+    [100, () =&gt; setUrl("/broken")],
+    [200, () =&gt; setUrl("/offline")],
+  ]);
+  return &lt;Catalog url={url} /&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>экран: загрузка
+экран: список (3)
+экран: загрузка
+экран: ошибка — Сервер ответил 500
+экран: загрузка
+экран: ошибка — Failed to fetch</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Внутри эффекта: <code>fakeFetch(url, { signal: controller.signal }).then((response) =&gt; { if (!response.ok) throw new Error("Сервер ответил " + response.status); return response.json(); }).then(parse).then((data) =&gt; setResult({ key: url, state: { status: "success", data } }))</code>, затем <code>.catch(…)</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>В <code>catch</code>: <code>if (error instanceof DOMException &amp;&amp; error.name === "AbortError") return;</code>, иначе <code>setResult({ key: url, state: { status: "error", message: error instanceof Error ? error.message : "Неизвестная ошибка" } })</code>. После эффекта: <code>return { state: result !== null &amp;&amp; result.key === url ? result.state : { status: "loading" } };</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/reusing-logic-with-custom-hooks" target="_blank" rel="noopener">react.dev — Reusing Logic with Custom Hooks</a> · <a href="https://react.dev/learn/you-might-not-need-an-effect#fetching-data" target="_blank" rel="noopener">react.dev — Fetching data</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN — AbortController</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="storage">
+      <h2 data-toc="useLocalStorage и useDebounce"><span class="num">04</span> useLocalStorage&lt;T&gt; и useDebounce&lt;T&gt;</h2>
+
+      <p>Ещё два хука из плана урока решают две частые задачи. Первая: сохранить значение в браузере, чтобы оно пережило перезагрузку (корзина, выбранная тема, последний фильтр). Вторая: не реагировать на каждое нажатие клавиши, а подождать, пока пользователь закончит вводить.</p>
+
+      <h3>localStorage: что нужно знать до хука</h3>
+      <p><code>localStorage</code> — маленькое хранилище «ключ → строка» в браузере: 5–10 МБ на сайт, данные остаются после закрытия вкладки. Из этого следуют четыре правила для хука:</p>
+      <ol class="steps">
+        <li><b>Хранятся только строки.</b> Объекты и массивы превращают в строку через <code>JSON.stringify</code> и читают обратно через <code>JSON.parse</code>.</li>
+        <li><b>Прочитанному верить нельзя.</b> Пользователь или другая версия вашего сайта могла записать что угодно. <code>JSON.parse</code> возвращает <code>any</code>: принимайте его как <code>unknown</code> и проверяйте type guard (урок 5).</li>
+        <li><b>Доступ может сломаться.</b> В приватном режиме, при выключенных данных сайта или при переполнении квоты <code>getItem</code> и <code>setItem</code> бросают исключение. Оба вызова оборачивают в <code>try/catch</code>, а приложение продолжает работать без сохранения.</li>
+        <li><b>Не кладите секреты.</b> Любой скрипт на странице читает хранилище: токены доступа и персональные данные в нём хранить небезопасно.</li>
+      </ol>
+
+      <h3>useLocalStorage&lt;T&gt;</h3>
+      <p>Хук ведёт себя как <code>useState</code>, но начальное значение берёт из хранилища, а каждое изменение записывает обратно. Чтение выполняется один раз, при создании состояния: для этого в <code>useState</code> передают <b>функцию</b> (ленивая инициализация), а не результат вызова: тогда <code>localStorage</code> читается один раз, а не при каждом рендере. Запись — настоящий эффект: синхронизация с внешней системой, браузерным хранилищем.</p>
+
+<pre class="code" data-lang="ts" data-title="src/hooks/useLocalStorage.ts">
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+
+export function useLocalStorage&lt;T&gt;(
+  key: string,
+  initialValue: T,
+  isValid: (value: unknown) =&gt; value is T,
+): [T, Dispatch&lt;SetStateAction&lt;T&gt;&gt;] {
+  const [value, setValue] = useState&lt;T&gt;(() =&gt; {
+    try {
+      const raw = localStorage.getItem(key)
+      if (raw === null) return initialValue
+      const parsed: unknown = JSON.parse(raw)
+      return isValid(parsed) ? parsed : initialValue
+    } catch {
+      return initialValue
+    }
+  })
+
+  useEffect(() =&gt; {
+    try {
+      localStorage.setItem(key, JSON.stringify(value))
+    } catch {
+      // квота исчерпана или приватный режим: работаем без сохранения
+    }
+  }, [key, value])
+
+  return [value, setValue]
+}
+</pre>
+
+      <p>Три детали типов. <b><code>isValid: (value: unknown) =&gt; value is T</code></b> — type guard как параметр: внутри хука <code>T</code> нигде не приводится, а подтверждается проверкой. <b><code>Dispatch&lt;SetStateAction&lt;T&gt;&gt;</code></b> — тип сеттера <code>useState</code>: он принимает и значение, и функцию «из предыдущего в следующее», поэтому вызывающий код работает с хуком так же, как с <code>useState</code>. <b>Явный тип при вызове</b>: <code>useLocalStorage&lt;CartItem[]&gt;('cart', [], isCartItems)</code>. Мы проверили, что без угловых скобок TypeScript пытается вывести <code>T</code> из начального значения и ругается на несовместимость с guard.</p>
+
+<pre class="code" data-title="Терминал — tsc -b: guard не подходит к типу T">
+src/Tmp.tsx(11,52): error TS2345: Argument of type '(v: unknown) =&gt; v is string' is not assignable to parameter of type '(value: unknown) =&gt; value is CartItem[]'.
+  Type predicate 'v is string' is not assignable to 'value is CartItem[]'.
+    Type 'string' is not assignable to type 'CartItem[]'.
+</pre>
+
+      <p>Там, где код выполняется не в браузере (например, при серверном рендеринге в Next.js), <code>localStorage</code> не существует и выбрасывается <code>ReferenceError</code>: <code>try/catch</code> в хуке защищает и от этого случая. Ещё одно ограничение: ключ <code>key</code> считается постоянным, потому что чтение выполняется один раз, а смена ключа заново ничего не прочитает. Синхронизация между вкладками (событие <code>storage</code>) здесь не реализована.</p>
+
+      <h3>useDebounce&lt;T&gt;</h3>
+      <p>Дебаунс (debounce) — «подождать тишины». Пока значение меняется чаще, чем раз в N миллисекунд, ничего не происходит, а через N мс после последнего изменения срабатывает действие. Для хука это значение с задержкой: пользователь набирает «nav», в <code>query</code> попадает каждая буква сразу, а в <code>debouncedQuery</code> только «nav» через 250 мс после последней нажатой клавиши. Реализация — это эффект с таймером и очисткой (урок 5): каждое новое значение отменяет таймер предыдущего.</p>
+
+<pre class="code" data-lang="ts" data-title="src/hooks/useDebounce.ts">
+import { useEffect, useState } from 'react'
+
+export function useDebounce&lt;T&gt;(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() =&gt; {
+    const id = setTimeout(() =&gt; setDebounced(value), delayMs)
+    return () =&gt; clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
+}
+</pre>
+
+      <p>Зачем это в проекте, где всего шесть ресторанов? Честный ответ: сегодня незачем, фильтрация мгновенная. Хук нужен, когда каждое изменение запрашивает сервер (поиск по API, урок 10) или запускает тяжёлый пересчёт. Сейчас мы тренируем приём на реальном поле поиска, а в уроке 10 он пригодится по назначению. Не путайте с <code>useDeferredValue</code>: этот встроенный хук откладывает <b>отрисовку</b> тяжёлого списка и не имеет таймера в миллисекундах, а значит, не годится для сокращения запросов к серверу.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Дебаунс — как официант в чойхоне, который стоит у стола, пока вы перечисляете заказ: «плов, и ещё лагман... и чай... и самбусу». Он не бежит на кухню после каждого слова, а ждёт паузы и только тогда уходит с заказом. А <code>localStorage</code> — блокнот на стойке: переживёт вашу отлучку, но любой, кто подходит к стойке, может его прочитать и дописать, поэтому паспорт туда не кладут.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> <code>JSON.parse(raw) as T</code> без проверки: после обновления сайта в хранилище остаётся старый формат, и приложение падает на <code>.map is not a function</code>. <b>2.</b> <code>localStorage.getItem</code> без <code>try/catch</code>: в приватном режиме и на сервере страница белеет. <b>3.</b> Читать хранилище прямо в теле компонента: чтение выполняется при каждом рендере. Нужна ленивая инициализация <code>useState(() =&gt; …)</code>. <b>4.</b> Забыть <code>clearTimeout</code> в дебаунсе: таймеры копятся, и «старое» значение прилетает после нового. <b>5.</b> Хранить в <code>localStorage</code> токены и пароли. <b>6.</b> Ждать, что дебаунс ускорит рендер: он отложит обновление, а сам рендер дешевле не станет.</p>
+      </div>
+
+      <article class="task" id="q-storage">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: хранилище и дебаунс</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Зачем в <code>useLocalStorage</code> чтение хранилища передаётся в <code>useState</code> функцией <code>useState(() =&gt; …)</code>, а не значением?</p>
+          <ol class="options">
+            <li>Чтобы код выглядел короче</li>
+            <li>Чтобы чтение и разбор JSON выполнялись один раз при создании состояния, а не при каждом рендере</li>
+            <li>Чтобы обойти ошибку <code>QuotaExceededError</code></li>
+            <li>Чтобы значение можно было менять напрямую</li>
+          </ol>
+          <div class="explain"><p>Ленивая инициализация вызывает функцию только при первом рендере. Без неё <code>getItem</code> и <code>JSON.parse</code> работали бы после каждого нажатия клавиши, хотя их результат используется один раз.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В хранилище лежит строка <code>{"bad":1}</code>, а хук ждёт массив <code>CartItem[]</code>. Что должно произойти?</p>
+          <ol class="options">
+            <li>Приложение упадёт: данные неверные</li>
+            <li>Хук вернёт эти данные как <code>CartItem[]</code></li>
+            <li>Проверка <code>isValid</code> вернёт <code>false</code>, хук возьмёт начальное значение</li>
+            <li>Хук очистит весь <code>localStorage</code></li>
+          </ol>
+          <div class="explain"><p>Данные из хранилища недоверенные. Type guard проверяет их форму, и при несовпадении хук откатывается к начальному значению. Приложение продолжает работать.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Что делает <code>clearTimeout(id)</code> в очистке эффекта дебаунса?</p>
+          <ol class="options">
+            <li>Отменяет таймер предыдущего значения, чтобы сработал только таймер последнего</li>
+            <li>Ускоряет таймер</li>
+            <li>Удаляет значение из состояния</li>
+            <li>Ничего: таймер и так отменится сам</li>
+          </ol>
+          <div class="explain"><p>Без очистки каждое значение запустило бы свой таймер и все они сработали бы по очереди. Очистка превращает «много таймеров» в один, последний.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t4-readjson">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>readJson: дженерик с проверкой</h4><span class="level mid">средняя</span></header>
+        <p>Функция <code>readJson</code> читает значение из «хранилища» и возвращает <code>unknown</code>, поэтому вызовы с <code>readJson&lt;Line[]&gt;(…)</code> не компилируются (функция не дженерик). Сделайте её дженериком <code>readJson&lt;T&gt;(key, fallback: T, isValid)</code>: guard <code>isValid</code> имеет тип <code>(value: unknown) =&gt; value is T</code>. Испорченные данные и неверный JSON должны давать <code>fallback</code>.</p>
+<pre class="code" data-run data-lang="ts">
+// стенд: «localStorage» в виде объекта
+const store: Record&lt;string, string&gt; = {
+  good: '[{"title":"Плов","qty":2},{"title":"Чай","qty":1}]',
+  broken: "{не json",
+  wrong: '{"title":"Плов"}',
+};
+
+type Line = { title: string; qty: number };
+
+function isLines(value: unknown): value is Line[] {
+  return (
+    Array.isArray(value) &amp;&amp;
+    value.every(
+      (v) =&gt;
+        typeof v === "object" &amp;&amp; v !== null &amp;&amp;
+        "title" in v &amp;&amp; typeof v.title === "string" &amp;&amp;
+        "qty" in v &amp;&amp; typeof v.qty === "number"
+    )
+  );
+}
+
+// TODO: сделайте функцию дженериком readJson&lt;T&gt;(key, fallback: T, isValid: (value: unknown) =&gt; value is T): T
+function readJson(key: string, fallback: unknown, isValid: (value: unknown) =&gt; boolean): unknown {
+  try {
+    const raw = store[key];
+    if (raw === undefined) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+    return isValid(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+for (const key of ["good", "broken", "wrong"]) {
+  const lines = readJson&lt;Line[]&gt;(key, [], isLines);
+  console.log(key + ":", lines.length);
+}
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>good: 2
+broken: 0
+wrong: 0</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Добавьте <code>&lt;T&gt;</code> после имени функции, замените <code>unknown</code> в <code>fallback</code> и в результате на <code>T</code>, а у <code>isValid</code> поставьте <code>value is T</code> вместо <code>boolean</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>function readJson&lt;T&gt;(key: string, fallback: T, isValid: (value: unknown) =&gt; value is T): T { … }</code> Тело функции менять не нужно.</p></details>
+      </article>
+
+      <article class="task" id="t4-debounce">
+        <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Напишите useDebounce</h4><span class="level mid">средняя</span></header>
+        <p>Допишите хук <code>useDebounce(value, delayMs)</code>: он возвращает значение, которое обновляется через <code>delayMs</code> мс после последнего изменения. Стенд «печатает» <code>n</code>, <code>na</code>, <code>nav</code> с интервалом 50 мс, а задержка равна 120 мс. Пока идёт набор, поиск не должен меняться, а потом он обновится один раз. Не забудьте очистку таймера.</p>
+        <div class="playground" data-mode="react" data-title="useDebounce">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+function useDebounce(value, delayMs) {
+  // TODO: состояние debounced с начальным value;
+  // эффект: setTimeout(() =&gt; setDebounced(value), delayMs), в cleanup — clearTimeout.
+  // Зависимости: [value, delayMs]. Верните debounced.
+  return value;
+}
+
+export default function App() {
+  const [input, setInput] = useState("");
+  const search = useDebounce(input, 120);
+  console.log(`ввод: "${input}", поиск: "${search}"`);
+  useScript([
+    [50, () =&gt; setInput("n")],
+    [100, () =&gt; setInput("na")],
+    [150, () =&gt; setInput("nav")],
+  ]);
+  return &lt;p&gt;{search}&lt;/p&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>ввод: "", поиск: ""
+ввод: "n", поиск: ""
+ввод: "na", поиск: ""
+ввод: "nav", поиск: ""
+ввод: "nav", поиск: "nav"</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Нужны <code>useState(value)</code> и <code>useEffect</code>. Таймер создаётся в эффекте, а его отмена — в возвращаемой функции.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const [debounced, setDebounced] = useState(value); useEffect(() =&gt; { const id = setTimeout(() =&gt; setDebounced(value), delayMs); return () =&gt; clearTimeout(id); }, [value, delayMs]); return debounced;</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage" target="_blank" rel="noopener">MDN — localStorage</a> · <a href="https://react.dev/reference/react/useState#avoiding-recreating-the-initial-state" target="_blank" rel="noopener">react.dev — Avoiding recreating the initial state</a> · <a href="https://react.dev/reference/react/useDeferredValue" target="_blank" rel="noopener">react.dev — useDeferredValue</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="memo">
+      <h2 data-toc="memo, useMemo, useCallback"><span class="num">05</span> Производительность: memo, useMemo и useCallback</h2>
+
+      <p>В уроке 3 вы узнали: когда состояние компонента меняется, React заново вызывает этот компонент <b>и всех его потомков</b>, даже если их props остались прежними. Обычно это дёшево, и оптимизировать нечего. Но бывает, что дочерний компонент тяжёлый (шестьсот карточек ресторанов, большая таблица), а родитель перерисовывается по несвязанной причине: клик «В корзину» не должен пересчитывать каталог. Для таких случаев есть три инструмента.</p>
+
+      <p>Прежде чем их брать, пройдите три шага в порядке от дешёвого к дорогому:</p>
+      <ol class="steps">
+        <li><b>Поправьте структуру.</b> Опустите состояние ниже, в маленький компонент, которому оно нужно. Передавайте тяжёлую часть через <code>children</code>: родитель с состоянием перерисуется, а готовый элемент из <code>children</code> React переиспользует (урок 3). Часто этого достаточно.</li>
+        <li><b>Измерьте.</b> Откройте Profiler (раздел 6): сколько миллисекунд стоит рендер и кто перерисовался без причины. Если лишней работы нет или она занимает доли миллисекунды, остановитесь.</li>
+        <li><b>Мемоизируйте точечно</b> и измерьте снова. Мемоизация — это кэш, а у кэша есть цена: код сложнее, зависимости надо вести честно, а неверная зависимость даёт устаревшие данные.</li>
+      </ol>
+
+      <h3>memo: пропустить рендер, если props те же</h3>
+      <p><code>memo(Component)</code> оборачивает компонент так: когда родитель перерисовался, React сравнивает новые props с прежними по очереди через <code>Object.is</code> (поверхностное сравнение). Если все равны, компонент пропускается вместе со всем поддеревом. Сравнение идёт по <b>ссылке</b>, а не по содержимому (урок 5): число <code>3</code> равно <code>3</code>, а два объекта <code>{}</code> всегда разные.</p>
+
+<pre class="code" data-lang="tsx" data-title="memo: обёртка при экспорте">
+import { memo } from 'react'
+
+function RestaurantList({ restaurants, onSelect }: RestaurantListProps) {
+  // …
+}
+
+export default memo(RestaurantList)
+</pre>
+
+      <p>Теперь главное: <b>новый массив, объект или функция в теле родителя — это новая ссылка при каждом рендере</b>. Если передать такое значение в <code>memo</code>-компонент, сравнение не пройдёт и мемоизация не сработает. Поэтому <code>memo</code> почти никогда не бывает одна: ей нужны стабильные ссылки.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 260" role="img" aria-label="Как memo сравнивает props. Родитель App перерисовался из-за клика в корзину. Слева без стабильных ссылок: массив visible и функция onSelect созданы заново, Object.is возвращает false, RestaurantList и 600 карточек перерисовываются. Справа со стабильными ссылками: массив из useMemo и функция из useCallback те же, Object.is возвращает true, RestaurantList пропущен">
+          <rect class="fill-y" x="230" y="10" width="260" height="44" rx="12" /><text x="360" y="37" text-anchor="middle">App: клик «В корзину» → рендер</text>
+          <rect class="box" x="10" y="100" width="330" height="70" rx="12" /><text x="175" y="124" text-anchor="middle">memo(RestaurantList)</text><text class="sub mono" x="175" y="144" text-anchor="middle">visible: новый массив</text><text class="sub mono" x="175" y="160" text-anchor="middle">onSelect: новая функция</text>
+          <rect class="fill-r" x="10" y="196" width="330" height="46" rx="12" /><text x="175" y="224" text-anchor="middle">Object.is = false: рендер всех карточек</text>
+          <rect class="box g" x="380" y="100" width="330" height="70" rx="12" /><text x="545" y="124" text-anchor="middle">memo(RestaurantList)</text><text class="sub mono" x="545" y="144" text-anchor="middle">visible: useMemo, тот же массив</text><text class="sub mono" x="545" y="160" text-anchor="middle">onSelect: useCallback, та же функция</text>
+          <rect class="fill-g" x="380" y="196" width="330" height="46" rx="12" /><text x="545" y="224" text-anchor="middle">Object.is = true: компонент пропущен</text>
+          <path class="arr" d="M300 54 V76 H175 V92" /><path class="arr-head" d="M175 100 l-5 -10 h10 z" />
+          <path class="arr" d="M420 54 V76 H545 V92" /><path class="arr-head" d="M545 100 l-5 -10 h10 z" />
+          <path class="arr" d="M175 170 V188" /><path class="arr-head" d="M175 196 l-5 -10 h10 z" />
+          <path class="arr" d="M545 170 V188" /><path class="arr-head" d="M545 196 l-5 -10 h10 z" />
+        </svg>
+        <figcaption><code>memo</code> сравнивает props через <code>Object.is</code>: чтобы пропуск сработал, ссылки на массив и функцию должны быть теми же</figcaption>
+      </figure>
+
+      <h3>useMemo: запомнить результат вычисления</h3>
+      <p><code>useMemo(() =&gt; вычисление, [зависимости])</code> хранит результат между рендерами и пересчитывает его, только когда изменилась хотя бы одна зависимость (сравнение тоже через <code>Object.is</code>). Он нужен в трёх случаях: вычисление действительно дорогое (в консоли <code>console.time</code> показывает 1 мс и больше за действие), результат передаётся в <code>memo</code>-компонент как prop (нужна стабильная ссылка), или результат сам является зависимостью другого хука.</p>
+
+<pre class="code" data-lang="tsx" data-title="useMemo: стабильный отфильтрованный список">
+const visible = useMemo(
+  () =&gt;
+    restaurants.filter(
+      (r) =&gt;
+        (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+        r.name.toLowerCase().includes(debouncedQuery.toLowerCase()),
+    ),
+  [restaurants, cuisine, debouncedQuery],
+)
+</pre>
+
+      <p>Вычисление внутри <code>useMemo</code> должно быть чистым: React в dev-режиме StrictMode вызывает его дважды. Кэш — подсказка, а не гарантия: React может его выбросить, поэтому код должен работать и без него (если значение нужно сохранить обязательно, это <code>useState</code> или <code>useRef</code>).</p>
+
+      <h3>useCallback: запомнить функцию</h3>
+      <p><code>useCallback(fn, [зависимости])</code> то же самое для функций: возвращает ту же функцию, пока зависимости не изменились. Это <code>useMemo(() =&gt; fn, deps)</code> в сокращённой записи. Документация React называет три случая: функция уходит в <code>memo</code>-компонент, функция — зависимость другого хука (например, эффекта) или вы пишете свой хук, который возвращает функции, чтобы вызывающий код мог оптимизироваться (так сделан <code>retry</code> в <code>useFetch</code>).</p>
+
+<pre class="code" data-lang="tsx" data-title="useCallback: функция для memo-компонента">
+const handleSelect = useCallback((id: number) =&gt; {
+  setSelectedId(id)
+}, []) // setSelectedId — сеттер useState: ссылка на него стабильна и в зависимости не нужна
+</pre>
+
+      <p>Хорошая новость: <b>сеттер <code>useState</code> и <code>dispatch</code> редьюсера уже стабильны</b>. Передавая <code>onSelect={setSelectedId}</code> напрямую, вы получаете стабильную ссылку без всякого <code>useCallback</code>. Стрелка-обёртка <code>onSelect={(id) =&gt; setSelectedId(id)}</code> разрушает стабильность: вы в практике увидите это в Profiler.</p>
+
+      <h3>Три правила мемоизации</h3>
+      <ul>
+        <li><b>Зависимости честные.</b> Линтер <code>exhaustive-deps</code> проверяет их так же, как у <code>useEffect</code>. Пропущенная зависимость даёт устаревшее значение: хуже, чем лишний рендер.</li>
+        <li><b>Один слабый узел ломает цепочку.</b> Если из трёх props два стабильных, а один новый, <code>memo</code> не сработает. Мемоизировать нужно всё, что идёт в проп, или передавать примитивы.</li>
+        <li><b>Не ставьте везде.</b> <code>useMemo</code> вокруг дешёвой операции (сложение двух чисел) стоит дороже самой операции: React хранит значение и сравнивает зависимости.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Мемоизация — как заготовка плова на целый день в чойхоне. Если гостей много и заказ повторяется, заготовка экономит часы. Но для одного гостя, который заказал чай, готовить заготовку глупо: уйдёт больше сил, чем сэкономите. И заготовка портится: если забыли поменять сырьё (пропущенная зависимость), гости получат вчерашний плов.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> <code>memo</code> без стабильных props: компонент всё равно рендерится, а код усложнился. <b>2.</b> <code>useCallback</code> для функции, которая уходит в обычный (не <code>memo</code>) компонент или <code>onClick</code> тега: смысла нет. <b>3.</b> Зависимости с пропусками или комментарий «disable lint»: устаревшее значение. <b>4.</b> Объект или массив в <code>useMemo</code>, который создаётся из нового объекта в зависимостях: кэш сбрасывается каждый рендер. В Oxlint это видно по предупреждению: <code>React hook useMemo depends on `restaurants`, which changes every render</code>. <b>5.</b> Мутировать результат <code>useMemo</code>: он общий для всех рендеров. <b>6.</b> Оптимизировать без измерения: вы не знаете, помогло или повредило.</p>
+      </div>
+
+      <article class="task" id="q-memo">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: мемоизация</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p><code>RestaurantList</code> обёрнут в <code>memo</code>, но при клике «В корзину» всё равно рендерится. Что вероятнее всего не так?</p>
+          <ol class="options">
+            <li>Нужно ещё раз обернуть компонент в <code>memo</code></li>
+            <li>Компонент слишком маленький для <code>memo</code></li>
+            <li>В него передаётся prop, который при каждом рендере родителя новый: массив из <code>filter</code> или стрелка-обработчик</li>
+            <li>Корзина всегда перерисовывает весь каталог, и сделать с этим ничего нельзя</li>
+          </ol>
+          <div class="explain"><p><code>memo</code> сравнивает props по ссылке. Новый массив или функция при каждом рендере родителя не равны прежним, поэтому пропуск не срабатывает. Нужны <code>useMemo</code> и <code>useCallback</code> (или передача сеттера напрямую).</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что нужно сделать до того, как добавлять <code>memo</code> и <code>useMemo</code>?</p>
+          <ol class="options">
+            <li>Обернуть в <code>memo</code> все компоненты проекта на всякий случай</li>
+            <li>Измерить в Profiler, что именно перерисовывается и сколько это стоит, и сначала попробовать упростить структуру (опустить состояние, использовать <code>children</code>)</li>
+            <li>Отключить StrictMode</li>
+            <li>Заменить <code>useState</code> на <code>useReducer</code></li>
+          </ol>
+          <div class="explain"><p>Мемоизация имеет цену. Сначала измерение и структурные решения, потом точечный кэш и повторное измерение.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Какие две передачи в <code>memo</code>-компонент дают стабильную ссылку на обработчик? (В компоненте есть <code>const [id, setId] = useState(0)</code>)</p>
+          <ol class="options">
+            <li><code>onSelect={setId}</code>: сеттер <code>useState</code> стабилен</li>
+            <li><code>onSelect={(next) =&gt; setId(next)}</code>: стрелка создаётся один раз</li>
+            <li><code>onSelect={function (next) { setId(next) }}</code>: обычная функция не пересоздаётся</li>
+            <li><code>onSelect={handleSelect}</code>, где <code>const handleSelect = useCallback((next: number) =&gt; setId(next), [])</code></li>
+          </ol>
+          <div class="explain"><p>Стрелка и function-выражение в теле компонента создаются заново при каждом рендере. Стабильны сеттер <code>useState</code> и функция из <code>useCallback</code> с честными зависимостями.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t5-memo">
+        <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Стабильный обработчик для memo</h4><span class="level mid">средняя</span></header>
+        <p>Компонент <code>Row</code> обёрнут в <code>memo</code>, но каждый клик «+1» в родителе перерисовывает обе строки, потому что <code>handlePick</code> создаётся заново. Сделайте обработчик стабильным: после двух кликов в консоли должны остаться только два сообщения о первом рендере строк. Стенд нажмёт «+1» дважды.</p>
+        <div class="playground" data-mode="react" data-title="memo и useCallback">
+<pre class="code" data-lang="jsx">
+import { memo, useCallback, useState } from "react";
+
+const Row = memo(function Row({ name, onPick }) {
+  console.log("рендер строки", name);
+  return &lt;button onClick={() =&gt; onPick(name)}&gt;{name}&lt;/button&gt;;
+});
+
+export default function App() {
+  const [count, setCount] = useState(0);
+  const [picked, setPicked] = useState("");
+
+  // TODO: сделайте обработчик стабильным
+  function handlePick(name) {
+    setPicked(name);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;button id="inc" onClick={() =&gt; setCount(count + 1)}&gt;+1&lt;/button&gt;
+      &lt;p&gt;Кликов: {count}, выбрано: {picked}&lt;/p&gt;
+      &lt;Row name="Navruz" onPick={handlePick} /&gt;
+      &lt;Row name="Rohat" onPick={handlePick} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: стенд нажимает «+1» дважды
+setTimeout(() =&gt; document.getElementById("inc").click(), 250);
+setTimeout(() =&gt; document.getElementById("inc").click(), 450);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>рендер строки Navruz
+рендер строки Rohat</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Оберните функцию в <code>useCallback</code>. Внутри она вызывает только сеттер <code>setPicked</code>, он стабилен и в зависимости не нужен.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const handlePick = useCallback((name) =&gt; { setPicked(name); }, []);</code></p></details>
+      </article>
+
+      <article class="task" id="t5-usememo">
+        <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Стабильный массив для memo</h4><span class="level hard">сложная</span></header>
+        <p>Список <code>OpenList</code> в <code>memo</code> получает массив открытых ресторанов, а <code>filter</code> создаёт новый массив при каждом рендере. После двух кликов в консоли должна остаться одна строка о первом рендере списка. Используйте <code>useMemo</code> с честными зависимостями. Стенд нажмёт «+1» дважды.</p>
+        <div class="playground" data-mode="react" data-title="memo и useMemo">
+<pre class="code" data-lang="jsx">
+import { memo, useMemo, useState } from "react";
+
+const RESTAURANTS = [
+  { id: 1, name: "Navruz", open: true },
+  { id: 2, name: "Rohat", open: false },
+  { id: 3, name: "Samarkand", open: true },
+];
+
+const OpenList = memo(function OpenList({ items }) {
+  console.log("рендер списка:", items.length);
+  return (
+    &lt;ul&gt;
+      {items.map((r) =&gt; (
+        &lt;li key={r.id}&gt;{r.name}&lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+});
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  // TODO: результат filter должен быть одним и тем же между рендерами
+  const open = RESTAURANTS.filter((r) =&gt; r.open);
+
+  return (
+    &lt;div&gt;
+      &lt;button id="inc" onClick={() =&gt; setCount(count + 1)}&gt;+1&lt;/button&gt;
+      &lt;p&gt;Кликов: {count}&lt;/p&gt;
+      &lt;OpenList items={open} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: стенд нажимает «+1» дважды
+setTimeout(() =&gt; document.getElementById("inc").click(), 250);
+setTimeout(() =&gt; document.getElementById("inc").click(), 450);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>рендер списка: 2</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Оберните <code>filter</code> в <code>useMemo(() =&gt; …, […])</code>. Массив <code>RESTAURANTS</code> объявлен вне компонента и не меняется, значит, зависимостей нет.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const open = useMemo(() =&gt; RESTAURANTS.filter((r) =&gt; r.open), []);</code> Если бы <code>RESTAURANTS</code> приходил из props, он был бы в массиве зависимостей.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/reference/react/memo" target="_blank" rel="noopener">react.dev — memo</a> · <a href="https://react.dev/reference/react/useMemo" target="_blank" rel="noopener">react.dev — useMemo</a> · <a href="https://react.dev/reference/react/useCallback" target="_blank" rel="noopener">react.dev — useCallback</a></p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="profiler">
+      <h2 data-toc="React DevTools Profiler"><span class="num">06</span> React DevTools Profiler: измеряем, а не гадаем</h2>
+
+      <p>Профайлер отвечает на три вопроса: <b>что</b> перерисовалось, <b>сколько</b> это заняло и <b>почему</b>. Вы установили расширение React DevTools в уроке 1, а в уроке 5 смотрели вкладку Components. Теперь откройте вкладку <b>Profiler</b>.</p>
+
+      <h3>Как записать сессию</h3>
+      <ol class="steps">
+        <li>Откройте страницу приложения, DevTools (F12) и вкладку <b>Profiler</b>.</li>
+        <li>Нажмите круглую кнопку записи (Start profiling), выполните одно действие (например, нажмите «В корзину»), нажмите «Stop». Если за время записи не было ни одного рендера, профайлеру нечего показать.</li>
+        <li>Вверху отображается столбчатая диаграмма <b>коммитов</b>: каждый столбик — один коммит (урок 3: триггер, рендер, коммит). Высокие жёлтые столбики дольше синих. Выбирайте столбики стрелками или кликом.</li>
+        <li>Для выбранного коммита ниже две диаграммы: <b>Flamegraph</b> (дерево компонентов: ширина — время рендера вместе с детьми) и <b>Ranked</b> (компоненты по убыванию времени, самые дорогие сверху).</li>
+        <li><b>Серый</b> цвет в Flamegraph означает, что компонент <b>не рендерился</b> в этом коммите. Именно серый вы хотите видеть у тяжёлых частей страницы при несвязанных действиях.</li>
+      </ol>
+
+      <h3>«Почему перерисовался»</h3>
+      <p>Включите в настройках Profiler (значок шестерёнки) опцию <b>Record why each component rendered while profiling</b> («записывать, почему каждый компонент перерисовался»). После записи выберите компонент: в боковой панели появится причина. Типичные формулировки: «The parent component rendered» (родитель перерисовался), «Props changed» с перечнем изменившихся props, «State changed», «Hooks changed». Это ключ к мемоизации: если у <code>RestaurantList</code> причина «Props changed: restaurants», значит, <code>memo</code> стоит, но проп нестабилен; если «The parent component rendered», значит, <code>memo</code> нет вообще.</p>
+
+      <p>Ещё один быстрый способ увидеть лишние рендеры: на вкладке Components в настройках включите <b>Highlight updates when components render</b>. Компоненты, которые рендерятся, на странице вспыхивают рамкой.</p>
+
+      <div class="yt" data-id="tTvbc1x6Jao" data-title="Тестирование и отладка React-компонентов: React DevTools на практике — канал Friendly Frontend" data-start="650"></div>
+      <p class="muted">Ролик на русском (январь 2026, 21 минута). Начните с 10:49: запись рендеров, Flamegraph и Ranked, подсветка обновлений и пример оптимизации лишних перерисовок.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 200" role="img" aria-label="Цикл оптимизации: измерить в Profiler, понять причину по Why did this render, изменить один фрагмент кода, измерить снова и сравнить; если выигрыша нет, откатить изменение">
+          <rect class="fill-y" x="10" y="30" width="150" height="56" rx="12" /><text x="85" y="55" text-anchor="middle">1. Измерить</text><text class="sub" x="85" y="73" text-anchor="middle">Profiler, запись</text>
+          <rect class="box b" x="190" y="30" width="150" height="56" rx="12" /><text x="265" y="55" text-anchor="middle">2. Понять</text><text class="sub" x="265" y="73" text-anchor="middle">почему рендер</text>
+          <rect class="box g" x="370" y="30" width="150" height="56" rx="12" /><text x="445" y="55" text-anchor="middle">3. Изменить</text><text class="sub" x="445" y="73" text-anchor="middle">один фрагмент</text>
+          <rect class="fill-g" x="550" y="30" width="160" height="56" rx="12" /><text x="630" y="55" text-anchor="middle">4. Сравнить</text><text class="sub" x="630" y="73" text-anchor="middle">снова записать</text>
+          <path class="arr" d="M160 58 H182" /><path class="arr-head" d="M190 58 l-10 -5 v10 z" />
+          <path class="arr" d="M340 58 H362" /><path class="arr-head" d="M370 58 l-10 -5 v10 z" />
+          <path class="arr" d="M520 58 H542" /><path class="arr-head" d="M550 58 l-10 -5 v10 z" />
+          <rect class="fill-r" x="370" y="130" width="340" height="46" rx="12" /><text x="540" y="158" text-anchor="middle">выигрыша нет: откатите изменение</text>
+          <path class="arr" d="M630 86 V122" /><path class="arr-head" d="M630 130 l-5 -10 h10 z" />
+          <text class="sub t-b" x="10" y="130">повторяйте цикл, пока лишней работы</text><text class="sub t-b" x="10" y="148">не останется или она не станет мелкой</text>
+        </svg>
+        <figcaption>Цикл оптимизации: измерение, причина, одно изменение, повторное измерение</figcaption>
+      </figure>
+
+      <h3>Как читать цифры честно</h3>
+      <ul>
+        <li><b>Dev-режим медленнее продакшена.</b> В dev включены дополнительные проверки, а <code>StrictMode</code> вызывает каждый компонент дважды. Абсолютные миллисекунды завышены в несколько раз. Сравнивайте «до» и «после» в одинаковых условиях, а не с чужими цифрами.</li>
+        <li><b>Один замер — не замер.</b> Повторите действие 3–5 раз: первый рендер и сборка мусора дают выбросы.</li>
+        <li><b>Меняйте одну вещь за раз.</b> Иначе не поймёте, что помогло.</li>
+        <li><b>Если лишней работы нет, остановитесь.</b> Для шести карточек Profiler покажет доли миллисекунды: оптимизировать нечего. В практике мы создадим «нагрузку» (600 карточек), чтобы разница была видна.</li>
+        <li><b>Программный замер.</b> Компонент <code>&lt;Profiler id="App" onRender={…}&gt;</code> из React вызывает ваш колбэк с полями <code>phase</code>, <code>actualDuration</code> (время рендера поддерева в этом обновлении) и <code>baseDuration</code> (оценка без оптимизаций). Он полезен для автоматических замеров, а в продакшн-сборке по умолчанию отключён. Для глаз проще вкладка Profiler.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Профайлер — это секундомер и тетрадь на кухне чойхоны. Не стоит гадать, почему плов подаётся медленно: засеките, сколько занимает каждый этап, и увидите, что дольше всего ждёте рис, а вовсе не нарезку. Улучшайте самый долгий этап, а потом снова засекайте.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Профилировать в продакшн-сборке без специальной сборки: вкладка Profiler пустая. Для учёбы используйте dev. <b>2.</b> Сравнивать цифры с чужого компьютера. <b>3.</b> Записывать слишком долго: сотни коммитов, в которых не найти нужный. Один сценарий — одна короткая запись. <b>4.</b> Не включить «Record why each component rendered»: видно, что рендерилось, но не понятно почему. <b>5.</b> Оптимизировать то, что занимает 0,2 мс.</p>
+      </div>
+
+      <article class="task" id="q-profiler">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь себя: Profiler</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>В Flamegraph выбранного коммита компонент <code>RestaurantList</code> серый. Что это значит?</p>
+          <ol class="options">
+            <li>Компонент сломан</li>
+            <li>Компонент не рендерился в этом коммите</li>
+            <li>Компонент рендерился дольше всех</li>
+            <li>Компонент удалён с экрана</li>
+          </ol>
+          <div class="explain"><p>Серый цвет — «в этом коммите не рендерился». Для тяжёлых компонентов при несвязанных действиях это именно то, чего вы добиваетесь мемоизацией.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Рядом с <code>RestaurantList</code> в Profiler написано «Props changed: onSelect». Что это подсказывает?</p>
+          <ol class="options">
+            <li>Обработчик <code>onSelect</code> создаётся заново при каждом рендере родителя: нужен <code>useCallback</code> или передача сеттера напрямую</li>
+            <li>Нужно удалить prop <code>onSelect</code></li>
+            <li>Нужно убрать <code>memo</code></li>
+            <li>Профайлер сломан</li>
+          </ol>
+          <div class="explain"><p>Причина «Props changed» с названием проп показывает, какое значение не прошло сравнение. Для функций это почти всегда новая ссылка.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В dev-режиме рендер каталога занял 14 мс. Что можно сказать?</p>
+          <ol class="options">
+            <li>В продакшене будет ровно 14 мс</li>
+            <li>Это явно слишком медленно, нужна оптимизация</li>
+            <li>Абсолютные цифры завышены (dev, StrictMode): их стоит сравнивать между собой в одинаковых условиях, а не принимать за итоговые</li>
+            <li>Профайлер всегда ошибается в dev</li>
+          </ol>
+          <div class="explain"><p>Dev-режим и двойной рендер StrictMode увеличивают время. Профайлер полезен для сравнения «до» и «после» на одном компьютере.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/react-developer-tools" target="_blank" rel="noopener">react.dev — React Developer Tools</a> · <a href="https://react.dev/reference/react/Profiler" target="_blank" rel="noopener">react.dev — Profiler</a> · <a href="https://legacy.reactjs.org/blog/2018/09/10/introducing-the-react-profiler.html" target="_blank" rel="noopener">React blog — Introducing the React Profiler</a></p>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="compiler">
+      <h2 data-toc="React Compiler"><span class="num">07</span> React Compiler: автоматическая мемоизация</h2>
+
+      <p>Ручная мемоизация утомляет: нужно расставить <code>memo</code>, <code>useMemo</code>, <code>useCallback</code>, вести зависимости и не забыть ни одной ссылки. <b>React Compiler</b> — отдельный инструмент сборки (плагин Babel), который делает это сам. Версия 1.0 вышла 7 октября 2025 года. Во время сборки он анализирует ваш компонент и добавляет кэширование значений и JSX-элементов с тонкой детализацией: если входные значения для куска разметки не менялись, React переиспользует готовый элемент и не заходит в его поддерево. Документация React говорит, что в большинстве случаев <code>React.memo</code>, <code>useMemo</code> и <code>useCallback</code> с компилятором не нужны.</p>
+
+      <h3>Что нужно компилятору от вашего кода</h3>
+      <p>Компилятор работает только с кодом, который следует «Правилам React»: компоненты и хуки <b>чистые</b>, состояние и props не мутируются, хуки вызываются на верхнем уровне. Это те самые правила, которые вы изучали в уроках 3–5. Если компонент нарушает правила, компилятор пропускает его и оставляет как есть, не ломая. Вот почему чистый код окупается дважды: меньше багов сегодня и бесплатная оптимизация завтра.</p>
+
+      <h3>Как включить в Vite</h3>
+      <p>Для проекта на Vite 8 и <code>@vitejs/plugin-react</code> версии 6 и выше официальная документация предлагает такую установку (в версии 6 встроенный вариант настройки Babel удалён):</p>
+
+<pre class="code" data-title="Терминал">
+npm install -D babel-plugin-react-compiler @rolldown/plugin-babel
+</pre>
+<pre class="code" data-lang="ts" data-title="vite.config.ts">
+import babel from '@rolldown/plugin-babel'
+import tailwindcss from '@tailwindcss/vite'
+import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],
+  server: {
+    proxy: { '/api': 'http://localhost:3001' },
+  },
+})
+</pre>
+
+      <p>Мы проверили эту конфигурацию на проекте «Дастархон» (Vite 8.3, React 19.3, <code>babel-plugin-react-compiler</code> 1.0.0, <code>@rolldown/plugin-babel</code> 0.2.4): сборка проходит, а на каталоге из 600 карточек клик «В корзину» вместо 14 мс стал занимать доли миллисекунды без единого <code>memo</code> в коде. Как убедиться, что он работает у вас: в React DevTools рядом с именами компонентов появится значок «Memo ✨»; в Network файл <code>App.tsx</code> начнёт импортировать <code>react/compiler-runtime</code>.</p>
+
+      <h3>Что компилятор не отменяет</h3>
+      <ul>
+        <li><b>Структуру и измерения.</b> Опущенное состояние, <code>children</code> и Profiler остаются главными инструментами.</li>
+        <li><b>Эффекты.</b> Компилятор не решает, нужен ли <code>useEffect</code>: лишние эффекты (урок 5) остаются вашей задачей.</li>
+        <li><b>Ручную мемоизацию там, где нужна гарантия ссылки.</b> Если значение — зависимость эффекта, компилятор может не заметить вашу логику; существующие <code>useMemo</code> и <code>useCallback</code> он сохраняет и учитывает.</li>
+        <li><b>Библиотеки, которые не дружат с мемоизацией.</b> Например, функция <code>watch()</code> из React Hook Form (урок 7) хранит скрытое изменяемое состояние. Правило <code>react-hooks/incompatible-library</code> предупреждает о таких случаях, а сам компилятор пропускает такие компоненты. Для формы рекомендуют <code>useWatch</code>.</li>
+        <li><b>Локальное отключение.</b> Директива <code>'use no memo'</code> первой строкой функции исключает её из оптимизации, пока вы разбираетесь с проблемой.</li>
+      </ul>
+
+      <p>Поэтому в основном проекте курса мы <b>не включаем</b> компилятор постоянно: в уроке 7 появятся формы на React Hook Form, и осознанное решение лучше случайной оптимизации. В практике вы включите его на отдельной ветке <code>exp/compiler</code>, измерите результат и вернётесь к основной ветке. Решение, оставлять ли компилятор в своём проекте, за вами: вы будете знать, как он работает и чем отличается от ручной мемоизации.</p>
+
+      <div class="yt" data-id="ej4BRgoqwDU" data-title="React's New Compiler Replaces useMemo &amp; useCallback — канал Thapa Technical"></div>
+      <p class="muted">Ролик на английском (апрель 2026, 15 минут), включите субтитры. Сверяйте его с документацией: версии и настройки инструментов меняются быстрее видео.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Ручная мемоизация — это когда повар сам решает, какой плов заготовить впрок, и ведёт тетрадь. Компилятор — это бригадир, который смотрит на вашу кухню, замечает повторяющиеся заказы и сам заготавливает всё нужное. Но бригадир работает только на чистой кухне: если повара берут продукты где попало и не записывают, он такую кухню не трогает.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Включить компилятор и считать, что код можно писать как угодно: мутации и побочные эффекты в рендере оставят компонент без оптимизации. <b>2.</b> Включить без проверки: нет значка «Memo ✨», и непонятно, работает ли он. <b>3.</b> Удалить все <code>useMemo</code> из проекта в первый день: сначала измерьте. <b>4.</b> Надеяться, что компилятор заменит <code>useEffect</code>-логику или структуру данных. <b>5.</b> Ставить пакеты по старой инструкции для Babel-плагина внутри <code>react()</code>: в <code>@vitejs/plugin-react</code> 6 такой опции больше нет.</p>
+      </div>
+
+      <article class="task" id="q-compiler">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Проверь себя: React Compiler</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="4">
+          <p>Что делает React Compiler?</p>
+          <ol class="options">
+            <li>Запускает компоненты на сервере</li>
+            <li>Заменяет TypeScript</li>
+            <li>Удаляет все эффекты</li>
+            <li>Во время сборки добавляет в компоненты кэширование значений и JSX, чтобы не рендерить заново то, что не изменилось</li>
+          </ol>
+          <div class="explain"><p>Это плагин сборки: он выводит мемоизацию из вашего кода и вставляет её автоматически. На работу программы по смыслу он не влияет, меняется только скорость.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что компилятору нужно от компонента, чтобы его оптимизировать?</p>
+          <ol class="options">
+            <li>Чтобы он был обёрнут в <code>memo</code></li>
+            <li>Чтобы он следовал правилам React: был чистым, не мутировал state и props, вызывал хуки на верхнем уровне</li>
+            <li>Чтобы в нём не было TypeScript</li>
+            <li>Чтобы в нём был <code>useMemo</code></li>
+          </ol>
+          <div class="explain"><p>Компилятор опирается на гарантии чистоты. Компоненты, нарушающие правила, он пропускает.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Какие два утверждения верны для проекта с включённым компилятором?</p>
+          <ol class="options">
+            <li>Profiler по-прежнему нужен, чтобы убедиться, что оптимизация работает</li>
+            <li>Лишние <code>useEffect</code> компилятор удалит сам</li>
+            <li>Проверить, что компилятор подключён, можно по значку «Memo ✨» в React DevTools</li>
+            <li>Структура компонентов больше не важна</li>
+          </ol>
+          <div class="explain"><p>Компилятор убирает рутину мемоизации, но не заменяет измерения и хороший дизайн компонентов. Значок «Memo ✨» в DevTools показывает, что компонент обработан.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/react-compiler" target="_blank" rel="noopener">react.dev — React Compiler</a> · <a href="https://react.dev/learn/react-compiler/installation" target="_blank" rel="noopener">react.dev — Installation</a> · <a href="https://react.dev/reference/eslint-plugin-react-hooks/lints/incompatible-library" target="_blank" rel="noopener">react.dev — incompatible-library</a></p>
+    </section>
+
+    <!-- ============ 08 · ИИ ============ -->
+    <section class="topic" id="ai-hooks">
+      <h2 data-toc="ИИ: хуки и мемоизация"><span class="num">08</span> ИИ-блок: вынести логику в хук и проверить по Profiler</h2>
+
+      <p>Просьба «вынеси логику загрузки в хук» кажется безобидной, но именно на хуках агенты чаще всего пишут код, который работает на демо и ломается в жизни. Вот типичный ответ на такую просьбу:</p>
+
+<pre class="code" data-lang="tsx" data-title="Типичный useFetch от агента (с дефектами)">
+export function useFetch&lt;T = any&gt;(url: string, options: RequestInit = {}) {
+  const [data, setData] = useState&lt;T | null&gt;(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState&lt;any&gt;(null)
+
+  useEffect(() =&gt; {
+    setLoading(true)
+    fetch(url, options)
+      .then((res) =&gt; res.json())
+      .then((json) =&gt; setData(json as T))
+      .catch((e) =&gt; setError(e))
+      .finally(() =&gt; setLoading(false))
+  }, [url, options])
+
+  return { data, loading, error }
+}
+</pre>
+
+      <p>Здесь собрано почти всё, о чём шла речь в уроке: <code>T = any</code> и <code>error: any</code> отключают проверку типов; <code>options = {}</code> — новый объект при каждом вызове, он в зависимостях, и запросы идут по кругу (раздел 3); нет проверки <code>response.ok</code>; <code>json as T</code> — обещание без проверки; нет <code>AbortController</code>, значит возможна гонка запросов; три отдельных состояния допускают невозможные комбинации; <code>setLoading(true)</code> стоит в эффекте. Хороший промпт запрещает эти дефекты заранее и просит доказательство.</p>
+
+      <div class="callout ai">
+        <b>Формула промпта: контекст → задача → ограничения → формат → проверка</b>
+        <p>Для хуков важны ограничения на типы и ссылки: что нельзя принимать как <code>any</code>, какие значения должны быть стабильными, чем проверять результат. И просьба о примере использования заставляет агента показать, как хук работает в вызывающем коде.</p>
+      </div>
+
+      <div class="prompt bad-prompt">вынеси загрузку ресторанов из App в хук useFetch и сделай оптимизацию</div>
+
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), прочитай AGENTS.md. Загрузка ресторанов сейчас в src/App.tsx: состояние load типа LoadState&lt;Restaurant[]&gt; (src/types.ts), счётчик attempt, один useEffect с AbortController, функция retry. Функции isAbortError и errorMessage лежат в src/api.ts.
+Задача: вынеси это в хук useFetch&lt;T&gt;(url, parse) в src/hooks/useFetch.ts, который возвращает { state: LoadState&lt;T&gt;, retry }. Добавь в src/api.ts функции fetchJson&lt;T&gt; и parseRestaurants. Покажи, как App использует хук, и напиши короткий пример использования для другого адреса.
+Ограничения: без any и без as для данных; ответ читается как unknown и проверяется функцией parse; parse принимается аргументом и вызывается только из эффекта, а в примере использования передаётся функция, объявленная вне компонента; ответ хранится вместе с ключом запроса, состояние loading вычисляется в рендере, без setState в эффекте; AbortController создаётся внутри эффекта, AbortError не показывается; retry обёрнут в useCallback; не добавляй useMemo, useCallback и memo нигде, кроме retry; новых библиотек не добавляй.
+Формат ответа: сначала список файлов и изменений (без кода), потом код.
+Проверка: в конце перечисли, какие пункты ограничений выполнены, объясни, что произойдёт при StrictMode (двойной запуск эффекта) и что случится, если передать parse стрелкой прямо в вызове хука.</div>
+
+      <h3>Как проверять хуки, написанные агентом</h3>
+      <ol class="steps">
+        <li><b>Имя и правила.</b> Начинается с <code>use</code>, внутри есть хук, вызовы на верхнем уровне. Линтер <code>react-hooks/rules-of-hooks</code> молчит.</li>
+        <li><b>Типы.</b> Нет <code>any</code>, <code>&lt;T = any&gt;</code>, <code>as T</code> и <code>@ts-ignore</code>. Данные снаружи (сеть, <code>localStorage</code>) приходят как <code>unknown</code> и проходят type guard. Угловые скобки нужны только там, где вывод не справляется.</li>
+        <li><b>Зависимости и ссылки.</b> Нет объектов и функций из тела хука (или аргументов по умолчанию вроде <code>options = {}</code>) в зависимостях эффекта. Аргументы-функции документированы как «должны быть стабильными».</li>
+        <li><b>Эффекты.</b> У каждого эффекта есть внешняя система (сеть, хранилище, таймер) и очистка. Нет <code>setState</code> «пересчёта» производных данных.</li>
+        <li><b>Состояние.</b> Не три флага <code>loading/error/data</code>, а union. Нет невозможных комбинаций.</li>
+        <li><b>Мемоизация.</b> Если агент добавил <code>useMemo</code> или <code>useCallback</code>, спросите: где замер, какой компонент в <code>memo</code> получает это значение? Мемоизация «на всякий случай» — шум. Проверьте по Profiler: до и после, «Why did this render».</li>
+        <li><b>Безопасность.</b> В <code>localStorage</code> нет токенов и паролей, чтение и запись в <code>try/catch</code>, нет ключей API в клиентском коде, текст с сервера выводится как текст, а не как HTML.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки при работе с агентом</b>
+        <p><b>1.</b> Принять хук с <code>any</code> потому, что «компилируется»: ошибки откроются на проверке, а не в редакторе. <b>2.</b> Просить «оптимизируй» без цели: агент расставит <code>useMemo</code> и <code>useCallback</code> везде, а код станет длиннее. Просите сначала назвать узкое место по данным Profiler. <b>3.</b> Не просить пример использования: без него не видно, что хук неудобен или нестабилен. <b>4.</b> Не проверить Network: бесконечные запросы не видны на экране. <b>5.</b> Принять «исправление» гонки, которое просто выключает StrictMode.</p>
+      </div>
+
+      <article class="task" id="q-ai">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Проверь себя: ревью хуков агента</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>В хуке агента <code>function useFetch&lt;T = any&gt;(url: string, options: RequestInit = {})</code> эффект зависит от <code>[url, options]</code>. Что произойдёт?</p>
+          <ol class="options">
+            <li>Хук будет работать идеально</li>
+            <li>TypeScript выдаст ошибку</li>
+            <li>Значение по умолчанию <code>{}</code> новое при каждом вызове, поэтому эффект перезапускается после каждого рендера и запросы идут по кругу</li>
+            <li>Запрос не выполнится ни разу</li>
+          </ol>
+          <div class="explain"><p>Объект по умолчанию создаётся заново при каждом вызове функции. В зависимостях эффекта он каждый раз «новый», как объект из тела компонента.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Какие две фразы в промпте лучше защитят от дефектов хука?</p>
+          <ol class="options">
+            <li>«Сделай универсально и оптимизированно»</li>
+            <li>«Без any и без as: ответ принимай как unknown и проверяй переданной функцией parse»</li>
+            <li>«Добавь useMemo и useCallback везде для скорости»</li>
+            <li>«Расскажи, что произойдёт в StrictMode и если передать parse стрелкой в вызове хука»</li>
+          </ol>
+          <div class="explain"><p>Хороший промпт задаёт проверяемые ограничения по типам и просит агента показать поведение на опасных случаях. «Универсально» и «везде мемоизируй» дают шум.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t8-agent">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Исправьте readStored от агента</h4><span class="level hard">сложная</span></header>
+        <p>Агент написал <code>readStored&lt;T&gt;</code> с приведением <code>as T</code>. Для испорченных данных в ключе <code>cart</code> функция возвращает объект вместо массива, и программа падает. Исправьте: функция принимает вторым параметром type guard <code>isValid: (value: unknown) =&gt; value is T</code>, а при неудачной проверке или ошибке разбора возвращает <code>null</code>. Вызовы уже записаны в новой форме.</p>
+<pre class="code" data-run data-lang="ts">
+// стенд: «localStorage» в виде объекта
+const store: Record&lt;string, string&gt; = {
+  cart: '{"oops":true}',
+  saved: '[{"title":"Плов","qty":2},{"title":"Чай","qty":1}]',
+};
+
+type Line = { title: string; qty: number };
+
+function isLines(value: unknown): value is Line[] {
+  return (
+    Array.isArray(value) &amp;&amp;
+    value.every(
+      (v) =&gt;
+        typeof v === "object" &amp;&amp; v !== null &amp;&amp;
+        "title" in v &amp;&amp; typeof v.title === "string" &amp;&amp;
+        "qty" in v &amp;&amp; typeof v.qty === "number"
+    )
+  );
+}
+
+// код агента: приведение типа без проверки
+function readStored&lt;T&gt;(key: string): T | null {
+  const raw = store[key];
+  return raw === undefined ? null : (JSON.parse(raw) as T);
+}
+
+const cart = readStored("cart", isLines) ?? [];
+const saved = readStored("saved", isLines) ?? [];
+console.log("cart:", cart.length);
+console.log("saved:", saved.length);
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>cart: 0
+saved: 2</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Добавьте параметр <code>isValid: (value: unknown) =&gt; value is T</code>. Результат <code>JSON.parse</code> положите в переменную типа <code>unknown</code> и верните его только после проверки.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const parsed: unknown = JSON.parse(raw); return isValid(parsed) ? parsed : null;</code> Не забудьте <code>try/catch</code>: для неверного JSON вернуть <code>null</code>.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/reference/rules/rules-of-hooks" target="_blank" rel="noopener">react.dev — Rules of Hooks</a> · <a href="https://react.dev/learn/reusing-logic-with-custom-hooks" target="_blank" rel="noopener">react.dev — Custom Hooks</a></p>
+    </section>
+
+    <!-- ============ 09 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: хуки и Profiler"><span class="num">09</span> Практика: хуки в «Дастархоне» и поиск лишних рендеров</h2>
+
+      <p>Продолжаем проект 1. После урока 5 каталог грузит рестораны с учебного API, а корзина (урок 4) живёт в <code>useReducer</code> в памяти и пропадает при перезагрузке. Сейчас вы вынесете загрузку в <code>useFetch&lt;T&gt;</code>, сохраните корзину через <code>useLocalStorage&lt;T&gt;</code>, добавите <code>useDebounce&lt;T&gt;</code> в поиск, а затем создадите нагрузку, найдёте лишние рендеры в Profiler и исправите их двумя способами: руками и компилятором. Меню с API из домашнего задания 5 (если вы его делали) и фильтры из домашнего задания 4 мы не ломаем.</p>
+
+      <h3>Что получится</h3>
+<div class="ftree"><b>src/</b>
+├─ <b>hooks/</b> <i>новое: папка из плана AGENTS.md</i>
+│  ├─ <b>useFetch.ts</b> <i>useFetch&lt;T&gt;(url, parse) → { state, retry }</i>
+│  ├─ <b>useLocalStorage.ts</b> <i>useLocalStorage&lt;T&gt;(key, initial, isValid)</i>
+│  └─ <b>useDebounce.ts</b> <i>useDebounce&lt;T&gt;(value, delayMs)</i>
+├─ <b>api.ts</b> <i>+ fetchJson&lt;T&gt;, parseRestaurants; fetchRestaurants удалена</i>
+├─ <b>cart.ts</b> <i>+ isCartItems (type guard для хранилища)</i>
+├─ <b>App.tsx</b> <i>короче: два эффекта вместо трёх, три хука, корзина в localStorage</i>
+└─ <b>components/</b> <i>RestaurantList, TopRestaurants, ClosedRestaurants обёрнуты в memo</i></div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 220" role="img" aria-label="План практики: ветка feat/hooks. Шаги 2–9 выносят логику в три хука и коммитят её. Шаги 10–13: создаём нагрузку из 600 карточек, записываем Profiler, добавляем memo, useMemo и useCallback, снова записываем и коммитим. Шаг 14: ветка exp/compiler с React Compiler для сравнения. Затем слияние feat/hooks в main">
+          <rect class="fill-y" x="10" y="20" width="200" height="56" rx="12" /><text x="110" y="44" text-anchor="middle">feat/hooks</text><text class="sub" x="110" y="62" text-anchor="middle">шаги 2–9: три хука</text>
+          <rect class="box b" x="260" y="20" width="200" height="56" rx="12" /><text x="360" y="44" text-anchor="middle">Profiler: до</text><text class="sub" x="360" y="62" text-anchor="middle">600 карточек, шаги 10–11</text>
+          <rect class="fill-g" x="510" y="20" width="200" height="56" rx="12" /><text x="610" y="44" text-anchor="middle">memo + useMemo</text><text class="sub" x="610" y="62" text-anchor="middle">+ useCallback, шаги 12–13</text>
+          <path class="arr" d="M210 48 H252" /><path class="arr-head" d="M260 48 l-10 -5 v10 z" />
+          <path class="arr" d="M460 48 H502" /><path class="arr-head" d="M510 48 l-10 -5 v10 z" />
+          <rect class="box o" x="510" y="130" width="200" height="56" rx="12" /><text x="610" y="154" text-anchor="middle">exp/compiler</text><text class="sub" x="610" y="172" text-anchor="middle">шаг 14: то же без ручного memo</text>
+          <path class="arr" d="M610 76 V122" /><path class="arr-head" d="M610 130 l-5 -10 h10 z" />
+          <rect class="fill-g" x="10" y="130" width="200" height="56" rx="12" /><text x="110" y="154" text-anchor="middle">main</text><text class="sub" x="110" y="172" text-anchor="middle">шаг 15: слияние feat/hooks</text>
+          <path class="arr" d="M110 76 V122" /><path class="arr-head" d="M110 130 l-5 -10 h10 z" />
+        </svg>
+        <figcaption>План практики: хуки, замер до, ручная мемоизация, эксперимент с компилятором, слияние в <code>main</code></figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Что мы предполагаем от урока 5</b>
+        <p>В <code>App.tsx</code> после практики урока 5: состояния <code>cuisine</code>, <code>query</code>, <code>selectedId</code>, корзина <code>cart</code> на <code>useReducer(cartReducer, [])</code>, состояние <code>load</code> с <code>attempt</code>, <code>searchRef</code> и <code>selectedRef</code>, три эффекта; в <code>src/api.ts</code> функции <code>fetchRestaurants</code>, <code>isRestaurant</code>, <code>isAbortError</code>, <code>errorMessage</code>. Ниже приведён полный <code>App.tsx</code> «после этого урока» и список правок. Если ваш файл отличается (например, после ДЗ-4 запрос и кухня живут в <code>filters</code> редьюсера, а после ДЗ-5 есть <code>RestaurantMenu</code>), перенесите в свой файл только описанные изменения: <b>загрузка через <code>useFetch</code>, корзина через <code>useLocalStorage</code>, запрос через <code>useDebounce</code></b>. Остальное не трогайте.</p>
+      </div>
+
+      <h3>Шаги</h3>
+      <ol class="steps">
+        <li><b>Проверьте старт и соберите main.</b> Рабочая папка чистая, все проверки проходят. Практику урока 5 (ветка <code>feat/api</code>) вы в конце уже влили в <code>main</code>. Если сделали ДЗ-5 (ветка <code>feat/api-menu</code>), влейте и его; если ещё нет, урок работает и без него. Запустите API в отдельном окне терминала (<code>npm run api</code>), затем создайте ветку:
+<pre class="code" data-title="Терминал">
+git status
+npm run typecheck
+npm run lint
+git switch main
+git merge feat/api-menu
+git switch -c feat/hooks
+</pre>
+          Если ДЗ-5 не делали, пропустите команду <code>git merge</code>. Конфликты, если они появились, решите вручную, оставив код обеих веток.
+        </li>
+        <li><b>Общая функция запроса в <code>api.ts</code>.</b> Откройте <code>src/api.ts</code>. Добавьте слово <code>export</code> перед <code>function isRecord</code> (оно понадобится в <code>cart.ts</code>), а функцию <code>fetchRestaurants</code> замените двумя функциями. <code>fetchJson</code> делает запрос, проверяет <code>response.ok</code> и отдаёт ответ функции <code>parse</code>; <code>parseRestaurants</code> проверяет форму списка. Остальное (<code>isRestaurant</code>, <code>isAbortError</code>, <code>errorMessage</code>, а при сделанном ДЗ-5 ещё <code>isMenuItem</code> и <code>fetchMenu</code>) не меняйте.
+<pre class="code" data-lang="ts" data-title="src/api.ts (замените fetchRestaurants)">
+export async function fetchJson&lt;T&gt;(
+  url: string,
+  parse: (data: unknown) =&gt; T,
+  signal: AbortSignal,
+): Promise&lt;T&gt; {
+  const response = await fetch(url, { signal })
+  if (!response.ok) {
+    throw new Error(`Сервер ответил ${response.status}`)
+  }
+  const data: unknown = await response.json()
+  return parse(data)
+}
+
+export function parseRestaurants(data: unknown): Restaurant[] {
+  if (!Array.isArray(data) || !data.every(isRestaurant)) {
+    throw new Error('Сервер прислал данные в неожиданном формате')
+  }
+  return data
+}
+</pre>
+        </li>
+        <li><b>Хук <code>useFetch</code>.</b> Создайте папку <code>src/hooks</code> и файл (код из раздела 3). Прочитайте его построчно: это эффект загрузки из урока 5, в который добавлен ключ запроса.
+<pre class="code" data-lang="ts" data-title="src/hooks/useFetch.ts">
+import { useCallback, useEffect, useState } from 'react'
+import { errorMessage, fetchJson, isAbortError } from '../api'
+import type { LoadState } from '../types'
+
+type Result&lt;T&gt; = { key: string; state: LoadState&lt;T&gt; }
+
+export function useFetch&lt;T&gt;(url: string, parse: (data: unknown) =&gt; T) {
+  const [attempt, setAttempt] = useState(0)
+  const [result, setResult] = useState&lt;Result&lt;T&gt; | null&gt;(null)
+  const key = `${url}#${attempt}`
+
+  useEffect(() =&gt; {
+    const controller = new AbortController()
+    fetchJson(url, parse, controller.signal)
+      .then((data) =&gt; setResult({ key, state: { status: 'success', data } }))
+      .catch((error: unknown) =&gt; {
+        if (isAbortError(error)) return
+        const state: LoadState&lt;T&gt; = {
+          status: 'error',
+          message: errorMessage(error),
+        }
+        setResult({ key, state })
+      })
+    return () =&gt; controller.abort()
+  }, [url, parse, key])
+
+  const retry = useCallback(() =&gt; setAttempt((n) =&gt; n + 1), [])
+
+  // ответ относится к другому запросу или ещё не пришёл: показываем загрузку
+  const state: LoadState&lt;T&gt; =
+    result !== null &amp;&amp; result.key === key ? result.state : { status: 'loading' }
+
+  return { state, retry }
+}
+</pre>
+        </li>
+        <li><b>Хук <code>useLocalStorage</code> и проверка корзины.</b> Файл хука (раздел 4) и type guard, который не даст испорченным данным попасть в приложение. Добавьте в <code>src/cart.ts</code> импорт первой строкой и функции в конец файла; <code>cartTotal</code> и <code>cartCount</code> не трогайте.
+<pre class="code" data-lang="ts" data-title="src/hooks/useLocalStorage.ts">
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+
+export function useLocalStorage&lt;T&gt;(
+  key: string,
+  initialValue: T,
+  isValid: (value: unknown) =&gt; value is T,
+): [T, Dispatch&lt;SetStateAction&lt;T&gt;&gt;] {
+  const [value, setValue] = useState&lt;T&gt;(() =&gt; {
+    try {
+      const raw = localStorage.getItem(key)
+      if (raw === null) return initialValue
+      const parsed: unknown = JSON.parse(raw)
+      return isValid(parsed) ? parsed : initialValue
+    } catch {
+      return initialValue
+    }
+  })
+
+  useEffect(() =&gt; {
+    try {
+      localStorage.setItem(key, JSON.stringify(value))
+    } catch {
+      // квота исчерпана или приватный режим: работаем без сохранения
+    }
+  }, [key, value])
+
+  return [value, setValue]
+}
+</pre>
+<pre class="code" data-lang="ts" data-title="src/cart.ts (добавьте импорт первой строкой, функции в конец)">
+import { isRecord } from './api'
+
+function isCartItem(value: unknown): value is CartItem {
+  if (!isRecord(value) || !isRecord(value.item)) return false
+  const { item, qty } = value
+  return (
+    typeof qty === 'number' &amp;&amp;
+    typeof item.id === 'number' &amp;&amp;
+    typeof item.restaurantId === 'number' &amp;&amp;
+    typeof item.title === 'string' &amp;&amp;
+    typeof item.price === 'number'
+  )
+}
+
+export function isCartItems(value: unknown): value is CartItem[] {
+  return Array.isArray(value) &amp;&amp; value.every(isCartItem)
+}
+</pre>
+        </li>
+        <li><b>Хук <code>useDebounce</code>.</b>
+<pre class="code" data-lang="ts" data-title="src/hooks/useDebounce.ts">
+import { useEffect, useState } from 'react'
+
+export function useDebounce&lt;T&gt;(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+
+  useEffect(() =&gt; {
+    const id = setTimeout(() =&gt; setDebounced(value), delayMs)
+    return () =&gt; clearTimeout(id)
+  }, [value, delayMs])
+
+  return debounced
+}
+</pre>
+        </li>
+        <li><b>Соберите всё в App.</b> Замените <code>src/App.tsx</code>. Было три эффекта, стало два (загрузка переехала в хук); вместо <code>useReducer</code> корзина идёт через <code>useLocalStorage</code>, а <code>dispatch</code> теперь обычная функция, которая вызывает прежний <code>cartReducer</code>: редьюсер остаётся чистым и неизменным, а все правила корзины (в том числе из ДЗ-4) продолжают работать. Поиск идёт через <code>debouncedQuery</code>. Если ваш файл отличается, перенесите только эти изменения.
+<pre class="code" data-lang="tsx" data-title="src/App.tsx">
+import { useEffect, useRef, useState } from 'react'
+import { parseRestaurants } from './api'
+import { isCartItems } from './cart'
+import { cartReducer, type CartAction } from './cartReducer'
+import CartItemRow from './components/CartItemRow'
+import CartSummary from './components/CartSummary'
+import ClosedRestaurants from './components/ClosedRestaurants'
+import CuisineFilter from './components/CuisineFilter'
+import ErrorMessage from './components/ErrorMessage'
+import Layout from './components/Layout'
+import LoadingGrid from './components/LoadingGrid'
+import MenuItemRow from './components/MenuItemRow'
+import RestaurantList from './components/RestaurantList'
+import SearchBox from './components/SearchBox'
+import Section from './components/Section'
+import TopRestaurants from './components/TopRestaurants'
+import { menu } from './data'
+import { useDebounce } from './hooks/useDebounce'
+import { useFetch } from './hooks/useFetch'
+import { useLocalStorage } from './hooks/useLocalStorage'
+import type { CartItem, Cuisine } from './types'
+
+export default function App() {
+  const [cuisine, setCuisine] = useState&lt;Cuisine | null&gt;(null)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState&lt;number | null&gt;(null)
+  const [cart, setCart] = useLocalStorage&lt;CartItem[]&gt;(
+    'dastarkhon-cart',
+    [],
+    isCartItems,
+  )
+  const { state: load, retry } = useFetch('/api/restaurants', parseRestaurants)
+  const debouncedQuery = useDebounce(query, 250)
+  const searchRef = useRef&lt;HTMLInputElement&gt;(null)
+  const selectedRef = useRef&lt;HTMLElement&gt;(null)
+
+  const restaurants = load.status === 'success' ? load.data : []
+
+  // Горячая клавиша «/»: внешняя система — событие окна браузера
+  useEffect(() =&gt; {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === '/' &amp;&amp; document.activeElement !== searchRef.current) {
+        event.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () =&gt; window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Прокрутка: колонка с меню нужна после выбора, поэтому ждём коммита
+  useEffect(() =&gt; {
+    if (selectedId !== null) {
+      selectedRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }
+  }, [selectedId])
+
+  function dispatch(action: CartAction) {
+    setCart((current) =&gt; cartReducer(current, action))
+  }
+
+  function clearSearch() {
+    setQuery('')
+    searchRef.current?.focus()
+  }
+
+  const visible = restaurants.filter(
+    (r) =&gt;
+      (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+      r.name.toLowerCase().includes(debouncedQuery.toLowerCase()),
+  )
+  const selected = restaurants.find((r) =&gt; r.id === selectedId) ?? null
+  const menuItems = menu.filter((m) =&gt; m.restaurantId === selectedId)
+
+  return (
+    &lt;Layout&gt;
+      &lt;h1 className="mb-4 text-3xl font-bold"&gt;Рестораны Душанбе&lt;/h1&gt;
+      &lt;div className="flex flex-wrap items-center gap-3"&gt;
+        &lt;SearchBox ref={searchRef} value={query} onChange={setQuery} /&gt;
+        {query !== '' &amp;&amp; (
+          &lt;button
+            className="text-sm text-stone-600 underline"
+            onClick={clearSearch}
+          &gt;
+            Очистить
+          &lt;/button&gt;
+        )}
+        &lt;CuisineFilter selected={cuisine} onChange={setCuisine} /&gt;
+      &lt;/div&gt;
+      &lt;div className="grid gap-8 lg:grid-cols-[1fr_22rem]"&gt;
+        &lt;div&gt;
+          &lt;Section title="Все рестораны"&gt;
+            {load.status === 'loading' &amp;&amp; &lt;LoadingGrid /&gt;}
+            {load.status === 'error' &amp;&amp; (
+              &lt;ErrorMessage message={load.message} onRetry={retry} /&gt;
+            )}
+            {load.status === 'success' &amp;&amp; (
+              &lt;RestaurantList restaurants={visible} onSelect={setSelectedId} /&gt;
+            )}
+          &lt;/Section&gt;
+          {load.status === 'success' &amp;&amp; (
+            &lt;&gt;
+              &lt;TopRestaurants restaurants={restaurants} /&gt;
+              &lt;ClosedRestaurants restaurants={restaurants} /&gt;
+            &lt;/&gt;
+          )}
+        &lt;/div&gt;
+        &lt;aside ref={selectedRef}&gt;
+          &lt;Section title={selected ? `Меню: ${selected.name}` : 'Меню'}&gt;
+            {selected === null ? (
+              &lt;p className="text-stone-500"&gt;Выберите ресторан в каталоге&lt;/p&gt;
+            ) : (
+              &lt;ul&gt;
+                {menuItems.map((item) =&gt; (
+                  &lt;MenuItemRow
+                    key={item.id}
+                    item={item}
+                    onAdd={(menuItem) =&gt;
+                      dispatch({ type: 'add', item: menuItem })
+                    }
+                  /&gt;
+                ))}
+              &lt;/ul&gt;
+            )}
+          &lt;/Section&gt;
+          &lt;Section title="Корзина"&gt;
+            &lt;CartSummary
+              entries={cart}
+              onClear={() =&gt; dispatch({ type: 'clear' })}
+            &gt;
+              {cart.map((entry) =&gt; (
+                &lt;CartItemRow
+                  key={entry.item.id}
+                  entry={entry}
+                  onQtyChange={(itemId, qty) =&gt;
+                    dispatch({ type: 'setQty', itemId, qty })
+                  }
+                  onRemove={(itemId) =&gt; dispatch({ type: 'remove', itemId })}
+                /&gt;
+              ))}
+            &lt;/CartSummary&gt;
+          &lt;/Section&gt;
+        &lt;/aside&gt;
+      &lt;/div&gt;
+    &lt;/Layout&gt;
+  )
+}
+</pre>
+          <b>Почему именно так.</b> Хук возвращает объект <code>{ state, retry }</code>, и <code>App</code> переименовывает <code>state</code> в <code>load</code>, чтобы остальной код (разметка с тремя ветками) не менялся. Функция <code>dispatch</code> обновляет корзину функциональным обновлением (раздел 1 урока 5: <code>setX((current) =&gt; …)</code>): сеттер из <code>useLocalStorage</code> принимает такую функцию, как <code>useState</code>.
+        </li>
+        <li><b>Запустите и проверьте.</b> Два окна терминала: <code>npm run api</code> и <code>npm run dev</code>. (а) Страница показывает скелетон, затем карточки; в Network два запроса (StrictMode), один из них <code>canceled</code>. (б) Выберите ресторан, добавьте плов дважды, обновите страницу (F5): корзина на месте. Откройте DevTools, вкладка Application, Local Storage: ключ <code>dastarkhon-cart</code> со строкой JSON. (в) Остановите API (Ctrl+C), обновите: блок ошибки; запустите API и нажмите «Повторить»: данные загрузились без перезагрузки. (г) Введите «nav» в поиск: список обновится через четверть секунды после последней буквы. Нажмите «/»: фокус в поле поиска (эффект из урока 5 пока на месте).</li>
+        <li><b>Сломайте нарочно.</b> (а) В <code>App.tsx</code> замените <code>parseRestaurants</code> в вызове <code>useFetch</code> на стрелку <code>(data) =&gt; parseRestaurants(data)</code>, обновите страницу и посмотрите на Network: запросы идут снова и снова, хотя карточки на экране. Верните как было. (б) В <code>useLocalStorage&lt;CartItem[]&gt;(…)</code> подставьте вместо <code>isCartItems</code> функцию <code>(v: unknown): v is string =&gt; typeof v === 'string'</code> и прочитайте ошибку компилятора (<code>TS2345</code>; рядом будет и ожидаемое замечание о неиспользуемом <code>isCartItems</code>). Верните. (в) В DevTools, Application, Local Storage, замените значение ключа <code>dastarkhon-cart</code> на <code>{"bad":1}</code> и обновите страницу: корзина пуста, приложение не упало, а в ключе снова лежит <code>[]</code>.
+<pre class="code" data-title="Терминал — tsc -b: guard не подходит к типу T">
+src/App.tsx(30,5): error TS2345: Argument of type '(v: unknown) =&gt; v is string' is not assignable to parameter of type '(value: unknown) =&gt; value is CartItem[]'.
+  Type predicate 'v is string' is not assignable to 'value is CartItem[]'.
+    Type 'string' is not assignable to type 'CartItem[]'.
+</pre>
+        </li>
+        <li><b>Правила для агента и коммит.</b> Допишите в раздел «Правила кода» файла <code>AGENTS.md</code>:
+<pre class="code" data-title="AGENTS.md (добавить)">
+- Свои хуки лежат в src/hooks, имя useЧтоТо, один хук на файл
+- Дженерики на минимуме: без any и без as T для данных; внешние данные
+  читать как unknown и проверять type guard
+- Функции, которые передаются в хуки (parse и подобные), объявлять вне
+  компонента; стрелки и объекты по умолчанию в зависимости эффекта не класть
+- memo, useMemo, useCallback добавлять только после замера в Profiler
+</pre>
+          Проверьте и закоммитьте хуки отдельным коммитом (понадобится дальше):
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+git add .
+git commit -m "add custom hooks"
+</pre>
+        </li>
+        <li><b>Создайте нагрузку.</b> С шестью карточками Profiler покажет доли миллисекунды, и оптимизировать будет нечего. Чтобы эффект стал виден, временно размножим каталог до 600 карточек. Это учебная нагрузка, в репозиторий она не попадёт. Создайте <code>src/stress.ts</code> и подключите его в <code>parseRestaurants</code> (последняя строка: <code>return stress(data)</code> вместо <code>return data</code>, импорт в начале файла):
+<pre class="code" data-lang="ts" data-title="src/stress.ts (временно)">
+import type { Restaurant } from './types'
+
+// ВРЕМЕННО: размножаем каталог для замеров (удалить после урока)
+export function stress(list: Restaurant[], copies = 100): Restaurant[] {
+  return Array.from({ length: copies }, (_, copy) =&gt;
+    list.map((r) =&gt; ({ ...r, id: r.id + copy * 100 })),
+  ).flat()
+}
+</pre>
+<pre class="code" data-lang="ts" data-title="src/api.ts (временно)">
+import { stress } from './stress'
+
+// в конце parseRestaurants:
+return stress(data)
+</pre>
+          Перезагрузите страницу: ресторанов 600, а закрытых 200. У ресторанов с номером больше 6 меню нет (так и задумано). Дальше выбирайте только Navruz (первая карточка).
+        </li>
+        <li><b>Запишите «до».</b> В React DevTools откройте Profiler, нажмите шестерёнку и включите <b>Record why each component rendered while profiling</b>. Выберите ресторан Navruz. Нажмите запись, три раза нажмите «В корзину», остановите запись. (а) В диаграмме коммитов три столбика: выберите любой. (б) Во Flamegraph почти всё окрашено: рендерились <code>App</code>, <code>RestaurantList</code>, 600 <code>RestaurantCard</code>, <code>TopRestaurants</code>, <code>ClosedRestaurants</code> и сама корзина. (в) Кликните <code>RestaurantList</code>: причина «The parent component rendered». Корзина изменилась, а весь каталог рендерится заново. (г) Запишите время коммита в таблицу ниже. У автора в dev-режиме с вашей нагрузкой клик «В корзину» занимал порядка 14 мс (у вас цифры будут другими: сравнивайте со своими).
+        </li>
+        <li><b>Мемоизируйте точечно.</b> Цель: чтобы клик в корзине не рендерил каталог. Для этого нужны три вещи (раздел 5). (1) Обернуть тяжёлые компоненты в <code>memo</code>: <code>RestaurantList</code>, <code>TopRestaurants</code>, <code>ClosedRestaurants</code>. (2) Сделать стабильным массив <code>visible</code>: он создаётся <code>filter</code>-ом при каждом рендере. (3) Сделать стабильным массив <code>restaurants</code> в <code>App</code>. В каждом из трёх компонентов замените строку <code>export default function …</code> и добавьте обёртку в конце:
+<pre class="code" data-lang="tsx" data-title="RestaurantList.tsx, TopRestaurants.tsx, ClosedRestaurants.tsx (одинаково)">
+import { memo } from 'react'
+// ...остальные импорты как были
+
+function RestaurantList(/* props как были */) {
+  /* тело как было */
+}
+
+export default memo(RestaurantList)
+</pre>
+          В <code>App.tsx</code> добавьте <code>useMemo</code> в импорт из <code>react</code> и измените <code>visible</code>:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx (visible через useMemo)">
+const visible = useMemo(
+  () =&gt;
+    restaurants.filter(
+      (r) =&gt;
+        (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+        r.name.toLowerCase().includes(debouncedQuery.toLowerCase()),
+    ),
+  [restaurants, cuisine, debouncedQuery],
+)
+</pre>
+          Запустите <code>npm run lint</code>. Oxlint заметит слабое место в цепочке:
+<pre class="code" data-title="Терминал — npm run lint: restaurants каждый раз новый">
+src/App.tsx:77:6: warning react-hooks(exhaustive-deps): React hook useMemo depends on `restaurants`, which changes every render help: Try memoizing this variable with `useRef` or `useCallback`.
+</pre>
+          Причина — строка <code>load.status === 'success' ? load.data : []</code>: пока данных нет, пустой массив <code>[]</code> создаётся заново при каждом рендере. Вынесите его в константу вне компонента:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx (константа и restaurants)">
+import type { CartItem, Cuisine, Restaurant } from './types'
+
+const NO_RESTAURANTS: Restaurant[] = []
+
+export default function App() {
+  // ...
+  const restaurants = load.status === 'success' ? load.data : NO_RESTAURANTS
+</pre>
+          Предупреждение исчезло. Повторите запись из шага 11: три клика «В корзину». Теперь <code>RestaurantList</code>, <code>TopRestaurants</code> и <code>ClosedRestaurants</code> во Flamegraph серые («не рендерились»), а время коммита стало в разы меньше (у автора порядка 1 мс).
+        </li>
+        <li><b>Сломайте стабильность и почините.</b> В <code>App.tsx</code> замените <code>onSelect={setSelectedId}</code> у <code>RestaurantList</code> на стрелку <code>onSelect={(id) =&gt; setSelectedId(id)}</code> и снова запишите три клика «В корзину». Каталог снова рендерится, а среди причин «Props changed» с именем <code>onSelect</code>. Одна нестабильная ссылка разрушила <code>memo</code>. Почините не возвратом сеттера, а через <code>useCallback</code> (добавьте его в импорт из <code>react</code>):
+<pre class="code" data-lang="tsx" data-title="src/App.tsx (обработчик выбора)">
+const handleSelect = useCallback((id: number) =&gt; {
+  setSelectedId(id)
+}, [])
+
+// в разметке:
+&lt;RestaurantList restaurants={visible} onSelect={handleSelect} /&gt;
+</pre>
+          Запишите ещё раз и убедитесь, что каталог серый. Заполните таблицу для заметок (она пригодится в домашнем задании):
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Сценарий</th><th>До (нагрузка 600)</th><th>После memo + useMemo + useCallback</th></tr></thead>
+    <tbody>
+      <tr><td>Клик «В корзину»: время коммита</td><td>~14 мс (у автора)</td><td>~1 мс</td></tr>
+      <tr><td>Почему перерисовался каталог</td><td>The parent component rendered</td><td>не перерисовывался</td></tr>
+      <tr><td>Что сломало улучшение</td><td colspan="2">стрелка в <code>onSelect</code>: «Props changed: onSelect»</td></tr>
+    </tbody>
+  </table>
+</div>
+        </li>
+        <li><b>Уберите нагрузку и закоммитьте.</b> Нагрузка нужна только для замера:
+<pre class="code" data-title="Терминал">
+git restore src/api.ts
+rm src/stress.ts
+npm run format
+npm run typecheck
+npm run lint
+git add .
+git commit -m "memoize catalog"
+</pre>
+          На macOS и Linux <code>rm</code> работает как есть, в Windows PowerShell используйте <code>Remove-Item src/stress.ts</code>. Команда <code>git restore src/api.ts</code> возвращает файл к последнему коммиту (хуки там уже есть), а правки <code>memo</code> остаются, потому что их в <code>api.ts</code> не было.
+        </li>
+        <li><b>Эксперимент: React Compiler на отдельной ветке.</b> Создайте ветку, установите пакеты и подключите компилятор (раздел 7):
+<pre class="code" data-title="Терминал">
+git switch -c exp/compiler
+npm install -D babel-plugin-react-compiler @rolldown/plugin-babel
+</pre>
+<pre class="code" data-lang="ts" data-title="vite.config.ts">
+import babel from '@rolldown/plugin-babel'
+import tailwindcss from '@tailwindcss/vite'
+import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] }), tailwindcss()],
+  server: {
+    proxy: { '/api': 'http://localhost:3001' },
+  },
+})
+</pre>
+          Остановите и снова запустите <code>npm run dev</code> (конфиг читается только при старте). Откройте вкладку Components: рядом с компонентами должен появиться значок «Memo ✨». Теперь самое интересное: уберите ручную мемоизацию, вернув версии файлов из коммита с хуками, и снова включите нагрузку (шаг 10):
+<pre class="code" data-title="Терминал">
+git checkout HEAD~1 -- src/App.tsx src/components
+</pre>
+          Повторите запись шага 11 без единого <code>memo</code>, <code>useMemo</code> и <code>useCallback</code> в коде: каталог всё равно серый, а время коммита у автора порядка 0,3 мс. Компилятор сам вывел то, что вы расставляли руками. Закоммитьте эксперимент и вернитесь, убрав нагрузку (шаг 13, <code>git restore src/api.ts</code> и <code>rm src/stress.ts</code>):
+<pre class="code" data-title="Терминал">
+git add .
+git commit -m "experiment: react compiler"
+git switch feat/hooks
+npm install
+</pre>
+          Ветка <code>exp/compiler</code> остаётся у вас локально как справка (не отправляйте её и не сливайте). В <code>feat/hooks</code> компилятора нет, и <code>npm install</code> приводит <code>node_modules</code> в соответствие с ветками.
+        </li>
+        <li><b>Проверки, слияние и ветка домашнего задания.</b> Все четыре команды проходят:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+          Отправьте ветку, затем перенесите её в <code>main</code> и начните ветку домашнего задания:
+<pre class="code" data-title="Терминал">
+git push -u origin feat/hooks
+git switch main
+git merge feat/hooks
+git push
+git switch -c feat/my-hooks
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>«Module './api' has no exported member 'fetchRestaurants'» или <code>TS2305</code>:</b> в <code>App.tsx</code> остался старый импорт, замените его на <code>parseRestaurants</code>. <b><code>TS7006: Parameter 'data' implicitly has an 'any' type</code>:</b> в <code>App.tsx</code> остался вызов старой функции или стрелка без типа; передавайте <code>parseRestaurants</code> целиком. <b>Запросы идут бесконечно:</b> в <code>useFetch</code> передана стрелка или функция, созданная в компоненте. <b>Корзина не сохраняется:</b> в DevTools, Application, Local Storage нет ключа <code>dastarkhon-cart</code>; проверьте, что приложение открыто не в приватном окне и что эффект записи в <code>useLocalStorage</code> на месте. <b>«Cannot access 'isRecord' before initialization» или циклический импорт:</b> убедитесь, что <code>isRecord</code> экспортируется из <code>api.ts</code>, а <code>api.ts</code> не импортирует <code>cart.ts</code>. <b>Profiler не появился:</b> расширение React DevTools не установлено или страница открыта в продакшн-сборке; запустите <code>npm run dev</code>. <b>Во Flamegraph всё ещё всё рендерится после memo:</b> посмотрите причину компонента: «Props changed» подскажет, какой проп нестабилен (<code>visible</code>, <code>restaurants</code> или <code>onSelect</code>). <b>Нет значка «Memo ✨»:</b> не перезапущен <code>npm run dev</code> после правки <code>vite.config.ts</code> или пакеты не установлены.</p>
+      </div>
+
+      <article class="task" id="t-build">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист: хуки подключены</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-build">
+          <li>Работа ведётся в ветке <code>feat/hooks</code>, а работа предыдущих уроков влита в <code>main</code></li>
+          <li>В <code>src/hooks</code> три файла: <code>useFetch.ts</code>, <code>useLocalStorage.ts</code>, <code>useDebounce.ts</code>; в них нет <code>any</code> и <code>as</code> для данных</li>
+          <li>В <code>api.ts</code> есть <code>fetchJson&lt;T&gt;</code> и <code>parseRestaurants</code>, <code>fetchRestaurants</code> удалена, <code>parse</code> передаётся в хук функцией вне компонента</li>
+          <li>В <code>cart.ts</code> есть <code>isCartItems</code>, испорченные данные в хранилище дают пустую корзину</li>
+          <li>Корзина переживает перезагрузку страницы, в Application, Local Storage виден ключ <code>dastarkhon-cart</code></li>
+          <li>Поиск использует <code>useDebounce</code>, в <code>App</code> остались два эффекта (клавиша «/» и прокрутка)</li>
+          <li>Я записал в Profiler сессию с нагрузкой 600 карточек до и после <code>memo</code>, <code>useMemo</code>, <code>useCallback</code> и заполнил таблицу</li>
+          <li>Нагрузка (<code>stress.ts</code>) удалена и не попала в коммит, <code>AGENTS.md</code> дополнен</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> и <code>npm run build</code> проходят без ошибок, <code>feat/hooks</code> влита в <code>main</code>, создана ветка <code>feat/my-hooks</code></li>
+        </ul>
+      </article>
+
+      <article class="task" id="t-observe">
+        <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Чек-лист: наблюдения и поломки</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-observe">
+          <li>Я заменил <code>parseRestaurants</code> стрелкой и увидел в Network бесконечные запросы, а потом вернул как было</li>
+          <li>Я подставил неверный type guard в <code>useLocalStorage</code> и прочитал ошибку <code>TS2345</code></li>
+          <li>Я испортил значение в Local Storage и убедился, что приложение не упало</li>
+          <li>Я включил «Record why each component rendered» и прочитал причину «The parent component rendered»</li>
+          <li>Я прочитал предупреждение линтера про <code>restaurants</code>, которое «меняется на каждом рендере», и вынес пустой массив в константу</li>
+          <li>Я заменил <code>setSelectedId</code> стрелкой, увидел «Props changed» с именем <code>onSelect</code> и починил через <code>useCallback</code></li>
+          <li>Я включил React Compiler на ветке <code>exp/compiler</code>, увидел значок «Memo ✨» и сравнил замеры</li>
+          <li>Я вернулся в <code>feat/hooks</code> и убедился, что компилятора там нет</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/reusing-logic-with-custom-hooks" target="_blank" rel="noopener">react.dev — Custom Hooks</a> · <a href="https://react.dev/reference/react/memo" target="_blank" rel="noopener">react.dev — memo</a> · <a href="https://react.dev/learn/react-compiler/installation" target="_blank" rel="noopener">react.dev — React Compiler: Installation</a></p>
+    </section>
+
+    <!-- ============ 10 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">10</span> Домашнее задание: три своих хука и отчёт Profiler</h2>
+
+      <p>В практике вы написали три хука и измерили каталог. В домашнем задании вы пишете ещё три хука на тех же приёмах, убираете логику из <code>App</code> и сдаёте отчёт Profiler «до и после». Работайте в ветке <code>feat/my-hooks</code> от <code>main</code>, а в конце сдайте ссылку на репозиторий <code>dastarkhon</code>: ментор откроет эту ветку.</p>
+
+      <h3>Что сделать</h3>
+      <ol class="steps">
+        <li><b>Старт.</b> <code>git switch main</code>, <code>git switch -c feat/my-hooks</code> (если создали её в конце практики, просто продолжайте). Нагрузку из практики (<code>stress.ts</code>) в ветку не коммитьте.</li>
+        <li><b>Хук <code>useHotkey(key: string, onPress: () =&gt; void)</code>.</b> Вынесите в него эффект клавиши «/» из <code>App</code>. Хук подписывается на <code>keydown</code> окна, вызывает <code>onPress</code>, когда нажата нужная клавиша и фокус <b>не</b> в поле ввода (<code>input</code>, <code>textarea</code>, <code>select</code>, <code>contenteditable</code>), и снимает подписку в очистке. Чтобы не перезапускать эффект при каждой смене <code>onPress</code>, прочитайте его через <code>useEffectEvent</code> (урок 5). В <code>App</code> останется строка <code>useHotkey('/', () =&gt; searchRef.current?.focus())</code>, а эффект клавиши удалится.</li>
+        <li><b>Хук <code>useDocumentTitle(title: string)</code>.</b> Ставит <code>document.title</code> в эффекте с зависимостью <code>[title]</code>. В <code>App</code> показывайте заголовок «Дастархон · N ресторанов», где N — число ресторанов в выборке (<code>visible.length</code>), а пока данные грузятся — просто «Дастархон». Заголовок вычисляйте в рендере, не храните в состоянии.</li>
+        <li><b>Меню через <code>useFetch&lt;MenuItem[]&gt;</code>.</b> В <code>api.ts</code> должны быть <code>isMenuItem</code> (type guard для <code>MenuItem</code>) и функция <code>parseMenu(data: unknown): MenuItem[]</code> по образцу <code>parseRestaurants</code>. Компонент <code>RestaurantMenu</code> (props <code>restaurantId: number</code> и <code>onAdd: (item: MenuItem) =&gt; void</code>) вызывает <code>useFetch('/api/restaurants/' + restaurantId + '/menu', parseMenu)</code> и показывает четыре состояния: загрузка, ошибка с кнопкой «Повторить», пустое меню («Меню пока пусто») и список <code>MenuItemRow</code> с ценами в сомони. В <code>App</code> передайте ему <code>key={selectedId}</code>, а переменную <code>menuItems</code> удалите. Если ДЗ-5 уже сделано, перепишите существующий <code>RestaurantMenu</code> с собственного эффекта на <code>useFetch</code> и удалите <code>fetchMenu</code>. Если ДЗ-5 не делали, это задание заменяет его пункты про меню; массив <code>menu</code> в <code>data.ts</code> после этого не нужен.</li>
+        <li><b>Проверка хуков.</b> Все три хука лежат в <code>src/hooks</code>, имеют точные типы (без <code>any</code>, без <code>as</code>, кроме <code>as const</code>), у каждого эффекта есть внешняя система и очистка. Хуки не мутируют аргументы. Ни один хук не вызывает <code>useMemo</code> или <code>useCallback</code> «на всякий случай»: стабильная ссылка нужна только там, где вы можете объяснить зачем (подсказка: <code>retry</code> в <code>useFetch</code> — один из таких случаев).</li>
+        <li><b>Отчёт Profiler <code>docs/perf.md</code>.</b> Верните нагрузку из практики (<code>stress.ts</code>) <b>временно</b> и запишите три сценария: (а) клик «В корзину», (б) выбор другого ресторана, (в) ввод «nav» в поиск. Для каждого сценария заполните таблицу: число коммитов, время самого дорогого коммита, какие компоненты рендерились и <b>почему</b> (по «Why did this render»). Сделайте три замера: <b>до</b> (коммит «add custom hooks» без <code>memo</code>, достаньте его через <code>git stash</code> или <code>git checkout &lt;хеш&gt; -- src</code>, но не теряйте текущую работу), <b>после</b> (с <code>memo</code>, <code>useMemo</code>, <code>useCallback</code>) и <b>с компилятором</b> (ветка <code>exp/compiler</code>, по желанию). Приложите минимум два скриншота Flamegraph (до и после) и сделайте вывод одним абзацем: какой сценарий выиграл больше всего и почему поиск по вводу выигрывает меньше остальных.</li>
+        <li><b>Ответы.</b> В <code>docs/perf.md</code> своими словами ответьте на пять вопросов ниже.</li>
+        <li><b>Проверки и коммиты.</b> Перед коммитом удалите нагрузку. <code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> проходят. В ветке не меньше трёх осмысленных коммитов (по одному на хук или на шаг), ветка отправлена на GitHub.</li>
+      </ol>
+
+      <h3>Пять вопросов для docs/perf.md</h3>
+      <ol class="steps">
+        <li>Что такое свой хук и чем он отличается от обычной функции и от компонента? Почему два вызова <code>useDebounce</code> в разных компонентах не делят состояние? Приведите пример из своего проекта.</li>
+        <li>Что такое дженерик? Объясните на <code>useFetch&lt;T&gt;</code>: откуда берётся <code>T</code>, зачем функция <code>parse</code> и почему здесь нельзя написать <code>as T</code>.</li>
+        <li>Почему стрелка прямо в вызове <code>useFetch</code> вызывает бесконечные запросы? Что вы видели в Network? Как это связано с зависимостями эффекта (урок 5)?</li>
+        <li>Когда нужны <code>memo</code>, <code>useMemo</code> и <code>useCallback</code>, а когда они вредят? Почему <code>onSelect={setSelectedId}</code> работает с <code>memo</code> без <code>useCallback</code>, а <code>onSelect={(id) =&gt; setSelectedId(id)}</code> нет?</li>
+        <li>Что делает React Compiler и чего он от вас требует? Что вы увидели в Profiler на ветке <code>exp/compiler</code> и почему в основной ветке курса он не включён? Как проверить, что он работает?</li>
+      </ol>
+
+      <h3>Как проверят</h3>
+      <ul>
+        <li><b>Хуки:</b> три хука в <code>src/hooks</code>, имена с <code>use</code>, типы точные, очистка есть, <code>useEffectEvent</code> использован осознанно, <code>App</code> стал короче.</li>
+        <li><b>Данные:</b> <code>parseMenu</code> проверяет форму ответа, <code>RestaurantMenu</code> показывает четыре состояния, <code>parse</code> объявлена вне компонента, быстрое переключение ресторанов не показывает чужое меню.</li>
+        <li><b>Производительность:</b> в отчёте три сценария с числами и причинами «Why did this render», два скриншота, вывод опирается на данные, а не на ощущения.</li>
+        <li><b>Мемоизация:</b> нет <code>useMemo</code> и <code>useCallback</code> без причины, нет пропущенных зависимостей, предупреждений <code>exhaustive-deps</code> нет.</li>
+        <li><b>Процесс:</b> нагрузка не попала в репозиторий, ветка отправлена, коммитов не меньше трёх, ответы своими словами.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Хук без <code>use</code> в имени или вызов хука в условии. <b>2.</b> <code>useHotkey</code> перезапускает подписку при каждом рендере, потому что <code>onPress</code> лежит в зависимостях. <b>3.</b> Меню грузится стрелкой в <code>useFetch</code>: запросы идут по кругу. <b>4.</b> Отчёт без причин и без скриншотов: «стало быстрее» не доказательство. <b>5.</b> <code>stress.ts</code> остался в репозитории. <b>6.</b> <code>useCallback</code> и <code>useMemo</code> повсюду «для надёжности». <b>7.</b> Ответ агента вставлен в <code>docs/perf.md</code> без правок. <b>8.</b> Репозиторий приватный или ссылка ведёт на профиль, а не на репозиторий.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Чек-лист требований к ДЗ-6</h4><span class="level mid">средняя</span></header>
+        <p>Перед сдачей проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Практика урока работает и влита в <code>main</code>, ДЗ сделано в ветке <code>feat/my-hooks</code></li>
+          <li><code>useHotkey</code> реализован с <code>useEffectEvent</code>, пропускает ввод в полях, снимает подписку; в <code>App</code> эффекта клавиши нет</li>
+          <li><code>useDocumentTitle</code> реализован, заголовок «Дастархон · N ресторанов» вычисляется в рендере</li>
+          <li><code>parseMenu</code> и <code>RestaurantMenu</code> на <code>useFetch&lt;MenuItem[]&gt;</code> показывают загрузку, ошибку с «Повторить», пустое меню и список с ценами, подключены с <code>key={selectedId}</code></li>
+          <li>Нет <code>any</code>, <code>as</code> для данных и лишних <code>useMemo</code>/<code>useCallback</code>, линтер не показывает предупреждений</li>
+          <li><code>docs/perf.md</code> содержит три сценария с числами и причинами рендера, два скриншота Flamegraph и вывод</li>
+          <li><code>docs/perf.md</code> содержит пять ответов своими словами</li>
+          <li><code>stress.ts</code> удалён, <code>npm run format:check</code>, <code>typecheck</code>, <code>lint</code>, <code>build</code> проходят, в ветке не меньше трёх коммитов</li>
+          <li>Ветка <code>feat/my-hooks</code> отправлена на GitHub, репозиторий публичный: я открыл ссылку в режиме инкогнито</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 10.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку вида <code>https://github.com/ваш-логин/dastarkhon</code>. Откройте её в режиме инкогнито: ветка <code>feat/my-hooks</code>, код хуков и <code>docs/perf.md</code> со скриншотами должны быть видны.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/reference/react/useEffectEvent" target="_blank" rel="noopener">react.dev — useEffectEvent</a> · <a href="https://react.dev/reference/react/memo" target="_blank" rel="noopener">react.dev — memo</a> · <a href="https://react.dev/learn/react-developer-tools" target="_blank" rel="noopener">react.dev — React Developer Tools</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Свой хук</b> — функция <code>useЧтоТо</code>, которая вызывает другие хуки. Делит код, а не состояние: у каждого вызова свои ячейки. Возвращайте кортеж с <code>as const</code> для пары «значение и функция» и объект для трёх и более значений. Выносите, когда логика с состоянием или эффектом нужна в двух местах.</li>
+        <li><b>Дженерики на минимуме:</b> <code>function f&lt;T&gt;(x: T[]): T | undefined</code>, ограничение <code>T extends { id: number }</code>, дженерик-тип <code>Result&lt;T, E = string&gt;</code>, явный тип <code>&lt;CartItem[]&gt;</code>, когда вывод не справляется. Никаких <code>any</code> и <code>as T</code> для данных: внешнее читают как <code>unknown</code> и проверяют type guard.</li>
+        <li><b><code>useFetch&lt;T&gt;(url, parse)</code>:</b> эффект с <code>AbortController</code> и очисткой, ответ хранится с ключом запроса, <code>loading</code> вычисляется в рендере, <code>retry</code> в <code>useCallback</code>. Функция <code>parse</code> объявляется вне компонента, иначе запросы идут по кругу.</li>
+        <li><b><code>useLocalStorage&lt;T&gt;</code>:</b> ленивая инициализация <code>useState(() =&gt; …)</code>, <code>JSON.parse</code> как <code>unknown</code> и проверка guard, <code>try/catch</code> на чтении и записи, запись в эффекте. Секреты в хранилище не кладут.</li>
+        <li><b><code>useDebounce&lt;T&gt;</code>:</b> таймер в эффекте и <code>clearTimeout</code> в очистке. Нужен для запросов к серверу и тяжёлых пересчётов; для отрисовки есть <code>useDeferredValue</code>.</li>
+        <li><b>Порядок оптимизации:</b> структура (опустить состояние, <code>children</code>), измерение в Profiler, точечная мемоизация, повторное измерение. <code>memo</code> сравнивает props по ссылке; новый массив, объект или функция ломают его. Сеттер <code>useState</code> стабилен, стрелка-обёртка нет. <code>useMemo</code> кэширует значение, <code>useCallback</code> функцию; зависимости честные.</li>
+        <li><b>Profiler:</b> запись, диаграмма коммитов, Flamegraph и Ranked, серый цвет — «не рендерился», «Record why each component rendered» объясняет причину. Dev-цифры завышены: сравнивайте «до» и «после» на одном компьютере.</li>
+        <li><b>React Compiler 1.0:</b> плагин сборки, сам расставляет мемоизацию в чистом коде; в Vite 8: <code>babel-plugin-react-compiler</code>, <code>@rolldown/plugin-babel</code> и <code>reactCompilerPreset()</code>. Работает на «Правилах React»; не заменяет измерения и не удаляет лишние эффекты. В основном проекте курса не включён (формы на React Hook Form в уроке 7).</li>
+        <li><b>Проект 1 «Дастархон»:</b> в <code>src/hooks</code> три хука, корзина хранится в <code>localStorage</code>, поиск с задержкой, каталог мемоизирован. Дальше: формы и модальные окна на React Hook Form и Zod (урок 7), Context (урок 8).</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 11.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу вынести логику с состоянием и эффектом в свой хук и объяснить, почему каждый вызов получает своё состояние</li>
+          <li>Могу написать дженерик-функцию и дженерик-тип, добавить ограничение <code>extends</code> и объяснить, когда нужен явный тип</li>
+          <li>Могу написать <code>useFetch&lt;T&gt;</code> с проверкой ответа через <code>parse</code> и объяснить, почему <code>parse</code> должна быть стабильной</li>
+          <li>Могу написать <code>useLocalStorage&lt;T&gt;</code> с ленивой инициализацией, проверкой данных и <code>try/catch</code></li>
+          <li>Могу написать <code>useDebounce&lt;T&gt;</code> с очисткой таймера</li>
+          <li>Могу записать сессию в Profiler и прочитать причину рендера</li>
+          <li>Могу объяснить, когда нужны <code>memo</code>, <code>useMemo</code> и <code>useCallback</code> и почему ссылка на проп должна быть стабильной</li>
+          <li>Могу включить React Compiler в проекте на Vite и проверить, что он работает</li>
+          <li>Могу проверить хук, написанный агентом, по списку из раздела 8</li>
+        </ul>
+      </article>
+    </section>
