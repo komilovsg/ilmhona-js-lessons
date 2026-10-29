@@ -1,0 +1,1936 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 4 · Ҳукҳо, шаклҳо, услубҳо</p>
+      <h1>Ҳолат: useState ва useReducer</h1>
+      <p class="lead">Дар охири дарс шумо «Дастархон»-и интерактивӣ хоҳед дошт: дар паҳлӯи феҳристи тарабхонаҳо менюи тарабхонаи интихобшуда ва сабади фармоиш пайдо мешавад, ки онро редюсер бо <code>useReducer</code> ва амалҳои навъбандишуда идора мекунад. Шумо мефаҳмед, ки чиро дар ҳолат нигоҳ доштан лозим ва чиро ҳисоб кардан, массивҳо ва объектҳоро чӣ тавр бе вайрон кардани React навсозӣ кардан мумкин аст ва чаро ҳукҳоро ба ҳар ҷое даъват кардан мумкин нест.</p>
+      <ul class="goals">
+        <li>Ҳолатро аз props ва аз тағйирёбандаи оддӣ фарқ кунед ва ҳал намоед, ки маълумот ҳолати худро лозим дорад ё не</li>
+        <li>Массивҳо ва объектҳоро дар ҳолат бе тағйирдиҳии ҷой (<code>map</code>, <code>filter</code>, spread) навсозӣ кунед ва шарҳ диҳед, ки чаро React истинодҳоро муқоиса мекунад</li>
+        <li>Ҳолатро ба наздиктарин волидайни умумӣ бардоред ва ба фарзандон қимат ва колбэкро интиқол диҳед</li>
+        <li>Маълумоти ҳосилшударо пайдо кунед ва онҳоро дар ҳолат такрор накунед</li>
+        <li>Редюсери тозаро нависед ва онро тавассути <code>dispatch</code> даъват кунед, байни <code>useState</code> ва <code>useReducer</code> интихоб намоед</li>
+        <li>Ҳолат ва амалҳоро тавассути discriminated union навъбандӣ кунед ва пуррагии <code>switch</code>-ро бо ёрии <code>never</code> санҷед</li>
+        <li>Қоидаҳои ҳукҳоро номбар кунед, сабаби онҳоро шарҳ диҳед ва хатоҳоеро, ки ҳангоми вайрон кардан пайдо мешаванд, бихонед</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Ин дарсро чӣ тавр гузаштан лозим аст</b>
+      <p>Лозим аст: лоиҳаи <code>dastarkhon</code> баъд аз дарси 3 (Vite + React + TypeScript, Tailwind CSS 4, чордаҳ компонент дар <code>src/components</code>, файлҳои <code>types.ts</code> ва <code>data.ts</code>, шохаи <code>feat/catalog</code> бо вазифаи хонагӣ), терминал, муҳаррир ва тақрибан 3,5 соат. Бахшҳои 1–7 — назария бо майдончаҳои зинда: коди дар замини торик навишташуда бевосита дар саҳифа иҷро мешавад. Бахши 8 — кор бо агенти ЗС, бахши 9 — амалиёт дар компютери шумо. Натиҷаи дарс — феҳрист бо сабад дар <code>useReducer</code>, ва дар вазифаи хонагӣ ба он филтрҳо ва саралакунӣ илова мешаванд.</p>
+      <p>Фарз мешавад, ки шумо JavaScript ва асосҳои React-ро медонед: JSX, props, <code>useState</code> (худсанҷии дарси 1 инро такрор мекунад), инчунин навъҳои props ва <code>useState</code>-ро аз дарси 2 ва модели «триггер — рендер — коммит»-ро аз дарси 3. Дар ин ҷо ҳолатро амиқтар мебинем: чӣ тавр онро нигоҳ доштан, чӣ тавр тағйир додан ва чӣ тавр гум нашудан, вақте ки он зиёд мешавад.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="state-props">
+      <h2 data-toc="Ҳолат ва props"><span class="num">01</span> Ҳолат ва props: кадом маълумот аз они кист</h2>
+
+      <p>Компонент ду манбаи маълумот дорад. <b>Props</b> — он чизест, ки волидайн ба он додааст: компонент онҳоро танҳо мехонад, мисли аргументҳои функсия. <b>Ҳолат</b> (state) — хотираи худи компонент аст: қимате, ки он байни рендерҳо нигоҳ медорад ва худаш метавонад тағйир диҳад. Ҳолат тағйир ёбад — React компонентро аз нав даъват мекунад (триггер аз дарси 3) ва натиҷаро нишон медиҳад.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Нақша: волидайн ба компонент props-ро аз боло ба поён медиҳад, компонент дар дохили худ ҳолатро нигоҳ медорад ва ба волидайн дар бораи рӯйдодҳо тавассути функсияҳои колбэк хабар медиҳад">
+          <rect class="box g" x="250" y="10" width="240" height="60" rx="12" /><text x="370" y="36" text-anchor="middle">Волидайн</text><text class="sub" x="370" y="56" text-anchor="middle">соҳиби маълумот</text>
+          <rect class="box" x="250" y="110" width="240" height="106" rx="14" /><text x="370" y="134" text-anchor="middle">Компонент</text>
+          <rect class="fill-y" x="266" y="146" width="100" height="56" rx="10" /><text x="316" y="168" text-anchor="middle">state</text><text class="sub" x="316" y="188" text-anchor="middle">аз они худаш</text>
+          <rect class="fill-g" x="378" y="146" width="100" height="56" rx="10" /><text x="428" y="168" text-anchor="middle">props</text><text class="sub" x="428" y="188" text-anchor="middle">танҳо мехонад</text>
+          <path class="arr" d="M330 70 V102" /><path class="arr-head" d="M330 110 l-5 -10 h10 z" />
+          <text class="sub t-b" x="322" y="94" text-anchor="end">props: маълумот ба поён</text>
+          <path class="arr" d="M410 110 V78" /><path class="arr-head" d="M410 70 l-5 10 h10 z" />
+          <text class="sub t-g" x="420" y="94">колбэк: рӯйдод ба боло</text>
+          <text class="sub" x="510" y="150">Ҳолат аз они касест,</text><text class="sub" x="510" y="170">ки онро эълон кардааст.</text><text class="sub" x="510" y="190">Props аз они волидайн.</text>
+        </svg>
+        <figcaption>Маълумот тавассути props ба поён меравад, рӯйдодҳо тавассути колбэкҳо ба боло; ҳолат дар дохили ҳамон компонент зиндагӣ мекунад, ки дар он <code>useState</code> даъват шудааст</figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Props</th><th>Ҳолат</th></tr></thead>
+          <tbody>
+            <tr><td><b>Аз куҷо</b></td><td>Аз волидайн меоянд</td><td>Дар худи компонент тавассути <code>useState</code> сохта мешавад</td></tr>
+            <tr><td><b>Кӣ тағйир медиҳад</b></td><td>Танҳо волидайн, компонент онҳоро мехонад</td><td>Худи компонент, тавассути функсияи <code>set…</code></td></tr>
+            <tr><td><b>Баъд аз тағйирот чӣ мешавад</b></td><td>Волидайн аз нав кашида шуд ва props-и навро дод</td><td>React компонентро бо қимати нав аз нав даъват мекунад</td></tr>
+            <tr><td><b>Мисол дар «Дастархон»</b></td><td><code>restaurant</code> ва <code>onSelect</code> дар <code>RestaurantCard</code></td><td><code>query</code> ва <code>cuisine</code> дар <code>App</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Чаро тағйирёбандаи оддӣ не</h3>
+      <p>Шояд фикр кунед: «<code>useState</code> барои чӣ, ахир <code>let qty = 1</code> ҳаст». Тағйирёбандаи оддӣ ду мушкил дорад. Якум, таъинкунии он рендерро ба кор намеандозад: React намедонад, ки экранро нав кардан лозим аст. Дуюм, ҳангоми рендери навбатӣ функсияи компонент аз аввал иҷро мешавад, ва <code>let qty = 1</code> боз якум мешавад. <code>useState</code> ҳарду мушкилро ҳал мекунад: React қиматро <b>берун аз функсия</b> нигоҳ медорад, дар ҳар рендер онро бармегардонад, ва даъвати <code>setQty</code> рендери навро оғоз мекунад.</p>
+
+      <h3>Оё маълумот ҳолат лозим дорад: чор савол</h3>
+      <ol class="steps">
+        <li><b>Он бо мурури замон тағйир меёбад?</b> Агар не, ин собит ё prop аст.</li>
+        <li><b>Онро волидайн тавассути props додааст?</b> Пас он аз они шумо нест: онро ба ҳолати худ нусха накунед, prop-ро хонед.</li>
+        <li><b>Онро аз ҳолати дигар ё props ҳисоб кардан мумкин аст?</b> Пас ин ҳолат нест, балки маълумоти ҳосилшуда (бахши 4).</li>
+        <li><b>Он ба он чизе, ки дар экран намоён аст, таъсир мерасонад?</b> Агар не (масалан, рақами таймер), ҷойи он дар ҳолат нест (баъдтар барои чунин қиматҳо <code>useRef</code> мешавад, дарси 5).</li>
+      </ol>
+
+      <h3>Ҳолати ҳар нусха аз они худаш</h3>
+      <p>Ду компоненти якхела дар саҳифа ҳолатро тақсим намекунанд: ҳар даъвати <code>&lt;Portions /&gt;</code> «ҳуҷайраи» хотираи худро мегирад. Ҳолат ба <b>ҷойи компонент дар дарахт</b> пайваст аст: то даме ки компонент дар ҳамон ҷо истодааст, React онро дар хотир дорад, ва вақте ки компонент аз нишонагузорӣ нопадид мешавад, ҳолат партофта мешавад (вазифаи <code>key</code> ва «компонент дар дохили компонент»-ро аз дарси 3 ба ёд оред).</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Пешхизмат дар чойхона ба ду миз як-як чойник овард. Чойник дар миз — ҳолат аст: он ба миз тааллуқ дорад, ва ки дар он чӣ қадар чой ҳаст, танҳо дар сари ҳамон миз медонанд. Агар ҷамъомадро ба миззи дигар гузаронанд, чойник дар ҷои пештара мемонад: ҳамин тавр компонент, ки дар дарахт ба ҷои дигар гузаштааст, барои React нав аст ва бо хотираи холӣ оғоз мекунад.</p>
+      </div>
+
+      <h3>Санҷед: ҳар корт ҳолати худро дорад</h3>
+      <p>Дар назди палав ва чой «+»-ро пахш кунед, баъд «Сбросить плов»-ро пахш кунед. Диққат диҳед, ки <code>initial</code> (prop) танҳо қимати <b>оғозӣ</b>-ро медиҳад, ва баъд ҳолат худаш зиндагӣ мекунад.</p>
+
+      <div class="playground" data-mode="react" data-title="Порсияҳо: props ва ҳолат">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Portions({ name, initial }: { name: string; initial: number }) {
+  const [qty, setQty] = useState(initial);
+  return (
+    &lt;p&gt;
+      {name}: &lt;button onClick={() =&gt; setQty(qty - 1)}&gt;−&lt;/button&gt;{" "}
+      &lt;b&gt;{qty}&lt;/b&gt; &lt;button onClick={() =&gt; setQty(qty + 1)}&gt;+&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; setQty(initial)}&gt;Сбросить {name.toLowerCase()}&lt;/button&gt;
+    &lt;/p&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Portions name="Плов" initial={1} /&gt;
+      &lt;Portions name="Чай" initial={2} /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Prop-ро «бо эҳтиёт» ба ҳолат нусха кардан: <code>useState(props.restaurant)</code> қиматро танҳо дар рендери аввал ба ёд мегирад, баъд props-и нав нодида гирифта мешавад, ва маълумот кӯҳна мешавад. <b>2.</b> Он чиро, ки ҳисоб кардан мумкин аст, дар ҳолат нигоҳ доштан (бахши 4). <b>3.</b> Тағйир додани prop дар дохили компонент: props танҳо барои хондан аст. <b>4.</b> Интизор шудан, ки <code>setQty</code> <code>qty</code>-ро ҳамин лаҳза дар ҳамин функсия тағйир медиҳад: қимати нав дар рендери навбатӣ намоён мешавад (бахши 4-и дарси 3). <b>5.</b> Як пораи ҳолатро дар ду ҷой эълон кардан «барои қулайӣ»: баъд онҳо аз ҳам ҷудо мешаванд.</p>
+      </div>
+
+      <div class="yt" data-id="iHQ7fwXTqik" data-title="Ҳолати компонент дар React. useState дар амал: маълумотро илова ва навсозӣ мекунем — канали Friendly Frontend"></div>
+      <p class="muted">Ролик бо забони русӣ (16 дақиқа, соли 2025): <code>useState</code> дар амал, иловакунӣ ва навсозии маълумот. Муаллиф бо JavaScript менависад, шумо ҳамин усулҳоро бо навъҳо истифода мебаред.</p>
+
+      <article class="task" id="q-state">
+        <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Худро санҷед: ҳолат ва props</h4><span class="level easy">осон</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Чаро ҳисобкунакро дар тағйирёбандаи оддии <code>let qty = 1</code> дар дохили компонент нигоҳ доштан мумкин нест?</p>
+          <ol class="options">
+            <li>Зеро <code>let</code>-ро дар функсияҳо истифода бурдан мумкин нест</li>
+            <li>Таъинкунӣ рендерро ба кор намеандозад, ва ҳангоми рендери навбатӣ функсия аз нав иҷро мешавад ва тағйирёбанда боз якум мешавад</li>
+            <li>Зеро React рақамҳоро манъ кардааст</li>
+            <li>Зеро тағйирёбандаро дар JSX нишон додан мумкин нест</li>
+          </ol>
+          <div class="explain"><p>Ҳолат берун аз функсияи компонент нигоҳ дошта мешавад, ва setter-и он ба React хабар медиҳад, ки экранро нав кардан лозим аст. Бо тағйирёбанда на яке ҳаст, на дигаре.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Дар саҳифа ду компоненти <code>&lt;Portions name="Плов" /&gt;</code> ва <code>&lt;Portions name="Чай" /&gt;</code> бо коди якхела ҳастанд. Дар аввалӣ «+»-ро пахш карданд. Бо дуюмӣ чӣ мешавад?</p>
+          <ol class="options">
+            <li>Ҳисобкунаки он низ меафзояд, зеро код яктост</li>
+            <li>Он кор карданро бас мекунад</li>
+            <li>Ҳеҷ чиз: ҳар нусха ҳолати худро дорад</li>
+            <li>React огоҳӣ медиҳад</li>
+          </ol>
+          <div class="explain"><p>Ҳолат ба ҷойи мушаххаси дарахт тааллуқ дорад, на ба коди компонент. Ду нусха — ду ҳуҷайраи мустақили хотира.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Кадоме аз инҳоро дар ҳолати компоненти <code>App</code> нигоҳ доштан оқилона аст? Ду варианти ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li>Матн дар майдони ҷустуҷӯ: он тағйир меёбад ва ба экран таъсир мерасонад</li>
+            <li>Номи сайт «Дастархон»: он тағйир намеёбад</li>
+            <li>Шумораи тарабхонаҳои ёфтшуда: онро аз рӯи рӯйхат ҳисоб кардан мумкин аст</li>
+            <li>Мундариҷаи сабад: он аз рӯи амалҳои корбар тағйир меёбад ва дар экран нишон дода мешавад</li>
+          </ol>
+          <div class="explain"><p>Ном — собит аст, ва шумораи ёфтшуда — қимати ҳосилшуда: <code>visible.length</code>. Ба ҳолат танҳо он чизе меравад, ки онро аз дигар чиз гирифтан мумкин нест.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-portions">
+        <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Порсияҳо бо ҳолати худӣ</h4><span class="level easy">осон</span></header>
+        <p>Ҳоло <code>qty</code> — танҳо собит аз prop аст, тугмаҳо коре намекунанд. Ҳолатро бо қимати оғозии <code>initial</code> эълон кунед ва тугмаҳоро зинда намоед: «+» 1 меафзояд, «−» кам мекунад, вале на аз 1 паст (<code>Math.max</code>-ро истифода баред). Худтафтиш «+»-ро дар назди палав ду маротиба, «−»-ро дар назди чой ду маротиба пахш мекунад ва рақамҳоро чоп мекунад.</p>
+        <div class="playground" data-mode="react" data-title="Порсияҳо">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Portions({ name, initial }) {
+  // TODO: состояние qty с начальным значением initial
+  const qty = initial;
+  return (
+    &lt;p&gt;
+      {name}: &lt;button onClick={() =&gt; {}}&gt;−&lt;/button&gt; &lt;b&gt;{qty}&lt;/b&gt;{" "}
+      &lt;button onClick={() =&gt; {}}&gt;+&lt;/button&gt;
+    &lt;/p&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Portions name="Плов" initial={1} /&gt;
+      &lt;Portions name="Чай" initial={2} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  const b = () =&gt; document.querySelectorAll("button");
+  b()[1].click(); await wait();
+  b()[1].click(); await wait();
+  b()[2].click(); await wait();
+  b()[2].click(); await wait();
+  console.log([...document.querySelectorAll("b")].map((x) =&gt; x.textContent).join(" "));
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>3 1</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p><code>const [qty, setQty] = useState(initial);</code></p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Барои «−»: <code>setQty(Math.max(1, qty - 1))</code>. Чой аз 2 оғоз мекунад, баъд аз ду пахш 1 мемонад, на 0.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/state-a-components-memory" target="_blank" rel="noopener">react.dev — State: A Component's Memory</a> · <a href="https://react.dev/learn/choosing-the-state-structure" target="_blank" rel="noopener">react.dev — Choosing the State Structure</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="immutable">
+      <h2 data-toc="Навсозии тағйирнопазир"><span class="num">02</span> Навсозии тағйирнопазир: тағйир не, балки иваз кардан</h2>
+
+      <p>Вақте ки шумо <code>setCart(newCart)</code>-ро даъват мекунед, React қимати навро бо қадимӣ <b>аз рӯи истинод</b> муқоиса мекунад (мисли <code>Object.is</code>). Агар истинод яктост, React ҳисоб мекунад, ки чизе тағйир наёфтааст, ва рендерро гузаронда мегузарад. Бинобар ин ҳолати дорои массив ё объектро «дар ҷо» тағйир додан мумкин нест: бояд массиви ё объекти <b>нав</b> сохта, ба <code>set…</code> дод. Ин <b>навсозии тағйирнопазир</b> (иммутабелӣ) номида мешавад. Қимати кӯҳнаро акси яхкардашуда ҳисоб кунед.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 220" role="img" aria-label="Нақша: дар тарафи чап тағйирдиҳии ҷой, push мундариҷаи массивро тағйир медиҳад, вале истинод собит мемонад, ва React компонентро аз нав намекашад. Дар тарафи рост нусха: массиви нав бо истиноди нав сохта мешавад, React фарқиятро мебинад ва аз нав мекашад">
+          <text x="12" y="22">Тағйирдиҳии ҷой</text>
+          <rect class="fill-r" x="12" y="36" width="130" height="50" rx="10" /><text x="77" y="58" text-anchor="middle">cart</text><text class="sub mono" x="77" y="76" text-anchor="middle">истиноди #1</text>
+          <path class="arr" d="M142 61 H172" /><path class="arr-head" d="M180 61 l-10 -5 v10 z" />
+          <rect class="box" x="180" y="36" width="150" height="50" rx="10" /><text class="sub mono" x="255" y="66" text-anchor="middle">cart.push(item)</text>
+          <path class="arr" d="M330 61 H360" /><path class="arr-head" d="M368 61 l-10 -5 v10 z" />
+          <rect class="fill-r" x="368" y="36" width="110" height="50" rx="10" /><text x="423" y="58" text-anchor="middle">истиноди #1</text><text class="sub" x="423" y="76" text-anchor="middle">ҳамон</text>
+          <text class="sub t-r" x="12" y="116">React: «истинод тағйир наёфт, рендер лозим нест». Экран нав нашуд.</text>
+          <text x="12" y="148">Нусха</text>
+          <rect class="fill-g" x="12" y="162" width="130" height="50" rx="10" /><text x="77" y="184" text-anchor="middle">cart</text><text class="sub mono" x="77" y="202" text-anchor="middle">истиноди #1</text>
+          <path class="arr" d="M142 187 H172" /><path class="arr-head" d="M180 187 l-10 -5 v10 z" />
+          <rect class="box" x="180" y="162" width="190" height="50" rx="10" /><text class="sub mono" x="275" y="192" text-anchor="middle">[...cart, item]</text>
+          <path class="arr" d="M370 187 H400" /><path class="arr-head" d="M408 187 l-10 -5 v10 z" />
+          <rect class="fill-g" x="408" y="162" width="130" height="50" rx="10" /><text x="473" y="184" text-anchor="middle">cart-и нав</text><text class="sub mono" x="473" y="202" text-anchor="middle">истиноди #2</text>
+          <text class="sub t-g" x="552" y="192">рендер, экран нав шуд</text>
+        </svg>
+        <figcaption>Тағйирдиҳии ҷой истиноди пештараро нигоҳ медорад, ва React тағйиротро намебинад; нусха истиноди нав медиҳад, ва рендер оғоз мешавад</figcaption>
+      </figure>
+
+      <h3>Чӣ дар ҷой тағйир медиҳад, ва чӣ нусха месозад</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Тағйир медиҳад (бо ҳолат истифода набаред)</th><th>Нав бармегардонад (истифода баред)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Массив</b></td><td><code>push</code>, <code>pop</code>, <code>shift</code>, <code>unshift</code>, <code>splice</code>, <code>sort</code>, <code>reverse</code>, <code>arr[i] = …</code></td><td><code>[...arr, x]</code>, <code>filter</code>, <code>map</code>, <code>slice</code>, <code>concat</code>, <code>[...arr].sort()</code></td></tr>
+            <tr><td><b>Объект</b></td><td><code>obj.qty = 5</code>, <code>obj.qty++</code>, <code>delete obj.qty</code></td><td><code>{ ...obj, qty: 5 }</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Ҳамаи амалиётҳо бо сабад бо ин чор усул ифода мешаванд. Дар ин ҷо <code>CartItem</code> — навъ аз дарси 2 (<code>{ item: MenuItem; qty: number }</code>):</p>
+
+<pre class="code" data-lang="tsx" data-title="Панҷ амал бо массив бе тағйирдиҳии ҷой">
+// добавить в конец
+setCart([...cart, { item, qty: 1 }])
+
+// убрать по id
+setCart(cart.filter((entry) =&gt; entry.item.id !== itemId))
+
+// изменить одну запись: у остальных вернуть тот же объект
+setCart(
+  cart.map((entry) =&gt;
+    entry.item.id === itemId ? { ...entry, qty: entry.qty + 1 } : entry,
+  ),
+)
+
+// вставить в начало
+setCart([{ item, qty: 1 }, ...cart])
+
+// отсортировать: сначала копия, потом sort
+setCart([...cart].sort((a, b) =&gt; a.item.price - b.item.price))
+</pre>
+
+      <p>Нусха <b>сатҳӣ</b> аст: <code>{ ...entry, qty: 5 }</code> объекти нави сабт месозад, вале объекти дохилии <code>entry.item</code> ҳамон мемонад. Ин муқаррарӣ аст, агар шумо танҳо сатҳи болоиро тағйир диҳед. Агар лозим бошад, ки майдони объекти дохилиро тағйир диҳед, ҳар сатҳро дар роҳи ба он нусха кунед:</p>
+
+<pre class="code" data-lang="tsx" data-title="Майдони дохилӣ: нусха дар ҳар сатҳ">
+// поменять цену блюда внутри записи корзины
+setCart(
+  cart.map((entry) =&gt;
+    entry.item.id === itemId
+      ? { ...entry, item: { ...entry.item, price: 50 } }
+      : entry,
+  ),
+)
+</pre>
+
+      <p>Дохилшавии амиқ зуд номувофиқ мешавад. Аз ин рӯ дар ҳолат кӯшиш мекунанд, ки маълумотро <b>ҳамвор</b> нигоҳ доранд, ва барои ҳолатҳои мураккаб китобхонаи Immer ҳаст: он имкон медиҳад, ки «гӯё бо тағйирдиҳии ҷой» навишта шавад, ва дар асл нусха месозад. Шумо онро дар Redux Toolkit мебинед (дарси 9). Ҳоло <code>map</code>, <code>filter</code> ва spread басанд.</p>
+
+      <h3>Навъҳо кӯмак мекунанд: readonly</h3>
+      <p>TypeScript метавонад тағйирдиҳии ҷойро манъ кунад. Навъи <code>readonly CartItem[]</code> (ё <code>ReadonlyArray&lt;CartItem&gt;</code>) аз массив методҳои тағйирдиҳандаро мегирад ва таъинкуниро аз рӯи индекс манъ мекунад. Агар параметри функсияро ҳамин тавр эълон кунед, компилятор намегузорад, ки массиви омадаро тасодуфан тағйир диҳед:</p>
+
+<pre class="code" data-title="Терминал — натиҷаи tsc -b барои массиви readonly">
+src/ro.ts(3,9): error TS2339: Property 'push' does not exist on type 'readonly CartItem[]'.
+src/ro.ts(4,3): error TS2542: Index signature in type 'readonly CartItem[]' only permits reading.
+</pre>
+
+      <p><code>readonly</code> — муҳофизати вақти компилятсия аст, дар барномаи кунунӣ массив оддӣ мемонад. Майдони объект чунин муҳофизат мешавад: <code>readonly qty: number</code>. Навъи <code>Readonly&lt;T&gt;</code> ҳамаи майдонҳои объекти <code>T</code>-ро танҳо барои хондан мегардонад (навъҳои ёрирасон муфассалтар — дарси 9).</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Менюи чойхонаро дар як варақ чоп мекунанд. Агар дар он бо қалам хӯрокеро хат занед, маъмуре, ки варақҳоро аз рӯи рақами партия муқоиса мекунад, ислоҳро намебинад: рақам ҳамон аст. Бинобар ин барои менюи нав варақи нав бо рақами нав чоп мекунанд. Варақ — массив, рақами партия — истинод, ва чопи типографӣ — spread ва <code>map</code> аст.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>cart.push(item); setCart(cart)</code>: истинод пештара, рендер нест. <b>2.</b> <code>entry.qty += 1; setCart([...cart])</code>: массив нав аст, вале <b>объектҳои дохилаш дар ҷо тағйир ёфтаанд</b>, яъне «акси кӯҳна» низ вайрон шуд. Қисмҳои дигари барнома, ки истинод ба сабтро доранд, тағйироти бегонаро мебинанд. <b>3.</b> <code>const sorted = cart.sort(…)</code>: <code>sort</code> худи массивро тағйир медиҳад ва ҳамонро бармегардонад. <b>4.</b> <code>setUser(user.name = 'Алишер')</code>: таъинкунӣ — ибора аст, он сатрро бармегардонад, на объектро. <b>5.</b> Нусха кардани массив тавассути <code>const copy = cart</code>: ин истиноди дигар ба ҳамон массив аст, на нусха.</p>
+      </div>
+
+      <div class="yt" data-id="O704OnjrL7o" data-title="Иммутабелӣ аз А то Я — ReactJS Курси пурра, канали Евгений Паромов" data-start="60"></div>
+      <p class="muted">Ролик бо забони русӣ (30 дақиқа, соли 2023): иммутабелӣ чист ва онро дар React чӣ тавр риоя кардан лозим. Барои дарс нисфи аввал басанд.</p>
+
+      <article class="task" id="q-immut">
+        <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Худро санҷед: тағйирнопазирӣ</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Барномасоз <code>cart.push(item); setCart(cart);</code> навишт ва шикоят мекунад, ки экран тағйир намеёбад. Чаро?</p>
+          <ol class="options">
+            <li>Методи <code>push</code> бо массиви объектҳо кор намекунад</li>
+            <li>Ду маротиба паси ҳам <code>setCart</code>-ро даъват кардан мумкин нест</li>
+            <li>Истинод ба массив пештара монд, React истинодҳоро муқоиса мекунад ва тағйиротро намебинад</li>
+            <li>Бояд <code>forceUpdate</code>-ро даъват кард</li>
+          </ol>
+          <div class="explain"><p>React рендер лозим аст ё не, бо муқоисаи қимати нав бо кӯҳна аз рӯи истинод ҳал мекунад. Массиви навро диҳед: <code>setCart([...cart, item])</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Кадом навиштаҳо ҳолатро дуруст навсозӣ мекунанд? Ду варианти ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li><code>cart[0].qty = 5; setCart(cart)</code></li>
+            <li><code>setCart(cart.map((e) =&gt; (e.item.id === 1 ? { ...e, qty: 5 } : e)))</code></li>
+            <li><code>setCart(cart.sort((a, b) =&gt; a.qty - b.qty))</code></li>
+            <li><code>setCart([...cart].sort((a, b) =&gt; a.qty - b.qty))</code></li>
+          </ol>
+          <div class="explain"><p>Дар варианти якум тағйирдиҳии ҷой аст, дар сеюм <code>sort</code> массиви аслиро тағйир медиҳад ва ҳамон истинодро бармегардонад. Дар дуюм ва чорум қиматҳои нав сохта мешаванд.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Дар коди <code>setCart(cart.map((e) =&gt; { e.qty += 1; return e; }))</code> массив нав аст. Чӣ нодуруст аст?</p>
+          <ol class="options">
+            <li>Объектҳои дохилӣ дар ҷо тағйир ёфтаанд: акси кӯҳна вайрон шуд, истинодҳои дигар ба ин объектҳо тағйироти бегонаро мебинанд</li>
+            <li>Ҳеҷ чиз: массив нав аст, яъне ҳама дуруст аст</li>
+            <li><code>map</code>-ро бо ҳолат истифода бурдан мумкин нест</li>
+            <li>Бояд массив баргардонд, на объект</li>
+          </ol>
+          <div class="explain"><p>Массиви нав тағйирдиҳии объектҳои дохилашро бекор намекунад. Барои сабт объекти нав лозим аст: <code>{ ...e, qty: e.qty + 1 }</code>.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t2-push">
+        <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Иловаи хӯрок бе тағйирдиҳии ҷой</h4><span class="level mid">миёна</span></header>
+        <p>Тугмаи «Добавить» чизеро нишон намедиҳад: функсияи <code>add</code> массивро дар ҷо тағйир медиҳад. Онро чунон дубора нависед, ки рӯйхат нав шавад: массиви навро бо хӯрокҳои кӯҳна ва нав дар охир созед. Худтафтиш тугмаро ду маротиба пахш мекунад ва шумораи сатрҳои рӯйхатро чоп мекунад.</p>
+        <div class="playground" data-mode="react" data-title="Сабад: иловакунӣ">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [dishes, setDishes] = useState(["Плов"]);
+
+  function add() {
+    // TODO: не меняйте dishes на месте
+    dishes.push("Самбуса");
+    setDishes(dishes);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={add}&gt;Добавить&lt;/button&gt;
+      &lt;ul&gt;
+        {/* список только растёт, поэтому индекс как key здесь безопасен */}
+        {dishes.map((d, i) =&gt; (
+          &lt;li key={i}&gt;{d}&lt;/li&gt;
+        ))}
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("button").click(); await wait();
+  document.querySelector("button").click(); await wait();
+  console.log("строк: " + document.querySelectorAll("li").length);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>строк: 3</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Дар <code>add</code> як сатр монед: қимати нав аз кӯҳна ҷамъ карда мешавад.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>setDishes([...dishes, "Самбуса"]);</code></p></details>
+      </article>
+
+      <article class="task" id="t2-qty">
+        <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Миқдор бе вайрон кардани акси кӯҳна</h4><span class="level hard">душвор</span></header>
+        <p>Дар ин ҷо массив нав аст, вале сабт дар дохили он дар ҷо тағйир меёбад. Худтафтиш «+»-ро пахш мекунад ва миқдорро дар экран ва дар объекти аслии <code>initial</code> чоп мекунад. <code>increment</code>-ро чунон ислоҳ кунед, ки объекти аслӣ дастнорас монад: барои сабти лозимӣ <b>объекти нав</b>-и <code>{ ...entry, qty: entry.qty + 1 }</code>-ро баргардонед, сабтҳои дигарро ҳамон тавр монед.</p>
+        <div class="playground" data-mode="react" data-title="Сабад: миқдор">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+const initial = [
+  { id: 1, title: "Плов", qty: 1 },
+  { id: 2, title: "Чай", qty: 1 },
+];
+
+export default function App() {
+  const [cart, setCart] = useState(initial);
+
+  function increment(id) {
+    // TODO: не меняйте entry на месте
+    setCart(
+      cart.map((entry) =&gt; {
+        if (entry.id === id) {
+          entry.qty += 1;
+        }
+        return entry;
+      }),
+    );
+  }
+
+  return (
+    &lt;ul&gt;
+      {cart.map((entry) =&gt; (
+        &lt;li key={entry.id}&gt;
+          {entry.title}: &lt;b&gt;{entry.qty}&lt;/b&gt;{" "}
+          &lt;button onClick={() =&gt; increment(entry.id)}&gt;+&lt;/button&gt;
+        &lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("button").click(); await wait();
+  console.log("на экране: " + document.querySelector("b").textContent + ", в initial: " + initial[0].qty);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>на экране: 2, в initial: 1</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Ба ҷои блоки <code>entry.qty += 1</code> оператори сегонаро истифода баред: агар <code>id</code> мувофиқ шуд, нусхаи сабтро баргардонед, вагарна худи сабтро.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>cart.map((entry) =&gt; entry.id === id ? { ...entry, qty: entry.qty + 1 } : entry)</code></p></details>
+      </article>
+
+      <article class="task" id="t2-ts">
+        <header><span class="task-num">ВАЗИФАИ 2.4</span><h4>readonly намегузорад тағйир диҳем</h4><span class="level mid">миёна</span></header>
+        <p>Функсия массивро ҳамчун <code>readonly</code> мегирад ва бо вуҷуди ин кӯшиш мекунад <code>push</code> кунад: компилятор рад мекунад. Массиви <b>нав</b>-ро баргардонед, ба омада даст назанед. «Запустить»-ро пахш кунед: хатоҳои навъ набояд бошанд.</p>
+<pre class="code" data-run data-lang="ts">
+type Entry = { title: string; qty: number };
+
+function addEntry(entries: readonly Entry[], entry: Entry): Entry[] {
+  // TODO: верните новый массив вместо push
+  entries.push(entry);
+  return entries;
+}
+
+const before: readonly Entry[] = [{ title: "Плов", qty: 1 }];
+const after = addEntry(before, { title: "Чай", qty: 2 });
+console.log(before.length, after.length);
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>1 2</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Хатои <code>TS2339</code> мегӯяд, ки массиви <code>readonly</code> методи <code>push</code> надорад. Роҳи гирифтани массиви нав аз кӯҳна лозим аст.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>return [...entries, entry];</code></p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/updating-objects-in-state" target="_blank" rel="noopener">react.dev — Updating Objects in State</a> · <a href="https://react.dev/learn/updating-arrays-in-state" target="_blank" rel="noopener">react.dev — Updating Arrays in State</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/objects.html#readonly-properties" target="_blank" rel="noopener">typescriptlang.org — readonly</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="lifting">
+      <h2 data-toc="Боло бурдани ҳолат"><span class="num">03</span> Боло бурдани ҳолат: як манбаи ҳақиқат</h2>
+
+      <p>Ҳолате мешавад, ки ба ду компонент як маълумот лозим аст. Дар «Дастархон» меню хӯрокҳоро ба сабад меандозад, ва сабад онҳоро нишон медиҳад. То даме ки ҳар кадомаш ҳолати худро дорад, онҳо ҳамоҳанг намешаванд: меню «намедонад», ки дар сабад чӣ ҳаст. Ҳал <b>боло бурдани ҳолат</b> (lifting state up) номида мешавад: ҳолатро ба <b>наздиктарин волидайни умумӣ</b> гузаронед, ва ба фарзандон қиматро тавассути props ва функсияи коркардкунандаро тавассути колбэк диҳед.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Нақшаи боло бурдани ҳолат. Дар чап: компонентҳои Menu ва Cart ҳолати худро доранд, онҳо ҳамоҳанг нестанд. Дар рост: ҳолати cart дар волидайни App аст, Menu колбэки onAdd-ро мегирад, Cart қимати cart-ро тавассути props мегирад">
+          <text x="12" y="20">То: ду ҳолат</text>
+          <rect class="box" x="30" y="40" width="130" height="38" rx="10" /><text x="95" y="64" text-anchor="middle">App</text>
+          <path class="arr" d="M95 78 V96 H60 V112" /><path class="arr" d="M95 96 H150 V112" />
+          <rect class="fill-r" x="10" y="112" width="100" height="56" rx="10" /><text x="60" y="134" text-anchor="middle">Menu</text><text class="sub mono" x="60" y="154" text-anchor="middle">cart #1</text>
+          <rect class="fill-r" x="120" y="112" width="100" height="56" rx="10" /><text x="170" y="134" text-anchor="middle">Cart</text><text class="sub mono" x="170" y="154" text-anchor="middle">cart #2</text>
+          <text class="sub t-r" x="12" y="196">ду нусха: ҷудо мешаванд</text>
+          <text x="400" y="20">Баъд: як ҳолат дар боло</text>
+          <rect class="fill-y" x="440" y="40" width="190" height="52" rx="10" /><text x="535" y="62" text-anchor="middle">App</text><text class="sub mono" x="535" y="82" text-anchor="middle">cart — як манбаъ</text>
+          <rect class="box" x="420" y="140" width="100" height="42" rx="10" /><text x="470" y="166" text-anchor="middle">Menu</text>
+          <rect class="box" x="570" y="140" width="100" height="42" rx="10" /><text x="620" y="166" text-anchor="middle">Cart</text>
+          <path class="arr" d="M490 92 V132" /><path class="arr-head" d="M490 140 l-5 -10 h10 z" />
+          <path class="arr" d="M450 140 V100" /><path class="arr-head" d="M450 92 l-5 10 h10 z" />
+          <path class="arr" d="M620 92 V132" /><path class="arr-head" d="M620 140 l-5 -10 h10 z" />
+          <text class="sub t-b" x="440" y="124" text-anchor="end">onAdd(item) ба боло</text>
+          <text class="sub t-g" x="380" y="214">cart ба поён: Menu ва Cart як қимат мебинанд</text>
+        </svg>
+        <figcaption>Ҳолатро ба наздиктарин волидайни умумӣ боло мебаранд: қиматҳо тавассути props ба поён мераванд, рӯйдодҳо тавассути колбэкҳо ба боло</figcaption>
+      </figure>
+
+      <p>Алгоритм аз чор қадам: <b>1)</b> ҳамаи компонентҳоеро, ки ба ин маълумот ниёз доранд, ёбед; <b>2)</b> наздиктарин волидайни умумии онҳоро ёбед; <b>3)</b> ҳолатро дар он ҷо эълон кунед; <b>4)</b> қиматро тавассути props ба поён диҳед, ва тағйиротро тавассути функсия (<code>onAdd</code>, <code>onChange</code>). Компоненти фарзанд нусха нигоҳ намедорад, он чиро, ки гирифтааст, нишон медиҳад ва дар бораи рӯйдод хабар медиҳад.</p>
+
+<pre class="code" data-lang="tsx" data-title="Боло бурдани ҳолат: ҳисобкунаки порсияҳо ва ҷамъ">
+function PortionControl({ qty, onChange }: { qty: number; onChange: (qty: number) =&gt; void }) {
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; onChange(qty - 1)}&gt;−&lt;/button&gt; {qty}{' '}
+      &lt;button onClick={() =&gt; onChange(qty + 1)}&gt;+&lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+
+function OrderTotal({ qty, price }: { qty: number; price: number }) {
+  return &lt;p&gt;Итого: {qty * price} сомони&lt;/p&gt;
+}
+
+export default function App() {
+  const [qty, setQty] = useState(1) // состояние живёт у родителя
+  return (
+    &lt;&gt;
+      &lt;PortionControl qty={qty} onChange={setQty} /&gt;
+      &lt;OrderTotal qty={qty} price={45} /&gt;
+    &lt;/&gt;
+  )
+}
+</pre>
+
+      <p>Ҳолатро аз зарурат баландтар набаред. Агар маълумот танҳо ба як компонент лозим бошад, бигзор дар он зиндагӣ кунад. Ифрати дигар: ҳолат ба боми боло бардошта шудааст, ва бояд онро аз панҷ сатҳи компонентҳое, ки ба он лозим нестанд, гузаронд. Ин <b>prop drilling</b> номида мешавад. Барои он Context ҳаст (дарси 8), вале аввал санҷед, ки масъаларо бо композитсия ҳал кардан мумкин нест: JSX-и тайёрро тавассути <code>children</code> интиқол диҳед (дарси 3).</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Дар тӯйи Душанбе ду ошпаз палав ва самбӯса мепазанд ва ҳарду рӯйхати меҳмононро алоҳида доранд. Яке 120 нафар навишт, дигаре 150: хӯрок гоҳ аз ҳад зиёд, гоҳ намерасад. Як рӯйхат назди тақсимкунанда (волидайни умумӣ) лозим аст. Ошпазон аз ӯ рақамро мегиранд ва ба ӯ «меҳмон илова шуд» хабар медиҳанд.</p>
+      </div>
+
+      <article class="task" id="q-lift">
+        <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Худро санҷед: боло бурдани ҳолат</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Ба компонентҳои <code>Menu</code> ва <code>Cart</code> як сабад лозим аст. Ҳолатро дар куҷо эълон кунем?</p>
+          <ol class="options">
+            <li>Дар <code>Menu</code>, ва бигзор <code>Cart</code> онро ба худаш нусха кунад</li>
+            <li>Дар ҳарду компонент ва дастӣ ҳамоҳанг кардан</li>
+            <li>Дар наздиктарин волидайни умумӣ, ки маълумотро тавассути props ба поён медиҳад, ва рӯйдодро тавассути колбэк мегирад</li>
+            <li>Дар тағйирёбандаи глобалӣ берун аз компонентҳо</li>
+          </ol>
+          <div class="explain"><p>Як манбаи ҳақиқат дар волидайни умумӣ ҷудошавии маълумотро истисно мекунад. Тағйирёбандаи глобалӣ рендерро ба кор намеандохт.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Вақте ки корбар «+»-ро пахш кард ва волидайн бояд ҳолатро навсозӣ кунад, компоненти фарзанд чӣ мекунад?</p>
+          <ol class="options">
+            <li>Худаш prop-и <code>qty</code>-ро тағйир медиҳад</li>
+            <li>Колбэкро аз props даъват мекунад (масалан, <code>onChange(qty + 1)</code>), ва ҳолатро волидайн тағйир медиҳад</li>
+            <li><code>setState</code>-и волидайнро бевосита аз рӯи истинод даъват мекунад</li>
+            <li>Ҳеҷ чиз: фарзандон наметавонанд ба волидайн дар бораи рӯйдод хабар диҳанд</li>
+          </ol>
+          <div class="explain"><p>Маълумот ба поён меравад, рӯйдодҳо ба боло: фарзанд функсияи додашударо даъват мекунад, волидайн ҳолатро навсозӣ мекунад ва ҳамаро, ки онро истифода мебаранд, аз нав мекашад.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t3-lift">
+        <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Ҳолати порсияҳоро боло баред</h4><span class="level mid">миёна</span></header>
+        <p>Дар <code>PortionControl</code> ҳолати худӣ ҳаст, ва <code>OrderTotal</code> рақами 1-ро мегирад ва бинобар ин ҳамеша 45 нишон медиҳад. Ҳолатро ба <code>App</code> боло баред: дар он ҷо <code>qty</code>-ро эълон кунед, ба ҳарду компонент диҳед, ва дар <code>PortionControl</code> <code>useState</code>-и худиро бо props-и <code>qty</code> ва <code>onChange</code> иваз кунед. Худтафтиш «+»-ро ду маротиба пахш мекунад.</p>
+        <div class="playground" data-mode="react" data-title="Порсияҳо ва ҷамъ">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+// TODO: уберите отсюда состояние, получайте qty и onChange через props
+function PortionControl() {
+  const [qty, setQty] = useState(1);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setQty(Math.max(1, qty - 1))}&gt;−&lt;/button&gt; &lt;b&gt;{qty}&lt;/b&gt;{" "}
+      &lt;button onClick={() =&gt; setQty(qty + 1)}&gt;+&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+function OrderTotal({ qty }) {
+  return &lt;p&gt;Итого: {qty * 45} сомони&lt;/p&gt;;
+}
+
+export default function App() {
+  // TODO: состояние qty должно жить здесь
+  return (
+    &lt;div&gt;
+      &lt;PortionControl /&gt;
+      &lt;OrderTotal qty={1} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  const plus = document.querySelectorAll("button")[1];
+  plus.click(); await wait();
+  plus.click(); await wait();
+  console.log(document.querySelector("p").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Итого: 135 сомони</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Дар <code>App</code>: <code>const [qty, setQty] = useState(1);</code>, баъд <code>&lt;PortionControl qty={qty} onChange={setQty} /&gt;</code> ва <code>&lt;OrderTotal qty={qty} /&gt;</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>PortionControl({ qty, onChange })</code>: тугмаҳо <code>onChange(Math.max(1, qty - 1))</code> ва <code>onChange(qty + 1)</code>-ро даъват мекунанд.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/sharing-state-between-components" target="_blank" rel="noopener">react.dev — Sharing State Between Components</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="derived">
+      <h2 data-toc="Маълумоти ҳосилшуда"><span class="num">04</span> Маълумоти ҳосилшуда: он чиро, ки ҳисоб кардан мумкин аст, нигоҳ надоред</h2>
+
+      <p>Ҳар қадаре ки ҳолат камтар бошад, ҳамон қадар ҷойҳое, ки маълумот метавонад аз ҳам ҷудо шавад, камтаранд. Қоида: агар қимат аз props ё ҳолати дигар <b>ҳисоб</b> шуда метавонад, барои он ҳолати алоҳида насозед, балки онро бевосита дар бадани компонент ҳангоми ҳар рендер ҳисоб кунед. Рендер арзон аст, ва ҷудошавии маълумот гарон.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 200" role="img" aria-label="Нақша: аз ҳолати ҳадди ақал (query, cuisine, selectedId, cart) дар бадани компонент ҳангоми ҳар рендер қиматҳои ҳосилшуда ҳисоб мешаванд: visible, selected, total, count">
+          <rect class="fill-y" x="10" y="24" width="190" height="150" rx="12" /><text x="105" y="48" text-anchor="middle">Ҳолат</text>
+          <text class="sub mono" x="105" y="76" text-anchor="middle">query</text><text class="sub mono" x="105" y="98" text-anchor="middle">cuisine</text><text class="sub mono" x="105" y="120" text-anchor="middle">selectedId</text><text class="sub mono" x="105" y="142" text-anchor="middle">cart</text>
+          <path class="arr" d="M200 99 H262" /><path class="arr-head" d="M270 99 l-10 -5 v10 z" />
+          <text class="sub" x="235" y="86" text-anchor="middle">рендер</text>
+          <rect class="fill-g" x="270" y="24" width="220" height="150" rx="12" /><text x="380" y="48" text-anchor="middle">Дар бадана ҳисоб мекунем</text>
+          <text class="sub mono" x="380" y="76" text-anchor="middle">visible = filter(…)</text><text class="sub mono" x="380" y="98" text-anchor="middle">selected = find(…)</text><text class="sub mono" x="380" y="120" text-anchor="middle">total = cartTotal(cart)</text><text class="sub mono" x="380" y="142" text-anchor="middle">count = cartCount(cart)</text>
+          <path class="arr" d="M490 99 H542" /><path class="arr-head" d="M550 99 l-10 -5 v10 z" />
+          <rect class="box g" x="550" y="60" width="160" height="78" rx="12" /><text x="630" y="94" text-anchor="middle">Экран</text><text class="sub" x="630" y="116" text-anchor="middle">ҳамеша мувофиқ</text>
+        </svg>
+        <figcaption>Ҳолати ҳадди ақал дар чап, ҳама чизи дигар ҳангоми ҳар рендер ҳисоб мешавад ва аз ин рӯ кӯҳна шуда наметавонад</figcaption>
+      </figure>
+
+      <p>Дар «Дастархон» танҳо <code>query</code>, <code>cuisine</code>, <code>selectedId</code> ва <code>cart</code> ба ҳолат тааллуқ доранд. Ҳама чизи дигар ҳосилшуда аст:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Қимат</th><th>Чӣ тавр гирифтан</th><th>Агар алоҳида нигоҳ доред</th></tr></thead>
+          <tbody>
+            <tr><td><code>visible</code> (тарабхонаҳои ёфтшуда)</td><td><code>restaurants.filter(…)</code> аз рӯи <code>query</code> ва <code>cuisine</code></td><td>Бояд ҳангоми ҳар тағйири дархост, филтр ва маълумот навсозӣ карданро фаромӯш накард</td></tr>
+            <tr><td><code>selected</code> (тарабхонаи интихобшуда)</td><td><code>restaurants.find((r) =&gt; r.id === selectedId)</code></td><td>Нусхаи объект кӯҳна мешавад, агар маълумоти тарабхона тағйир ёбад</td></tr>
+            <tr><td><code>total</code>, <code>count</code> (ҷамъ ва шумораи порсияҳо)</td><td><code>cartTotal(cart)</code>, <code>cartCount(cart)</code></td><td>Дар яке аз коркардкунандаҳо аз нав ҳисоб карданро фаромӯш кардед — ҷамъ нодуруст аст</td></tr>
+            <tr><td><code>isEmpty</code> (сабад холист)</td><td><code>cart.length === 0</code></td><td>Боз як тағйирёбанда барои ҳамоҳангсозӣ</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Махсусан дар мисоли тарабхонаи интихобшуда хуб намоён аст. <b>Шиносандаро</b> (<code>selectedId</code>) нигоҳ доред, ва худи объектро аз рӯи он ёбед: ҳамин тавр шумо ҳамеша маълумоти аслии массивро нишон медиҳед, на нусхаеро, ки ҳангоми клик сохтаед.</p>
+
+<pre class="code" data-lang="tsx" data-title="Бад: такрор тавассути эффект. Хуб: ҳисобкунӣ дар бадана">
+// Плохо: два состояния, которые надо держать в согласии
+const [query, setQuery] = useState('')
+const [visible, setVisible] = useState(restaurants)
+useEffect(() =&gt; {
+  setVisible(restaurants.filter((r) =&gt; r.name.includes(query)))
+}, [query])
+
+// Хорошо: одно состояние и вычисление
+const [query, setQuery] = useState('')
+const visible = restaurants.filter((r) =&gt; r.name.includes(query))
+</pre>
+
+      <p>Варианти якум рендери иловагӣ меорад (аввал бо <code>visible</code>-и кӯҳна, баъд бо нав) ва нозук аст. <code>useEffect</code>-ро дар дарси 5 мебинем, вале қоидаро аллакай ҳозир ба ёд гиред: <b>агар қимат ҳисоб шуда метавонад, ҳолатро тавассути эффект ҳамоҳанг накунед</b>. Агар ҳисобкунӣ вазнин бошад, онро тавассути <code>useMemo</code> ба хотир гирифтан мумкин аст (дарси 12), вале аввал чен кунед, ки лозим аст ё не.</p>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>const [count, setCount] = useState(items.length)</code>: рақам дар рендери аввал ба ёд гирифта шуд ва аз паси массив намеравад. <b>2.</b> <code>useState(props.value)</code> бо интизории он, ки қимат бо prop навсозӣ мешавад. <b>3.</b> Дар ҳолат ҳам рӯйхат, ҳам рӯйхати филтршударо нигоҳ доштан. <b>4.</b> Ба ҷои <code>id</code> объекти тарабхонаи интихобшударо нигоҳ доштан. <b>5.</b> Массиви ҳолатро «дар ҷо» барои қулайии намоиш саралакунӣ кардан: нусхаро дар бадани компонент саралакунӣ кунед (<code>[...cart].sort(…)</code>).</p>
+      </div>
+
+      <article class="task" id="q-derived">
+        <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Худро санҷед: маълумоти ҳосилшуда</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1,3">
+          <p>Кадом қиматҳоро дар «Дастархон» беҳтар аст ҳисоб кард, на нигоҳ дошт? Ду варианти ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li>Ҷамъи сабад: он аз рӯи сабтҳои сабад ҳисоб мешавад</li>
+            <li>Матн дар майдони ҷустуҷӯ: корбар онро худаш ворид мекунад</li>
+            <li>Шумораи тарабхонаҳои ёфтшуда: <code>visible.length</code></li>
+            <li>Мундариҷаи сабад: онро амалҳои корбар тағйир медиҳанд</li>
+          </ol>
+          <div class="explain"><p>Ҷамъ ва шумораи ёфтшуда аз ҳолат ҳисоб мешаванд. Матни ҷустуҷӯ ва худи сабад — маълумоти аслӣ, онҳоро аз дигар чиз гирифтан мумкин нест.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Чаро дар ҳолат беҳтар аст <code>selectedId</code>-ро нигоҳ дошт, на тамоми объекти тарабхонаро?</p>
+          <ol class="options">
+            <li>Рақам дар хотира ҷои камтар мегирад</li>
+            <li>Объектҳоро дар ҳолат нигоҳ доштан мумкин нест</li>
+            <li>React нигоҳ доштани объектҳои маълумотро манъ кардааст</li>
+            <li>Объектро бояд нусха кард, ва нусха кӯҳна мешавад, агар маълумот дар массив тағйир ёбад; аз рӯи <code>id</code> ҳамеша объекти аслиро меёбем</li>
+          </ol>
+          <div class="explain"><p>Объектҳоро дар ҳолат нигоҳ доштан мумкин аст (сабад — массиви объектҳост). Вале нусхаи маълумот аз манбаи дигар — такрор аст, ки аз аслӣ ҷудо мешавад.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t4-derived">
+        <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Ҳолати иловагии ҷамъро хориҷ кунед</h4><span class="level mid">миёна</span></header>
+        <p>Дар компонент ду ҳолат ҳаст: рӯйхати нархҳо ва алоҳида «ҷамъ». Тугмаи «Убрать последнее» ҷамъро навсозӣ карданро фаромӯш мекунад, ва рақамҳо ҷудо мешаванд. Ҳолати <code>total</code>-ро хориҷ кунед, ва ҷамъро дар бадани компонент аз рӯи рӯйхат ҳисоб намоед. Худтафтиш палав (45) ва чой (8)-ро илова мекунад, охиринро хориҷ мекунад ва ҷамъро чоп мекунад.</p>
+        <div class="playground" data-mode="react" data-title="Ҷамъи фармоиш">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [prices, setPrices] = useState([]);
+  // TODO: уберите это состояние, итог должен считаться из prices
+  const [total, setTotal] = useState(0);
+
+  function add(price) {
+    setPrices([...prices, price]);
+    setTotal(total + price);
+  }
+
+  function removeLast() {
+    setPrices(prices.slice(0, -1));
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; add(45)}&gt;Плов 45&lt;/button&gt;
+      &lt;button onClick={() =&gt; add(8)}&gt;Чай 8&lt;/button&gt;
+      &lt;button onClick={removeLast}&gt;Убрать последнее&lt;/button&gt;
+      &lt;p&gt;Итого: {total}&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  const b = () =&gt; document.querySelectorAll("button");
+  b()[0].click(); await wait();
+  b()[1].click(); await wait();
+  b()[2].click(); await wait();
+  console.log(document.querySelector("p").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Итого: 45</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Сатри <code>useState(0)</code> ва даъвати <code>setTotal</code>-ро хориҷ кунед. Ба ҷои онҳо дар бадани компонент: <code>const total = ...</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>const total = prices.reduce((sum, price) =&gt; sum + price, 0);</code></p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/choosing-the-state-structure" target="_blank" rel="noopener">react.dev — Choosing the State Structure</a> · <a href="https://react.dev/learn/you-might-not-need-an-effect" target="_blank" rel="noopener">react.dev — You Might Not Need an Effect</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="reducer">
+      <h2 data-toc="useReducer ва амалҳо"><span class="num">05</span> useReducer: амалҳо ба ҷои setState-ҳои пароканда</h2>
+
+      <p>Сабад чор амал лозим дорад: хӯрок илова кардан, хориҷ кардан, миқдорро тағйир додан, пок кардан. Бо <code>useState</code> ҳар яке ба функсияи алоҳидаи коркардкунанда бо <code>setCart(…)</code>-и худ табдил меёбад, ва мантиқи «сабад чӣ тавр тағйир меёбад» дар компонент пароканда мешавад (ва ҳангоми боло бурдани ҳолат — дар props низ). <code>useReducer</code> онро дар як ҷо ҷамъ мекунад.</p>
+
+      <p><b>Редюсер</b> — функсияи оддии <code>(state, action) =&gt; newState</code>: ҳолати ҷорӣ ва <b>амал</b> (action)-ро мегирад, ҳолати навбатиро бармегардонад. <b>Амал</b> — объектест, ки тавсиф мекунад, <i>чӣ рӯй дод</i>, на <i>чӣ тавр тағйир додан</i>: <code>{ type: 'add', item }</code>, <code>{ type: 'remove', itemId: 3 }</code>. Компонент ҳолатро худаш тағйир намедиҳад, балки амалро тавассути <code>dispatch</code> мефиристад.</p>
+
+<pre class="code" data-lang="tsx" data-title="Шакли навишт (содда, бе навъҳо)">
+const [state, dispatch] = useReducer(reducer, initialState)
+
+dispatch({ type: 'add', item })   // «произошло: добавили блюдо»
+// React вызовет reducer(state, { type: 'add', item }) и возьмёт результат как новое состояние
+</pre>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 190" role="img" aria-label="Давраи useReducer: корбар тугмаро пахш мекунад, коркардкунанда dispatch-ро бо амал даъват мекунад, React редюсерро бо ҳолати ҷорӣ ва амал даъват мекунад, редюсер ҳолати навро бармегардонад, компонент аз нав кашида мешавад">
+          <rect class="fill-y" x="10" y="40" width="120" height="70" rx="12" /><text x="70" y="68" text-anchor="middle">Рӯйдод</text><text class="sub" x="70" y="90" text-anchor="middle">клик «В корзину»</text>
+          <rect class="box b" x="165" y="40" width="130" height="70" rx="12" /><text x="230" y="68" text-anchor="middle">dispatch</text><text class="sub mono" x="230" y="90" text-anchor="middle">{type:'add', item}</text>
+          <rect class="fill-g" x="330" y="40" width="140" height="70" rx="12" /><text x="400" y="68" text-anchor="middle">reducer</text><text class="sub mono" x="400" y="90" text-anchor="middle">(state, action)</text>
+          <rect class="box g" x="505" y="40" width="100" height="70" rx="12" /><text x="555" y="68" text-anchor="middle">Ҳолати</text><text class="sub" x="555" y="90" text-anchor="middle">нав</text>
+          <rect class="box" x="635" y="40" width="75" height="70" rx="12" /><text x="672" y="80" text-anchor="middle">Рендер</text>
+          <path class="arr" d="M130 75 H157" /><path class="arr-head" d="M165 75 l-10 -5 v10 z" />
+          <path class="arr" d="M295 75 H322" /><path class="arr-head" d="M330 75 l-10 -5 v10 z" />
+          <path class="arr" d="M470 75 H497" /><path class="arr-head" d="M505 75 l-10 -5 v10 z" />
+          <path class="arr" d="M605 75 H627" /><path class="arr-head" d="M635 75 l-10 -5 v10 z" />
+          <text class="sub" x="12" y="150">Компонент рӯйдодро тавсиф мекунад, ва қоидаҳои гузариши ҳолат дар редюсер зиндагӣ мекунанд.</text>
+          <text class="sub t-b" x="12" y="172">Редюсер — функсияи тоза: state ва action-и якхела ҳамеша натиҷаи якхела медиҳанд.</text>
+        </svg>
+        <figcaption>Давраи useReducer: рӯйдод, dispatch бо амал, редюсер, ҳолати нав, рендер</figcaption>
+      </figure>
+
+      <h3>Қоидаҳои редюсер</h3>
+      <ol class="steps">
+        <li><b>Функсияи тоза.</b> Танҳо ҳисобкунӣ: бе дархост ба сервер, <code>Date.now()</code>, <code>Math.random()</code>, сабт дар <code>localStorage</code> ва баровардан ба экран. Ин корҳоро дар коркардкунандаҳои рӯйдод ва эффектҳо мекунанд (дарси 5). Шиносанда ё вақтро то <code>dispatch</code> ҳисоб кунед ва ба амал гузоред.</li>
+        <li><b>Ҳолатро тағйир намедиҳад.</b> Қимати нав бармегардонад (бахши 2). Агар амал чизеро тағйир надиҳад, ҳамон <code>state</code>-ро баргардонед: React рендерро мегузаронад.</li>
+        <li><b>Рӯйдодро тавсиф мекунад.</b> <code>{ type: 'add' }</code>, на <code>{ type: 'setCartToThisArray', cart: … }</code>: амалро аз рӯи маъно номгузорӣ мекунанд, ва редюсер худаш ҳал мекунад, ки бо ҳолат чӣ кор кунад.</li>
+        <li><b>Ҳама чизи барои навсозӣ заруриро дорад.</b> Редюсер ба тағйирёбандаҳои беруна муроҷиат намекунад, танҳо ба <code>state</code> ва <code>action</code>.</li>
+      </ol>
+
+      <p>Дар реҷаи таҳия React редюсерро барои як амал ду маротиба даъват мекунад (дар <code>StrictMode</code>, дарси 3), то хатоҳои ғайритозагӣ фавран зоҳир шаванд (редюсери тағйирдиҳанда хӯрокро ду маротиба илова мекунад, дар бахши амалиёт шумо инро бо чашми худ мебинед). Бинобар ин <code>console.log</code> дар дохили редюсер аз шумораи клик сатрҳои бештар чоп мекунад:</p>
+
+<pre class="code" data-title="Консоли браузер: баъд аз як клик ба «В корзину» (реҷаи dev)">
+reducer add
+reducer add
+reducer add
+reducer add
+</pre>
+
+      <p>Ин хато нест: дар ҷамъкунии истеҳсолӣ даъвати дугона нест. Вале маҳз барои ҳамин ба редюсер таъсирҳои иловагӣ манъ аст: даъвати такрорӣ набояд чизеро вайрон кунад. Шумораи дақиқи сатрҳо аз версияи React ва реҷа вобаста аст, ҳисоб кардани он лозим нест.</p>
+
+      <h3>useState ё useReducer</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>useState</th><th>useReducer</th></tr></thead>
+          <tbody>
+            <tr><td><b>Барои чӣ мувофиқ</b></td><td>Як қимат: матни ҷустуҷӯ, нишонаи «кушода», id-и интихобшуда</td><td>Объект ё массиве, ки онро бо усулҳои гуногун тағйир медиҳанд: сабад, шакл аз бисёр майдонҳо, филтрҳо</td></tr>
+            <tr><td><b>Мантиқ дар куҷо</b></td><td>Дар коркардкунандаҳо, дар назди компонент</td><td>Дар як функсияи редюсер, ки онро ба файли алоҳида баровардан мумкин аст</td></tr>
+            <tr><td><b>Чӣ тавр санҷидан</b></td><td>Танҳо тавассути компонент</td><td>Редюсер — функсияи оддӣ: <code>reducer(state, action)</code>-ро бе интерфейс месанҷанд (дарси 13)</td></tr>
+            <tr><td><b>Ҳаҷми код</b></td><td>Камтар</td><td>Бештар: навъи амалҳо ва <code>switch</code> лозиманд</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Бо <code>useState</code> оғоз кунед. Ба <code>useReducer</code> гузаред, вақте ки коркардкунандаҳое, ки як ҳолатро тағйир медиҳанд, се-чор ва бештар мешаванд, ва қоидаҳои гузариш ночиз нестанд (дар сабад: иловаи сабти мавҷуда миқдорро меафзояд, миқдори 0 сабтро хориҷ мекунад). Ҳарду ҳук баробарҳуқуқанд: <code>useState</code> дар дарун ҳамин тавр сохта шудааст.</p>
+
+      <h3>Санҷед: сабад дар useReducer</h3>
+      <p>Тугмаҳоро пахш кунед ва рӯйхатро пайгирӣ намоед. Диққат диҳед, ки компонент ягон бор <code>setCart</code>-ро даъват намекунад: он танҳо рӯйдодҳоро мефиристад.</p>
+
+      <div class="playground" data-mode="react" data-title="Сабади хурд дар useReducer">
+<pre class="code" data-lang="jsx">
+import { useReducer } from "react";
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "add":
+      return [...state, action.title];
+    case "removeLast":
+      return state.slice(0, -1);
+    case "clear":
+      return [];
+    default:
+      throw new Error("Неизвестное действие: " + action.type);
+  }
+}
+
+export default function App() {
+  const [cart, dispatch] = useReducer(reducer, []);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; dispatch({ type: "add", title: "Плов" })}&gt;+ Плов&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; dispatch({ type: "add", title: "Чай" })}&gt;+ Чай&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; dispatch({ type: "removeLast" })}&gt;Убрать последнее&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; dispatch({ type: "clear" })}&gt;Очистить&lt;/button&gt;
+      &lt;p&gt;В корзине: {cart.length === 0 ? "пусто" : cart.join(", ")}&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Дар чойхона фармоишро пешхизмат қабул мекунад, вале ошпаз мепазад ва ҳисоб мекунад. Пешхизмат дар ошхона намегӯяд «ба дег боз 200 грамм биринҷ андоз», ӯ варақаи «миз 5: палав»-ро медиҳад. Варақа — амал аст, ошпаз — редюсер: танҳо ӯ қоидаҳои ошхонаро медонад. Соҳиби чойхона метавонад қоидаҳоро иваз кунад (порсия калонтар шуд), ва пешхизматон бояд аз нав чизе наомӯзанд.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Ҳолатро дар дохили редюсер тағйир додан: <code>state.push(…); return state</code>. <b>2.</b> Дар редюсер <code>fetch</code>, <code>Math.random()</code> ё <code>Date.now()</code>-ро даъват кардан. <b>3.</b> <code>return</code>-ро дар яке аз шоҳаҳои <code>switch</code> фаромӯш кардан: ҳолат <code>undefined</code> мешавад. <b>4.</b> <code>break</code> ё <code>return</code>-ро фаромӯш карда, ба <code>case</code>-и навбатӣ «афтидан». <b>5.</b> Ба <code>dispatch</code> натиҷаи даъвати редюсерро ба ҷои амал додан. <b>6.</b> Амалро ҳамчун фармони «ин қиматро барои ҳар майдон гузор» тавсиф кардан: маънои редюсер гум мешавад.</p>
+      </div>
+
+      <div class="yt" data-id="44qqbKsFtkw" data-title="useReducer-ро дар 14 дақиқа меомӯзем — React Hooks, канали Влад Калачев — JavaScript уроки"></div>
+      <p class="muted">Ролик бо забони русӣ (14 дақиқа, соли 2020): асосҳои <code>useReducer</code> дар JavaScript. Ҳук аз он замон тағйир наёфтааст; навъҳо ва StrictMode-ро дар худи дарс мебинем.</p>
+
+      <article class="task" id="q-reducer">
+        <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Худро санҷед: useReducer</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>«Амал» (action) дар <code>useReducer</code> чист?</p>
+          <ol class="options">
+            <li>Функсияе, ки ҳолатро фавран тағйир медиҳад</li>
+            <li>Объекте, ки тавсиф мекунад, чӣ рӯй дод (<code>{ type: 'add', item }</code>); ҳолатро чӣ тавр тағйир додан, редюсер ҳал мекунад</li>
+            <li>Тамоми қимати нави ҳолат</li>
+            <li>Коркардкунандаи рӯйдоди браузер</li>
+          </ol>
+          <div class="explain"><p>Амал — тавсифи рӯйдод аст. Мантиқи гузариши ҳолат дар редюсер аст, на дар компонент.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Дар дохили редюсер чӣ манъ аст? Ду варианти ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li>Массиви ҳолати додашударо дар ҷо тағйир додан (<code>state.push</code>)</li>
+            <li>Бо <code>map</code> ва <code>filter</code> массиви нав баргардондан</li>
+            <li>Дархост ба сервер фиристодан ё <code>Math.random()</code>-ро даъват кардан</li>
+            <li><code>switch</code>-ро истифода бурдан</li>
+          </ol>
+          <div class="explain"><p>Редюсер бояд тоза бошад ва ҳолатро тағйир надиҳад. React дар реҷаи dev онро ду маротиба даъват мекунад, то чунин хатоҳо фавран пайдо шаванд.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Кай аз <code>useState</code> ба <code>useReducer</code> гузаштан лозим?</p>
+          <ol class="options">
+            <li>Ҳамеша: <code>useReducer</code> тезтар аст</li>
+            <li>Вақте ки ҳолат — рақам аст</li>
+            <li>Вақте ки эффектҳо лозиманд</li>
+            <li>Вақте ки як ҳолатро якчанд коркардкунанда аз рӯи қоидаҳои ночиз тағйир медиҳанд, ва мантиқро дар як ҷо ҷамъ кардан мехоҳем</li>
+          </ol>
+          <div class="explain"><p>Суръат якхела аст. Редюсер бо хониши осон ва санҷидашавӣ бартарӣ дорад, вақте ки қоидаҳо бисёранд, ва барои як нишона <code>useState</code> соддатар аст.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t5-reducer">
+        <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Редюсери сабадро анҷом диҳед</h4><span class="level hard">душвор</span></header>
+        <p>Се амалро татбиқ кунед. <code>add</code>: агар сабти бо чунин <code>id</code> ҳанӯз нест, онро бо <code>qty: 1</code> илова кунед, вагарна <code>qty</code>-ро 1 афзоед. <code>remove</code>: сабтро аз рӯи <code>id</code> хориҷ кунед. <code>setQty</code>: миқдорро таъин кунед, ва агар <code>qty</code> аз 1 кам бошад, сабтро хориҷ намоед. Ҳолатҳо дар санҷиш яхкарда шудаанд (<code>Object.freeze</code>): ҳар тағйирдиҳии ҷой хатои <code>TypeError</code> медиҳад. Редюсер ҳамчун функсияи оддӣ даъват мешавад, интерфейс лозим нест.</p>
+        <div class="playground" data-mode="react" data-title="Редюсери сабад">
+<pre class="code" data-lang="jsx">
+function reducer(state, action) {
+  switch (action.type) {
+    case "add":
+      // TODO: позиции нет — добавить с qty 1, есть — увеличить qty на 1
+      return state;
+    case "remove":
+      // TODO: убрать позицию по action.id
+      return state;
+    case "setQty":
+      // TODO: задать qty по action.id; если qty &lt; 1, убрать позицию
+      return state;
+    default:
+      throw new Error("Неизвестное действие: " + action.type);
+  }
+}
+
+export default function App() {
+  return &lt;p&gt;Редьюсер проверяется в консоли ниже&lt;/p&gt;;
+}
+
+// ---- проверка (не менять) ----
+const freeze = (s) =&gt; (s.forEach(Object.freeze), Object.freeze(s));
+const show = (s) =&gt; s.map((e) =&gt; e.id + "x" + e.qty).join(" ") || "пусто";
+try {
+  const a = freeze(reducer(freeze([]), { type: "add", id: 1, price: 45 }));
+  const b = freeze(reducer(a, { type: "add", id: 1, price: 45 }));
+  const c = freeze(reducer(b, { type: "add", id: 2, price: 8 }));
+  const d = freeze(reducer(c, { type: "setQty", id: 1, qty: 5 }));
+  const e = freeze(reducer(d, { type: "remove", id: 2 }));
+  const f = freeze(reducer(e, { type: "setQty", id: 1, qty: 0 }));
+  console.log([a, b, c, d, e, f].map(show).join(" | "));
+} catch (err) {
+  console.log("Ошибка: " + err.message);
+}
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>1x1 | 1x2 | 1x2 2x1 | 1x5 2x1 | 1x5 | пусто</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Дар <code>add</code> аввал санҷед, ки сабт ҳаст ё не: <code>state.some((e) =&gt; e.id === action.id)</code>. Агар не, <code>[...state, { id: action.id, price: action.price, qty: 1 }]</code>-ро баргардонед, агар ҳаст — <code>state.map</code>-ро.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>remove</code>: <code>state.filter((e) =&gt; e.id !== action.id)</code>. <code>setQty</code>: агар <code>action.qty &lt; 1</code>, пас ҳамон <code>filter</code>, вагарна <code>state.map((e) =&gt; e.id === action.id ? { ...e, qty: action.qty } : e)</code>.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/extracting-state-logic-into-a-reducer" target="_blank" rel="noopener">react.dev — Extracting State Logic into a Reducer</a> · <a href="https://react.dev/reference/react/useReducer" target="_blank" rel="noopener">react.dev — useReducer</a></p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="ts-reducer">
+      <h2 data-toc="TS: амалҳои редюсер"><span class="num">06</span> TypeScript: навъҳои ҳолат ва амалҳо</h2>
+
+      <p>Редюсер бе навъҳо — ин <code>switch</code> аз рӯи сатр аст, ки дар он хатои имлоии <code>'add'</code> бесадо кор намекунад. Бо навъҳо компилятор ҳар амал ва ҳар шоҳаро месанҷад. Усули асосӣ — <b>discriminated union</b> (иттиҳоди нишондодашуда, шумо онро дар дарси 2 дидаед): маҷмӯи навъҳои объектӣ бо майдони умумии нишонаи <code>type</code>, ки ҳар навъ сатри литерали худ ва майдонҳои иловагии худро дорад.</p>
+
+<pre class="code" data-lang="ts" data-title="src/cartReducer.ts (навъи амалҳо)">
+import { assertNever } from './assertNever'
+import type { CartItem, MenuItem } from './types'
+
+export type CartAction =
+  | { type: 'add'; item: MenuItem }
+  | { type: 'remove'; itemId: number }
+  | { type: 'setQty'; itemId: number; qty: number }
+  | { type: 'clear' }
+
+export function cartReducer(state: CartItem[], action: CartAction): CartItem[] {
+  switch (action.type) {
+    case 'add': {
+      const exists = state.some((entry) =&gt; entry.item.id === action.item.id)
+      if (!exists) {
+        return [...state, { item: action.item, qty: 1 }]
+      }
+      return state.map((entry) =&gt;
+        entry.item.id === action.item.id
+          ? { ...entry, qty: entry.qty + 1 }
+          : entry,
+      )
+    }
+    case 'remove':
+      return state.filter((entry) =&gt; entry.item.id !== action.itemId)
+    case 'setQty': {
+      if (action.qty &lt;= 0) {
+        return state.filter((entry) =&gt; entry.item.id !== action.itemId)
+      }
+      return state.map((entry) =&gt;
+        entry.item.id === action.itemId ? { ...entry, qty: action.qty } : entry,
+      )
+    }
+    case 'clear':
+      return []
+    default:
+      return assertNever(action)
+  }
+}
+</pre>
+
+      <p>Ин ҷо файл пурра нишон дода шудааст (дар амалиёт шумо онро худатон месозед). Аввал навъи амалҳо, баъд редюсер бо <code>switch</code>. Ин чӣ медиҳад:</p>
+      <ol class="steps">
+        <li><b>Танг кардани навъ дар <code>switch</code>.</b> Дар дохили <code>case 'add'</code> TypeScript медонад, ки <code>action</code> майдони <code>item</code> дорад, ва дар <code>case 'remove'</code> — <code>itemId</code>. Ба майдони бегона муроҷиат кардан мумкин нест:
+<pre class="code" data-title="Терминал — натиҷаи tsc -b">
+src/cartReducer.ts(24,63): error TS2339: Property 'item' does not exist on type '{ type: "remove"; itemId: number; }'.
+</pre>
+        </li>
+        <li><b>Санҷиш ҳангоми фиристодан.</b> <code>dispatch</code> танҳо қиматҳои навъи <code>CartAction</code>-ро мепазирад. Хатои имло дар нишона, майдони гумшуда ва навъи нодурусти майдон то оғози барнома ёфта мешаванд:
+<pre class="code" data-title="Терминал — натиҷаи tsc -b: аз ҳар як ғалат дар як иҷро">
+src/App.tsx(66,41): error TS2820: Type '"cleer"' is not assignable to type '"add" | "clear" | "remove" | "setQty"'. Did you mean '"clear"'?
+src/App.tsx(75,30): error TS6133: 'itemId' is declared but its value is never read.
+src/App.tsx(75,50): error TS2345: Argument of type '{ type: "remove"; }' is not assignable to parameter of type 'CartAction'.
+  Property 'itemId' is missing in type '{ type: "remove"; }' but required in type '{ type: "remove"; itemId: number; }'.
+src/App.tsx(73,56): error TS2322: Type 'string' is not assignable to type 'number'.
+</pre>
+        </li>
+        <li><b>Хулосаи навъҳо дар <code>useReducer</code>.</b> Ҳолат аз редюсер гирифта мешавад: дар <code>const [cart, dispatch] = useReducer(cartReducer, [])</code> навъи <code>cart</code> — <code>CartItem[]</code>, ва <code>dispatch</code> <code>CartAction</code>-ро мепазирад. Навъҳоро дастӣ навиштан лозим нест.</li>
+      </ol>
+
+      <h3>Санҷиши пуррагӣ: never дар default</h3>
+      <p>Бартарии асосӣ: агар шумо ба иттиҳод амали навро илова кунед, ва шоҳаро дар <code>switch</code> фаромӯш намоед, компилятор инро нишон медиҳад. Барои ин дар <code>default</code> функсияи хурдеро даъват мекунанд, ки қимати навъи <code>never</code>-ро мегирад («қимате, ки буда наметавонад»). То даме ки ҳамаи шоҳаҳо коркард шудаанд, дар <code>default</code> навъи <code>action</code> — <code>never</code> аст, ва ҳама чиз бе хато компилятсия мешавад. Ҳамин ки амали коркарднашуда пайдо мешавад, навъ дигар <code>never</code> нест:</p>
+
+<pre class="code" data-lang="ts" data-title="src/assertNever.ts">
+export function assertNever(value: never): never {
+  throw new Error(`Unexpected value: ${JSON.stringify(value)}`)
+}
+</pre>
+
+<pre class="code" data-title="Терминал — натиҷаи tsc -b: ба union { type: 'applyPromo' } илова кардем, вале case нанавиштем">
+src/cartReducer.ts(37,26): error TS2345: Argument of type '{ type: "applyPromo"; code: string; }' is not assignable to parameter of type 'never'.
+</pre>
+
+      <p>Матни хато оид ба «never» ба ҳайрат меорад, вале онро ба тарзи дигар бихонед: дар қавс намоён аст, <b>кадом амал</b> коркард нашудааст. Агар тасодуфан шоҳаро хориҷ кунед, хато ҳамонро ном мебарад: <code>Argument of type '{ type: "clear"; }' is not assignable to parameter of type 'never'</code>. Функсияи <code>assertNever</code> ҳангоми кор низ муҳофизат мекунад: агар ба редюсер қимати номумкин бирасад (масалан, аз коди JavaScript), он хато мепартояд, на ҳолати нодурустро бесадо бармегардонад.</p>
+
+      <h3>Dispatch-ро ба компоненти фарзанд чӣ тавр додан</h3>
+      <p>Ду роҳ. Якум — <b>колбэкҳо</b>-ро бо номҳои фаҳмо (<code>onAdd</code>, <code>onRemove</code>) додан: компонент дар бораи редюсер чизе намедонад, ва онро бо ҳар манбаи маълумот истифода бурдан мумкин аст. Мо дар амалиёт аз ин истифода мебарем. Дуюм — худи <code>dispatch</code>-ро бо навъи <code>Dispatch&lt;CartAction&gt;</code> додан (навъ аз <code>react</code> тавассути <code>import type</code> ворид мешавад). Он соддатар аст, вале компонентро ба амалҳои мушаххас мебандад. Ҳарду вариант бе хато компилятсия мешаванд; вақте ки компонент бояд универсалӣ бошад, колбэкҳоро интихоб кунед.</p>
+
+<pre class="code" data-lang="tsx" data-title="Роҳи дуюм: dispatch ҳамчун prop">
+import type { Dispatch } from 'react'
+import type { CartAction } from '../cartReducer'
+
+type ClearButtonProps = {
+  dispatch: Dispatch&lt;CartAction&gt;
+}
+
+export default function ClearButton({ dispatch }: ClearButtonProps) {
+  return &lt;button onClick={() =&gt; dispatch({ type: 'clear' })}&gt;Очистить&lt;/button&gt;
+}
+</pre>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Навъи амал <code>{ type: string }</code> ба ҷои литералҳо: танг кардан дар <code>switch</code> кор намекунад, ва хатоҳои имло ёфта намешаванд. <b>2.</b> Як навъ бо майдонҳои ихтиёрӣ (<code>{ type: 'add' | 'remove'; item?: MenuItem; itemId?: number }</code>): дар ҳар шоҳа бояд <code>undefined</code>-ро санҷид; иттиҳод тозатар аст. <b>3.</b> <code>default: return state</code> ба ҷои <code>assertNever</code>: амали нав бесадо нодида гирифта мешавад. <b>4.</b> Навъро тавассути <code>as</code> оварда, хаторо «хомӯш кардан»: хато лозим аст, он шоҳаи фаромӯшшударо нишон медиҳад. <b>5.</b> Ҳолатро ҳамчун <code>any</code> тавсиф кардан: он гоҳ навъҳо дар ҳеҷ ҷо кӯмак намекунанд.</p>
+      </div>
+
+      <article class="task" id="q-ts-reducer">
+        <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Худро санҷед: навъҳои амалҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Барои чӣ дар <code>default</code>-и редюсер функсияро бо параметри навъи <code>never</code> даъват мекунанд?</p>
+          <ol class="options">
+            <li>Барои он ки редюсер тезтар кор кунад</li>
+            <li>Барои он ки React огоҳӣ надиҳад</li>
+            <li>Барои он ки компилятор хато нишон диҳад, агар ба иттиҳоди амалҳо варианти нав илова кунанд, вале шоҳаро барои он нанависанд</li>
+            <li>Барои он ки ҳолатро ба оғозӣ баргардонад</li>
+          </ol>
+          <div class="explain"><p>Вақте ки ҳамаи вариантҳо коркард шудаанд, дар <code>default</code> навъи <code>action</code> ба <code>never</code> баробар аст. Варианти коркарднашуда ба <code>never</code> мувофиқ нест, ва хатои <code>TS2345</code> пайдо мешавад.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Дар <code>case 'remove'</code> шумо <code>action.item</code>-ро менависед ва хатои <code>TS2339</code> мегиред. Чӣ шуд?</p>
+          <ol class="options">
+            <li>Бояд навъҳои React-ро пайваст кард</li>
+            <li>Дар дохили шоҳаи <code>'remove'</code> амал то <code>{ type: 'remove'; itemId: number }</code> танг шудааст, майдони <code>item</code> надорад</li>
+            <li>Дар TypeScript майдонҳои амалро хондан мумкин нест</li>
+            <li>Бояд <code>action!.item</code> навишт</li>
+          </ol>
+          <div class="explain"><p>Танг кардан аз рӯи майдони нишона дар ҳар шоҳа навъи худро бо майдонҳои лозимӣ медиҳад. Аломати хитоб хаторо танҳо пинҳон мекард.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t6-exh">
+        <header><span class="task-num">ВАЗИФАИ 6.2</span><h4>Санҷиши пуррагӣ: шоҳаи фаромӯшшударо илова кунед</h4><span class="level mid">миёна</span></header>
+        <p>Ба иттиҳод амали <code>reset</code> илова карданд, вале дар <code>switch</code> шоҳа нанавиштанд, ва компилятор ба <code>assertNever</code> эътироз мекунад. <code>case 'reset'</code>-ро, ки <code>0</code> бармегардонад, анҷом диҳед ва иҷро кунед: хатоҳои навъ набояд бошанд.</p>
+<pre class="code" data-run data-lang="ts">
+type Action =
+  | { type: "inc" }
+  | { type: "dec" }
+  | { type: "reset" };
+
+function assertNever(value: never): never {
+  throw new Error("Unexpected: " + JSON.stringify(value));
+}
+
+function reducer(count: number, action: Action): number {
+  switch (action.type) {
+    case "inc":
+      return count + 1;
+    case "dec":
+      return count - 1;
+    // TODO: ветка для "reset"
+    default:
+      return assertNever(action);
+  }
+}
+
+console.log(reducer(reducer(reducer(5, { type: "inc" }), { type: "inc" }), { type: "reset" }));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>0</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Хато амали коркарднашударо ном мебарад: <code>{ type: "reset" }</code>. Шоҳа бо чунин нишона лозим аст.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>case "reset": return 0;</code> пеш аз <code>default</code>.</p></details>
+      </article>
+
+      <article class="task" id="t6-union">
+        <header><span class="task-num">ВАЗИФАИ 6.3</span><h4>Навъи амалҳоро тавсиф кунед</h4><span class="level hard">душвор</span></header>
+        <p>Редюсери порсияҳо аллакай навишта шудааст ва се амалро истифода мебарад: <code>inc</code> (бе майдон), <code>dec</code> (бе майдон) ва <code>set</code> (бо майдони ададии <code>value</code>). Навъи <code>Action</code> ҳоло танҳо якумро тавсиф мекунад, ва компилятор эътироз мекунад. <code>Action</code>-ро ҳамчун иттиҳоди се навъи объектӣ дубора нависед.</p>
+<pre class="code" data-run data-lang="ts">
+// TODO: опишите объединение из трёх действий
+type Action = { type: "inc" };
+
+function reducer(qty: number, action: Action): number {
+  switch (action.type) {
+    case "inc":
+      return qty + 1;
+    case "dec":
+      return Math.max(1, qty - 1);
+    case "set":
+      return Math.max(1, action.value);
+  }
+}
+
+let qty = 1;
+qty = reducer(qty, { type: "inc" });
+qty = reducer(qty, { type: "set", value: 7 });
+qty = reducer(qty, { type: "dec" });
+console.log(qty);
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>6</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Иттиҳод тавассути <code>|</code> навишта мешавад: ҳар вариант — навъи объектӣ бо нишонаи худи <code>type</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>type Action = { type: "inc" } | { type: "dec" } | { type: "set"; value: number };</code></p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/typescript#typing-usereducer" target="_blank" rel="noopener">react.dev — Using TypeScript: useReducer</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions" target="_blank" rel="noopener">typescriptlang.org — Discriminated unions</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/narrowing.html#exhaustiveness-checking" target="_blank" rel="noopener">typescriptlang.org — Exhaustiveness checking</a></p>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="hooks-rules">
+      <h2 data-toc="Қоидаҳои ҳукҳо"><span class="num">07</span> Қоидаҳои ҳукҳо: чаро ба ҳар ҷо не</h2>
+
+      <p>Функсияҳои <code>useState</code>, <code>useReducer</code>, <code>useEffect</code> ва дигарон, ки номашон бо <code>use</code> оғоз мешавад, <b>ҳукҳо</b> номида мешаванд. Онҳо ду қоида доранд.</p>
+      <ol class="steps">
+        <li><b>Ҳукҳоро танҳо дар сатҳи боло даъват кунед.</b> На дар дохили шартҳо (<code>if</code>, оператори сегона, <code>&amp;&amp;</code>), на дар даврҳо, на дар функсияҳои дохилӣ ва на баъд аз <code>return</code>-и барвақтӣ.</li>
+        <li><b>Ҳукҳоро танҳо аз компонентҳо ё ҳукҳои дигар даъват кунед.</b> На аз функсияҳои оддӣ, коркардкунандаҳои рӯйдод ва синфҳо. Ҳукҳои худиро (функсияҳо бо номи <code>useЧизе</code>) шумо дар дарси 6 менависед.</li>
+      </ol>
+
+      <h3>Чаро ҳамин тавр</h3>
+      <p>React номҳои тағйирёбандаҳои шуморо намедонад. Он ҳолати компонентро ҳамчун <b>рӯйхати ҳуҷайраҳо</b> нигоҳ медорад, ва ҳар даъвати ҳук ҳангоми рендер ҳуҷайраи навбатиро аз рӯи тартиб мегирад: <code>useState</code>-и аввал ҳуҷайраи 1-ро мегирад, дуюм — ҳуҷайраи 2-ро. Бинобар ин тартиби даъватҳо бояд ҳангоми ҳар рендер якхела бошад. Агар ҳук дар <code>if</code> афтад, ҳангоми қимати дигари шарт тартиб мелағжад, ва ҳук ҳуҷайраи бегонаро мегирад.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Нақша: дар чап тартиби даъвати ҳукҳо дар ду рендер мувофиқ аст, ва ҳуҷайраҳои ҳолат дуруст муқоиса мешаванд. Дар рост дар рендери дуюм useState-и аввал бо шарт гузаронда шуд, ва ҳуки дуюм ҳуҷайраи аввалиро мегирад, яъне қимати бегона">
+          <text x="12" y="20">Тартиби якхела</text>
+          <rect class="box" x="12" y="34" width="120" height="30" rx="8" /><text class="sub mono" x="72" y="54" text-anchor="middle">ҳуҷайра 1: 3</text>
+          <rect class="box" x="12" y="70" width="120" height="30" rx="8" /><text class="sub mono" x="72" y="90" text-anchor="middle">ҳуҷайра 2: "чай"</text>
+          <text class="sub" x="150" y="54">рендер 1: useState → 1</text><text class="sub" x="150" y="90">рендер 1: useState → 2</text>
+          <text class="sub" x="150" y="124">рендер 2: useState → 1, useState → 2</text>
+          <text class="sub t-g" x="12" y="148">ҳар ҳук ҳуҷайраи худро мегирад</text>
+          <text x="400" y="20">Ҳук бо шарт гузаронда шуд</text>
+          <rect class="box" x="400" y="34" width="120" height="30" rx="8" /><text class="sub mono" x="460" y="54" text-anchor="middle">ҳуҷайра 1: 3</text>
+          <rect class="box" x="400" y="70" width="120" height="30" rx="8" /><text class="sub mono" x="460" y="90" text-anchor="middle">ҳуҷайра 2: "чай"</text>
+          <text class="sub" x="538" y="54">рендер 2: ҳуки 1 гузаронда шуд</text><text class="sub" x="538" y="90">ҳуки дуюм ҳуҷайраи 1-ро мегирад</text>
+          <rect class="fill-r" x="400" y="118" width="300" height="46" rx="10" /><text class="sub" x="550" y="146" text-anchor="middle">ба ҷои "чай" рақами 3-ро гирифт: вайроншавӣ</text>
+          <text class="sub t-r" x="400" y="186">React номҳоро намедонад: даъватҳоро аз рӯи тартиб мешуморад</text>
+        </svg>
+        <figcaption>React ҳукҳоро бо ҳуҷайраҳои ҳолат аз рӯи тартиби даъват муқоиса мекунад; гузаронидани ҳук тартибро мелағзонад ва маълумотро омехта мекунад</figcaption>
+      </figure>
+
+      <p>Шумо бояд инро аз ёд накунед: линтер вайронкуниҳоро меёбад. Қоидаи <code>react-hooks/rules-of-hooks</code> дар Oxlint, ки дар лоиҳа аз дарси 1 танзим шудааст, дохил аст. Инак он барои ҳук баъд аз <code>return</code>-и барвақтӣ, дар дохили давр ва дар функсияи оддӣ чӣ чоп мекунад:</p>
+
+<pre class="code" data-title="Терминал — npm run lint">
+src/components/Bad.tsx:9:25: error react-hooks(rules-of-hooks): React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. help: Move the Hook call before the condition, or call it unconditionally and branch inside the Hook/effect instead.
+src/components/Bad.tsx:11:5: error react-hooks(rules-of-hooks): React Hook "useState" may be executed more than once. Possibly because it is called in a loop. React Hooks must be called in the exact same order in every component render.
+src/components/Bad.tsx:17:10: error react-hooks(rules-of-hooks): React Hook "useState" is called in function "helper" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use".
+</pre>
+
+      <p>Агар чунин кодро воқеан иҷро кунед, вобаста ба ҳолат ё хато, ё бозсозии бесадои ҳолат мешавад. Инак хатои воқеӣ дар консоли браузер, вақте ки ҳангоми рендери дуюм <code>useState</code> як маротиба аз рендери аввал зиёд даъват мешавад (саҳифа баъд аз он холӣ мешавад, зеро дар лоиҳа ҳудуди хатоҳо нест):</p>
+
+<pre class="code" data-title="Консоли браузер (реҷаи dev)">
+React has detected a change in the order of Hooks called by Bad. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://react.dev/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useState                   useState
+2. undefined                  useState
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Uncaught Error: Rendered more hooks than during the previous render.
+</pre>
+
+      <p>Агар шарт лозим бошад, чӣ кор кунем? Ҳукро <b>болотар</b> аз шарт гузоред ва шоха кардан дар дохили онро анҷом диҳед: аввал ҳамаи ҳукҳоро эълон кунед, ва танҳо баъд <code>if (…) return …</code> нависед.</p>
+
+<pre class="code" data-lang="tsx" data-title="Буд ва шуд">
+// Было: хук после раннего return
+function Dish({ dish }: DishProps) {
+  if (!dish.available) return &lt;p&gt;Нет в наличии&lt;/p&gt;
+  const [qty, setQty] = useState(1) // ошибка линтера
+  // …
+}
+
+// Стало: хук выше любых return
+function Dish({ dish }: DishProps) {
+  const [qty, setQty] = useState(1)
+  if (!dish.available) return &lt;p&gt;Нет в наличии&lt;/p&gt;
+  // …
+}
+</pre>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Дар хонаи нигоҳдории бағоҷ дар вокзали Душанбе бағоҷро аз рӯи рақами ҳуҷайра бо тартиби навбат медиҳанд: «чамадони якум, чамадони дуюм». Агар мусофир рӯзе чамадони якумро гузаронда, фавран дуюмро талаб кунад, ба ӯ сумкаи бегонаро аз ҳуҷайраи якум медиҳанд. React ба ҳукҳо ҳолатро бо ҳамин навбат медиҳад, ва навбатро иваз кардан мумкин нест.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>return</code>-и барвақтӣ болотар аз ҳук (маъмултарин). <b>2.</b> <code>useState</code> дар дохили <code>if</code> «то ки иловагӣ насозем». <b>3.</b> Ҳук дар коркардкунандаи рӯйдод: <code>onClick={() =&gt; { const [x, setX] = useState(0) }}</code>. <b>4.</b> Ҳук дар <code>.map</code> аз рӯи рӯйхат: унсури рӯйхатро ба компоненти алоҳида баред, ва ҳукҳо ба он мераванд. <b>5.</b> Қоидаи линтерро бо шарҳ хомӯш кардан, на коди худро ислоҳ намудан.</p>
+      </div>
+
+      <article class="task" id="q-hooks">
+        <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Худро санҷед: қоидаҳои ҳукҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Чаро <code>useState</code>-ро дар дохили <code>if</code> даъват кардан мумкин нест?</p>
+          <ol class="options">
+            <li>React ҳукҳоро бо ҳуҷайраҳои ҳолат аз рӯи тартиби даъват муқоиса мекунад; шарт метавонад тартибро лағзонад ва маълумотро омехта кунад</li>
+            <li>Зеро <code>if</code>-ро дар компонентҳо навиштан мумкин нест</li>
+            <li>Зеро <code>useState</code> танҳо бо рақамҳо кор мекунад</li>
+            <li>Зеро шарт рендерро суст мекунад</li>
+          </ol>
+          <div class="explain"><p>React номҳои тағйирёбандаҳоро надорад, танҳо тартиби даъватҳо дорад. Тартиби якхела ҳангоми ҳар рендер — шарти кори ҳукҳост.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Қоидаҳои ҳукҳо дар куҷо вайрон шудаанд? Ду варианти ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li>Компонент бо <code>const [qty, setQty] = useState(1)</code> оғоз мешавад, баъд <code>if (!open) return null</code></li>
+            <li>Компонент: <code>if (open) { const [qty] = useState(1) }</code></li>
+            <li>Ҳук дар сатҳи боло дар компоненти <code>Cart</code> даъват мешавад</li>
+            <li>Дар коркардкунандаи <code>onClick</code> <code>useReducer(…)</code> даъват шудааст</li>
+          </ol>
+          <div class="explain"><p>Ҳукҳоро дар шартҳо ва коркардкунандаҳои рӯйдод даъват кардан мумкин нест. Варианти якум дуруст аст: ҳамаи ҳукҳо болотар аз <code>return</code>-и барвақтӣ.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t7-hooks">
+        <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Ҳук баъд аз return-и барвақтӣ</h4><span class="level hard">душвор</span></header>
+        <p>Миқдори порсияҳо дар <code>Dish</code> бозсозӣ мешавад, агар хӯрок муддати кӯтоҳ аз мавҷуд будан ғайб занад: ҳук баъд аз <code>return</code>-и барвақтӣ истодааст, бинобар ин дар рендери «баста» ҳолат нест мешавад. Худтафтиш «+»-ро мезанад (миқдор 2), мавҷудиятро ду маротиба иваз мекунад (хомӯш ва фаъол) ва миқдорро чоп мекунад. Тартибро ислоҳ кунед: ҳук бояд пеш аз <code>return</code> истад.</p>
+        <div class="playground" data-mode="react" data-title="Хӯрок дар мавҷудият">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Dish({ title, available }) {
+  if (!available) {
+    return &lt;p&gt;{title}: нет в наличии&lt;/p&gt;;
+  }
+  // TODO: хук должен стоять выше раннего return
+  const [qty, setQty] = useState(1);
+  return (
+    &lt;p&gt;
+      {title}: &lt;b&gt;{qty}&lt;/b&gt; &lt;button onClick={() =&gt; setQty(qty + 1)}&gt;+&lt;/button&gt;
+    &lt;/p&gt;
+  );
+}
+
+export default function App() {
+  const [available, setAvailable] = useState(true);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setAvailable(!available)}&gt;Переключить наличие&lt;/button&gt;
+      &lt;Dish title="Плов" available={available} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("p button").click(); await wait();
+  const toggle = document.querySelector("button");
+  toggle.click(); await wait();
+  toggle.click(); await wait();
+  console.log("порций: " + document.querySelector("b").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>порций: 2</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Тартиби сатрҳо дар компонент: аввал ҳамаи ҳукҳо, баъд шартҳо ва <code>return</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>const [qty, setQty] = useState(1);</code>-ро болотар аз <code>if (!available)</code> гузаронед.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/reference/rules/rules-of-hooks" target="_blank" rel="noopener">react.dev — Rules of Hooks</a> · <a href="https://oxc.rs/docs/guide/usage/linter/rules/react/rules-of-hooks" target="_blank" rel="noopener">oxc.rs — rules-of-hooks</a></p>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="ai-reducer">
+      <h2 data-toc="ЗС: маълумот ва редюсер"><span class="num">08</span> Блоки ЗС: маълумоти санҷишӣ, редюсер аз рӯи тавсиф ва баррасии тағйирнопазирӣ</h2>
+
+      <p>Ду вазифа, ки агент бо онҳо хуб мебарояд, агар онҳоро дуруст гузоред: маълумоти санҷишӣ тавлид кардан ва редюсерро аз рӯи тавсифи амалҳо навиштан. Ва дар ҳарду агент хатоҳои хоси худро содир мекунад, ки шумо ҳоло онҳоро дида метавонед. Асосӣ: агент «кӯтоҳтар» навиштанро дӯст медорад, ва кӯтоҳтар аксар вақт тағйирдиҳии ҷойро ифода мекунад.</p>
+
+      <div class="callout ai">
+        <b>Формулаи промпт: контекст → вазифа → маҳдудиятҳо → формат → санҷиш</b>
+        <p>Аввал <b>тавсифи амалҳоро дар ҷадвал</b> дархост кунед, бе код: ҳамин тавр шумо қоидаҳоро («илова кардан» барои мавқеи мавҷуда чӣ мекунад, миқдори 0 чӣ маъно дорад) пеш аз он ки 80 сатри коди бегонаро бинед, муқоиса мекунед. Ва танҳо баъд редюсерро талаб кунед, ки ҷадвали тасдиқшударо иҷро кунад.</p>
+      </div>
+
+      <div class="prompt bad-prompt">сделай корзину на useReducer и тестовые данные</div>
+
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), прочитай AGENTS.md. Типы данных лежат в src/types.ts (MenuItem, CartItem, Restaurant), рестораны в src/data.ts с id от 1 до 6, корзина — CartItem[] в useReducer.
+Задача: 1) сгенерируй 12 блюд для массива menu: MenuItem[] — по два на каждый ресторан; 2) опиши действия корзины таблицей, код редьюсера пока не пиши.
+Ограничения: цены целые, в сомони, от 5 до 60; id блюд уникальны, от 1 до 12; названия на русском и реалистичны для Душанбе (плов, лагман, самбуса, шашлык, чай, чак-чак); без any и новых библиотек; редьюсер, который я попрошу следующим шагом, должен быть чистым, без мутаций, с проверкой полноты через assertNever.
+Формат ответа: блок TypeScript для data.ts и таблица «действие — поля — что происходит с состоянием — крайние случаи».
+Проверка: в конце назови пять крайних случаев, которые я должен проверить руками (пустая корзина, повторное добавление, количество 0, несуществующий id и ещё один на твой выбор).</div>
+
+      <h3>Маълумоти санҷиширо чӣ тавр санҷидан</h3>
+      <ol class="steps">
+        <li><b>id-ҳои ягона.</b> <code>id</code>-и такрорӣ калидҳои дугона ва сабади нодуруст медиҳад. Бо чашм санҷед ё тавассути <code>new Set(menu.map((m) =&gt; m.id)).size === menu.length</code>.</li>
+        <li><b>Бутунии пайвастагиҳо.</b> Ҳар <code>restaurantId</code> дар <code>restaurants</code> вуҷуд дорад. Агент тарабхонаи рақами 7-ро ихтироъ карданро дӯст медорад.</li>
+        <li><b>Қиматҳои воқеъбинона.</b> Нархҳои бутун бо сомонӣ, на 12.99 ва на доллар; номҳое монанди «Блюдо 1» нестанд.</li>
+        <li><b>Навъҳо ва шакл.</b> Файл бе <code>as</code> ва <code>any</code> аз <code>npm run typecheck</code> мегузарад; майдонҳо мисли дар <code>MenuItem</code> ном гирифтаанд.</li>
+        <li><b>Ҳолатҳои канорӣ.</b> Хоҳиш кунед, ки ба маълумот чунин мисолҳо илова шаванд, ки интерфейсро вайрон мекунанд: номи хеле дароз, хӯрок ба нархи 0 сомонӣ. Баъд ҳал кунед, ки онҳо дар лоиҳа лозиманд ё не.</li>
+        <li><b>Маълумоти шахсӣ.</b> Агент номҳо ва телефонҳои воқеии муштариёнро лозим надорад: маълумоти санҷишӣ бояд ихтироъшуда бошад.</li>
+      </ol>
+
+      <h3>Редюсерро аз агент чӣ тавр санҷидан</h3>
+      <ol class="steps">
+        <li><b>Тағйирдиҳии ҷой.</b> <code>push</code>, <code>splice</code>, <code>sort</code> бе нусха, таъинкуниҳои намуди <code>entry.qty = …</code>, <code>item.qty++</code>, <code>state[i] = …</code>-ро ҷустуҷӯ кунед. Ҳолати аз ҳама маккорона: <code>const entry = state.find(…); entry.qty += 1; return [...state]</code> — массив нав, объект кӯҳна.</li>
+        <li><b>Таъсирҳои иловагӣ.</b> Дар коди ниҳоӣ <code>Date.now()</code>, <code>Math.random()</code>, <code>crypto.randomUUID()</code>, <code>localStorage</code>, <code>fetch</code>, <code>console.log</code> нестанд.</li>
+        <li><b>Пуррагӣ.</b> Дар <code>default</code> <code>assertNever(action)</code> истодааст, на <code>return state</code>: вагарна амали нав бесадо нодида гирифта мешавад.</li>
+        <li><b>Навъҳои амалҳо.</b> Иттиҳоди нишондодашуда бо нишонаҳои литералӣ, бе <code>type: string</code> ва бе <code>as</code>.</li>
+        <li><b>Қоидаҳо аз ҷадвал.</b> Иловаи такрорӣ миқдорро меафзояд, на дубора месозад; <code>qty ≤ 0</code> мавқеъро хориҷ мекунад; <code>id</code>-и номавҷуд ҳолатро вайрон намекунад.</li>
+        <li><b>Зиёдатӣ.</b> Бастаҳои нав (<code>immer</code>, <code>uuid</code>, <code>zustand</code>) ва <code>useState</code>-и нав, ки шумо дархост накардаед, нестанд.</li>
+        <li><b>Санҷиши худӣ.</b> Сенарияи панҷ амалро зеҳнӣ (ё дар консол) гузаронед. Агар шумо шарҳ дода наметавонед, ки чаро натиҷа дуруст аст, қабул кардани код барвақт аст.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> «Дар саҳифа кор мекунад»-ро ба «дуруст навишта шудааст» иваз кардан: даъвати дугона дар StrictMode аксар вақт тағйирдиҳии ҷойро пинҳон мекунад. <b>2.</b> Редюсер ва маълумотро дар як паём дархост кардан: хатоҳои яке дар паси ҳаҷми дигаре намоён нестанд. <b>3.</b> Ҷадвали қоидаҳоро бо код муқоиса накардан: агент метавонист «монанд»-ро татбиқ кунад. <b>4.</b> Дар маълумот <code>restaurantId</code>-и ихтироъшударо гузоштан: менюи тарабхонаи №7 ҳеҷ гоҳ намоён намешавад. <b>5.</b> Ба агент маълумоти воқеии муштариёнро «барои воқеъбинӣ» фиристодан.</p>
+      </div>
+
+      <article class="task" id="q-ai-reducer">
+        <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Худро санҷед: баррасии коди агент</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Агент дар шоҳаи <code>setQty</code> сабтро тавассути <code>find</code> меёбад, <code>entry.qty = action.qty</code>-ро таъин мекунад ва <code>[...state]</code>-ро бармегардонад. Шумо чӣ ҷавоб медиҳед?</p>
+          <ol class="options">
+            <li>Қабул кардан: массив нав аст, яъне ҳама чиз тоза аст</li>
+            <li>Қабул кардан, вале <code>console.log</code> илова кардан</li>
+            <li>Барои такмил баргардондан: массив нав аст, вале объекти сабт дар ҷо тағйир ёфтааст, яъне ин тағйирдиҳии ҷой аст; <code>map</code> бо нусхаи сабт лозим аст</li>
+            <li><code>find</code>-ро ба <code>filter</code> иваз кардан ва боқиро монданд</li>
+          </ol>
+          <div class="explain"><p>Массиви нав тағйирдиҳии объекти дохилиро бекор намекунад. Аз ин сабаб «акси кӯҳна»-и ҳолат вайрон мешавад, ва дар StrictMode рафтори редюсер пешгӯинашаванда мегардад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,2">
+          <p>Кадом бандҳоро аз маълумоти агент ҳатман санҷидан лозим? Ду варианти ҷавобро интихоб кунед.</p>
+          <ol class="options">
+            <li>Ҳар <code>restaurantId</code> дар байни тарабхонаҳо вуҷуд дорад</li>
+            <li>Ҳамаи <code>id</code>-ҳои хӯрокҳо ягонаанд, нархҳо бутун ва бо сомонӣ</li>
+            <li>Номҳои хӯрокҳо зебо навишта шудаанд</li>
+            <li>Дар файл шарҳҳо кофӣ ҳастанд</li>
+          </ol>
+          <div class="explain"><p>Пайвастагиҳои вайроншуда ва id-ҳои такрорӣ барномаро вайрон мекунанд. Зебоии номҳо ва шарҳҳо ба кор таъсир намекунанд.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t8-review">
+        <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Тағйирдиҳии ҷойро дар редюсери агент ёбед</h4><span class="level hard">душвор</span></header>
+        <p>Дар зер «ҷавоби агент»: редюсер коркунанда менамояд, вале дар як шоха сабтро дар ҷо тағйир медиҳад. Санҷиш ҳолатҳоро яхкарда мекунад, бинобар ин тағйирдиҳии ҷой хатоеро медиҳад, ки шумо дар консол мебинед. <code>setQty</code>-ро чунон ислоҳ кунед, ки сабт нусха шавад, на тағйир ёбад.</p>
+        <div class="playground" data-mode="react" data-title="Баррасии редюсер">
+<pre class="code" data-lang="jsx">
+function reducer(state, action) {
+  switch (action.type) {
+    case "add": {
+      const exists = state.some((e) =&gt; e.id === action.id);
+      if (!exists) return [...state, { id: action.id, qty: 1 }];
+      return state.map((e) =&gt; (e.id === action.id ? { ...e, qty: e.qty + 1 } : e));
+    }
+    case "setQty": {
+      // ответ агента: ищем запись и меняем
+      const entry = state.find((e) =&gt; e.id === action.id);
+      if (entry) entry.qty = action.qty;
+      return [...state];
+    }
+    default:
+      throw new Error("Неизвестное действие: " + action.type);
+  }
+}
+
+export default function App() {
+  return &lt;p&gt;Редьюсер проверяется в консоли ниже&lt;/p&gt;;
+}
+
+// ---- проверка (не менять) ----
+const freeze = (s) =&gt; (s.forEach(Object.freeze), Object.freeze(s));
+const show = (s) =&gt; s.map((e) =&gt; e.id + "x" + e.qty).join(" ");
+try {
+  const a = freeze(reducer(freeze([]), { type: "add", id: 1 }));
+  const b = freeze(reducer(a, { type: "setQty", id: 1, qty: 4 }));
+  console.log(show(a) + " | " + show(b));
+} catch (err) {
+  console.log("Ошибка: " + err.message);
+}
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>1x1 | 1x4</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Дар шоҳаи <code>add</code> аллакай намунаи коди дуруст ҳаст: <code>state.map</code> бо нусхаи сабт.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>return state.map((e) =&gt; (e.id === action.id ? { ...e, qty: action.qty } : e));</code></p></details>
+      </article>
+
+      <article class="task" id="t8-checklist">
+        <header><span class="task-num">ВАЗИФАИ 8.3</span><h4>Рӯйхати санҷиш: кор бо агент гузаронида шуд</h4><span class="level mid">миёна</span></header>
+        <p>Дар компютери шумо дар амалиёт (қадами 2) иҷро мешавад. Танҳо он чизеро қайд кунед, ки воқеан иҷро кардаед.</p>
+        <ul class="checklist" id="cl-ai">
+          <li>Ман ба агент промпти хубро аз бахши 8 фиристодам ва аввал ҷадвали амалҳо ва маълумотро гирифтам, на коди редюсерро</li>
+          <li>Ман маълумоти агентро санҷидам: id-ҳои ягона, <code>restaurantId</code>-ҳои мавҷуда, нархҳои бутун бо сомонӣ</li>
+          <li>Ман ҷадвали амалҳои агентро бо ҷадвали амалиёт муқоиса кардам ва дар <code>docs/state-notes.md</code> навиштам, ки онҳо дар чӣ фарқ мекунанд</li>
+          <li>Ман редюсери тайёри агентро бе баррасӣ қабул накардам: онро аз рӯи рӯйхати бахши 8 санҷидам ва эродҳои ёфтаамро навиштам</li>
+        </ul>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/updating-arrays-in-state" target="_blank" rel="noopener">react.dev — Updating Arrays in State</a> · <a href="https://react.dev/learn/keeping-components-pure" target="_blank" rel="noopener">react.dev — Keeping Components Pure</a></p>
+    </section>
+
+    <!-- ============ 09 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Амалиёт: сабад"><span class="num">09</span> Амалиёт: меню ва сабади «Дастархон» дар useReducer</h2>
+
+      <p>Лоиҳаи 1-ро идома медиҳем. Баъд аз дарси 3 феҳрист аз компонентҳо ҷамъ шудааст, вале интихоби тарабхона ҳоло танҳо «Выбран ресторан №…» менависад. Ҳоло менюи тарабхонаи интихобшударо нишон медиҳем ва сабадро месозем: хӯрок илова кардан, хориҷ кардан, миқдорро тағйир додан, пок кардан, ҷамъро дидан. Ҳолати сабадро ба <code>App</code> боло мебарем ва ба редюсер медиҳем. Агар шумо дар вазифаи хонагии дарси 2 менюи худ ва сабадро бо <code>useState</code> сохта бошед, онҳоро бо файлҳои зер иваз кунед: компонентҳои <code>MenuItemRow</code>, <code>CartItemRow</code> ва <code>CartSummary</code> props-и нав мегиранд, ва версияҳои шумо барои муқоиса ба кор меоянд.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Ҷараёни маълумоти сабад: App selectedId ва cart-ро тавассути useReducer нигоҳ медорад. MenuItemRow onAdd-ро даъват мекунад, App dispatch-ро бо амали add ба cartReducer мефиристад, ҳолати нави cart ба CartSummary ва CartItemRow интиқол дода мешавад, ҷамъ ва шумораи порсияҳо дар CartSummary бо функсияҳои cartTotal ва cartCount ҳисоб мешаванд">
+          <rect class="fill-y" x="230" y="10" width="260" height="76" rx="12" /><text x="360" y="34" text-anchor="middle">App</text><text class="sub mono" x="360" y="54" text-anchor="middle">cart, dispatch = useReducer(...)</text><text class="sub mono" x="360" y="72" text-anchor="middle">selectedId, query, cuisine</text>
+          <rect class="fill-g" x="520" y="10" width="190" height="76" rx="12" /><text x="615" y="34" text-anchor="middle">cartReducer.ts</text><text class="sub mono" x="615" y="54" text-anchor="middle">(state, action)</text><text class="sub" x="615" y="72" text-anchor="middle">функсияи тоза</text>
+          <path class="arr" d="M490 48 H512" /><path class="arr-head" d="M520 48 l-10 -5 v10 z" />
+          <path class="arr" d="M300 86 V118 H130 V134" /><path class="arr-head" d="M130 142 l-5 -10 h10 z" />
+          <path class="arr" d="M420 86 V118 H570 V134" /><path class="arr-head" d="M570 142 l-5 -10 h10 z" />
+          <rect class="box b" x="20" y="142" width="220" height="56" rx="12" /><text x="130" y="166" text-anchor="middle">MenuItemRow × N</text><text class="sub mono" x="130" y="186" text-anchor="middle">item, onAdd</text>
+          <rect class="box g" x="460" y="142" width="250" height="56" rx="12" /><text x="585" y="166" text-anchor="middle">CartSummary</text><text class="sub mono" x="585" y="186" text-anchor="middle">entries, onClear, children</text>
+          <path class="arr" d="M585 198 V214" /><path class="arr-head" d="M585 222 l-5 -10 h10 z" />
+          <rect class="box" x="480" y="222" width="210" height="38" rx="10" /><text x="585" y="246" text-anchor="middle">CartItemRow × N</text>
+          <text class="sub t-b" x="20" y="226">клик → onAdd(item) →</text><text class="sub t-b" x="20" y="246">dispatch({ type: 'add', item })</text>
+          <text class="sub t-g" x="260" y="246">cart ба поён тавассути props</text>
+        </svg>
+        <figcaption>Сабад дар «Дастархон»: ҳолат ва <code>dispatch</code> дар <code>App</code> зиндагӣ мекунанд, компонентҳо қиматҳо ва колбэкҳоро мегиранд, ва қоидаҳои навсозӣ дар <code>cartReducer.ts</code> ҷамъ шудаанд</figcaption>
+      </figure>
+
+      <h3>Ҷадвали амалҳои сабад</h3>
+      <p>Аввал қоидаҳо, баъд код. Амалҳои сабад бо ҷадвал тавсиф шудаанд: аз рӯи он шумо ҳам коди худ ва ҳам ҷавоби агентро муқоиса мекунед.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Амал</th><th>Майдонҳо</th><th>Бо ҳолат чӣ мешавад</th><th>Ҳолатҳои канорӣ</th></tr></thead>
+          <tbody>
+            <tr><td><code>add</code></td><td><code>item: MenuItem</code></td><td>Мавқеъ дар сабад нест: бо <code>qty: 1</code> илова кунед. Ҳаст: <code>qty</code>-ро 1 афзоед</td><td>Клики такрорӣ сатри дуюм намесозад</td></tr>
+            <tr><td><code>remove</code></td><td><code>itemId: number</code></td><td>Мавқеъро пурра хориҷ кунед</td><td><code>id</code>-и номавҷуд: мундариҷаи сабад тағйир намеёбад</td></tr>
+            <tr><td><code>setQty</code></td><td><code>itemId</code>, <code>qty: number</code></td><td>Миқдорро таъин кунед. Агар <code>qty</code> аз 1 кам бошад, мавқеъро хориҷ кунед</td><td>Тугмаи «−» ҳангоми <code>qty</code> 1 сатрро хориҷ мекунад</td></tr>
+            <tr><td><code>clear</code></td><td>нест</td><td>Сабади холӣ</td><td>Покшавии сабади холӣ вайрон намекунад</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Қадамҳо</h3>
+      <ol class="steps">
+        <li><b>Дарси 3-ро пӯшед ва шоха кушоед.</b> Санҷед, ки ҳама чиз тоза аст ва мегузарад. Баъд вазифаи хонагии 3-ро ба <code>main</code> гузаронед (бо якҷоякунии маҳаллӣ: шохаи <code>feat/catalog</code> дар GitHub барои ментор мемонад) ва шохаи дарсро созед:
+<pre class="code" data-title="Терминал">
+git status
+npm run typecheck
+npm run lint
+git switch main
+git merge feat/catalog
+git switch -c feat/cart
+</pre>
+          Агар <code>git merge</code> ҳалли низоъро талаб кунад, пас дар <code>main</code> ислоҳҳои дигар пайдо шудаанд: файлҳоро бо аломатҳои <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code> кушоед, варианти лозимиро монед, баъд <code>git add .</code> ва <code>git commit</code>.</li>
+        <li><b>Маълумот ва ҷадвал якҷоя бо агент.</b> Ба агент промпти хубро аз бахши 8 фиристед, вале маълумотро дар шакли <b>иловаи</b> ба <code>data.ts</code>-и шумо (дуто хӯрок барои ҳар яке аз шаш тарабхона) ва ҷадвали амалҳоро хоҳиш кунед. Ҷавобро аз рӯи рӯйхати бахши 8 санҷед, ҷадвалро бо ҷадвали мо муқоиса кунед ва фарқиятҳоро дар <code>docs/state-notes.md</code> нависед. Маълумоти моро низ гирифтан мумкин аст (қадами навбатӣ): агентро шумо ҳамчун ҳамсуҳбат истифода мебаред, на ҳамчун манбаи ҳақиқат.</li>
+        <li><b>Меню.</b> Дар <code>src/data.ts</code> массиви <code>menu</code>-ро бо ин иваз кунед (14 хӯрок барои шаш тарабхона; <code>restaurants</code>-ро ба даст нагиред). Се хӯроки аввал ҳамонҳоянд, ки дар дарси 2:
+<pre class="code" data-lang="ts" data-title="src/data.ts (массиви menu)">
+export const menu: MenuItem[] = [
+  { id: 1, restaurantId: 1, title: 'Плов праздничный', price: 45 },
+  { id: 2, restaurantId: 1, title: 'Чай зелёный', price: 8 },
+  { id: 3, restaurantId: 3, title: 'Самбуса с мясом', price: 12 },
+  { id: 4, restaurantId: 1, title: 'Салат «Шакароб»', price: 15 },
+  { id: 5, restaurantId: 2, title: 'Шашлык из баранины', price: 38 },
+  { id: 6, restaurantId: 2, title: 'Лепёшка', price: 5 },
+  { id: 7, restaurantId: 3, title: 'Самбуса с тыквой', price: 10 },
+  { id: 8, restaurantId: 3, title: 'Лагман', price: 30 },
+  { id: 9, restaurantId: 4, title: 'Шашлык куриный', price: 28 },
+  { id: 10, restaurantId: 4, title: 'Айран', price: 7 },
+  { id: 11, restaurantId: 5, title: 'Пахлава', price: 20 },
+  { id: 12, restaurantId: 5, title: 'Чак-чак', price: 18 },
+  { id: 13, restaurantId: 6, title: 'Плов с курицей', price: 35 },
+  { id: 14, restaurantId: 6, title: 'Компот', price: 6 },
+]
+</pre>
+          Агар шумо дар вазифаи хонагии 3 тарабхонаҳои худро ё дар вазифаи хонагии 2 менюи худро илова карда бошед, онҳоро монед ва менюро пур кунед: барои ҳар хӯрок <code>restaurantId</code> бояд ба тарабхонаи мавҷуда ишора кунад.</li>
+        <li><b>Функсияҳои ёрирасони сабад.</b> Файли <code>src/cart.ts</code>-ро шумо дар вазифаи хонагии 2 бо функсияи <code>cartTotal</code> сохта будед. Онро пурра иваз кунед: шумораи порсияҳо — <code>cartCount</code> илова шудааст.
+<pre class="code" data-lang="ts" data-title="src/cart.ts">
+import type { CartItem } from './types'
+
+export function cartTotal(entries: CartItem[]): number {
+  return entries.reduce((sum, entry) =&gt; sum + entry.item.price * entry.qty, 0)
+}
+
+export function cartCount(entries: CartItem[]): number {
+  return entries.reduce((sum, entry) =&gt; sum + entry.qty, 0)
+}
+</pre>
+        </li>
+        <li><b>assertNever ва редюсер.</b> Инҳо файлҳо аз бахши 6 мебошанд. Редюсер на дар бораи React, на дар бораи интерфейс чизе намедонад: он танҳо ҳолат ва амалро ба ҳолати нав табдил медиҳад.
+<pre class="code" data-lang="ts" data-title="src/assertNever.ts">
+export function assertNever(value: never): never {
+  throw new Error(`Unexpected value: ${JSON.stringify(value)}`)
+}
+</pre>
+<pre class="code" data-lang="ts" data-title="src/cartReducer.ts">
+import { assertNever } from './assertNever'
+import type { CartItem, MenuItem } from './types'
+
+export type CartAction =
+  | { type: 'add'; item: MenuItem }
+  | { type: 'remove'; itemId: number }
+  | { type: 'setQty'; itemId: number; qty: number }
+  | { type: 'clear' }
+
+export function cartReducer(state: CartItem[], action: CartAction): CartItem[] {
+  switch (action.type) {
+    case 'add': {
+      const exists = state.some((entry) =&gt; entry.item.id === action.item.id)
+      if (!exists) {
+        return [...state, { item: action.item, qty: 1 }]
+      }
+      return state.map((entry) =&gt;
+        entry.item.id === action.item.id
+          ? { ...entry, qty: entry.qty + 1 }
+          : entry,
+      )
+    }
+    case 'remove':
+      return state.filter((entry) =&gt; entry.item.id !== action.itemId)
+    case 'setQty': {
+      if (action.qty &lt;= 0) {
+        return state.filter((entry) =&gt; entry.item.id !== action.itemId)
+      }
+      return state.map((entry) =&gt;
+        entry.item.id === action.itemId ? { ...entry, qty: action.qty } : entry,
+      )
+    }
+    case 'clear':
+      return []
+    default:
+      return assertNever(action)
+  }
+}
+</pre>
+          <code>npm run typecheck</code>-ро иҷро кунед: хатоҳо нестанд. Диққат диҳед, ки дар шоҳаи <code>add</code> на <code>push</code> ҳаст, на таъинкунӣ: танҳо <code>[...state, …]</code> ва <code>map</code> бо нусхаи сабт.</li>
+        <li><b>Компонентҳои меню ва сабад.</b> Се компонент, ҳар кадом навъи props-и худро дорад ва ҳеҷ чиз дар бораи редюсер намедонад: онҳо қиматҳо ва колбэкҳоро мегиранд.
+<pre class="code" data-lang="tsx" data-title="src/components/MenuItemRow.tsx">
+import type { MenuItem } from '../types'
+
+type MenuItemRowProps = {
+  item: MenuItem
+  onAdd: (item: MenuItem) =&gt; void
+}
+
+export default function MenuItemRow({ item, onAdd }: MenuItemRowProps) {
+  return (
+    &lt;li className="flex items-center justify-between gap-3 border-b border-stone-200 py-2"&gt;
+      &lt;span&gt;{item.title}&lt;/span&gt;
+      &lt;span className="flex items-center gap-3"&gt;
+        &lt;span className="text-stone-600"&gt;{item.price} сомони&lt;/span&gt;
+        &lt;button
+          className="rounded-lg bg-brand-600 px-3 py-1 text-sm font-semibold text-white hover:bg-brand-700"
+          onClick={() =&gt; onAdd(item)}
+        &gt;
+          В корзину
+        &lt;/button&gt;
+      &lt;/span&gt;
+    &lt;/li&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/CartItemRow.tsx">
+import type { CartItem } from '../types'
+
+type CartItemRowProps = {
+  entry: CartItem
+  onQtyChange: (itemId: number, qty: number) =&gt; void
+  onRemove: (itemId: number) =&gt; void
+}
+
+const stepButton =
+  'h-7 w-7 rounded-full border border-stone-300 bg-white font-bold hover:bg-brand-50'
+
+export default function CartItemRow({
+  entry,
+  onQtyChange,
+  onRemove,
+}: CartItemRowProps) {
+  const { item, qty } = entry
+  return (
+    &lt;li className="flex items-center justify-between gap-2 border-b border-stone-200 py-2"&gt;
+      &lt;span className="flex-1"&gt;{item.title}&lt;/span&gt;
+      &lt;span className="flex items-center gap-2"&gt;
+        &lt;button
+          className={stepButton}
+          aria-label={`Меньше: ${item.title}`}
+          onClick={() =&gt; onQtyChange(item.id, qty - 1)}
+        &gt;
+          −
+        &lt;/button&gt;
+        &lt;span className="w-6 text-center font-semibold"&gt;{qty}&lt;/span&gt;
+        &lt;button
+          className={stepButton}
+          aria-label={`Больше: ${item.title}`}
+          onClick={() =&gt; onQtyChange(item.id, qty + 1)}
+        &gt;
+          +
+        &lt;/button&gt;
+      &lt;/span&gt;
+      &lt;span className="w-20 text-right font-semibold"&gt;
+        {item.price * qty} сомони
+      &lt;/span&gt;
+      &lt;button
+        className="text-sm text-stone-500 underline hover:text-stone-900"
+        onClick={() =&gt; onRemove(item.id)}
+      &gt;
+        Убрать
+      &lt;/button&gt;
+    &lt;/li&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/CartSummary.tsx">
+import type { ReactNode } from 'react'
+import { cartCount, cartTotal } from '../cart'
+import type { CartItem } from '../types'
+
+type CartSummaryProps = {
+  entries: CartItem[]
+  onClear: () =&gt; void
+  children: ReactNode
+}
+
+export default function CartSummary({
+  entries,
+  onClear,
+  children,
+}: CartSummaryProps) {
+  if (entries.length === 0) {
+    return &lt;p className="py-4 text-stone-500"&gt;Корзина пуста&lt;/p&gt;
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;ul&gt;{children}&lt;/ul&gt;
+      &lt;p className="mt-3 flex justify-between text-lg font-bold"&gt;
+        &lt;span&gt;Итого ({cartCount(entries)} шт.)&lt;/span&gt;
+        &lt;span&gt;{cartTotal(entries)} сомони&lt;/span&gt;
+      &lt;/p&gt;
+      &lt;button
+        className="mt-2 text-sm text-stone-500 underline hover:text-stone-900"
+        onClick={onClear}
+      &gt;
+        Очистить корзину
+      &lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+          Ба ду усул диққат диҳед. <code>CartSummary</code> сатрҳоро тавассути <code>children</code> мегирад (композитсия аз дарси 3), ва ҷамъ ва шумораи порсияҳоро аз <code>entries</code> худаш ҳисоб мекунад: ин маълумоти ҳосилшуда аст, дар ҳолат нестанд.</li>
+        <li><b>Ҳамаро дар App ҷамъ кунед.</b> <code>src/App.tsx</code>-ро иваз кунед. Ҷустуҷӯ, филтр, блокҳои «Топ рейтинга» ва «Закрыто сейчас» мисли пештара кор мекунанд. Агар шумо <code>App.tsx</code>-ро дар вазифаи хонагии 3 ё 2 пурра карда бошед, блокҳои худро ба ин файл гузаронед: сохтор ҳамон аст, ҳолати <code>cart</code> ва сутун бо меню ва сабад илова шудаанд.
+<pre class="code" data-lang="tsx" data-title="src/App.tsx">
+import { useReducer, useState } from 'react'
+import { cartReducer } from './cartReducer'
+import CartItemRow from './components/CartItemRow'
+import CartSummary from './components/CartSummary'
+import ClosedRestaurants from './components/ClosedRestaurants'
+import CuisineFilter from './components/CuisineFilter'
+import Layout from './components/Layout'
+import MenuItemRow from './components/MenuItemRow'
+import RestaurantList from './components/RestaurantList'
+import SearchBox from './components/SearchBox'
+import Section from './components/Section'
+import TopRestaurants from './components/TopRestaurants'
+import { menu, restaurants } from './data'
+import type { Cuisine } from './types'
+
+export default function App() {
+  const [cuisine, setCuisine] = useState&lt;Cuisine | null&gt;(null)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState&lt;number | null&gt;(null)
+  const [cart, dispatch] = useReducer(cartReducer, [])
+
+  const visible = restaurants.filter(
+    (r) =&gt;
+      (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+      r.name.toLowerCase().includes(query.toLowerCase()),
+  )
+  const selected = restaurants.find((r) =&gt; r.id === selectedId) ?? null
+  const menuItems = menu.filter((m) =&gt; m.restaurantId === selectedId)
+
+  return (
+    &lt;Layout&gt;
+      &lt;h1 className="mb-4 text-3xl font-bold"&gt;Рестораны Душанбе&lt;/h1&gt;
+      &lt;div className="flex flex-wrap items-center gap-3"&gt;
+        &lt;SearchBox value={query} onChange={setQuery} /&gt;
+        &lt;CuisineFilter selected={cuisine} onChange={setCuisine} /&gt;
+      &lt;/div&gt;
+      &lt;div className="grid gap-8 lg:grid-cols-[1fr_22rem]"&gt;
+        &lt;div&gt;
+          &lt;Section title="Все рестораны"&gt;
+            &lt;RestaurantList restaurants={visible} onSelect={setSelectedId} /&gt;
+          &lt;/Section&gt;
+          &lt;TopRestaurants restaurants={restaurants} /&gt;
+          &lt;ClosedRestaurants restaurants={restaurants} /&gt;
+        &lt;/div&gt;
+        &lt;aside&gt;
+          &lt;Section title={selected ? `Меню: ${selected.name}` : 'Меню'}&gt;
+            {selected === null ? (
+              &lt;p className="text-stone-500"&gt;Выберите ресторан в каталоге&lt;/p&gt;
+            ) : (
+              &lt;ul&gt;
+                {menuItems.map((item) =&gt; (
+                  &lt;MenuItemRow
+                    key={item.id}
+                    item={item}
+                    onAdd={(menuItem) =&gt;
+                      dispatch({ type: 'add', item: menuItem })
+                    }
+                  /&gt;
+                ))}
+              &lt;/ul&gt;
+            )}
+          &lt;/Section&gt;
+          &lt;Section title="Корзина"&gt;
+            &lt;CartSummary
+              entries={cart}
+              onClear={() =&gt; dispatch({ type: 'clear' })}
+            &gt;
+              {cart.map((entry) =&gt; (
+                &lt;CartItemRow
+                  key={entry.item.id}
+                  entry={entry}
+                  onQtyChange={(itemId, qty) =&gt;
+                    dispatch({ type: 'setQty', itemId, qty })
+                  }
+                  onRemove={(itemId) =&gt; dispatch({ type: 'remove', itemId })}
+                /&gt;
+              ))}
+            &lt;/CartSummary&gt;
+          &lt;/Section&gt;
+        &lt;/aside&gt;
+      &lt;/div&gt;
+    &lt;/Layout&gt;
+  )
+}
+</pre>
+          Чор сатрро таҳлил кунед: <code>useReducer(cartReducer, [])</code> <code>cart</code> ва <code>dispatch</code>-ро медиҳад (навъҳо аз редюсер хулоса мешаванд); <code>selected</code> ва <code>menuItems</code> — маълумоти ҳосилшуда аз <code>selectedId</code>; се колбэк рӯйдодҳои интерфейсро ба амалҳо табдил медиҳанд.</li>
+        <li><b>Иҷро кунед ва дар браузер санҷед.</b>
+<pre class="code" data-title="Терминал">
+npm run format
+npm run dev
+</pre>
+          Дар назди Navruz «Выбрать»-ро пахш кунед: дар тарафи рост менюи се хӯрок пайдо мешавад. «В корзину»-ро дар назди палав ду маротиба ва дар назди чой як маротиба пахш кунед: дар сабад ду сатр аст, дар назди палав миқдор 2, дар поён «Итого (3 шт.) 98 сомони». Тугмаи «−» дар назди палав миқдорро кам мекунад, ҳангоми 1 сатрро хориҷ мекунад. «Убрать» сатрро нест мекунад, «Очистить корзину» ҳама чизро холӣ мекунад, ва «Корзина пуста» пайдо мешавад. Дар назди Samarkand «Выбрать»-ро пахш кунед: меню иваз шуд, ва сабад монд. Тарабхонаҳои баста (Rohat, Bahor)-ро интихоб кардан мумкин нест.</li>
+        <li><b>Ба даъвати дугона нигаред.</b> Дар <code>cartReducer.ts</code> сатри аввали функсияро бо <code>console.log('reducer', action.type)</code> илова кунед ва «В корзину»-ро як маротиба пахш кунед. Дар консоли браузер аз як сатр зиёд мешавад: StrictMode редюсерро такроран даъват мекунад (бахши 5). Ҷадвали Components-ро дар React DevTools кушоед, <code>App</code>-ро ёбед ва ба ҳуки <code>Reducer</code> бо массиви <code>cart</code> нигаред. Логро хориҷ кунед.</li>
+        <li><b>Қасдан вайрон кунед: тағйирдиҳии ҷой.</b> Дар шоҳаи <code>add</code> <code>return [...state, { item: action.item, qty: 1 }]</code>-ро бо ду сатр иваз кунед:
+<pre class="code" data-lang="ts" data-title="src/cartReducer.ts (муваққатан!)">
+state.push({ item: action.item, qty: 1 })
+return state
+</pre>
+          «В корзину»-ро дар назди палав як маротиба пахш кунед. Шумо як маротиба пахш кардед, ва дар сабад <b>2 порсия</b> аст: дар реҷаи dev React редюсерро ду маротиба даъват кард, даъвати аввал сабтро илова кард, дуюм онро дид ва миқдорро афзуд. Дар истеҳсолот чунин хато дигар ба назар мерасид (экран тамоман нав намешуд: истинод ба массив пештара), вале сабаб як аст: тағйирдиҳии ҷой. Кодро баргардонед.</li>
+        <li><b>Қасдан вайрон кунед: навъҳо.</b> (а) Шоҳаи <code>case 'clear'</code>-ро хориҷ кунед ва <code>npm run typecheck</code>-ро иҷро кунед: хатои дар бораи <code>never</code>-ро бихонед ва дар он амали фаромӯшшударо ёбед. Шоҳаро баргардонед. (б) Дар <code>App.tsx</code> <code>dispatch({ type: 'cleer' })</code>-ро нависед: хатои <code>TS2820</code>-ро бо ишораи <code>Did you mean "clear"?</code> бихонед. Мисли пештара баргардонед.
+<pre class="code" data-title="Терминал — натиҷаи tsc -b: шоҳаи clear хориҷ шудааст">
+src/cartReducer.ts(34,26): error TS2345: Argument of type '{ type: "clear"; }' is not assignable to parameter of type 'never'.
+</pre>
+        </li>
+        <li><b>Қоидаҳо барои агент ва ёддоштҳо.</b> Ба бахши «Правила кода»-и файли <code>AGENTS.md</code> илова кунед:
+<pre class="code" data-title="AGENTS.md (илова кунед)">
+- Состояние только минимальное: всё, что считается из другого состояния
+  или props, вычислять в теле компонента, а не хранить
+- Состояние массивов и объектов не мутировать: map, filter, spread
+- Сложное состояние с несколькими действиями — useReducer; редьюсер чистый,
+  лежит в отдельном файле, без Date.now, Math.random и запросов
+- Действия редьюсера — union с полем type; в default вызывать assertNever
+- Хуки вызывать только на верхнем уровне компонента, выше любых return
+</pre>
+          <code>docs/state-notes.md</code>-ро созед (баъд ҷавобҳоро аз вазифаи хонагӣ ба он илова мекунед) ва ёддоштҳоро ба қадами 2 нависед: ҷадвали агент аз ҷадвали мо чӣ фарқ мекунад ва шумо ҳангоми баррасӣ чӣ ёфтед.</li>
+        <li><b>Санҷишҳо.</b> Ҳар чор фармон бе хато мегузаранд:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+        </li>
+        <li><b>Коммит ва якҷоякунӣ.</b> Шохаро фиристед, баъд онро ба <code>main</code> гузаронед ва шохаи вазифаи хонагиро оғоз кунед:
+<pre class="code" data-title="Терминал">
+git add .
+git commit -m "add cart with useReducer"
+git push -u origin feat/cart
+git switch main
+git merge feat/cart
+git push
+git switch -c feat/filters
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Агар вайрон шуд</b>
+        <p><b>«Cannot find module '../cart' or its corresponding type declarations» (TS2307):</b> файли <code>src/cart.ts</code> сохта нашудааст ё на дар <code>src/</code> меистад; роҳ аз ҷойи файл ҳисоб мешавад. <b>«'CartAction' is a type and must be imported using a type-only import» (TS1484):</b> навъро бояд тавассути <code>import type</code> ё бо <code>type</code> дар дохили қавсҳои фигуравӣ ворид кард. <b>Пахши «В корзину» коре намекунад:</b> санҷед, ки колбэк дар <code>App</code> <code>dispatch</code>-ро даъват мекунад, на танҳо эълон шудааст, ва ки дар редюсер тағйирдиҳии ҷой нест. <b>Сабад ҳангоми иваз кардани тарабхона нест мешавад:</b> ҳолат на дар <code>App</code>, балки дар компоненти меню эълон шудааст; онро боло баред. <b>«Each child in a list should have a unique "key" prop»:</b> <code>key={…}</code> дар <code>map</code> фаромӯш шудааст. <b><code>git merge</code> «Already up to date» менависад:</b> ҳама чиз аллакай якҷоя шудааст, идома диҳед. <b>Prettier ҳангоми <code>format:check</code> файлҳоро тағйир медиҳад:</b> <code>npm run format</code>-ро иҷро кунед ва коммит кунед.</p>
+      </div>
+
+      <article class="task" id="t-build">
+        <header><span class="task-num">ВАЗИФАИ 9.1</span><h4>Рӯйхати санҷиш: сабад ҷамъ шуд</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-build">
+          <li>Кор дар шохаи <code>feat/cart</code> гузаронида мешавад, вазифаи хонагии 3 ба <code>main</code> гузаронида шудааст</li>
+          <li>Дар <code>data.ts</code> менюи 14 хӯрок, ҳар хӯрок <code>restaurantId</code>-и тарабхонаи мавҷудро дорад</li>
+          <li><code>cart.ts</code> (<code>cartTotal</code>, <code>cartCount</code>), <code>assertNever.ts</code> ва <code>cartReducer.ts</code> бо чор амал сохта шудаанд</li>
+          <li>Дар редюсер тағйирдиҳии ҷой ва таъсирҳои иловагӣ нестанд, <code>default</code> <code>assertNever</code>-ро даъват мекунад</li>
+          <li>Компонентҳои <code>MenuItemRow</code>, <code>CartItemRow</code>, <code>CartSummary</code> қиматҳо ва колбэкҳоро мегиранд ва дар бораи редюсер намедонанд</li>
+          <li>Дар <code>App</code> ҳолати сабад тавассути <code>useReducer</code>, ва <code>selected</code>, <code>menuItems</code>, ҷамъ ва шумораи порсияҳо ҳисоб мешаванд</li>
+          <li>Иловакунӣ, тағйири миқдор, хориҷкунӣ ва покунӣ кор мекунанд; ҷамъ бо ҳисоби дастӣ мувофиқ аст</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> ва <code>npm run build</code> бе хато мегузаранд, <code>any</code> нест</li>
+          <li><code>AGENTS.md</code> пурра шудааст, шоха ба <code>main</code> якҷоя шудааст, шохаи <code>feat/filters</code> сохта шудааст</li>
+        </ul>
+      </article>
+
+      <article class="task" id="t-observe">
+        <header><span class="task-num">ВАЗИФАИ 9.2</span><h4>Рӯйхати санҷиш: мушоҳидаҳо</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-observe">
+          <li>Ман дар консол баъд аз як клик якчанд сатри <code>reducer add</code>-ро дидам ва шарҳ дода метавонам, ки ин StrictMode аст, на хато</li>
+          <li>Ман дар React DevTools ҳуки <code>Reducer</code>-ро дар <code>App</code> ёфтам ва массиви <code>cart</code>-ро дидам</li>
+          <li>Ман редюсерро бо тағйирдиҳии ҷой тавассути <code>push</code> вайрон кардам, баъд аз як клик ду порсияро дидам ва кодро баргардондам</li>
+          <li>Ман шоҳаи <code>clear</code>-ро хориҷ кардам, хатои дар бораи <code>never</code>-ро хондам ва дар он амали фаромӯшшударо ёфтам</li>
+          <li>Ман дар <code>type: 'cleer'</code> хатои имло кардам, <code>TS2820</code>-ро хондам ва ислоҳ кардам</li>
+          <li>Ман <code>console.log</code>-и муваққатиро пеш аз коммит хориҷ кардам</li>
+        </ul>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/extracting-state-logic-into-a-reducer" target="_blank" rel="noopener">react.dev — Extracting State Logic into a Reducer</a> · <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a> · <a href="https://react.dev/learn/react-developer-tools" target="_blank" rel="noopener">react.dev — React Developer Tools</a></p>
+    </section>
+
+
+    <!-- ============ 10 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">10</span> Вазифаи хонагӣ: филтрҳо, саралакунӣ ва сабади доно</h2>
+
+      <p>Амалиёт сабадро дар редюсер дод. Дар вазифаи хонагӣ шумо ҳамин усулро дар маводи нав такрор мекунед: филтрҳои феҳристро ба <code>useReducer</code> мегузаронед, саралакуниро илова мекунед ва сабадро ба ду қоида меомӯзонед. Дар шохаи <code>feat/filters</code> кор кунед (шумо онро дар охири амалиёт сохтед), дар охир шохаро ба GitHub фиристед ва истинодро ба репозиторийи <code>dastarkhon</code> супоред: ментор ҳамин шохаро мекушояд. Онро то санҷиш ба <code>main</code> якҷоя накунед.</p>
+
+      <h3>Чӣ кор кардан лозим</h3>
+      <ol class="steps">
+        <li><b>Редюсери феҳрист.</b> <code>src/catalogReducer.ts</code>-ро созед. Ҳолат бо навъҳои зер тавсиф мешавад (<code>Cuisine</code>-ро аз <code>types.ts</code> ворид кунед).
+<pre class="code" data-lang="ts" data-title="src/catalogReducer.ts (навъҳо)">
+type SortKey = 'default' | 'rating' | 'delivery' | 'name'
+
+type CatalogFilters = {
+  query: string
+  cuisine: Cuisine | null
+  openOnly: boolean
+  minRating: number
+  sort: SortKey
+}
+</pre>
+          Амалҳо — иттиҳоди нишондодашуда: <code>setQuery</code>, <code>setCuisine</code>, <code>toggleOpenOnly</code>, <code>setMinRating</code>, <code>setSort</code>, <code>reset</code>. <code>initialFilters</code>, <code>catalogReducer</code> (тоза, бе тағйирдиҳии ҷой, дар <code>default</code> — <code>assertNever</code>) ва навъҳоро содир кунед.</li>
+        <li><b>Функсияи applyFilters.</b> Ҳамон ҷо: <code>applyFilters(restaurants: Restaurant[], filters: CatalogFilters): Restaurant[]</code>. Он тарабхонаҳоро аз рӯи дархост (бе назардошти ҳарф), таом, нишонаи <code>openOnly</code> ва рейтинги ҳадди ақал мемонад, баъд <b>нусха</b>-ро саралакунӣ мекунад: <code>rating</code> — аз рӯи рейтинг ба поёнравӣ, <code>delivery</code> — аз рӯи <code>deliveryMin</code> ба боло-равӣ, <code>name</code> — аз рӯи алифбо, <code>default</code> — тартиб аз <code>data.ts</code>. Массиви аслии <code>restaurants</code> набояд тағйир ёбад.</li>
+        <li><b>Пайвастшавӣ дар App.</b> <code>useState</code>-ҳои алоҳидаи <code>query</code> ва <code>cuisine</code>-ро хориҷ кунед, <code>const [filters, dispatch] = useReducer(catalogReducer, initialFilters)</code>-ро эълон намоед. Рӯйхати <code>visible</code>-ро тавассути <code>applyFilters</code> дар бадани компонент ҳисоб кунед (маълумоти ҳосилшуда). <code>SearchBox</code> ва <code>CuisineFilter</code> чунон мемонанд, колбэкҳо ба <code>dispatch</code> табдил меёбанд.</li>
+        <li><b>Компоненти FilterPanel.</b> Компоненти нав бо props-и <code>filters: CatalogFilters</code> ва <code>dispatch: Dispatch&lt;CatalogAction&gt;</code> (навъи <code>Dispatch</code> аз <code>react</code>). Дар он: нишонаи «Только открытые», интихоби «Рейтинг от» (0, 4.0, 4.5), интихоби «Сортировка» ва тугмаи «Сбросить». Тугма ғайрифаъол аст, вақте ки филтрҳо ба оғозӣ баробаранд: ин ҳисоб мешавад, дар ҳолат нигоҳ дошта намешавад.</li>
+        <li><b>Ҳисобкунак.</b> Болотар аз рӯйхат «Найдено: N из M»-ро нишон диҳед: ҳарду рақам ҳосилшуда.</li>
+        <li><b>Сабади доно.</b> Ба <code>cartReducer.ts</code> ду қоида илова кунед. <b>а)</b> На зиёда аз 20 порсия дар як мавқеъ: <code>add</code> ва <code>setQty</code> аз <code>MAX_QTY = 20</code> нагузаранд. <b>б)</b> Сабад ба як тарабхона тааллуқ дорад: агар хӯроки тарабхонаи дигар илова шавад, сабад бо як сабт бо ҳамин хӯрок иваз мешавад. Ин қоидаҳо танҳо дар редюсер зиндагӣ мекунанд, компонентҳо дар бораи онҳо намедонанд.</li>
+        <li><b>Фармоиши ҳадди ақал.</b> Дар <code>App</code> тарабхонаи сабадро ҳисоб кунед (аз рӯи <code>restaurantId</code>-и сабти аввал) ва <code>minOrder</code>-и онро ба <code>CartSummary</code> ҳамчун prop-и ихтиёрии нав <code>minOrder?: number</code> диҳед. Агар ҷамъ камтар бошад, дар зери ҷамъ «До минимального заказа ещё N сомони»-ро нишон диҳед. Ҳолати нав лозим нест.</li>
+        <li><b>Кор бо агент.</b> Аз агент хоҳиш кунед, ки ҷадвали амалҳоро барои <code>catalogReducer</code> аз рӯи формулаи бахши 8 тартиб диҳад (аввал ҷадвал, баъд код) ва онро бо ҷадвали худ муқоиса кунед. Дар <code>docs/state-notes.md</code> нависед, ки чиро қабул кардед, чиро рад кардед ва чаро.</li>
+        <li><b>Ҷавобҳо ва санҷишҳо.</b> Ба <code>docs/state-notes.md</code> ҷавобҳоро <b>бо суханони худ</b> ба панҷ саволи зер илова кунед. <code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> ва <code>npm run build</code> мегузаранд, дар шоха на камтар аз се коммити мазмундор ҳаст, шоха ба GitHub фиристода шудааст.</li>
+      </ol>
+
+      <h3>Панҷ савол барои docs/state-notes.md</h3>
+      <ol class="steps">
+        <li>Ҳолат аз props ва аз тағйирёбандаи оддӣ чӣ фарқ дорад? Се ҳолат ва се қимати ҳосилшударо дар <code>App</code>-и худ номбар кунед.</li>
+        <li>Чаро <code>cart.push(item)</code>-ро навишта, ҳамон массивро ба <code>setCart</code> додан мумкин нест? Дар мисоли лоиҳаи худ нишон диҳед, навсозии дуруст чӣ гуна менамояд.</li>
+        <li>Боло бурдани ҳолат чист? Дар лоиҳаи шумо дар куҷо онро боло бурдан лозим шуд ва чаро маҳз ба он ҷо?</li>
+        <li>Амал ва редюсер чист? Кай шумо <code>useReducer</code>-ро интихоб мекардед, ва кай <code>useState</code>-ро? Чаро редюсер бояд тоза бошад?</li>
+        <li>Кадом ду қоидаи ҳукҳоро медонед ва чаро онҳо лозиманд (React чӣ нигоҳ медорад ва чӣ тавр муқоиса мекунад)? Вақте ки шумо қоидаро қасдан вайрон кардед, линтер чӣ чоп кард?</li>
+      </ol>
+
+      <h3>Чӣ тавр месанҷанд</h3>
+      <ul>
+        <li><b>Редюсерҳо:</b> тоза, бе тағйирдиҳии ҷой ва таъсирҳои иловагӣ, амалҳо — иттиҳоди нишондодашуда, дар <code>default</code> <code>assertNever</code> истодааст, бе <code>any</code> ва <code>as</code>.</li>
+        <li><b>Маълумоти ҳосилшуда:</b> рӯйхати филтршуда, ҳисобкунак, ҷамъ ва нишонаи «филтрҳо бо нобаёнӣ» ҳисоб мешаванд, на нигоҳ дошта мешаванд; <code>applyFilters</code> нусхаро саралакунӣ мекунад.</li>
+        <li><b>Ҳолат:</b> барои ҳар ҳолат як ҷой, боло бурдан дар ҷое ки лозим аст, колбэкҳо ва <code>dispatch</code> дақиқ навъбандӣ шудаанд.</li>
+        <li><b>Рафтор:</b> ҳамаи филтрҳо ва саралакуниҳо якҷоя кор мекунанд; дар сабад на зиёда аз 20 порсияи мавқеъ, хӯроки тарабхонаи дигар сабадро иваз мекунад, ишора дар бораи фармоиши ҳадди ақал дуруст аст.</li>
+        <li><b>Ҳукҳо:</b> Oxlint дар бораи вайронкунии қоидаҳои ҳукҳо хабар намедиҳад.</li>
+        <li><b>Ҷавобҳо:</b> бо суханони худ навишта шудаанд ва ба лоиҳаи шумо такя мекунанд, на дарсро ё ҷавоби агентро нақл мекунанд.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул дар вазифаи хонагӣ</b>
+        <p><b>1.</b> <code>restaurants.sort(…)</code> дар дохили <code>applyFilters</code>: массиви аслӣ тағйир меёбад. <b>2.</b> Рӯйхати филтршуда дар ҳолат дар паҳлӯи филтрҳо нигоҳ дошта мешавад. <b>3.</b> Дар редюсери феҳрист <code>default: return state</code> ба ҷои <code>assertNever</code>. <b>4.</b> Қоидаи «20 порсия» дар компонент санҷида мешавад, на дар редюсер: он гоҳ онро аз ҷои дигар гузаштан мумкин аст. <b>5.</b> Ҳангоми иваз кардани сабад бо хӯроки тарабхонаи дигар сабтҳои кӯҳна мемонанд: <b>як</b> сабти нав лозим аст. <b>6.</b> <code>filters.minRating</code> ҳамчун сатр аз <code>select</code> нигоҳ дошта мешавад: қиматро ҳангоми фиристодани амал ба рақам баргардонед. <b>7.</b> Ҷавобҳо аз чати агент бе ислоҳ гузошта шудаанд.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ВАЗИФАИ 10.1</span><h4>Рӯйхати санҷиши талаботи вазифаи хонагии 4</h4><span class="level mid">миёна</span></header>
+        <p>Пеш аз супоридан банд ба банд санҷед.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Сабад аз амалиёт кор мекунад, меню дар тарабхонаи интихобшуда нишон дода мешавад</li>
+          <li><code>catalogReducer.ts</code> <code>CatalogFilters</code>, <code>SortKey</code>, иттиҳоди нишондодашудаи <code>CatalogAction</code>, <code>initialFilters</code>, редюсери тозаро бо <code>assertNever</code> дорад</li>
+          <li><code>applyFilters</code> аз рӯи дархост, таом, <code>openOnly</code> ва рейтинги ҳадди ақал филтр мекунад, нусхаро саралакунӣ мекунад, тартиб дар <code>data.ts</code> тағйир намеёбад</li>
+          <li>Дар <code>App</code> филтрҳо дар <code>useReducer</code>, рӯйхат, ҳисобкунаки «Найдено: N из M» ва ғайрифаъол будани тугмаи «Сбросить» ҳисоб мешаванд</li>
+          <li><code>FilterPanel</code> <code>filters</code> ва <code>dispatch</code>-ро бо навъи <code>Dispatch&lt;CatalogAction&gt;</code> мегирад, ҳар чор унсури идоракунӣ кор мекунанд</li>
+          <li>Сабад аз 20 порсияи мавқеъ зиёдро намепазирад, хӯроки тарабхонаи дигар сабадро иваз мекунад, ҳарду қоида дар редюсер</li>
+          <li><code>CartSummary</code> «До минимального заказа ещё N сомони»-ро тавассути prop-и ихтиёрии <code>minOrder</code> нишон медиҳад</li>
+          <li><code>docs/state-notes.md</code> муқоисаро бо ҷадвали агент ва панҷ ҷавобро бо суханони худӣ дорад</li>
+          <li><code>npm run format:check</code>, <code>typecheck</code>, <code>lint</code>, <code>build</code> мегузаранд, дар шоха на камтар аз се коммит</li>
+          <li>Шохаи <code>feat/filters</code> ба GitHub фиристода шудааст, репозиторий оммавӣ: ман истинодро дар реҷаи инкогнито кушодам</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ВАЗИФАИ 10.2</span><h4>Супориш: истинод ба репозиторийи GitHub</h4><span class="level mid">миёна</span></header>
+        <p>Истинодро бо намуди <code>https://github.com/ваш-логин/dastarkhon</code> гузоред. Онро дар реҷаи инкогнито кушоед: шохаи <code>feat/filters</code>, код, <code>catalogReducer.ts</code> ва <code>docs/state-notes.md</code> бояд намоён бошанд.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/extracting-state-logic-into-a-reducer" target="_blank" rel="noopener">react.dev — Extracting State Logic into a Reducer</a> · <a href="https://react.dev/learn/choosing-the-state-structure" target="_blank" rel="noopener">react.dev — Choosing the State Structure</a> · <a href="https://react.dev/reference/react/useReducer" target="_blank" rel="noopener">react.dev — useReducer</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалкаи дарс</h2>
+      <ul>
+        <li><b>Ҳолат ва props:</b> props аз боло меоянд ва танҳо хонда мешаванд, ҳолат — хотираи компонент (<code>useState</code>), ҳар нусха аз они худ дорад. Тағйирёбандаи оддӣ рендерро ба кор намеандозад ва нул мешавад. Ба ҳолат танҳо он чизе меравад, ки тағйир меёбад, аз props нест ва аз дигар чиз ҳисоб намешавад.</li>
+        <li><b>Тағйирнопазирӣ:</b> React истинодҳоро муқоиса мекунад. На <code>push</code>, <code>splice</code>, <code>sort</code> ва таъинкунӣ, балки <code>[...arr, x]</code>, <code>filter</code>, <code>map</code>, <code>{ ...obj, поле }</code>. Массиви нав бо объекти дар дохил тағйирёфта — ҳанӯз тағйирдиҳии ҷой аст. <code>readonly</code> дар навъҳо тағйирдиҳии ҷойро ҳангоми компилятсия мегирад.</li>
+        <li><b>Боло бурдани ҳолат:</b> ҳолат дар наздиктарин волидайни умумӣ зиндагӣ мекунад; қиматҳо тавассути props ба поён, рӯйдодҳо тавассути колбэкҳо ба боло. Аз зарурат баландтар набаред (prop drilling → Context, дарси 8).</li>
+        <li><b>Маълумоти ҳосилшуда:</b> он чӣ аз props ва ҳолат ҳисоб мешавад (<code>visible</code>, <code>selected</code>, ҷамъ, шумора), дар бадани компонент ҳисоб кунед. Дар ҳолат <code>selectedId</code>-ро нигоҳ доред, на нусхаи объектро. Ҳамоҳангсозӣ тавассути эффект — аломати бад.</li>
+        <li><b>useReducer:</b> <code>const [state, dispatch] = useReducer(reducer, initial)</code>; амал — объекти «чӣ рӯй дод»; редюсер <code>(state, action) =&gt; newState</code> — функсияи тоза бе тағйирдиҳии ҷой ва таъсирҳои иловагӣ. Дар StrictMode ду маротиба даъват мешавад. <code>useState</code> барои содда, <code>useReducer</code> барои навсозиҳои алоқаманд аз рӯи қоидаҳо.</li>
+        <li><b>TypeScript:</b> амалҳо — иттиҳоди нишондодашуда бо нишонаи литералии <code>type</code>; дар <code>switch</code> навъ танг мешавад; <code>default: return assertNever(action)</code> хато медиҳад, агар шоҳаро фаромӯш кунанд. <code>useReducer</code> навъҳоро аз редюсер хулоса мекунад; барои prop — <code>Dispatch&lt;Action&gt;</code>.</li>
+        <li><b>Қоидаҳои ҳукҳо:</b> танҳо дар сатҳи боло (на дар <code>if</code>, даврҳо, баъд аз <code>return</code>, дар функсияҳои дохилӣ) ва танҳо дар компонентҳо ва ҳукҳои худӣ. Сабаб: React ҳукҳоро бо ҳуҷайраҳо аз рӯи тартиби даъват муқоиса мекунад. Вайронкуниҳоро <code>react-hooks/rules-of-hooks</code> дар Oxlint мегирад.</li>
+        <li><b>Бо агент:</b> аввал ҷадвали амалҳо ва маълумот, баъд код; баррасӣ: тағйирдиҳии ҷой (аз ҷумла дар дохили <code>map</code> ва <code>find</code>), таъсирҳои иловагӣ, <code>assertNever</code>, пайвастагиҳо дар маълумоти санҷишӣ.</li>
+        <li><b>Лоиҳаи 1 «Дастархон»:</b> 17 компонент, <code>cartReducer.ts</code>, <code>cart.ts</code>, <code>assertNever.ts</code>; сабад дар <code>useReducer</code>. Дар вазифаи хонагӣ: <code>catalogReducer</code>, <code>FilterPanel</code>, қоидаҳои сабад. Минбаъд: эффектҳо, ref-ҳо ва боркунии маълумот (дарси 5).</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ВАЗИФАИ 11.1</span><h4>Ман мавзӯъро воқеан фаҳмидам</h4><span class="level easy">осон</span></header>
+        <p>Танҳо он чизеро қайд кунед, ки бе маслиҳат иҷро карда метавонед.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Метавонам фарқи ҳолат, props ва тағйирёбандаи оддиро шарҳ диҳам ва ҳал кунам, ки маълумот ҳолат лозим дорад ё не</li>
+          <li>Метавонам массив ва объекти дохилиро дар ҳолат бе тағйирдиҳии ҷой навсозӣ кунам ва шарҳ диҳам, ки чаро React истинодҳоро муқоиса мекунад</li>
+          <li>Метавонам ҳолатро ба волидайни умумӣ боло бурда, ба поён қиммат ва колбэк диҳам</li>
+          <li>Метавонам дар компонент маълумоти ҳосилшударо ёфта, онро аз ҳолат хориҷ кунам</li>
+          <li>Метавонам редюсери тозаи сабадро навишта, онро тавассути <code>dispatch</code> даъват кунам</li>
+          <li>Метавонам амалҳоро ҳамчун иттиҳоди нишондодашуда навъбандӣ карда, пуррагии <code>switch</code>-ро тавассути <code>never</code> санҷам</li>
+          <li>Метавонам қоидаҳои ҳукҳоро номбар карда, сабаби онҳоро шарҳ диҳам ва паёми линтерро бихонам</li>
+          <li>Метавонам коди агентро аз рӯи тағйирдиҳии ҷой ва таъсирҳои иловагӣ дар редюсер санҷам</li>
+        </ul>
+      </article>
+    </section>

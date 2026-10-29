@@ -1,0 +1,1936 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 5 · Хуки, формы, стили</p>
+      <h1>Эффекты, рефы и загрузка данных</h1>
+      <p class="lead">К концу урока каталог «Дастархона» будет получать рестораны не из файла, а с настоящего локального API: со скелетоном загрузки, понятной ошибкой и кнопкой «Повторить», с отменой лишних запросов, фокусом на поиске по клавише «/» и прокруткой к меню выбранного ресторана. Вы будете понимать, зачем нужен каждый <code>useEffect</code> в проекте, и уметь удалить тот, который не нужен.</p>
+      <ul class="goals">
+        <li>Объяснить эффект как синхронизацию с внешней системой и расставить зависимости по подсказке линтера, не отключая его</li>
+        <li>Писать очистку (cleanup) для таймеров, подписок и запросов и объяснить, почему в режиме разработки эффект запускается дважды</li>
+        <li>Находить и удалять лишние эффекты: производные данные, сброс состояния по <code>key</code>, реакцию на клик</li>
+        <li>Использовать <code>useRef</code> для DOM (фокус, прокрутка) и для значений, которые не должны вызывать перерисовку</li>
+        <li>Загружать данные через <code>fetch</code> и <code>AbortController</code> с состояниями loading, error и success, описанными union-типом</li>
+        <li>Типизировать ответ API через <code>unknown</code> и type guard, сужать ошибку в <code>catch</code> и не использовать <code>any</code></li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: проект <code>dastarkhon</code> после уроков 3 и 4 (дерево из 11 компонентов на Tailwind и CSS Modules, поиск и фильтр по кухне, корзина и сортировка на <code>useReducer</code>), терминал, редактор, два окна терминала и около 3,5 часов. Разделы 1–5 — теория с живыми песочницами: код на тёмном фоне можно менять и запускать, а в задачах нужно сделать так, чтобы вывод совпал с «Ожидаемым результатом». Раздел 6 — про ИИ-агента, раздел 7 — практика в проекте, раздел 8 — домашнее задание.</p>
+      <p>Предполагается, что вы знаете JavaScript, <code>fetch</code> и основы <code>useEffect</code> (его повторяет самотест урока 1), а также типы и union из урока 2 и модель рендера из урока 3. Здесь мы разбираем эффекты глубже: как они устроены, когда они не нужны и что делать, когда данные идут по сети.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="effects">
+      <h2 data-toc="useEffect и зависимости"><span class="num">01</span> useEffect: синхронизация с внешним миром и зависимости</h2>
+
+      <p>Компонент во время рендера только считает JSX (урок 3: чистая функция). Но приложению нужно и «грязное»: поставить заголовок вкладки, запросить данные по сети, подписаться на клавиатуру, запустить таймер. Всё это называют <b>эффектами</b>: работа, которая выходит за пределы вычисления разметки. Хук <code>useEffect</code> говорит React: «после того как покажешь экран, выполни эту функцию».</p>
+
+      <p>Не думайте об эффекте как о «событии жизненного цикла» (<code>componentDidMount</code> из старых туториалов). Правильная модель: <b>эффект синхронизирует компонент с внешней системой</b> (сетью, таймером, DOM, браузерным API) <b>по текущим значениям props и состояния</b>. Если значения изменились, синхронизацию нужно повторить. Какие значения нужны эффекту, говорит массив зависимостей.</p>
+
+<pre class="code" data-lang="tsx" data-title="Эффект: заголовок вкладки следует за состоянием">
+import { useEffect } from 'react'
+
+type PageTitleProps = { city: string }
+
+export default function PageTitle({ city }: PageTitleProps) {
+  useEffect(() =&gt; {
+    document.title = `Дастархон · ${city}` // внешняя система: вкладка браузера
+  }, [city]) // повторять, когда city изменился
+
+  return null
+}
+</pre>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 200" role="img" aria-label="Порядок работы эффекта: рендер, затем коммит в DOM, затем экран, затем эффект. При смене зависимости перед новым запуском выполняется очистка старого эффекта. При удалении компонента выполняется очистка">
+          <rect class="fill-y" x="10" y="20" width="110" height="46" rx="10" /><text x="65" y="48" text-anchor="middle">рендер</text>
+          <rect class="fill-y" x="150" y="20" width="110" height="46" rx="10" /><text x="205" y="48" text-anchor="middle">коммит</text>
+          <rect class="box" x="290" y="20" width="110" height="46" rx="10" /><text x="345" y="48" text-anchor="middle">экран</text>
+          <rect class="fill-g" x="430" y="20" width="130" height="46" rx="10" /><text x="495" y="48" text-anchor="middle">эффект</text>
+          <path class="arr" d="M120 43 H142" /><path class="arr-head" d="M150 43 l-10 -5 v10 z" />
+          <path class="arr" d="M260 43 H282" /><path class="arr-head" d="M290 43 l-10 -5 v10 z" />
+          <path class="arr" d="M400 43 H422" /><path class="arr-head" d="M430 43 l-10 -5 v10 z" />
+          <rect class="fill-r" x="10" y="110" width="170" height="46" rx="10" /><text x="95" y="138" text-anchor="middle">очистка старого</text>
+          <rect class="fill-g" x="215" y="110" width="170" height="46" rx="10" /><text x="300" y="138" text-anchor="middle">новый эффект</text>
+          <path class="arr" d="M180 133 H207" /><path class="arr-head" d="M215 133 l-10 -5 v10 z" />
+          <text class="sub t-b" x="10" y="98">зависимость изменилась: сначала очистка, потом новый запуск</text>
+          <rect class="fill-r" x="430" y="110" width="170" height="46" rx="10" /><text x="515" y="138" text-anchor="middle">очистка</text>
+          <text class="sub t-b" x="430" y="98">компонент убрали с экрана</text>
+          <text class="sub" x="12" y="186">Эффект всегда идёт после того, как экран уже нарисован: он не задерживает показ страницы.</text>
+        </svg>
+        <figcaption>Эффект запускается после коммита. Смена зависимости или удаление компонента сначала вызывает очистку</figcaption>
+      </figure>
+
+      <h3>Массив зависимостей</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Запись</th><th>Когда выполняется эффект</th><th>Комментарий</th></tr></thead>
+          <tbody>
+            <tr><td><code>useEffect(fn)</code></td><td>После каждого рендера</td><td>Почти всегда ошибка: легко получить бесконечный цикл</td></tr>
+            <tr><td><code>useEffect(fn, [])</code></td><td>После первого показа компонента</td><td>Только если эффекту не нужны props и состояние</td></tr>
+            <tr><td><code>useEffect(fn, [a, b])</code></td><td>После первого показа и каждый раз, когда <code>a</code> или <code>b</code> изменились</td><td>Сравнение через <code>Object.is</code>: для объектов и массивов важна <b>ссылка</b>, а не содержимое</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Главное правило: <b>зависимости вы не выбираете, их диктует код</b>. Каждое «реактивное» значение (prop, состояние, переменная или функция, созданные в теле компонента), которое читается внутри эффекта, обязано быть в массиве. Забыть его значит получить эффект, который работает со «старым» значением. Проверяет это линтер: Oxlint из урока 1 содержит правило <code>react-hooks/exhaustive-deps</code>.</p>
+
+<pre class="code" data-title="Терминал — npm run lint на эффекте с пропущенными зависимостями">
+src/Bad.tsx:6:25: warning react-hooks(exhaustive-deps): React Hook useEffect has missing dependencies: 'query', and 'n'
+  help: Either include it or remove the dependency array.
+</pre>
+
+      <p>Не отключайте это предупреждение комментарием <code>// eslint-disable</code>: оно почти всегда указывает на реальную ошибку. Вместо этого поменяйте код. Есть четыре стандартных выхода:</p>
+      <ol class="steps">
+        <li><b>Значение нужно эффекту</b> — добавьте его в зависимости. Эффект станет перезапускаться, и это правильно: данные изменились.</li>
+        <li><b>Значение не меняется</b> (константа, функция без замыканий) — вынесите его за пределы компонента, и в зависимости оно не попадёт.</li>
+        <li><b>Эффекту нужно лишь «предыдущее состояние»</b> — используйте функциональное обновление <code>setCount((c) =&gt; c + 1)</code>: само <code>count</code> читать не придётся.</li>
+        <li><b>Эффект должен прочитать свежее значение, но не перезапускаться из-за него</b> — отделите «событие» от эффекта через <code>useEffectEvent</code> (ниже).</li>
+      </ol>
+
+      <h3>Объекты и функции в зависимостях</h3>
+      <p>Объект, созданный в теле компонента, при каждом рендере <b>новый</b>, даже если поля те же. Если такой объект в зависимостях, эффект будет запускаться после каждого рендера. Создавайте объект внутри эффекта и зависьте от простых значений.</p>
+
+<pre class="code" data-lang="tsx" data-title="Объект в зависимостях: плохо и хорошо">
+type Options = { city: string; onlyOpen: boolean }
+
+function Catalog({ city, onlyOpen }: Options) {
+  const options = { city, onlyOpen } // новый объект при каждом рендере
+
+  // Плохо: options каждый раз другой, эффект запускается после каждого рендера
+  useEffect(() =&gt; {
+    load(options)
+  }, [options])
+
+  // Хорошо: объект собирается внутри, зависимости — простые значения
+  useEffect(() =&gt; {
+    load({ city, onlyOpen })
+  }, [city, onlyOpen])
+}
+</pre>
+
+      <h3>Устаревшее замыкание (stale closure)</h3>
+      <p>Каждый рендер создаёт свою копию функций и значений (урок 3: состояние — снимок). Эффект с пустым массивом «запоминает» значения первого рендера навсегда. Классическая ловушка: счётчик в <code>setInterval</code>.</p>
+
+      <div class="playground" data-mode="react" data-title="Таймер с устаревшим замыканием">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() =&gt; {
+    const id = setInterval(() =&gt; {
+      setCount(count + 1); // count здесь всегда 0: замыкание первого рендера
+    }, 200);
+    return () =&gt; clearInterval(id);
+  }, []);
+
+  return &lt;p&gt;Секунд: {count}&lt;/p&gt;;
+}
+</pre>
+      </div>
+      <p>Счёт доходит до 1 и застывает: каждый тик выполняет <code>setCount(0 + 1)</code>. Исправляется функциональным обновлением: <code>setCount((c) =&gt; c + 1)</code> берёт актуальное значение у React, и зависимость от <code>count</code> не нужна.</p>
+
+      <h3>useEffectEvent: событие внутри эффекта</h3>
+      <p>Иногда эффект должен прочитать свежее значение, но не перезапускаться при его смене. Пример: при подключении к чату показываем уведомление в текущей теме оформления. Смена темы не должна переподключать чат. С React 19.2 для этого есть <code>useEffectEvent</code>: функция, которая внутри эффекта всегда видит свежие props и состояние, но сама зависимостью не считается.</p>
+
+<pre class="code" data-lang="tsx" data-title="useEffectEvent (React 19.2 и новее)">
+import { useEffect, useEffectEvent } from 'react'
+
+type ChatProps = { roomId: string; theme: 'light' | 'dark' }
+
+export default function Chat({ roomId, theme }: ChatProps) {
+  // свежая theme внутри, но в зависимости её добавлять не нужно
+  const onConnected = useEffectEvent(() =&gt; {
+    showToast('Подключено', theme)
+  })
+
+  useEffect(() =&gt; {
+    const connection = createConnection(roomId)
+    connection.on('connected', onConnected)
+    connection.connect()
+    return () =&gt; connection.disconnect()
+  }, [roomId]) // перезапуск только при смене комнаты
+
+  return null
+}
+</pre>
+      <p>Вызывать такую функцию можно только изнутри эффектов, а передавать её другим компонентам нельзя. Если сомневаетесь, сначала попробуйте одно из первых трёх решений выше: <code>useEffectEvent</code> нужен редко.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Эффект — это маршрутка с табличкой «Рудаки — Сино». Табличка (зависимость) говорит, по какому маршруту едем. Сменился маршрут — водитель разворачивается и едет по новому. Пустой массив зависимостей — как маршрутка, которая навсегда осталась на старой табличке: пассажиры давно едут в другое место, а она всё возит по прежнему маршруту.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Пустой <code>[]</code> «чтобы не повторялось», хотя эффект читает props: получаете устаревшие данные. <b>2.</b> Комментарий, отключающий линтер, вместо исправления кода. <b>3.</b> Объект или функция из тела компонента в зависимостях: эффект запускается после каждого рендера. <b>4.</b> Эффект без массива вообще и <code>setState</code> внутри: бесконечный цикл рендеров, в консоли <code>Maximum update depth exceeded</code> или зависание вкладки. <b>5.</b> Считать эффект «обработчиком события»: реакцию на клик нужно писать в <code>onClick</code> (раздел 3).</p>
+      </div>
+
+      <article class="task" id="q-effects">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: эффекты и зависимости</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Эффект читает prop <code>city</code> и состояние <code>onlyOpen</code>. Какой массив зависимостей правильный?</p>
+          <ol class="options">
+            <li><code>[]</code>: чтобы эффект сработал один раз</li>
+            <li><code>[city, onlyOpen]</code>: все реактивные значения, которые читает эффект</li>
+            <li><code>[city]</code>: состояние можно не указывать</li>
+            <li>Без массива: так надёжнее</li>
+          </ol>
+          <div class="explain"><p>Зависимости определяются кодом эффекта, а не желанием «запускать реже». С пустым массивом эффект навсегда запомнит значения первого рендера, без массива запустится после каждого рендера.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Эффект с <code>[options]</code>, где <code>const options = { city }</code> объявлен в теле компонента, запускается после каждого рендера. Какие исправления помогут? Выберите два.</p>
+          <ol class="options">
+            <li>Создать объект внутри эффекта и указать зависимость <code>[city]</code></li>
+            <li>Добавить комментарий отключения линтера</li>
+            <li>Заменить массив зависимостей на <code>[options, options]</code></li>
+            <li>Передавать в зависимости только простое значение <code>city</code>, а не объект</li>
+          </ol>
+          <div class="explain"><p>Объект в теле компонента каждый раз новый, для <code>Object.is</code> это другое значение. Нужно или собирать его внутри эффекта, или зависеть от примитивов.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что делает <code>setCount((c) =&gt; c + 1)</code> в эффекте с интервалом по сравнению с <code>setCount(count + 1)</code>?</p>
+          <ol class="options">
+            <li>Ничего, это просто другая запись</li>
+            <li>Быстрее выполняется</li>
+            <li>Берёт актуальное значение у React, поэтому <code>count</code> не нужно читать и добавлять в зависимости</li>
+            <li>Запрещено в эффектах</li>
+          </ol>
+          <div class="explain"><p>Функциональное обновление получает последнее состояние от React, а не из замыкания. Так исчезает и устаревшее значение, и лишняя зависимость.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-deps">
+        <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Заголовок не обновляется</h4><span class="level easy">лёгкая</span></header>
+        <p>Компонент <code>PageTitle</code> должен ставить заголовок вкладки при каждой смене ресторана. Сейчас в консоли только первое значение: у эффекта пустой массив зависимостей, хотя он читает <code>name</code>. Исправьте. Стенд меняет ресторан дважды.</p>
+        <div class="playground" data-mode="react" data-title="Заголовок вкладки">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+// стенд: вместо document.title печатаем в консоль
+function setTitle(text) {
+  console.log("заголовок:", text);
+}
+
+function PageTitle({ name }) {
+  useEffect(() =&gt; {
+    setTitle(name);
+  }, []);
+  return &lt;h1&gt;{name}&lt;/h1&gt;;
+}
+
+export default function App() {
+  const [name, setName] = useState("Navruz");
+  useScript([
+    [50, () =&gt; setName("Rohat")],
+    [100, () =&gt; setName("Vatan")],
+  ]);
+  return &lt;PageTitle name={name} /&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>заголовок: Navruz
+заголовок: Rohat
+заголовок: Vatan</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Эффект читает <code>name</code>, значит, <code>name</code> должен быть в массиве зависимостей.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>useEffect(() =&gt; { setTitle(name); }, [name]);</code></p></details>
+      </article>
+
+      <article class="task" id="t1-stale">
+        <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Счётчик застыл на единице</h4><span class="level mid">средняя</span></header>
+        <p>Счётчик тикает каждые 100 мс, а стенд убирает его с экрана через 350 мс. Исправьте две вещи: счёт должен расти (функциональное обновление, массив зависимостей оставьте пустым) и при удалении компонента таймер должен останавливаться с сообщением <code>таймер остановлен</code>.</p>
+        <div class="playground" data-mode="react" data-title="Счётчик">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  console.log("счёт", count);
+
+  useEffect(() =&gt; {
+    const id = setInterval(() =&gt; {
+      setCount(count + 1); // TODO 1: используйте функциональное обновление
+    }, 100);
+    // TODO 2: верните cleanup: clearInterval и console.log("таймер остановлен")
+  }, []);
+
+  return &lt;p&gt;Счёт: {count}&lt;/p&gt;;
+}
+
+export default function App() {
+  const [show, setShow] = useState(true);
+  useScript([[350, () =&gt; setShow(false)]]); // стенд: через 350 мс счётчик убирают
+  return show ? &lt;Counter /&gt; : &lt;p&gt;Скрыто&lt;/p&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>счёт 0
+счёт 1
+счёт 2
+счёт 3
+таймер остановлен</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p><code>setCount((c) =&gt; c + 1)</code>: функция получает актуальное значение, и читать <code>count</code> внутри эффекта больше не нужно.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>return () =&gt; { clearInterval(id); console.log("таймер остановлен"); };</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/synchronizing-with-effects" target="_blank" rel="noopener">react.dev — Synchronizing with Effects</a> · <a href="https://react.dev/learn/lifecycle-of-reactive-effects" target="_blank" rel="noopener">react.dev — Lifecycle of Reactive Effects</a> · <a href="https://react.dev/learn/separating-events-from-effects" target="_blank" rel="noopener">react.dev — Separating Events from Effects</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="cleanup">
+      <h2 data-toc="Очистка эффекта"><span class="num">02</span> Очистка эффекта и двойной запуск в StrictMode</h2>
+
+      <p>Эффект часто что-то «включает»: таймер, подписку, соединение, запрос. Функция, которую эффект возвращает, — это <b>очистка</b>: она «выключает» то, что включил эффект. React вызывает её в двух случаях: перед следующим запуском эффекта (при смене зависимостей) и при удалении компонента. Порядок при смене зависимостей всегда такой: очистка со <b>старыми</b> значениями, потом новый эффект с новыми.</p>
+
+<pre class="code" data-lang="tsx" data-title="Подписка и отписка: два зеркальных действия">
+useEffect(() =&gt; {
+  function handleResize() {
+    setWidth(window.innerWidth)
+  }
+  window.addEventListener('resize', handleResize) // включили
+  return () =&gt; window.removeEventListener('resize', handleResize) // выключили
+}, [])
+</pre>
+
+      <p>Хорошая очистка — зеркало настройки: <code>addEventListener</code> и <code>removeEventListener</code>, <code>setInterval</code> и <code>clearInterval</code>, <code>connect</code> и <code>disconnect</code>, <code>fetch</code> и <code>abort</code> (раздел 5). Без очистки подписки копятся: после десяти показов компонента на каждое событие срабатывают десять обработчиков.</p>
+
+      <h3>Почему эффект запускается дважды</h3>
+      <p>Проект создан из шаблона Vite, и в <code>main.tsx</code> приложение обёрнуто в <code>StrictMode</code> (урок 3: он вызывает компоненты дважды). Он делает ещё одно: <b>в режиме разработки после первого показа компонента сразу выполняет очистку и запускает эффект заново</b>. Это проверка на прочность: React имитирует «ушли и вернулись» и смотрит, не сломается ли что-то. В продакшн-сборке двойного запуска нет.</p>
+
+<pre class="code" data-title="Терминал — консоль браузера в dev-режиме для connect/disconnect в эффекте">
+подключились: Общий
+отключились: Общий
+подключились: Общий
+</pre>
+
+      <p>Если у эффекта есть правильная очистка, пара «запуск — очистка — запуск» выглядит так же, как один запуск. Если вы видите баг только из-за двойного вызова (два запроса, два подключения, дублированные записи), это не баг StrictMode, а недостающая очистка. Не боритесь с ним флагами в <code>useRef</code>: починить нужно эффект.</p>
+
+      <div class="yt" data-id="ivtRckdgfts" data-title="Секреты useEffect: жизненный цикл и функция очистки — канал Михаил Непомнящий"></div>
+      <p class="muted">Ролик на русском (11 минут, август 2024): порядок запуска эффекта и очистки. Модель из ролика верна и для React 19.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Эффект — это аренда самоката. Взяли самокат (подписались), покатались, вернули на стоянку (очистка). Если не вернуть, через неделю вся стоянка пуста, а у вас во дворе десять самокатов. StrictMode — как проверка при выдаче: сразу «вернуть и взять снова», чтобы убедиться, что возврат работает.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Нет очистки у <code>setInterval</code>, <code>addEventListener</code> и подписок. <b>2.</b> Очистка не зеркальна: <code>removeEventListener</code> получает другую функцию, чем <code>addEventListener</code>, и ничего не удаляет (обработчик нужно объявить один раз внутри эффекта). <b>3.</b> Флаг «уже запускался» в <code>useRef</code>, чтобы скрыть двойной запуск: в продакшн-сборке это ничего не изменит, а баг останется. <b>4.</b> Ожидать, что очистка вызывается только при удалении компонента: она вызывается и при каждой смене зависимостей.</p>
+      </div>
+
+      <article class="task" id="q-cleanup">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: очистка</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Эффект <code>connect(room)</code> с очисткой <code>disconnect(room)</code> и зависимостью <code>[room]</code>. Пользователь сменил комнату с «Общий» на «Группа JS». В каком порядке вызовутся функции?</p>
+          <ol class="options">
+            <li>connect(«Группа JS»), потом disconnect(«Общий»)</li>
+            <li>Только connect(«Группа JS»)</li>
+            <li>disconnect(«Общий»), потом connect(«Группа JS»)</li>
+            <li>disconnect(«Группа JS»), потом connect(«Общий»)</li>
+          </ol>
+          <div class="explain"><p>Сначала очистка предыдущего запуска (она «помнит» старую комнату), затем новый эффект с новым значением.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>В dev-режиме вы видите в сети два одинаковых запроса при первом показе компонента. Что это значит?</p>
+          <ol class="options">
+            <li>Серверу нужно сказать, что он сломан</li>
+            <li>StrictMode запустил эффект, очистил и запустил заново: проверьте, что очистка отменяет первый запрос, а в продакшн-сборке запрос будет один</li>
+            <li>Нужно добавить флаг в <code>useRef</code>, чтобы второй запуск пропускался</li>
+            <li>Так работает <code>fetch</code> всегда</li>
+          </ol>
+          <div class="explain"><p>Двойной запуск — проверка StrictMode только в разработке. Правильная реакция: убедиться, что очистка корректна (запрос отменяется), а не прятать двойной запуск флагом.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t2-sub">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Отпишитесь от уведомлений</h4><span class="level mid">средняя</span></header>
+        <p>Компонент <code>Inbox</code> подписывается на «шину» уведомлений. Стенд присылает «A» и «B», затем убирает компонент и присылает «C». Допишите эффект: подписка при показе, а при удалении компонента отписка. Функция <code>bus.subscribe</code> уже возвращает функцию отписки. Если подписаться, но не отписаться, в консоли появится «получено: C» уже после удаления компонента.</p>
+        <div class="playground" data-mode="react" data-title="Уведомления">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+// стенд: «шина» уведомлений
+const listeners = new Set();
+const bus = {
+  subscribe(fn) {
+    listeners.add(fn);
+    return () =&gt; {
+      listeners.delete(fn);
+      console.log("отписались");
+    };
+  },
+  emit(message) {
+    listeners.forEach((fn) =&gt; fn(message));
+  },
+};
+
+function Inbox() {
+  const [last, setLast] = useState("—");
+
+  // TODO: подпишитесь через bus.subscribe, в обработчике
+  // выведите console.log("получено:", message) и сохраните message в состояние;
+  // верните функцию отписки
+
+  return &lt;p&gt;Последнее: {last}&lt;/p&gt;;
+}
+
+export default function App() {
+  const [show, setShow] = useState(true);
+  useScript([
+    [50, () =&gt; bus.emit("A")],
+    [100, () =&gt; bus.emit("B")],
+    [150, () =&gt; setShow(false)],
+    [200, () =&gt; bus.emit("C")],
+  ]);
+  return show ? &lt;Inbox /&gt; : &lt;p&gt;Почта закрыта&lt;/p&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>получено: A
+получено: B
+отписались</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Эффекту не нужны props и состояние, поэтому массив зависимостей пустой. Результат <code>bus.subscribe(...)</code> можно вернуть из эффекта как есть: это и есть очистка.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>useEffect(() =&gt; bus.subscribe((message) =&gt; { console.log("получено:", message); setLast(message); }), []);</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/synchronizing-with-effects#how-to-handle-the-effect-firing-twice-in-development" target="_blank" rel="noopener">react.dev — Effect firing twice in development</a> · <a href="https://react.dev/reference/react/StrictMode" target="_blank" rel="noopener">react.dev — StrictMode</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="no-effect">
+      <h2 data-toc="Эффект не нужен"><span class="num">03</span> «Вам может не понадобиться эффект»</h2>
+
+      <p>Главная привычка профессионала: прежде чем написать <code>useEffect</code>, спросить себя, с какой <b>внешней системой</b> он синхронизирует компонент. Если ответ «ни с какой, я просто хочу посчитать или обновить своё же состояние», эффект не нужен. Лишний эффект даёт лишний рендер (сначала экран со старым значением, потом исправленный), лишний код и новые баги. Линтер здесь помогает: на <code>setState</code> прямо внутри эффекта Oxlint выдаёт предупреждение.</p>
+
+<pre class="code" data-title="Терминал — npm run lint на setState внутри эффекта">
+src/Bad.tsx:9:5: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders
+  help: Effects should synchronize React with external systems. [...] Derive the value during render, initialize state directly, or update it from the event that caused the change.
+</pre>
+
+      <h3>Шесть случаев, когда эффект лишний</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ситуация</th><th>Лишний эффект</th><th>Как правильно</th></tr></thead>
+          <tbody>
+            <tr><td><b>1. Производные данные</b>: список после поиска, сумма, количество</td><td>Состояние + эффект, который его пересчитывает</td><td>Посчитать прямо в теле компонента</td></tr>
+            <tr><td><b>2. Сбросить состояние при смене prop</b></td><td>Эффект, который по <code>id</code> обнуляет черновик</td><td><code>key</code> на компоненте: смена ключа создаёт его заново</td></tr>
+            <tr><td><b>3. Реакция на клик или отправку формы</b></td><td>Флаг в состоянии + эффект, который смотрит на флаг</td><td>Код прямо в обработчике <code>onClick</code> / <code>onSubmit</code></td></tr>
+            <tr><td><b>4. Цепочка эффектов</b>: один ставит состояние, другой реагирует</td><td>Каскад из рендеров</td><td>Вычислить всё в одном обработчике или в рендере</td></tr>
+            <tr><td><b>5. Передать данные родителю</b></td><td>Эффект вызывает <code>onChange</code> родителя</td><td>Вызвать <code>onChange</code> в том же обработчике, что и <code>setState</code></td></tr>
+            <tr><td><b>6. Подогнать состояние под props</b></td><td>Копия prop в состоянии + эффект синхронизации</td><td>Не копировать: использовать prop напрямую</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre class="code" data-lang="tsx" data-title="Случай 1: производные данные">
+// Плохо: два рендера, на первом visible устарел
+const [visible, setVisible] = useState&lt;Restaurant[]&gt;([])
+useEffect(() =&gt; {
+  setVisible(restaurants.filter((r) =&gt; r.name.includes(query)))
+}, [restaurants, query])
+
+// Хорошо: посчитали в рендере, состояния нет
+const visible = restaurants.filter((r) =&gt; r.name.includes(query))
+</pre>
+
+<pre class="code" data-lang="tsx" data-title="Случай 2: сброс состояния через key">
+// Плохо: черновик сначала показывается от старого ресторана
+function Notes({ restaurantId }: { restaurantId: number }) {
+  const [draft, setDraft] = useState('')
+  useEffect(() =&gt; {
+    setDraft('')
+  }, [restaurantId])
+  // ...
+}
+
+// Хорошо: родитель отдаёт компоненту key, смена key = новый экземпляр с чистым состоянием
+// &lt;Notes key={restaurantId} restaurantId={restaurantId} /&gt;
+</pre>
+
+<pre class="code" data-lang="tsx" data-title="Случай 3: реакция на событие">
+// Плохо: событие превращено в состояние, а потом в эффект
+const [sent, setSent] = useState(false)
+useEffect(() =&gt; {
+  if (sent) sendOrder(cart)
+}, [sent, cart])
+// &lt;button onClick={() =&gt; setSent(true)}&gt;Заказать&lt;/button&gt;
+
+// Хорошо: действие там, где оно произошло
+function handleOrder() {
+  sendOrder(cart)
+}
+// &lt;button onClick={handleOrder}&gt;Заказать&lt;/button&gt;
+</pre>
+
+      <p>Если нужно дорогое вычисление в рендере, это тоже не повод для эффекта: об оптимизации (<code>useMemo</code> и React Compiler) поговорим в уроке 6. Правило запоминается просто: <b>если значение можно получить из props и состояния, его не нужно хранить</b>.</p>
+
+      <h3>А когда эффект нужен</h3>
+      <p>Эффект нужен, когда компонент должен синхронизироваться с чем-то, чем React не управляет: сеть (запрос данных), браузерные подписки (<code>resize</code>, <code>keydown</code>, <code>online</code>), таймеры, DOM-операции после рендера (прокрутка к элементу), сторонние виджеты (карта, график). В проекте мы будем использовать именно такие: загрузку ресторанов, горячую клавишу «/» и прокрутку к выбранному ресторану.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Схема решения: нужен ли useEffect. Вопрос 1: вы реагируете на действие пользователя? Да: обработчик события. Вопрос 2: значение можно вычислить из props и состояния? Да: считайте в рендере. Вопрос 3: нужно сбросить состояние при смене prop? Да: key. Иначе: синхронизация с внешней системой, нужен useEffect и очистка">
+          <rect class="box" x="10" y="12" width="250" height="46" rx="10" /><text x="135" y="40" text-anchor="middle">Реакция на клик, отправку?</text>
+          <path class="arr" d="M260 35 H322" /><path class="arr-head" d="M330 35 l-10 -5 v10 z" />
+          <rect class="fill-g" x="330" y="12" width="380" height="46" rx="10" /><text x="520" y="40" text-anchor="middle">Да: код в обработчике события</text>
+          <path class="arr" d="M135 58 V76" /><path class="arr-head" d="M135 84 l-5 -10 h10 z" /><text class="sub" x="146" y="74">нет</text>
+          <rect class="box" x="10" y="84" width="250" height="46" rx="10" /><text x="135" y="112" text-anchor="middle">Можно вычислить из props?</text>
+          <path class="arr" d="M260 107 H322" /><path class="arr-head" d="M330 107 l-10 -5 v10 z" />
+          <rect class="fill-g" x="330" y="84" width="380" height="46" rx="10" /><text x="520" y="112" text-anchor="middle">Да: посчитать прямо в рендере</text>
+          <path class="arr" d="M135 130 V148" /><path class="arr-head" d="M135 156 l-5 -10 h10 z" /><text class="sub" x="146" y="146">нет</text>
+          <rect class="box" x="10" y="156" width="250" height="46" rx="10" /><text x="135" y="184" text-anchor="middle">Сбросить состояние по prop?</text>
+          <path class="arr" d="M260 179 H322" /><path class="arr-head" d="M330 179 l-10 -5 v10 z" />
+          <rect class="fill-g" x="330" y="156" width="380" height="46" rx="10" /><text x="520" y="184" text-anchor="middle">Да: key на компоненте</text>
+          <path class="arr" d="M135 202 V220" /><path class="arr-head" d="M135 228 l-5 -10 h10 z" /><text class="sub" x="146" y="218">нет</text>
+          <rect class="fill-y" x="10" y="228" width="700" height="38" rx="10" /><text x="360" y="252" text-anchor="middle">Синхронизация с внешним (сеть, таймер, подписка, DOM): useEffect и очистка</text>
+        </svg>
+        <figcaption>Три вопроса перед каждым <code>useEffect</code>. Эффект остаётся последним вариантом</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Лишний эффект — как повар, который сначала готовит плов без соли, подаёт его на стол, а потом бежит с солонкой, потому что «так сделали по другому рецепту». Проще посолить сразу при готовке: так и значение, которое можно вычислить в рендере, нужно вычислить там же, а не латать позже.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Копия prop в состоянии: <code>useState(props.price)</code> не следит за изменением prop. <b>2.</b> Эффект с <code>setState</code> внутри, который зависит от того же состояния: бесконечный цикл, в консоли <code>Maximum update depth exceeded</code>. <b>3.</b> Запрос на сервер при клике «Заказать» внутри эффекта вместо обработчика. <b>4.</b> <code>fetch</code> в эффекте без очистки (раздел 5). <b>5.</b> Эффект «для порядка» без внешней системы: удалите и посмотрите, что сломалось.</p>
+      </div>
+
+      <article class="task" id="q-noeffect">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Проверь себя: нужен ли эффект</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1,3">
+          <p>В каких случаях <b>не нужен</b> <code>useEffect</code>? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Показать список ресторанов, подходящих под введённый в поиск текст</li>
+            <li>Подписаться на нажатие клавиши «/» на всём окне</li>
+            <li>Отправить заказ после нажатия кнопки «Заказать»</li>
+            <li>Запросить меню ресторана с сервера при первом показе страницы</li>
+          </ol>
+          <div class="explain"><p>Фильтрацию считают в рендере, отправку заказа делают в обработчике клика. Клавиатура окна и сеть — внешние системы, там эффект нужен (с очисткой).</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Форма редактирует заметку к ресторану. При переходе к другому ресторану заметка должна быть пустой. Самое простое правильное решение?</p>
+          <ol class="options">
+            <li>Эффект с <code>[restaurantId]</code>, который вызывает <code>setNote('')</code></li>
+            <li>Передать компоненту <code>key={restaurantId}</code>: состояние сбросится само</li>
+            <li>Хранить заметку в глобальной переменной</li>
+            <li>Добавить кнопку «Очистить» и надеяться, что пользователь нажмёт</li>
+          </ol>
+          <div class="explain"><p>Смена <code>key</code> создаёт компонент заново с начальным состоянием. Эффект с <code>setNote('')</code> даёт кадр со старым текстом и лишний рендер.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Что покажет предупреждение <code>react(set-state-in-effect)</code>?</p>
+          <ol class="options">
+            <li>Что компонент слишком большой</li>
+            <li>Что в проекте нет ни одного эффекта</li>
+            <li>Что нужно добавить зависимости</li>
+            <li>Что <code>setState</code> вызывается прямо в теле эффекта: часто значение можно вычислить в рендере или обновить в обработчике события</li>
+          </ol>
+          <div class="explain"><p>Это подсказка «возможно, эффект лишний». Исключения есть (подписки, которые обновляют состояние в обработчике события внутри эффекта: это не синхронный вызов), но сначала проверьте три вопроса из схемы.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t3-derived">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Уберите лишний рендер у списка</h4><span class="level mid">средняя</span></header>
+        <p>Компонент <code>Catalog</code> хранит отфильтрованный список в состоянии и обновляет его эффектом. Из-за этого на каждое изменение запроса выводится <b>устаревший</b> экран, а потом исправленный. Уберите состояние и эффект: считайте список в рендере. Консоль должна показать ровно по одной строке на каждый рендер.</p>
+        <div class="playground" data-mode="react" data-title="Фильтр списка">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+const RESTAURANTS = ["Navruz", "Rohat", "Samarkand"];
+
+function Catalog({ query }) {
+  const [visible, setVisible] = useState([]);
+
+  useEffect(() =&gt; {
+    setVisible(RESTAURANTS.filter((name) =&gt; name.toLowerCase().includes(query)));
+  }, [query]);
+
+  console.log("рендер:", visible.join(", ") || "пусто");
+  return &lt;ul&gt;{visible.map((name) =&gt; &lt;li key={name}&gt;{name}&lt;/li&gt;)}&lt;/ul&gt;;
+}
+
+export default function App() {
+  const [query, setQuery] = useState("");
+  useScript([[50, () =&gt; setQuery("nav")]]); // стенд: пользователь набрал «nav»
+  return &lt;Catalog query={query} /&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>рендер: Navruz, Rohat, Samarkand
+рендер: Navruz</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Состояние <code>visible</code> хранит то, что можно получить из <code>query</code>. Такое не хранят: превратите его в обычную переменную и удалите <code>useEffect</code> целиком.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const visible = RESTAURANTS.filter((name) =&gt; name.toLowerCase().includes(query));</code> Импорт <code>useState</code> в <code>Catalog</code> станет не нужен.</p></details>
+      </article>
+
+      <article class="task" id="t3-key">
+        <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Заметка к ресторану: сброс через key</h4><span class="level easy">лёгкая</span></header>
+        <p>Компонент <code>Notes</code> создаёт пустой черновик для ресторана. Функция в <code>useState</code> выполняется только при создании компонента: в консоли видно, когда начался «новый» черновик. Сейчас при смене <code>restaurantId</code> компонент остаётся тем же, и вторая строка не появляется. Добавьте одну деталь в <code>App</code>, чтобы смена ресторана создавала <code>Notes</code> заново.</p>
+        <div class="playground" data-mode="react" data-title="Заметки">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+function Notes({ restaurantId }) {
+  const [draft, setDraft] = useState(() =&gt; {
+    console.log("новый черновик для ресторана", restaurantId);
+    return "";
+  });
+  return (
+    &lt;textarea
+      value={draft}
+      onChange={(e) =&gt; setDraft(e.target.value)}
+      placeholder={"Заметка к ресторану " + restaurantId}
+    /&gt;
+  );
+}
+
+export default function App() {
+  const [id, setId] = useState(1);
+  useScript([[50, () =&gt; setId(2)]]); // стенд: выбрали другой ресторан
+  // TODO: пусть смена id создаёт Notes заново
+  return &lt;Notes restaurantId={id} /&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>новый черновик для ресторана 1
+новый черновик для ресторана 2</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Нужен prop <code>key</code> на самом компоненте <code>Notes</code>: значение должно меняться вместе с рестораном.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;Notes key={id} restaurantId={id} /&gt;</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/you-might-not-need-an-effect" target="_blank" rel="noopener">react.dev — You Might Not Need an Effect</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="ref">
+      <h2 data-toc="useRef"><span class="num">04</span> useRef: DOM и значения вне рендера</h2>
+
+      <p><b>Ref</b> — это «коробочка» <code>{ current: … }</code>, которую React хранит между рендерами. В отличие от состояния, <b>запись в <code>ref.current</code> не вызывает перерисовку</b>. Поэтому у ref две работы: держать ссылку на элемент DOM (чтобы сфокусировать поле или прокрутить к блоку) и хранить значение, которое нужно запомнить, но не показывать (идентификатор таймера, предыдущее значение).</p>
+
+      <h3>Ref на элемент DOM</h3>
+      <p>В TypeScript тип узла указывают в угловых скобках, а начальное значение всегда <code>null</code>: пока компонент не показан, элемента ещё нет. React 19 требует начальное значение явно (<code>useRef()</code> без аргумента даёт ошибку). Когда элемент появится, React запишет его в <code>ref.current</code>, а при удалении вернёт <code>null</code>. Поэтому перед использованием проверяйте на <code>null</code>.</p>
+
+<pre class="code" data-lang="tsx" data-title="src/components/SearchField.tsx (пример: ref и фокус)">
+import { useRef } from 'react'
+
+export default function SearchField() {
+  const inputRef = useRef&lt;HTMLInputElement&gt;(null)
+
+  function handleClick() {
+    inputRef.current?.focus() // current может быть null
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;input ref={inputRef} placeholder="Найти ресторан" /&gt;
+      &lt;button onClick={handleClick}&gt;В поиск&lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+
+<pre class="code" data-title="Терминал — tsc -b: типичные ошибки с ref">
+src/Bad.tsx(18,18): error TS2554: Expected 1 arguments, but got 0.
+src/Bad.tsx(20,3): error TS18047: 'inputRef.current' is possibly 'null'.
+src/Bad.tsx(22,37): error TS2322: Type 'RefObject&lt;HTMLDivElement | null&gt;' is not assignable to type 'Ref&lt;HTMLInputElement&gt; | undefined'.
+</pre>
+      <p>Первая ошибка: <code>useRef()</code> без начального значения. Вторая: <code>inputRef.current.focus()</code> без проверки. Третья: ref на <code>div</code> повесили на <code>input</code>. Тип в <code>useRef&lt;…&gt;</code> должен совпадать с элементом, на который вешаете ref.</p>
+
+      <h3>Ref как обычный prop (React 19)</h3>
+      <p>Чтобы родитель мог управлять полем внутри вашего компонента, принимайте <code>ref</code> как prop. Старая обёртка <code>forwardRef</code> не нужна (урок 1). В проекте так будет сделано в <code>SearchBox</code>.</p>
+
+<pre class="code" data-lang="tsx" data-title="Компонент принимает ref как prop">
+import type { Ref } from 'react'
+
+type SearchBoxProps = {
+  value: string
+  onChange: (value: string) =&gt; void
+  ref?: Ref&lt;HTMLInputElement&gt;
+}
+
+export default function SearchBox({ value, onChange, ref }: SearchBoxProps) {
+  return (
+    &lt;input ref={ref} value={value} onChange={(e) =&gt; onChange(e.target.value)} /&gt;
+  )
+}
+</pre>
+
+      <h3>Ref как «хранилище значения»</h3>
+      <p>Таймер нужно остановить кнопкой, а идентификатор из <code>setInterval</code> живёт между рендерами. Если хранить его в состоянии, каждый запуск вызовет лишнюю перерисовку, хотя на экране ничего не меняется. Ref подходит лучше.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th><code>useState</code></th><th><code>useRef</code></th></tr></thead>
+          <tbody>
+            <tr><td><b>Изменение вызывает перерисовку</b></td><td>Да</td><td>Нет</td></tr>
+            <tr><td><b>Можно читать при рендере</b></td><td>Да, это снимок</td><td>Не нужно: значение «живое», а не снимок</td></tr>
+            <tr><td><b>Когда использовать</b></td><td>То, что видит пользователь</td><td>Узлы DOM, идентификаторы таймеров, «предыдущее значение», счётчики для отладки</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="playground" data-mode="react" data-title="Секундомер: id таймера в ref">
+<pre class="code" data-lang="jsx">
+import { useRef, useState } from "react";
+
+export default function App() {
+  const [seconds, setSeconds] = useState(0);
+  const timerRef = useRef(null); // хранит id таймера, но не показывается на экране
+
+  function start() {
+    if (timerRef.current !== null) return; // уже идёт
+    timerRef.current = setInterval(() =&gt; setSeconds((s) =&gt; s + 1), 1000);
+  }
+
+  function stop() {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Секунд: {seconds}&lt;/p&gt;
+      &lt;button onClick={start}&gt;Старт&lt;/button&gt;
+      &lt;button onClick={stop}&gt;Стоп&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout tip">
+        <b>Правило</b>
+        <p>Не читайте и не записывайте <code>ref.current</code> во время рендера (кроме первой инициализации): иначе компонент перестаёт быть чистым (урок 3). Меняйте ref в обработчиках событий и в эффектах. Ещё одна важная вещь: фокус и прокрутку лучше делать в обработчике события (<code>handleClick</code>). Эффект нужен только тогда, когда элемент должен появиться после рендера: например, прокрутка к блоку, содержимое которого меняется после выбора.</p>
+      </div>
+
+      <div class="yt" data-id="heBRA9LVpsA" data-title="Управляемые и неуправляемые компоненты в React. Хук useRef и работа с DOM — канал Александр Ламков — Friendly Frontend"></div>
+      <p class="muted">Ролик на русском (19 минут, ноябрь 2025): useRef и работа с DOM. Часть про неуправляемые компоненты можно пока пропустить: формы разбираем в уроке 7.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Состояние — это меню на стене чойхоны: изменилось, и все видят новое. Ref — блокнот официанта в кармане: он записал, какому столу что нести, но стену менять не нужно. Блокнот помогает работе, а зал его не видит. Ref на DOM — номерок на столе: по нему официант находит нужный стол, не обходя весь зал.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Показывать <code>ref.current</code> на экране: интерфейс не обновится, потому что перерисовки нет. Показываемое должно быть в состоянии. <b>2.</b> <code>inputRef.current.focus()</code> без <code>?.</code>: ошибка <code>TS18047</code>, а при показе до появления элемента — реальный сбой <code>Cannot read properties of null</code>. <b>3.</b> Менять DOM вручную через ref (<code>innerHTML</code>, стили), хотя это можно сделать состоянием: React и ваш код будут бороться за один узел. <b>4.</b> Класть в ref данные, которые влияют на разметку. <b>5.</b> Использовать <code>document.getElementById</code> вместо ref: при нескольких экземплярах компонента получите чужой элемент.</p>
+      </div>
+
+      <article class="task" id="q-ref">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: ref</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что произойдёт, если записать новое значение в <code>ref.current</code>?</p>
+          <ol class="options">
+            <li>Компонент перерисуется с новым значением</li>
+            <li>Значение сохранится, но перерисовки не будет</li>
+            <li>React выдаст ошибку: ref только для чтения</li>
+            <li>Значение сбросится на следующем рендере</li>
+          </ol>
+          <div class="explain"><p>Ref сохраняется между рендерами и меняется без перерисовки. Поэтому на экране его показывать нельзя: для этого есть состояние.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Что из этого подходит для <code>useRef</code>? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Узел <code>input</code>, чтобы сфокусировать его после клика</li>
+            <li>Текст в строке поиска, который пользователь видит и редактирует</li>
+            <li>Идентификатор таймера, который нужно остановить кнопкой</li>
+            <li>Список ресторанов для вывода на странице</li>
+          </ol>
+          <div class="explain"><p>В ref кладут то, что нужно помнить, но не показывать: узлы DOM и идентификаторы. Текст поиска и список влияют на экран, им нужно состояние.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t4-focus">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Фокус на поле поиска по кнопке</h4><span class="level easy">лёгкая</span></header>
+        <p>По клику на кнопку «В поиск» фокус должен переходить на поле ввода. Заведите ref для <code>input</code>, привяжите его и вызовите <code>focus()</code> в обработчике клика. Стенд сам нажмёт кнопку и напечатает, какой элемент в фокусе.</p>
+        <div class="playground" data-mode="react" data-title="Фокус через ref">
+<pre class="code" data-lang="jsx">
+import { useRef } from "react";
+
+export default function App() {
+  // TODO 1: const inputRef = useRef(null);
+
+  function handleClick() {
+    // TODO 3: сфокусируйте поле через ref (current может быть null)
+  }
+
+  return (
+    &lt;div&gt;
+      {/* TODO 2: привяжите ref к полю: ref={inputRef} */}
+      &lt;input placeholder="Найти ресторан" /&gt;
+      &lt;button id="go" onClick={handleClick}&gt;В поиск&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: стенд нажимает кнопку и смотрит, где фокус
+setTimeout(() =&gt; {
+  document.getElementById("go").click();
+  console.log("в фокусе:", document.activeElement.tagName);
+}, 300);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>в фокусе: INPUT</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Три шага: <code>useRef(null)</code>, <code>ref={inputRef}</code> у <code>input</code>, <code>inputRef.current?.focus()</code> в обработчике.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Не <code>document.getElementById</code>: цель задачи — получить узел через ref.</p></details>
+      </article>
+
+      <article class="task" id="t4-timer">
+        <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Таймер, который не перерисовывает экран лишний раз</h4><span class="level mid">средняя</span></header>
+        <p>Кнопки «Старт» и «Стоп» управляют интервалом, который каждые 100 мс увеличивает счётчик. Идентификатор интервала нужно хранить в ref, а не в состоянии: запуск и остановка не должны вызывать перерисовку. Допишите <code>start</code> и <code>stop</code>. Стенд нажмёт «Старт» через 200 мс и «Стоп» через 450 мс. Строка «рендер» печатается при каждой перерисовке: лишних быть не должно.</p>
+        <div class="playground" data-mode="react" data-title="Секундомер">
+<pre class="code" data-lang="jsx">
+import { useRef, useState } from "react";
+
+export default function App() {
+  const [ticks, setTicks] = useState(0);
+  const timerRef = useRef(null);
+  console.log("рендер");
+
+  function start() {
+    // TODO: если таймер уже идёт (timerRef.current не null), ничего не делаем;
+    // иначе запускаем setInterval: каждый тик печатает "тик" и увеличивает ticks,
+    // а id кладём в timerRef.current
+  }
+
+  function stop() {
+    // TODO: остановите таймер, обнулите timerRef.current и напечатайте "остановлено"
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Тиков: {ticks}&lt;/p&gt;
+      &lt;button id="start" onClick={start}&gt;Старт&lt;/button&gt;
+      &lt;button id="stop" onClick={stop}&gt;Стоп&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: стенд нажимает кнопки
+setTimeout(() =&gt; document.getElementById("start").click(), 200);
+setTimeout(() =&gt; document.getElementById("stop").click(), 450);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>рендер
+тик
+рендер
+тик
+рендер
+остановлено</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В <code>start</code>: <code>timerRef.current = setInterval(() =&gt; { console.log("тик"); setTicks((t) =&gt; t + 1); }, 100);</code></p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>В <code>stop</code>: <code>clearInterval(timerRef.current); timerRef.current = null; console.log("остановлено");</code> Если хранить id в состоянии, при запуске и остановке появятся лишние строки «рендер».</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/referencing-values-with-refs" target="_blank" rel="noopener">react.dev — Referencing Values with Refs</a> · <a href="https://react.dev/learn/manipulating-the-dom-with-refs" target="_blank" rel="noopener">react.dev — Manipulating the DOM with Refs</a> · <a href="https://react.dev/reference/react/useRef" target="_blank" rel="noopener">react.dev — useRef</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="fetch">
+      <h2 data-toc="Загрузка данных"><span class="num">05</span> Загрузка данных: fetch, отмена и типы ответа</h2>
+
+      <p>Загрузку данных по сети вы уже делали в курсе «Frontend + ИИ»: <code>useEffect</code>, <code>fetch</code>, состояния «загрузка / ошибка / данные». Здесь мы собираем это в профессиональный шаблон и добавляем TypeScript: состояния описывает union из урока 2, а ответ сервера, которому нельзя доверять, проверяется типобезопасно.</p>
+
+      <h3>Состояние загрузки как union</h3>
+      <p>Вместо трёх отдельных <code>useState</code> (<code>loading</code>, <code>error</code>, <code>data</code>) заведите одно состояние с меткой <code>status</code>. Невозможные комбинации («загрузка и ошибка одновременно») тогда просто не выразить, а компилятор не даст прочитать <code>data</code>, пока вы не проверили статус.</p>
+
+<pre class="code" data-lang="ts" data-title="src/types.ts: общий тип состояния загрузки">
+export type LoadState&lt;T&gt; =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; data: T }
+</pre>
+
+<pre class="code" data-title="Терминал — tsc -b: читаем data без проверки статуса">
+src/Bad.tsx(21,20): error TS2339: Property 'data' does not exist on type 'LoadState&lt;Restaurant[]&gt;'.
+  Property 'data' does not exist on type '{ status: "loading"; }'.
+</pre>
+
+      <h3>Шаблон запроса в эффекте</h3>
+      <p>Запрос — внешняя система, поэтому эффект здесь уместен. Шаблон из пяти пунктов:</p>
+      <ol class="steps">
+        <li><b>AbortController</b> создаётся внутри эффекта, его <code>signal</code> передаётся в <code>fetch</code>.</li>
+        <li><b><code>response.ok</code></b> проверяется всегда: <code>fetch</code> отклоняет промис только при сетевой ошибке, а ответы 404 и 500 для него «успех».</li>
+        <li><b>Ответ</b> читается в <code>unknown</code> и проверяется функцией-проверкой (ниже), только потом превращается в нужный тип.</li>
+        <li><b>Ошибка в <code>catch</code></b> — это <code>unknown</code>; отмену (<code>AbortError</code>) игнорируют, остальные показывают.</li>
+        <li><b>Очистка</b> эффекта вызывает <code>controller.abort()</code>: если зависимость сменилась или компонент убрали, старый запрос отменяется.</li>
+      </ol>
+
+<pre class="code" data-lang="tsx" data-title="Шаблон: запрос с отменой и состояниями">
+useEffect(() =&gt; {
+  const controller = new AbortController()
+
+  fetchRestaurants(controller.signal)
+    .then((data) =&gt; setLoad({ status: 'success', data }))
+    .catch((error: unknown) =&gt; {
+      if (isAbortError(error)) return // запрос отменили сами: это не ошибка
+      setLoad({ status: 'error', message: errorMessage(error) })
+    })
+
+  return () =&gt; controller.abort()
+}, [attempt])
+</pre>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Диаграмма времени: запрос 1 уходит на сервер, пользователь меняет условие, очистка эффекта отменяет запрос 1 (AbortError), запрос 2 уходит и приходит, экран показывает только ответ запроса 2">
+          <line class="arr" x1="20" y1="30" x2="700" y2="30" /><text class="sub" x="12" y="20">время →</text>
+          <rect class="fill-y" x="40" y="48" width="330" height="34" rx="8" /><text x="205" y="70" text-anchor="middle">запрос 1: ресторан 1 (медленный)</text>
+          <path class="arr" d="M205 90 V120" /><path class="arr-head" d="M205 128 l-5 -10 h10 z" />
+          <rect class="fill-r" x="40" y="128" width="330" height="34" rx="8" /><text x="205" y="150" text-anchor="middle">очистка эффекта: abort() → AbortError</text>
+          <text class="sub t-r" x="380" y="150">ответ 1 отброшен, на экране его не будет</text>
+          <rect class="fill-g" x="170" y="176" width="250" height="34" rx="8" /><text x="295" y="198" text-anchor="middle">запрос 2: ресторан 2 (быстрый)</text>
+          <path class="arr" d="M420 193 H456" /><path class="arr-head" d="M464 193 l-10 -5 v10 z" />
+          <rect class="fill-g" x="464" y="176" width="236" height="34" rx="8" /><text x="582" y="198" text-anchor="middle">на экране ответ 2</text>
+          <text class="sub" x="12" y="224">Без отмены медленный ответ 1 мог бы прийти последним и затереть данные ресторана 2.</text>
+        </svg>
+        <figcaption>Гонка запросов: очистка эффекта отменяет устаревший запрос, и на экране остаётся ответ на последнее действие</figcaption>
+      </figure>
+
+      <h3>unknown вместо any</h3>
+      <p>Метод <code>response.json()</code> возвращает <code>any</code>: компилятор не знает формы данных и отключает все проверки. Если написать <code>const list: Restaurant[] = await response.json()</code>, ошибка типов не появится, но если сервер пришлёт другое, приложение упадёт где-то далеко от запроса. Безопаснее принять ответ как <code>unknown</code> («что-то, пока непроверенное») и доказать компилятору форму значения.</p>
+
+<pre class="code" data-title="Терминал — tsc -b: unknown не присвоить типу без проверки">
+src/Bad.tsx(8,11): error TS2322: Type 'unknown' is not assignable to type 'Restaurant[]'.
+</pre>
+
+      <p>Доказательство делает <b>type guard</b> (защитник типа): функция, которая возвращает <code>value is Тип</code>. Если она вернула <code>true</code>, внутри ветки <code>if</code> компилятор считает значение нужным типом.</p>
+
+<pre class="code" data-lang="ts" data-title="Type guard для ответа API">
+type MenuItem = { id: number; title: string; price: number }
+
+function isRecord(value: unknown): value is Record&lt;string, unknown&gt; {
+  return typeof value === 'object' &amp;&amp; value !== null
+}
+
+function isMenuItem(value: unknown): value is MenuItem {
+  return (
+    isRecord(value) &amp;&amp;
+    typeof value.id === 'number' &amp;&amp;
+    typeof value.title === 'string' &amp;&amp;
+    typeof value.price === 'number'
+  )
+}
+
+const data: unknown = await response.json()
+if (!Array.isArray(data) || !data.every(isMenuItem)) {
+  throw new Error('Сервер прислал данные в неожиданном формате')
+}
+// здесь data: MenuItem[]
+</pre>
+      <p>Ручная проверка — простой и честный вариант для небольших ответов. Для больших схем в уроке 7 вы познакомитесь с библиотекой Zod, которая описывает форму данных один раз и выводит из неё и проверку, и тип.</p>
+
+      <h3>Ошибка в catch — тоже unknown</h3>
+      <p>В режиме <code>strict</code> переменная в <code>catch</code> имеет тип <code>unknown</code>, ведь выбросить можно что угодно: <code>throw "нет сети"</code> тоже допустимо. Читать <code>error.message</code> напрямую нельзя: сначала сужаем тип через <code>instanceof</code>.</p>
+
+<pre class="code" data-title="Терминал — tsc -b: message у unknown">
+src/Bad.tsx(11,17): error TS18046: 'error' is of type 'unknown'.
+</pre>
+
+<pre class="code" data-lang="ts" data-title="Сужение ошибки">
+export function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException &amp;&amp; error.name === 'AbortError'
+}
+
+export function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message // здесь error: Error
+  }
+  return 'Неизвестная ошибка'
+}
+</pre>
+
+      <div class="callout tip">
+        <b>Что мы делаем в проекте и что дальше</b>
+        <p>Загрузка данных в эффекте — рабочий, но «ручной» способ: нет кэша (возврат на страницу снова грузит данные), нет повторных попыток, нет общих состояний загрузки между компонентами. Поэтому дальше курс заменит его на RTK Query (урок 10), а в Next.js (уроки 16–17) данные грузит сервер ещё до отправки страницы. Но правила отмены и типизации ответа из этого урока остаются теми же.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Запрос данных — как заказ плова у разносчика. Вы сказали «Navruz», потом передумали и позвонили «Rohat». Если не отменить первый заказ, оба курьера придут, а на столе окажется то, что принесли последним, и не обязательно то, что вы хотите. Отмена — это звонок «первый заказ не нужен». Проверка ответа — открыть коробку, прежде чем ставить на стол: плов ли внутри.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Не проверять <code>response.ok</code>: ответ 500 с телом <code>{"message": …}</code> попадёт в состояние как «данные». <b>2.</b> <code>const data = await response.json()</code> и дальше <code>data.map</code>: <code>any</code> молча пропускает всё. <b>3.</b> Показывать <code>AbortError</code> как ошибку пользователю: отмена — нормальное событие. <b>4.</b> <code>async</code> прямо в <code>useEffect(async () =&gt; …)</code>: эффект должен вернуть функцию очистки или ничего, а не промис. Заведите <code>async</code>-функцию снаружи эффекта (как <code>fetchRestaurants</code>) и вызывайте её. <b>5.</b> Сбрасывать «загрузку» в самом эффекте через <code>setLoad(…)</code>: это синхронный <code>setState</code> в эффекте. Сбрасывайте в обработчике (кнопка «Повторить») или через <code>key</code>. <b>6.</b> Приводить тип через <code>as Restaurant[]</code>: это обещание компилятору без проверки.</p>
+      </div>
+
+      <article class="task" id="q-fetch">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: запросы и типы</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Сервер ответил кодом 500. Что сделает <code>await fetch(url)</code>?</p>
+          <ol class="options">
+            <li>Выбросит ошибку, которую поймает <code>catch</code></li>
+            <li>Вернёт <code>response</code> с <code>ok === false</code>: проверять нужно самому</li>
+            <li>Вернёт <code>null</code></li>
+            <li>Повторит запрос автоматически</li>
+          </ol>
+          <div class="explain"><p><code>fetch</code> отклоняется только при сетевой ошибке. Для HTTP-ошибок вы проверяете <code>response.ok</code> и сами выбрасываете ошибку.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Зачем принимать результат <code>response.json()</code> как <code>unknown</code>, а не как нужный тип?</p>
+          <ol class="options">
+            <li>Чтобы компилятор заставил проверить форму ответа до использования: сервер может прислать не то, что мы ждём</li>
+            <li>Чтобы код выполнялся быстрее</li>
+            <li>Потому что <code>json()</code> не возвращает данные</li>
+            <li>Чтобы не писать <code>await</code></li>
+          </ol>
+          <div class="explain"><p>Запись <code>const x: Restaurant[] = await response.json()</code> компилируется без проверки: <code>any</code> подходит к любому типу. С <code>unknown</code> без type guard тип не присвоить.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В <code>catch (error)</code> попал <code>AbortError</code> из-за вызова <code>controller.abort()</code> в cleanup. Что делать?</p>
+          <ol class="options">
+            <li>Показать пользователю сообщение об ошибке</li>
+            <li>Повторить запрос</li>
+            <li>Проигнорировать: отмена — наше собственное решение, а не сбой</li>
+            <li>Удалить <code>AbortController</code></li>
+          </ol>
+          <div class="explain"><p>Отмена возникает, когда запрос стал не нужен (сменилась зависимость или компонент убрали). Показывать её как ошибку — значит пугать пользователя на ровном месте.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t5-catch">
+        <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Ошибка в catch: сузьте unknown</h4><span class="level mid">средняя</span></header>
+        <p>Компилятор не даёт прочитать <code>error.message</code>: тип <code>error</code> — <code>unknown</code>. Сузьте его проверкой <code>instanceof Error</code>. Если выброшена не ошибка (например, строка), верните «Ошибка: Неизвестная ошибка».</p>
+<pre class="code" data-run data-lang="ts">
+async function load(url: string): Promise&lt;string&gt; {
+  try {
+    if (url === "/bad") throw new Error("Сервер ответил 500");
+    if (url === "/offline") throw "нет сети"; // выбросили строку, а не Error
+    return "данные";
+  } catch (error) {
+    return "Ошибка: " + error.message;
+  }
+}
+
+console.log(await load("/ok"));
+console.log(await load("/bad"));
+console.log(await load("/offline"));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>данные
+Ошибка: Сервер ответил 500
+Ошибка: Неизвестная ошибка</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Внутри <code>catch</code> проверьте <code>if (error instanceof Error)</code>: в этой ветке тип <code>error</code> уже <code>Error</code> и <code>message</code> доступен.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>if (error instanceof Error) return "Ошибка: " + error.message; return "Ошибка: Неизвестная ошибка";</code></p></details>
+      </article>
+
+      <article class="task" id="t5-guard">
+        <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Type guard для позиции меню</h4><span class="level hard">сложная</span></header>
+        <p>Сервер прислал массив неизвестной формы. Допишите <code>isMenuItem</code>: она должна вернуть <code>true</code>, только если у значения есть числовые <code>id</code> и <code>price</code> и строковый <code>title</code>. Из трёх элементов подходит один; проверьте, что компилятор принимает <code>i.title.toUpperCase()</code>.</p>
+<pre class="code" data-run data-lang="ts">
+type MenuItem = { id: number; title: string; price: number };
+
+function isRecord(value: unknown): value is Record&lt;string, unknown&gt; {
+  return typeof value === "object" &amp;&amp; value !== null;
+}
+
+function isMenuItem(value: unknown): value is MenuItem {
+  // TODO: проверьте, что value — объект с id: number, title: string, price: number
+  return false;
+}
+
+const raw: unknown = JSON.parse(
+  '[{"id":1,"title":"Плов","price":45},{"id":2,"title":"Чай"},{"id":"3","title":"Самса","price":12}]'
+);
+
+if (Array.isArray(raw)) {
+  const items = raw.filter(isMenuItem);
+  console.log("верных позиций:", items.length);
+  console.log(items.map((i) =&gt; i.title.toUpperCase()).join(", "));
+}
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>верных позиций: 1
+ПЛОВ</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Сначала <code>isRecord(value)</code>, после неё к полям можно обращаться: они имеют тип <code>unknown</code>, и каждое проверяется через <code>typeof</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>return isRecord(value) &amp;&amp; typeof value.id === "number" &amp;&amp; typeof value.title === "string" &amp;&amp; typeof value.price === "number";</code></p></details>
+      </article>
+
+      <article class="task" id="t5-fetch">
+        <header><span class="task-num">ЗАДАЧА 5.4</span><h4>Четыре состояния и отмена запроса</h4><span class="level hard">сложная</span></header>
+        <p>Допишите эффект в <code>Catalog</code>: запрос с <code>AbortController</code>, проверка <code>response.ok</code>, состояния <code>loading / error / success</code>. Стенд сначала просит «медленный» адрес, через 50 мс переключается на адрес с ошибкой 500, а через 150 мс — на «адрес без сети». Компонент пересоздаётся при смене адреса (за это отвечает <code>key</code>), поэтому первый запрос должен отмениться в cleanup, а в <code>catch</code> вы выводите <code>запрос отменён</code> для <code>AbortError</code>. Ошибку покажите через <code>error instanceof Error</code>.</p>
+        <div class="playground" data-mode="react" data-title="Каталог: загрузка и отмена">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+const LIST = [{ id: 1, name: "Navruz" }, { id: 2, name: "Samarkand" }, { id: 3, name: "Shirin" }];
+
+// стенд: «сервер». /slow отвечает через 100 мс, /broken даёт 500, /offline — сетевая ошибка
+function fakeFetch(url, { signal } = {}) {
+  return new Promise((resolve, reject) =&gt; {
+    const t = setTimeout(() =&gt; {
+      if (url === "/offline") reject(new TypeError("Failed to fetch"));
+      else if (url === "/broken") resolve({ ok: false, status: 500, json: async () =&gt; ({}) });
+      else resolve({ ok: true, status: 200, json: async () =&gt; LIST });
+    }, url === "/slow" ? 100 : 30);
+    signal?.addEventListener("abort", () =&gt; {
+      clearTimeout(t);
+      reject(new DOMException("Aborted", "AbortError"));
+    });
+  });
+}
+
+function Catalog({ url }) {
+  const [load, setLoad] = useState({ status: "loading" });
+
+  // TODO: useEffect: создайте AbortController, вызовите fakeFetch(url, { signal }),
+  // при !response.ok выбросьте Error("Сервер ответил " + response.status),
+  // прочитайте response.json(), положите { status: "success", data };
+  // в catch: AbortError → console.log("запрос отменён") и return;
+  // иначе { status: "error", message } (message из error instanceof Error);
+  // в cleanup вызовите controller.abort(). Зависимости: [url]
+
+  if (load.status === "loading") console.log("экран: загрузка");
+  else if (load.status === "error") console.log("экран: ошибка —", load.message);
+  else console.log("экран: список (" + load.data.length + ")");
+  return null;
+}
+
+export default function App() {
+  const [url, setUrl] = useState("/slow");
+  useScript([
+    [50, () =&gt; setUrl("/broken")],
+    [150, () =&gt; setUrl("/offline")],
+  ]);
+  return &lt;Catalog key={url} url={url} /&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>экран: загрузка
+экран: загрузка
+запрос отменён
+экран: ошибка — Сервер ответил 500
+экран: загрузка
+экран: ошибка — Failed to fetch</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Контроллер создаётся внутри эффекта. Проверка отмены: <code>error instanceof DOMException &amp;&amp; error.name === "AbortError"</code>. Для сообщения: <code>error instanceof Error ? error.message : "Неизвестная ошибка"</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>В конце эффекта: <code>return () =&gt; controller.abort();</code> Без этого «запрос отменён» не появится, а первый ответ придёт в уже удалённый компонент.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN — AbortController</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch" target="_blank" rel="noopener">MDN — Using the Fetch API</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/narrowing.html" target="_blank" rel="noopener">TypeScript — Narrowing</a></p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai-effects">
+      <h2 data-toc="ИИ: лишние эффекты"><span class="num">06</span> ИИ-блок: агент любит лишние эффекты</h2>
+
+      <p>Если попросить агента «добавить загрузку данных» или «посчитать сумму», он почти всегда напишет <code>useEffect</code>: в обучающих текстах и старых проектах эффектов много, и он повторяет эту привычку. Поэтому ревью кода агента для хуков состоит из одного главного вопроса: <b>с какой внешней системой синхронизируется этот эффект?</b> Вот типичный ответ агента на просьбу «покажи корзину с итогом»:</p>
+
+<pre class="code" data-lang="tsx" data-title="Типичный код от агента (с лишним)">
+function Cart({ items }: { items: CartItem[] }) {
+  const [total, setTotal] = useState(0)
+  const [count, setCount] = useState(0)
+  const [sent, setSent] = useState(false)
+
+  useEffect(() =&gt; {
+    setTotal(items.reduce((sum, i) =&gt; sum + i.item.price * i.qty, 0))
+  }, [items])
+
+  useEffect(() =&gt; {
+    setCount(items.reduce((sum, i) =&gt; sum + i.qty, 0))
+  }, [items])
+
+  useEffect(() =&gt; {
+    if (sent) sendOrder(items)
+  }, [sent])
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;{count} позиций, {total} сомони&lt;/p&gt;
+      &lt;button onClick={() =&gt; setSent(true)}&gt;Заказать&lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+      <p>Здесь все три эффекта лишние: два пересчитывают <b>производные данные</b> (<code>total</code> и <code>count</code> можно посчитать в рендере), третий превращает <b>клик в флаг</b>. Заодно у него пропущена зависимость <code>items</code>. После исправления состояний нет совсем.</p>
+
+      <div class="callout ai">
+        <b>Формула промпта: контекст → задача → ограничения → формат → проверка</b>
+        <p>Плохой запрос оставляет агенту свободу писать эффекты. Хороший явно запрещает эффект там, где его быть не должно, просит обосновать каждый оставшийся и назвать внешнюю систему.</p>
+      </div>
+
+      <div class="prompt bad-prompt">добавь в каталог загрузку ресторанов с API</div>
+
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), прочитай AGENTS.md. Каталог ресторанов в src/App.tsx, тип Restaurant в src/types.ts. API: GET /api/restaurants отдаёт JSON-массив ресторанов, адрес /api проксируется на localhost:3001.
+Задача: загрузи рестораны при открытии страницы, покажи состояния loading, error (с кнопкой «Повторить») и success.
+Ограничения: один useEffect для запроса с AbortController и очисткой, зависимости честные; состояние описано union-типом LoadState; ответ принимается как unknown и проверяется type guard, без any и без as; отфильтрованный список и счётчики считай в рендере, без useState и useEffect; AbortError не показывай пользователю; новых библиотек не добавляй.
+Формат ответа: сначала список изменений по файлам (без кода), потом код. Для каждого useEffect в проекте напиши одну строку: «с какой внешней системой синхронизируется и почему это не обработчик события и не вычисление в рендере».
+Проверка: в конце перечисли, какие пункты ограничений выполнены, и покажи, что произойдёт при StrictMode (двойной запуск эффекта) и при быстрой смене условий (гонка запросов).</div>
+
+      <h3>Как проверять эффекты, написанные агентом</h3>
+      <ol class="steps">
+        <li><b>Назовите внешнюю систему.</b> Для каждого <code>useEffect</code> одной фразой: сеть, таймер, подписка браузера, DOM. Если ответа нет, эффект лишний.</li>
+        <li><b><code>setState</code> прямо в эффекте.</b> Это почти всегда производные данные или реакция на событие. Линтер ловит их предупреждением <code>set-state-in-effect</code>.</li>
+        <li><b>Зависимости.</b> Нет пустого <code>[]</code> при чтении props, нет объектов из тела компонента, нет комментариев «disable lint».</li>
+        <li><b>Очистка.</b> У каждого таймера, подписки и запроса есть зеркальное действие. Проверьте в StrictMode: после двойного запуска ничего не дублируется.</li>
+        <li><b>Запрос.</b> Проверка <code>response.ok</code>, <code>unknown</code> и type guard вместо <code>as</code> и <code>any</code>, <code>AbortError</code> не показывается как ошибка, <code>async</code> не передан прямо в <code>useEffect</code>.</li>
+        <li><b>Ref.</b> Нет <code>document.getElementById</code>, есть проверка на <code>null</code>, в ref не лежит то, что нужно показывать на экране.</li>
+        <li><b>Безопасность.</b> В коде нет ключей и токенов: секреты не кладут в клиентский код (в Vite такие значения видны любому через DevTools). Текст с сервера выводится как обычный текст в JSX, а не вставляется в страницу как готовый HTML.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки при работе с агентом</b>
+        <p><b>1.</b> Принять первую версию с тремя эффектами «потому что работает»: лишний рендер не виден, пока не станет медленно. <b>2.</b> Просить «исправь предупреждение линтера» без объяснения: агент добавит комментарий-отключение. Просите «исправь причину, не отключай правило». <b>3.</b> Не запустить в StrictMode: баги двойного запуска проявятся только в dev, а на проверке у ментора. <b>4.</b> Не проверить Network: нужно видеть, что отменённый запрос действительно помечен как canceled. <b>5.</b> Оставить как есть агентский <code>useEffect(async () =&gt; …)</code>.</p>
+      </div>
+
+      <article class="task" id="q-ai-effects">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь себя: ревью эффектов</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1">
+          <p>В коде агента три эффекта: (а) <code>setFullName(first + ' ' + last)</code> при смене имени; (б) подписка на <code>keydown</code> окна с очисткой; (в) запрос меню с <code>AbortController</code> и очисткой. Какой из них лишний?</p>
+          <ol class="options">
+            <li>Только (а): полное имя можно посчитать в рендере, а (б) и (в) синхронизируются с внешними системами</li>
+            <li>Только (б): подписки на клавиатуру всегда лишние</li>
+            <li>Только (в): запросы можно делать только в обработчике</li>
+            <li>Все три одинаково нужны</li>
+          </ol>
+          <div class="explain"><p>Лишний только (а): это производные данные. Подписка на окно и запрос — настоящие внешние системы, эффект там уместен, если есть очистка.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Какие две фразы в промпте агенту помогут избежать лишних эффектов?</p>
+          <ol class="options">
+            <li>«Сделай побыстрее, главное чтобы работало»</li>
+            <li>«Значения, которые можно вычислить из props и состояния, считай в рендере, без useState и useEffect»</li>
+            <li>«Для надёжности добавь useEffect везде, где есть состояние»</li>
+            <li>«Для каждого useEffect напиши, с какой внешней системой он синхронизируется»</li>
+          </ol>
+          <div class="explain"><p>Хороший промпт задаёт ограничение (не эффект там, где хватит рендера) и требует обоснования каждого оставшегося эффекта. Это превращает ревью в проверку конкретных утверждений.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t6-review">
+        <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Найдите лишнее в корзине агента</h4><span class="level hard">сложная</span></header>
+        <p>Это тот же код, что выше, в песочнице. Уберите все три эффекта и три состояния: <code>total</code> и <code>count</code> считайте в рендере, а отправку заказа делайте прямо в обработчике. Консоль должна показать один рендер и одно сообщение об отправке. Стенд нажмёт кнопку «Заказать» через 200 мс.</p>
+        <div class="playground" data-mode="react" data-title="Корзина от агента">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+const ITEMS = [
+  { title: "Плов праздничный", price: 45, qty: 1 },
+  { title: "Чай зелёный", price: 8, qty: 2 },
+  { title: "Самбуса с мясом", price: 12, qty: 1 },
+];
+
+function Cart({ items }) {
+  const [total, setTotal] = useState(0);
+  const [count, setCount] = useState(0);
+  const [sent, setSent] = useState(false);
+
+  useEffect(() =&gt; {
+    setTotal(items.reduce((sum, i) =&gt; sum + i.price * i.qty, 0));
+  }, [items]);
+
+  useEffect(() =&gt; {
+    setCount(items.reduce((sum, i) =&gt; sum + i.qty, 0));
+  }, [items]);
+
+  useEffect(() =&gt; {
+    if (sent) console.log("заказ отправлен, сумма:", total);
+  }, [sent]);
+
+  console.log("рендер: позиций", count, "сумма", total);
+  return (
+    &lt;div&gt;
+      &lt;p&gt;{count} позиций, {total} сомони&lt;/p&gt;
+      &lt;button id="send" onClick={() =&gt; setSent(true)}&gt;Заказать&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return &lt;Cart items={ITEMS} /&gt;;
+}
+
+// автопроверка: стенд нажимает «Заказать»
+setTimeout(() =&gt; document.getElementById("send").click(), 200);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>рендер: позиций 4 сумма 73
+заказ отправлен, сумма: 73</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p><code>const total = items.reduce(…)</code> и <code>const count = items.reduce(…)</code> в теле компонента. Вместе с ними уходят <code>useState</code> для <code>total</code>, <code>count</code> и <code>sent</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Заведите <code>function handleOrder() { console.log("заказ отправлен, сумма:", total); }</code> и повесьте её на <code>onClick</code>. Состояния нет, поэтому клик не вызывает перерисовку и вторая строка «рендер» не появится.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/you-might-not-need-an-effect" target="_blank" rel="noopener">react.dev — You Might Not Need an Effect</a> · <a href="https://react.dev/learn/synchronizing-with-effects" target="_blank" rel="noopener">react.dev — Synchronizing with Effects</a></p>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: данные с API"><span class="num">07</span> Практика: «Дастархон» загружает рестораны с API</h2>
+
+      <p>Продолжаем проект 1. После уроков 3 и 4 каталог берёт рестораны из массива в <code>data.ts</code>, а корзина живёт на <code>useReducer</code>. Сейчас мы заменим массив запросом: поднимем локальный учебный API на Node.js, подключим его к Vite, напишем типизированную загрузку с отменой и покажем состояния загрузки и ошибки. Заодно добавим фокус на поиск по клавише «/» и прокрутку к выбранному ресторану через ref. Корзину из практики урока 4 и фильтры из его домашнего задания мы не трогаем.</p>
+
+      <h3>Что получится</h3>
+<div class="ftree"><b>server/</b> <i>новое: учебный API на чистом Node.js, без пакетов</i>
+├─ <b>api.mjs</b> <i>/api/restaurants и /api/restaurants/:id/menu, ?delay=, ?fail=1</i>
+├─ <b>restaurants.json</b>, <b>menu.json</b> <i>данные</i>
+<b>src/</b>
+├─ <b>api.ts</b> <i>новое: fetchRestaurants, type guard, isAbortError, errorMessage</i>
+├─ <b>types.ts</b> <i>+ LoadState&lt;T&gt;</i>
+├─ <b>data.ts</b> <i>остался только menu: рестораны переехали на сервер</i>
+├─ <b>App.tsx</b> <i>+ состояние load, три эффекта, два ref</i>
+└─ <b>components/</b> <i>+ LoadingGrid, ErrorMessage; SearchBox принимает ref</i></div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 220" role="img" aria-label="Путь запроса: браузер выполняет fetch на /api/restaurants, сервер разработки Vite на порту 5173 пересылает запрос на локальный API на порту 3001, API отвечает JSON, браузер проверяет ответ type guard и кладёт в состояние load">
+          <rect class="fill-y" x="10" y="20" width="150" height="56" rx="12" /><text x="85" y="44" text-anchor="middle">App.tsx</text><text class="sub mono" x="85" y="62" text-anchor="middle">fetch('/api/…')</text>
+          <rect class="box b" x="230" y="20" width="170" height="56" rx="12" /><text x="315" y="44" text-anchor="middle">Vite dev :5173</text><text class="sub mono" x="315" y="62" text-anchor="middle">server.proxy</text>
+          <rect class="fill-g" x="470" y="20" width="240" height="56" rx="12" /><text x="590" y="44" text-anchor="middle">server/api.mjs :3001</text><text class="sub mono" x="590" y="62" text-anchor="middle">JSON из файла</text>
+          <path class="arr" d="M160 48 H222" /><path class="arr-head" d="M230 48 l-10 -5 v10 z" />
+          <path class="arr" d="M400 48 H462" /><path class="arr-head" d="M470 48 l-10 -5 v10 z" />
+          <rect class="box" x="10" y="130" width="150" height="56" rx="12" /><text x="85" y="154" text-anchor="middle">unknown</text><text class="sub mono" x="85" y="172" text-anchor="middle">isRestaurant</text>
+          <rect class="fill-g" x="230" y="130" width="170" height="56" rx="12" /><text x="315" y="154" text-anchor="middle">LoadState</text><text class="sub mono" x="315" y="172" text-anchor="middle">success / error</text>
+          <rect class="box" x="470" y="130" width="240" height="56" rx="12" /><text x="590" y="154" text-anchor="middle">RestaurantList</text><text class="sub mono" x="590" y="172" text-anchor="middle">или ErrorMessage</text>
+          <path class="arr" d="M590 76 V104 H85 V122" /><path class="arr-head" d="M85 130 l-5 -10 h10 z" /><text class="sub t-b" x="300" y="100">ответ</text>
+          <path class="arr" d="M160 158 H222" /><path class="arr-head" d="M230 158 l-10 -5 v10 z" />
+          <path class="arr" d="M400 158 H462" /><path class="arr-head" d="M470 158 l-10 -5 v10 z" />
+        </svg>
+        <figcaption>Путь данных: компонент запрашивает адрес без хоста, Vite пересылает на учебный API, ответ проверяется и попадает в состояние</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Что мы предполагаем от урока 4</b>
+        <p>В <code>App.tsx</code> после практики урока 4: состояния <code>cuisine</code>, <code>query</code>, <code>selectedId</code> и корзина <code>cart</code> на <code>useReducer(cartReducer, [])</code>; рестораны берутся из <code>restaurants</code> (импорт из <code>./data</code>) и идут в <code>visible</code>, <code>selected</code>, <code>TopRestaurants</code> и <code>ClosedRestaurants</code>; справа колонка <code>&lt;aside&gt;</code> с меню (<code>menu</code> из <code>data.ts</code>) и корзиной. Ниже дан полный <code>App.tsx</code> в таком виде и список пяти вставок. Если у вас что-то отличается (например, после ДЗ-4 запрос и кухня живут в <code>filters</code> редьюсера), перенесите в свой файл только эти вставки, а чужие куски не трогайте; сброс поиска в <code>clearSearch</code> делайте тем способом, который есть у вас (<code>setQuery('')</code> или <code>dispatch(…)</code>).</p>
+      </div>
+
+      <h3>Шаги</h3>
+      <ol class="steps">
+        <li><b>Проверьте старт и соберите main.</b> Рабочая папка чистая, все проверки проходят. Практику урока 4 (ветка <code>feat/cart</code>) вы в конце уже влили в <code>main</code>. Если сделали ДЗ-4 (ветка <code>feat/filters</code>), влейте и его; если ещё нет, урок работает и без него:
+<pre class="code" data-title="Терминал">
+git status
+npm run typecheck
+npm run lint
+git switch main
+git merge feat/filters
+</pre>
+          Конфликты, если они появились, решите вручную, оставив код обеих веток. Затем создайте ветку урока:
+<pre class="code" data-title="Терминал">
+git switch -c feat/api
+</pre>
+        </li>
+        <li><b>Тип состояния загрузки.</b> Допишите в конец <code>src/types.ts</code> (остальное в файле не меняйте):
+<pre class="code" data-lang="ts" data-title="src/types.ts (добавьте в конец)">
+export type LoadState&lt;T&gt; =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; data: T }
+</pre>
+        </li>
+        <li><b>Данные для сервера.</b> Создайте папку <code>server</code> и в ней два файла. Рестораны — те же шесть, что в <code>data.ts</code> после урока 3. Если вы добавляли свои (в ДЗ урока 3 их не меньше девяти), допишите их сюда в том же формате: ключи в кавычках, запятая между объектами, но не после последнего.
+<pre class="code" data-lang="json" data-title="server/restaurants.json">
+[
+  { "id": 1, "name": "Navruz", "cuisine": "плов", "rating": 4.8, "open": true, "emoji": "🍚", "deliveryMin": 35, "minOrder": 60, "address": "пр. Рудаки, 45" },
+  { "id": 2, "name": "Rohat", "cuisine": "шашлык", "rating": 4.5, "open": false, "emoji": "🍢", "deliveryMin": 45, "minOrder": 80 },
+  { "id": 3, "name": "Samarkand", "cuisine": "самбуса", "rating": 4.6, "open": true, "emoji": "🥟", "deliveryMin": 30, "minOrder": 40 },
+  { "id": 4, "name": "Vatan", "cuisine": "шашлык", "rating": 4.3, "open": true, "emoji": "🍢", "deliveryMin": 40, "minOrder": 50 },
+  { "id": 5, "name": "Shirin", "cuisine": "десерты", "rating": 4.7, "open": true, "emoji": "🍰", "deliveryMin": 25, "minOrder": 35 },
+  { "id": 6, "name": "Bahor", "cuisine": "плов", "rating": 3.9, "open": false, "emoji": "🍚", "deliveryMin": 50, "minOrder": 90 }
+]
+</pre>
+          Меню понадобится в домашнем задании. Это те же 14 блюд, что в массиве <code>menu</code> из <code>data.ts</code> (урок 4): <code>id</code> и <code>restaurantId</code> совпадают.
+<pre class="code" data-lang="json" data-title="server/menu.json">
+[
+  { "id": 1, "restaurantId": 1, "title": "Плов праздничный", "price": 45 },
+  { "id": 2, "restaurantId": 1, "title": "Чай зелёный", "price": 8 },
+  { "id": 3, "restaurantId": 3, "title": "Самбуса с мясом", "price": 12 },
+  { "id": 4, "restaurantId": 1, "title": "Салат «Шакароб»", "price": 15 },
+  { "id": 5, "restaurantId": 2, "title": "Шашлык из баранины", "price": 38 },
+  { "id": 6, "restaurantId": 2, "title": "Лепёшка", "price": 5 },
+  { "id": 7, "restaurantId": 3, "title": "Самбуса с тыквой", "price": 10 },
+  { "id": 8, "restaurantId": 3, "title": "Лагман", "price": 30 },
+  { "id": 9, "restaurantId": 4, "title": "Шашлык куриный", "price": 28 },
+  { "id": 10, "restaurantId": 4, "title": "Айран", "price": 7 },
+  { "id": 11, "restaurantId": 5, "title": "Пахлава", "price": 20 },
+  { "id": 12, "restaurantId": 5, "title": "Чак-чак", "price": 18 },
+  { "id": 13, "restaurantId": 6, "title": "Плов с курицей", "price": 35 },
+  { "id": 14, "restaurantId": 6, "title": "Компот", "price": 6 }
+]
+</pre>
+        </li>
+        <li><b>Учебный API.</b> Это маленький сервер на встроенных модулях Node.js, пакеты не нужны. Он делает то, что делает настоящий бэкенд: отвечает не сразу (600 мс), умеет отвечать ошибкой и возвращает 404 для неизвестных адресов. Параметр <code>?delay=2000</code> замедлит ответ, а <code>?fail=1</code> заставит отвечать кодом 500: пригодится, чтобы смотреть на состояния загрузки и ошибки.
+<pre class="code" data-lang="js" data-title="server/api.mjs">
+import { createServer } from 'node:http'
+import { readFile } from 'node:fs/promises'
+
+const restaurants = JSON.parse(
+  await readFile(new URL('./restaurants.json', import.meta.url), 'utf8'),
+)
+const menu = JSON.parse(
+  await readFile(new URL('./menu.json', import.meta.url), 'utf8'),
+)
+
+const server = createServer(async (req, res) =&gt; {
+  const url = new URL(req.url ?? '/', 'http://localhost')
+  // ?delay=2000 замедляет ответ, ?fail=1 отвечает ошибкой 500
+  const delay = Number(url.searchParams.get('delay') ?? 600)
+  await new Promise((resolve) =&gt; setTimeout(resolve, delay))
+
+  const send = (status, body) =&gt; {
+    res.writeHead(status, {
+      'Content-Type': 'application/json; charset=utf-8',
+    })
+    res.end(JSON.stringify(body))
+  }
+
+  if (url.searchParams.get('fail') === '1') {
+    return send(500, { message: 'Сервер временно недоступен' })
+  }
+
+  const path = url.pathname
+  if (path === '/api/restaurants') {
+    return send(200, restaurants)
+  }
+  const menuMatch = path.match(/^\/api\/restaurants\/(\d+)\/menu$/)
+  if (menuMatch) {
+    const id = Number(menuMatch[1])
+    if (!restaurants.some((r) =&gt; r.id === id)) {
+      return send(404, { message: 'Ресторан не найден' })
+    }
+    return send(
+      200,
+      menu.filter((item) =&gt; item.restaurantId === id),
+    )
+  }
+  send(404, { message: 'Такого адреса нет' })
+})
+
+server.listen(3001, () =&gt; {
+  console.log('API: http://localhost:3001/api/restaurants')
+})
+</pre>
+          Добавьте команду в <code>scripts</code> файла <code>package.json</code> и запустите сервер в <b>отдельном окне терминала</b> (он должен работать всё время, пока вы пишете код):
+<pre class="code" data-lang="json" data-title="package.json (scripts)">
+"api": "node server/api.mjs"
+</pre>
+<pre class="code" data-title="Терминал 2">
+npm run api
+</pre>
+          Откройте в браузере <code>http://localhost:3001/api/restaurants</code>: через полсекунды появится JSON с шестью ресторанами. Для адреса <code>…/api/restaurants/99/menu</code> вы увидите ответ «Ресторан не найден» с кодом 404.</li>
+        <li><b>Подключите API к Vite.</b> В браузере запрос идёт на <code>/api/restaurants</code> (без хоста): сервер разработки Vite пересылает такие запросы на порт 3001. Так не нужны CORS и разные адреса для dev и продакшна. Добавьте блок <code>server</code> в <code>vite.config.ts</code> и <b>перезапустите</b> <code>npm run dev</code>: конфиг читается только при старте.
+<pre class="code" data-lang="ts" data-title="vite.config.ts">
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  server: {
+    proxy: { '/api': 'http://localhost:3001' },
+  },
+})
+</pre>
+        </li>
+        <li><b>Слой запросов <code>src/api.ts</code>.</b> Все знания раздела 5 в одном файле: ответ приходит как <code>unknown</code>, проверяется type guard, а ошибки сужаются. Эта же папка (<code>src/api</code>) была запланирована в <code>AGENTS.md</code>; пока хватает одного файла.
+<pre class="code" data-lang="ts" data-title="src/api.ts">
+import { CUISINES, type Restaurant } from './types'
+
+function isRecord(value: unknown): value is Record&lt;string, unknown&gt; {
+  return typeof value === 'object' &amp;&amp; value !== null
+}
+
+function isRestaurant(value: unknown): value is Restaurant {
+  return (
+    isRecord(value) &amp;&amp;
+    typeof value.id === 'number' &amp;&amp;
+    typeof value.name === 'string' &amp;&amp;
+    typeof value.cuisine === 'string' &amp;&amp;
+    (CUISINES as readonly string[]).includes(value.cuisine) &amp;&amp;
+    typeof value.rating === 'number' &amp;&amp;
+    typeof value.open === 'boolean' &amp;&amp;
+    typeof value.emoji === 'string' &amp;&amp;
+    typeof value.deliveryMin === 'number' &amp;&amp;
+    typeof value.minOrder === 'number'
+  )
+}
+
+export async function fetchRestaurants(
+  signal: AbortSignal,
+): Promise&lt;Restaurant[]&gt; {
+  const response = await fetch('/api/restaurants', { signal })
+  if (!response.ok) {
+    throw new Error(`Сервер ответил ${response.status}`)
+  }
+  const data: unknown = await response.json()
+  if (!Array.isArray(data) || !data.every(isRestaurant)) {
+    throw new Error('Сервер прислал данные в неожиданном формате')
+  }
+  return data
+}
+
+export function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException &amp;&amp; error.name === 'AbortError'
+}
+
+export function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message
+  }
+  return 'Неизвестная ошибка'
+}
+</pre>
+          Обратите внимание на <code>(CUISINES as readonly string[])</code>: <code>includes</code> у кортежа литералов принимает только такие же литералы, а у нас приходит произвольная строка. Это единственное место, где мы расширяем тип, и только для проверки.</li>
+        <li><b>Скелетон и ошибка.</b> Два небольших компонента. Скелетон — шесть серых плашек с пульсацией (<code>animate-pulse</code>), ключ из числа допустим: список статичный и никогда не меняется (урок 3). У блока ошибки роль <code>alert</code>: экранные дикторы озвучат её сами.
+<pre class="code" data-lang="tsx" data-title="src/components/LoadingGrid.tsx">
+export default function LoadingGrid() {
+  return (
+    &lt;div
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      role="status"
+      aria-label="Загрузка ресторанов"
+    &gt;
+      {[1, 2, 3, 4, 5, 6].map((n) =&gt; (
+        &lt;div
+          key={n}
+          className="h-48 animate-pulse rounded-2xl border border-stone-200 bg-stone-100"
+        /&gt;
+      ))}
+    &lt;/div&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/ErrorMessage.tsx">
+type ErrorMessageProps = {
+  message: string
+  onRetry: () =&gt; void
+}
+
+export default function ErrorMessage({ message, onRetry }: ErrorMessageProps) {
+  return (
+    &lt;div
+      className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800"
+      role="alert"
+    &gt;
+      &lt;p className="font-semibold"&gt;Не удалось загрузить рестораны&lt;/p&gt;
+      &lt;p className="mt-1 text-sm"&gt;{message}&lt;/p&gt;
+      &lt;button
+        className="mt-3 rounded-lg bg-brand-600 px-3 py-1.5 font-semibold text-white hover:bg-brand-700"
+        onClick={onRetry}
+      &gt;
+        Повторить
+      &lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>SearchBox принимает ref.</b> Замените файл целиком. Это React 19: <code>ref</code> — обычный prop, <code>forwardRef</code> не нужен. Подсказка в <code>placeholder</code> сообщает про горячую клавишу.
+<pre class="code" data-lang="tsx" data-title="src/components/SearchBox.tsx">
+import type { ChangeEvent, Ref } from 'react'
+
+type SearchBoxProps = {
+  value: string
+  onChange: (value: string) =&gt; void
+  ref?: Ref&lt;HTMLInputElement&gt;
+}
+
+export default function SearchBox({ value, onChange, ref }: SearchBoxProps) {
+  function handleChange(event: ChangeEvent&lt;HTMLInputElement&gt;) {
+    onChange(event.target.value)
+  }
+  return (
+    &lt;input
+      ref={ref}
+      className="w-full max-w-xs rounded-lg border border-stone-300 bg-white px-3 py-2"
+      value={value}
+      onChange={handleChange}
+      placeholder="Найти ресторан (/)"
+    /&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Уберите рестораны из <code>data.ts</code>.</b> Теперь их отдаёт сервер. Удалите из <code>src/data.ts</code> массив <code>restaurants</code> целиком, а в первой строке оставьте только нужный тип. Массив <code>menu</code> не трогайте: он нужен корзине.
+<pre class="code" data-lang="ts" data-title="src/data.ts (начало файла)">
+import type { MenuItem } from './types'
+
+export const menu: MenuItem[] = [
+  // ...ваши позиции меню остаются как были
+]
+</pre>
+          Сразу запустите <code>npm run typecheck</code>: компилятор покажет, что <code>App.tsx</code> больше не может импортировать <code>restaurants</code>. Это ожидаемо, следующий шаг починит.
+<pre class="code" data-title="Терминал — tsc -b">
+src/App.tsx(6,10): error TS2305: Module '"./data"' has no exported member 'restaurants'.
+</pre>
+        </li>
+        <li><b>Соберите всё в App.</b> Ниже полный <code>App.tsx</code> в состоянии «после практики урока 4». Если ваш файл отличается, перенесите из него только пять вставок. <b>1.</b> Импорты: <code>useEffect</code>, <code>useRef</code>, функции из <code>./api</code>, <code>ErrorMessage</code>, <code>LoadingGrid</code>, типы <code>LoadState</code> и <code>Restaurant</code>; в импорте из <code>./data</code> оставьте только <code>menu</code>. <b>2.</b> Состояние <code>load</code>, счётчик <code>attempt</code> и два ref <code>searchRef</code>, <code>selectedRef</code>; строка <code>const restaurants = …</code> дальше даёт вашему коду тот же массив, что раньше. <b>3.</b> Три эффекта: загрузка, клавиша «/», прокрутка. <b>4.</b> Функции <code>retry</code> и <code>clearSearch</code>. <b>5.</b> В разметке: <code>ref</code> у <code>SearchBox</code>, кнопка «Очистить», три ветки вместо одного <code>RestaurantList</code>, блоки «Топ рейтинга» и «Закрыто сейчас» только при <code>success</code> (пока рестораны не пришли, массив пуст, и «Сейчас работают все рестораны» было бы неправдой) и <code>ref</code> у <code>&lt;aside&gt;</code>.
+<pre class="code" data-lang="tsx" data-title="src/App.tsx">
+import { useEffect, useReducer, useRef, useState } from 'react'
+import { errorMessage, fetchRestaurants, isAbortError } from './api'
+import { cartReducer } from './cartReducer'
+import CartItemRow from './components/CartItemRow'
+import CartSummary from './components/CartSummary'
+import ClosedRestaurants from './components/ClosedRestaurants'
+import CuisineFilter from './components/CuisineFilter'
+import ErrorMessage from './components/ErrorMessage'
+import Layout from './components/Layout'
+import LoadingGrid from './components/LoadingGrid'
+import MenuItemRow from './components/MenuItemRow'
+import RestaurantList from './components/RestaurantList'
+import SearchBox from './components/SearchBox'
+import Section from './components/Section'
+import TopRestaurants from './components/TopRestaurants'
+import { menu } from './data'
+import type { Cuisine, LoadState, Restaurant } from './types'
+
+export default function App() {
+  const [cuisine, setCuisine] = useState&lt;Cuisine | null&gt;(null)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState&lt;number | null&gt;(null)
+  const [cart, dispatch] = useReducer(cartReducer, [])
+  const [load, setLoad] = useState&lt;LoadState&lt;Restaurant[]&gt;&gt;({
+    status: 'loading',
+  })
+  const [attempt, setAttempt] = useState(0)
+  const searchRef = useRef&lt;HTMLInputElement&gt;(null)
+  const selectedRef = useRef&lt;HTMLElement&gt;(null)
+
+  const restaurants = load.status === 'success' ? load.data : []
+
+  // 1. Загрузка: внешняя система — сеть
+  useEffect(() =&gt; {
+    const controller = new AbortController()
+    fetchRestaurants(controller.signal)
+      .then((data) =&gt; setLoad({ status: 'success', data }))
+      .catch((error: unknown) =&gt; {
+        if (isAbortError(error)) return
+        setLoad({ status: 'error', message: errorMessage(error) })
+      })
+    return () =&gt; controller.abort()
+  }, [attempt])
+
+  // 2. Горячая клавиша «/»: внешняя система — событие окна браузера
+  useEffect(() =&gt; {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === '/' &amp;&amp; document.activeElement !== searchRef.current) {
+        event.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () =&gt; window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // 3. Прокрутка: колонка с меню нужна после выбора, поэтому ждём коммита
+  useEffect(() =&gt; {
+    if (selectedId !== null) {
+      selectedRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }
+  }, [selectedId])
+
+  function retry() {
+    setLoad({ status: 'loading' })
+    setAttempt((n) =&gt; n + 1)
+  }
+
+  function clearSearch() {
+    setQuery('')
+    searchRef.current?.focus()
+  }
+
+  const visible = restaurants.filter(
+    (r) =&gt;
+      (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+      r.name.toLowerCase().includes(query.toLowerCase()),
+  )
+  const selected = restaurants.find((r) =&gt; r.id === selectedId) ?? null
+  const menuItems = menu.filter((m) =&gt; m.restaurantId === selectedId)
+
+  return (
+    &lt;Layout&gt;
+      &lt;h1 className="mb-4 text-3xl font-bold"&gt;Рестораны Душанбе&lt;/h1&gt;
+      &lt;div className="flex flex-wrap items-center gap-3"&gt;
+        &lt;SearchBox ref={searchRef} value={query} onChange={setQuery} /&gt;
+        {query !== '' &amp;&amp; (
+          &lt;button
+            className="text-sm text-stone-600 underline"
+            onClick={clearSearch}
+          &gt;
+            Очистить
+          &lt;/button&gt;
+        )}
+        &lt;CuisineFilter selected={cuisine} onChange={setCuisine} /&gt;
+      &lt;/div&gt;
+      &lt;div className="grid gap-8 lg:grid-cols-[1fr_22rem]"&gt;
+        &lt;div&gt;
+          &lt;Section title="Все рестораны"&gt;
+            {load.status === 'loading' &amp;&amp; &lt;LoadingGrid /&gt;}
+            {load.status === 'error' &amp;&amp; (
+              &lt;ErrorMessage message={load.message} onRetry={retry} /&gt;
+            )}
+            {load.status === 'success' &amp;&amp; (
+              &lt;RestaurantList restaurants={visible} onSelect={setSelectedId} /&gt;
+            )}
+          &lt;/Section&gt;
+          {load.status === 'success' &amp;&amp; (
+            &lt;&gt;
+              &lt;TopRestaurants restaurants={restaurants} /&gt;
+              &lt;ClosedRestaurants restaurants={restaurants} /&gt;
+            &lt;/&gt;
+          )}
+        &lt;/div&gt;
+        &lt;aside ref={selectedRef}&gt;
+          &lt;Section title={selected ? `Меню: ${selected.name}` : 'Меню'}&gt;
+            {selected === null ? (
+              &lt;p className="text-stone-500"&gt;Выберите ресторан в каталоге&lt;/p&gt;
+            ) : (
+              &lt;ul&gt;
+                {menuItems.map((item) =&gt; (
+                  &lt;MenuItemRow
+                    key={item.id}
+                    item={item}
+                    onAdd={(menuItem) =&gt;
+                      dispatch({ type: 'add', item: menuItem })
+                    }
+                  /&gt;
+                ))}
+              &lt;/ul&gt;
+            )}
+          &lt;/Section&gt;
+          &lt;Section title="Корзина"&gt;
+            &lt;CartSummary
+              entries={cart}
+              onClear={() =&gt; dispatch({ type: 'clear' })}
+            &gt;
+              {cart.map((entry) =&gt; (
+                &lt;CartItemRow
+                  key={entry.item.id}
+                  entry={entry}
+                  onQtyChange={(itemId, qty) =&gt;
+                    dispatch({ type: 'setQty', itemId, qty })
+                  }
+                  onRemove={(itemId) =&gt; dispatch({ type: 'remove', itemId })}
+                /&gt;
+              ))}
+            &lt;/CartSummary&gt;
+          &lt;/Section&gt;
+        &lt;/aside&gt;
+      &lt;/div&gt;
+    &lt;/Layout&gt;
+  )
+}
+</pre>
+          <b>Почему именно так.</b> Состояние «загрузка» не выставляется внутри эффекта: начальное значение уже <code>loading</code>, а при повторе его ставит <code>retry</code> — обработчик события (раздел 3). Прокрутка сделана эффектом, а не в <code>onSelect</code>: в момент клика колонка ещё показывает старое содержимое, а прокрутить нужно после того, как React обновил DOM. Фокус после «Очистить» делается прямо в обработчике: поле уже есть на странице.</li>
+        <li><b>Запустите и посмотрите.</b> Два окна терминала: в первом <code>npm run api</code>, во втором <code>npm run dev</code>. Откройте страницу: 600 мс серые плашки, затем шесть карточек. Нажмите «/» (фокус в поле поиска, символ «/» в поле не попадает), введите «nav», нажмите «Очистить»: поле пустое, фокус в нём. Выберите ресторан и на узком окне (375 px) убедитесь, что страница плавно прокрутилась к колонке «Меню: …» (она при такой ширине лежит под списком).</li>
+        <li><b>Посмотрите на сеть.</b> Откройте DevTools, вкладка Network, фильтр Fetch/XHR, обновите страницу. Вы увидите <b>два</b> запроса к <code>/api/restaurants</code>, первый помечен как <code>canceled</code>. Это StrictMode: эффект запустился, очистка отменила запрос через <code>abort()</code>, эффект запустился снова. В продакшн-сборке (<code>npm run build</code>, затем <code>npm run preview</code>) запрос один. Включите в Network троттлинг «Slow 3G»: скелетон держится дольше.</li>
+        <li><b>Сломайте нарочно.</b> (а) Остановите <code>npm run api</code> (Ctrl+C) и обновите страницу: вместо карточек блок «Не удалось загрузить рестораны» с текстом «Сервер ответил 502» (прокси Vite отвечает так, когда сервер недоступен). Запустите API снова и нажмите «Повторить»: карточки появятся без перезагрузки страницы. (б) Временно поменяйте в <code>api.ts</code> адрес на <code>'/api/restaurants?fail=1'</code>: сервер ответит 500, в блоке ошибки будет «Сервер ответил 500». Верните адрес. (в) Добавьте в начало первого эффекта строку <code>console.log('попытка', attempt)</code>, замените <code>[attempt]</code> на <code>[]</code> и запустите <code>npm run lint</code>: прочитайте предупреждение <code>react-hooks(exhaustive-deps)</code>. Верните зависимость и удалите строку. (г) Удалите строку <code>return () =&gt; controller.abort()</code>: в Network вместо <code>canceled</code> оба запроса дойдут до конца. Верните строку.
+<pre class="code" data-title="Терминал — npm run lint: attempt читается, но не указан">
+src/App.tsx:26:35: warning react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'attempt'
+  help: Either include it or remove the dependency array.
+</pre>
+          Без строки с <code>console.log</code> предупреждения не будет: правило требует только то, что эффект действительно читает, а <code>attempt</code> сам по себе лишь «подталкивает» повтор.</li>
+        <li><b>Проверки и коммит.</b> Все четыре команды должны пройти:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+          Если Prettier переписал JSON-файлы в сервере в несколько строк, это нормально. Затем коммит, слияние в <code>main</code> и отправка:
+<pre class="code" data-title="Терминал">
+git add .
+git commit -m "load restaurants from api"
+git switch main
+git merge feat/api
+git push
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>Белая страница или ошибка «Сервер ответил 502» сразу:</b> не запущен <code>npm run api</code> или Vite не перезапущен после правки <code>vite.config.ts</code>. <b>«Port 3001 is already in use» / <code>EADDRINUSE</code>:</b> порт занят другой программой или старым запуском: закройте его (Ctrl+C в старом окне) или поменяйте номер порта в <code>api.mjs</code> и в прокси. <b>Скелетон не исчезает:</b> откройте Network: если запрос красный, смотрите его статус и ответ; если запроса нет, проверьте, что эффект не удалён и <code>fetchRestaurants</code> вызывается. <b>«Сервер прислал данные в неожиданном формате»:</b> в <code>restaurants.json</code> у какого-то ресторана неверное поле: кухня не из списка <code>CUISINES</code>, число записано строкой или не хватает <code>emoji</code>, <code>deliveryMin</code>, <code>minOrder</code>. <b><code>SyntaxError: Unexpected token</code> при запуске API:</b> ошибка в JSON, чаще всего лишняя запятая после последнего объекта. <b>Клавиша «/» не работает:</b> поле уже в фокусе (так и задумано) или эффект с <code>keydown</code> не добавлен. <b>Страница не прокручивается:</b> окно слишком большое и колонка с меню уже на экране (на широком экране она стоит справа): сузьте окно до 375 px.</p>
+      </div>
+
+      <article class="task" id="t-build">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Чек-лист: загрузка данных работает</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-build">
+          <li>Работа ведётся в ветке <code>feat/api</code>, а работа предыдущих уроков влита в <code>main</code></li>
+          <li>В <code>src/types.ts</code> есть <code>LoadState&lt;T&gt;</code>, в <code>server/</code> три файла, в <code>package.json</code> команда <code>api</code>, в <code>vite.config.ts</code> блок <code>server.proxy</code></li>
+          <li>В <code>src/api.ts</code> ответ читается как <code>unknown</code>, проверяется <code>isRestaurant</code>, нет <code>any</code> и <code>as</code> для данных (кроме <code>CUISINES as readonly string[]</code>)</li>
+          <li>Из <code>data.ts</code> удалён массив <code>restaurants</code>, каталог показывает рестораны с сервера</li>
+          <li>Я вижу скелетон загрузки, затем карточки; при остановленном API вижу ошибку, а «Повторить» после запуска API загружает данные</li>
+          <li>В Network виден отменённый запрос (<code>canceled</code>), я могу объяснить, что это StrictMode и очистка эффекта</li>
+          <li>Клавиша «/» ставит фокус на поиск, «Очистить» очищает поле и возвращает фокус, выбор ресторана прокручивает страницу к колонке с меню</li>
+          <li>В проекте три эффекта, и для каждого я могу назвать внешнюю систему: сеть, окно браузера, DOM</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> и <code>npm run build</code> проходят без ошибок, коммит сделан, <code>feat/api</code> влита в <code>main</code></li>
+        </ul>
+      </article>
+
+      <article class="task" id="t-observe">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Чек-лист: наблюдения и поломки</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-observe">
+          <li>Я остановил API, увидел блок ошибки с текстом «Сервер ответил 502», запустил API и нажал «Повторить»</li>
+          <li>Я временно использовал <code>?fail=1</code>, прочитал «Сервер ответил 500» и вернул адрес</li>
+          <li>Я убрал зависимость из массива и прочитал предупреждение <code>exhaustive-deps</code>, а затем вернул её</li>
+          <li>Я убрал <code>controller.abort()</code>, увидел, что оба запроса теперь завершаются, и вернул строку</li>
+          <li>Я собрал продакшн-сборку (<code>npm run build</code>, <code>npm run preview</code>) и убедился, что запрос один</li>
+          <li>Я удалил все временные <code>console.log</code> перед коммитом</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://vite.dev/config/server-options" target="_blank" rel="noopener">vite.dev — server.proxy</a> · <a href="https://react.dev/learn/synchronizing-with-effects" target="_blank" rel="noopener">react.dev — Synchronizing with Effects</a> · <a href="https://nodejs.org/api/http.html" target="_blank" rel="noopener">nodejs.org — HTTP</a></p>
+    </section>
+
+    <!-- ============ 08 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">08</span> Домашнее задание: меню ресторана с API и аудит эффектов</h2>
+
+      <p>В практике вы загрузили рестораны. В домашнем задании делаете то же для меню: когда выбирают ресторан, под каталогом загружается его меню. Здесь появляется настоящая гонка запросов (пользователь быстро переключает рестораны), и вы учитесь доказать, что в проекте нет лишних эффектов. Работайте в новой ветке <code>feat/api-menu</code> от <code>main</code>, а в конце сдайте ссылку на репозиторий <code>dastarkhon</code>: ментор откроет эту ветку.</p>
+
+      <h3>Что сделать</h3>
+      <ol class="steps">
+        <li><b>Старт.</b> <code>git switch main</code>, <code>git switch -c feat/api-menu</code>. API уже умеет отдавать меню: <code>GET /api/restaurants/1/menu</code> возвращает массив позиций, для неизвестного ресторана ответ 404.</li>
+        <li><b>Запрос меню.</b> В <code>src/api.ts</code> добавьте <code>isMenuItem</code> (type guard для типа <code>MenuItem</code> из <code>types.ts</code>) и функцию <code>fetchMenu(restaurantId: number, signal: AbortSignal): Promise&lt;MenuItem[]&gt;</code>. Правила те же: <code>response.ok</code>, <code>unknown</code>, type guard, понятные сообщения («Сервер ответил 404», «неожиданный формат»), без <code>any</code> и <code>as</code>.</li>
+        <li><b>Компонент <code>RestaurantMenu</code>.</b> Props: <code>{ restaurantId: number; onAdd: (item: MenuItem) =&gt; void }</code>. Он сам загружает меню в эффекте с <code>AbortController</code> и очисткой и показывает четыре состояния: загрузка (текст или скелетон), ошибка (текст и кнопка «Повторить»), пустое меню («Меню пока пусто») и список блюд с ценой в сомони (<code>key</code> из <code>id</code>). Состояние описывайте через <code>LoadState&lt;MenuItem[]&gt;</code>, <code>AbortError</code> не показывайте.</li>
+        <li><b>Подключение.</b> В колонке <code>&lt;aside&gt;</code> вместо <code>menuItems.map(…)</code> покажите <code>RestaurantMenu</code>; блюда в нём выводите уже знакомым <code>MenuItemRow</code> из урока 4, а добавление в корзину пробросьте prop-ом <code>onAdd</code> (<code>dispatch({ type: 'add', item })</code> остаётся в <code>App</code>). Переменная <code>menuItems</code> в <code>App</code> после этого не нужна: удалите её (массив <code>menu</code> в <code>data.ts</code> пока оставьте). Чтобы при смене ресторана состояние не тянулось от предыдущего, передайте компоненту <code>key={selectedId}</code> (раздел 3): никакого <code>setState</code> «сброса» в эффекте быть не должно. Заголовок «Меню: …» остаётся прежним (его даёт <code>selected</code>). Прокрутка к колонке из практики сохраняется.</li>
+        <li><b>Гонка запросов.</b> Временно замедлите запрос меню (<code>?delay=2500</code> в адресе), выберите один ресторан, а сразу за ним другой. В Network первый запрос должен стать <code>canceled</code>, а на экране остаться меню второго. Скриншот Network приложите в <code>docs/effects.md</code> (можно ссылкой на файл в репозитории). Верните адрес без <code>delay</code>.</li>
+        <li><b>Ref.</b> Добавьте кнопку «Закрыть» над меню выбранного ресторана: после закрытия (<code>setSelectedId(null)</code>) фокус возвращается в поле поиска через <code>searchRef</code>. Фокус делайте в обработчике, не в эффекте.</li>
+        <li><b>Аудит эффектов.</b> Создайте <code>docs/effects.md</code>: таблица всех <code>useEffect</code> в проекте (файл, внешняя система, зависимости, что делает очистка) и ответы <b>своими словами</b> на пять вопросов ниже. Если нашли эффект без внешней системы, удалите его и опишите, чем заменили.</li>
+        <li><b>Проверки и коммиты.</b> <code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> (без предупреждений об эффектах), <code>npm run build</code> проходят. В ветке не меньше трёх осмысленных коммитов, ветка отправлена на GitHub.</li>
+      </ol>
+
+      <h3>Пять вопросов для docs/effects.md</h3>
+      <ol class="steps">
+        <li>Что такое эффект и чем он отличается от обработчика события? Приведите по одному примеру из своего проекта.</li>
+        <li>Что произойдёт, если в первом эффекте <code>App</code> убрать массив зависимостей, и что, если поставить <code>[]</code> в <code>RestaurantMenu</code> (где зависимость — <code>restaurantId</code>)? Опишите обе ситуации.</li>
+        <li>Зачем нужна очистка у запроса? Что вы видели в Network при быстром переключении ресторанов?</li>
+        <li>Почему в dev-режиме эффект запускается дважды и почему в продакшн-сборке запрос один? Что, если бы второй запуск ломал приложение?</li>
+        <li>Почему ответ сервера принимается как <code>unknown</code> и проверяется type guard, а не приводится через <code>as</code>? Что случится, если сервер вернёт <code>price</code> строкой?</li>
+      </ol>
+
+      <h3>Как проверят</h3>
+      <ul>
+        <li><b>Эффекты:</b> у каждого эффекта есть внешняя система, зависимости честные, очистка зеркальна, нет <code>setState</code> «сброса» в эффекте, нет <code>useEffect(async …)</code>.</li>
+        <li><b>Данные и типы:</b> <code>unknown</code> и type guard, <code>response.ok</code>, <code>AbortError</code> не показывается, нет <code>any</code> и <code>as</code> для данных.</li>
+        <li><b>Поведение:</b> четыре состояния меню работают, быстрое переключение не показывает чужое меню, фокус возвращается в поиск, страница не ломается на 375 px.</li>
+        <li><b>Аудит:</b> таблица совпадает с кодом, ответы написаны своими словами и ссылаются на ваш проект.</li>
+        <li><b>Процесс:</b> ветка отправлена, коммитов не меньше трёх, <code>main</code> содержит работу практики.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Меню грузится в <code>App</code> для всех ресторанов сразу: нужно по выбранному. <b>2.</b> Сброс состояния через <code>setState</code> в эффекте вместо <code>key</code>. <b>3.</b> Нет очистки запроса: при быстром переключении на экране меню другого ресторана. <b>4.</b> <code>AbortError</code> показывается как ошибка «Меню не загрузилось». <b>5.</b> Фокус в эффекте на <code>[selectedId]</code> вместо обработчика «Закрыть». <b>6.</b> Ответ агента вставлен в <code>docs/effects.md</code> без правок. <b>7.</b> Репозиторий приватный или ссылка ведёт на профиль, а не на репозиторий.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист требований к ДЗ-5</h4><span class="level mid">средняя</span></header>
+        <p>Перед сдачей проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Практика урока работает и влита в <code>main</code>, ДЗ сделано в ветке <code>feat/api-menu</code></li>
+          <li>В <code>api.ts</code> есть <code>isMenuItem</code> и <code>fetchMenu</code> с <code>response.ok</code>, <code>unknown</code> и type guard</li>
+          <li><code>RestaurantMenu</code> показывает загрузку, ошибку с «Повторить», пустое меню и список с ценами</li>
+          <li>Блок меню подключён с <code>key={selectedId}</code>, быстрое переключение ресторанов не показывает чужое меню</li>
+          <li>В <code>docs/effects.md</code> есть скриншот Network с отменённым запросом</li>
+          <li>Кнопка «Закрыть» сбрасывает выбор и возвращает фокус в поиск через ref, без эффекта</li>
+          <li><code>docs/effects.md</code> содержит таблицу эффектов проекта и пять ответов своими словами</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> проходят, в ветке не меньше трёх коммитов</li>
+          <li>Ветка <code>feat/api-menu</code> отправлена на GitHub, репозиторий публичный: я открыл ссылку в режиме инкогнито</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку вида <code>https://github.com/ваш-логин/dastarkhon</code>. Откройте её в режиме инкогнито: ветка <code>feat/api-menu</code>, код и <code>docs/effects.md</code> должны быть видны.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/you-might-not-need-an-effect" target="_blank" rel="noopener">react.dev — You Might Not Need an Effect</a> · <a href="https://react.dev/learn/lifecycle-of-reactive-effects" target="_blank" rel="noopener">react.dev — Lifecycle of Reactive Effects</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN — AbortController</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Эффект</b> синхронизирует компонент с внешней системой (сеть, таймер, подписка, DOM) после коммита. Зависимости диктует код: всё реактивное, что читает эффект. Не отключайте <code>exhaustive-deps</code>: добавьте значение, вынесите его за компонент, используйте <code>setX((v) =&gt; …)</code> или <code>useEffectEvent</code> (React 19.2+).</li>
+        <li><b>Объекты и функции из тела компонента</b> при каждом рендере новые: не кладите их в зависимости, собирайте внутри эффекта. Пустой <code>[]</code> при чтении props даёт устаревшее замыкание.</li>
+        <li><b>Очистка</b> зеркальна настройке: <code>removeEventListener</code>, <code>clearInterval</code>, <code>disconnect</code>, <code>abort</code>. Порядок при смене зависимостей: очистка старого, затем новый эффект. StrictMode в dev запускает эффект дважды: если это ломает код, нужно исправить очистку, а не прятать двойной запуск.</li>
+        <li><b>Эффект не нужен:</b> производные данные считают в рендере, состояние сбрасывают через <code>key</code>, реакцию на клик пишут в обработчике, цепочки эффектов заменяют одним обработчиком. Предупреждение <code>set-state-in-effect</code> — повод проверить, не лишний ли эффект.</li>
+        <li><b>useRef</b>: <code>useRef&lt;HTMLInputElement&gt;(null)</code>, проверка <code>?.</code>; запись в <code>ref.current</code> не вызывает рендер; не читать и не писать во время рендера. Ref как обычный prop в React 19 (<code>ref?: Ref&lt;…&gt;</code>), <code>forwardRef</code> не нужен. Фокус и прокрутку делают в обработчике; эффект нужен, если элемент появляется после рендера.</li>
+        <li><b>fetch в эффекте:</b> <code>AbortController</code> внутри эффекта, <code>response.ok</code>, ответ как <code>unknown</code> и type guard, <code>AbortError</code> игнорировать, в cleanup <code>abort()</code>. «Загрузка» ставится начальным значением или в обработчике, а не в эффекте.</li>
+        <li><b>LoadState&lt;T&gt;</b> — union <code>loading | error | success</code> с полем <code>status</code>: нельзя прочитать <code>data</code> без проверки. В <code>catch</code> ошибка — <code>unknown</code>: <code>error instanceof Error</code>.</li>
+        <li><b>Проект 1 «Дастархон»:</b> рестораны приходят с <code>server/api.mjs</code> через прокси Vite, в <code>App</code> три эффекта (загрузка, клавиша «/», прокрутка), <code>SearchBox</code> принимает <code>ref</code>. Дальше: свои хуки <code>useFetch</code> и <code>useDebounce</code> (урок 6) и формы с Zod (урок 7).</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, что такое эффект, и расставить зависимости по подсказке линтера</li>
+          <li>Могу исправить устаревшее замыкание функциональным обновлением состояния</li>
+          <li>Могу написать эффект с очисткой для таймера, подписки и запроса</li>
+          <li>Могу объяснить, почему в dev эффект запускается дважды и как это проверить</li>
+          <li>Могу найти лишний эффект и заменить его вычислением в рендере, обработчиком или <code>key</code></li>
+          <li>Могу использовать <code>useRef</code> для фокуса, прокрутки и значения без перерисовки</li>
+          <li>Могу загрузить данные с <code>AbortController</code>, состояниями <code>LoadState</code> и ответом через <code>unknown</code> и type guard</li>
+          <li>Могу сузить ошибку в <code>catch</code> и отличить <code>AbortError</code> от настоящей ошибки</li>
+          <li>Могу проверить эффекты, написанные агентом, по списку из раздела 6</li>
+        </ul>
+      </article>
+    </section>

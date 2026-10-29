@@ -1,0 +1,1936 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 5 · Ҳукҳо, формаҳо, услубҳо</p>
+      <h1>Эффектҳо, ref-ҳо ва боркунии маълумот</h1>
+      <p class="lead">Дар охири дарс феҳристи «Дастархон» тарабхонаҳоро на аз файл, балки аз API-и маҳаллии воқеӣ мегирад: бо скелетони боркунӣ, хатои фаҳмо ва тугмаи «Такрор», бо бекоркунии дархостҳои нолозим, бо фокус ба ҷустуҷӯ аз рӯи тугмаи «/» ва ҳаракати саҳифа ба менюи тарабхонаи интихобшуда. Шумо мефаҳмед, ки барои чӣ дар лоиҳа ҳар як <code>useEffect</code> лозим аст, ва он эффектеро, ки лозим нест, хориҷ карда метавонед.</p>
+      <ul class="goals">
+        <li>Эффектро ҳамчун ҳамоҳангсозӣ бо системаи беруна шарҳ диҳед ва вобастагиҳоро аз рӯи ишораи линтер ҷойгир кунед, бе хомӯш кардани он</li>
+        <li>Тозакунӣ (cleanup)-ро барои таймерҳо, обунаҳо ва дархостҳо нависед ва шарҳ диҳед, ки чаро дар реҷаи таҳия эффект ду маротиба оғоз мешавад</li>
+        <li>Эффектҳои нолозимро ёбед ва хориҷ кунед: маълумоти ҳосилшуда, барқарорсозии ҳолат тавассути <code>key</code>, вокуниш ба клик</li>
+        <li><code>useRef</code>-ро барои DOM (фокус, ҳаракати саҳифа) ва барои қиматҳое, ки набояд аз нав кашидан ба вуҷуд оранд, истифода баред</li>
+        <li>Маълумотро тавассути <code>fetch</code> ва <code>AbortController</code> бо ҳолатҳои loading, error ва success, ки бо навъи union тавсиф шудаанд, бор кунед</li>
+        <li>Ҷавоби API-ро тавассути <code>unknown</code> ва type guard навъбандӣ кунед, хаторо дар <code>catch</code> танг кунед ва <code>any</code>-ро истифода набаред</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Ин дарсро чӣ тавр гузаштан лозим аст</b>
+      <p>Лозим аст: лоиҳаи <code>dastarkhon</code> баъд аз дарсҳои 3 ва 4 (дарахти 11 компонент бо Tailwind ва CSS Modules, ҷустуҷӯ ва филтр аз рӯи ошхона, сабад ва ҷудосозӣ бо <code>useReducer</code>), терминал, муҳаррир, ду тирезаи терминал ва тақрибан 3,5 соат. Бахшҳои 1–5 — назария бо майдончаҳои зинда: коди дар замина торик навишташударо тағйир додан ва иҷро кардан мумкин аст, ва дар вазифаҳо бояд тавре кунед, ки баромад бо «Натиҷаи интизоршаванда» мувофиқ ояд. Бахши 6 — дар бораи агенти ЗС, бахши 7 — машқ дар лоиҳа, бахши 8 — вазифаи хонагӣ.</p>
+      <p>Фарз мешавад, ки шумо JavaScript, <code>fetch</code> ва асосҳои <code>useEffect</code>-ро медонед (худсанҷии дарси 1 онро такрор мекунад), инчунин навъҳо ва union-ро аз дарси 2 ва модели рендерро аз дарси 3. Дар ин ҷо эффектҳоро амиқтар мебинем: чӣ тавр сохта шудаанд, кай лозим нестанд ва вақте ки маълумот тавассути шабака меояд, чӣ бояд кард.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="effects">
+      <h2 data-toc="useEffect ва вобастагиҳо"><span class="num">01</span> useEffect: ҳамоҳангсозӣ бо ҷаҳони беруна ва вобастагиҳо</h2>
+
+      <p>Компонент ҳангоми рендер танҳо JSX-ро ҳисоб мекунад (дарси 3: функсияи тоза). Аммо барнома ба корҳои «лой» низ ниёз дорад: сарлавҳаи варақаро гузоштан, маълумотро тавассути шабака дархост кардан, ба клавиатура обуна шудан, таймерро оғоз кардан. Ҳамаи инро <b>эффектҳо</b> меноманд: кор, ки аз ҳудуди ҳисоб кардани нишонагузорӣ берун мебарояд. Ҳуки <code>useEffect</code> ба React мегӯяд: «баъд аз он ки экранро нишон додӣ, ин функсияро иҷро кун».</p>
+
+      <p>Эффектро ҳамчун «рӯйдоди давраи ҳаёт» (<code>componentDidMount</code> аз дастурҳои кӯҳна) тасаввур накунед. Модели дуруст: <b>эффект компонентро бо системаи беруна</b> (шабака, таймер, DOM, API-и браузер) <b>аз рӯи қиматҳои ҷории props ва ҳолат ҳамоҳанг мекунад</b>. Агар қиматҳо тағйир ёфта бошанд, ҳамоҳангсозиро бояд такрор кард. Кадом қиматҳо ба эффект лозиманд, массиви вобастагиҳо мегӯяд.</p>
+
+<pre class="code" data-lang="tsx" data-title="Эффект: сарлавҳаи варақа аз паси ҳолат меравад">
+import { useEffect } from 'react'
+
+type PageTitleProps = { city: string }
+
+export default function PageTitle({ city }: PageTitleProps) {
+  useEffect(() =&gt; {
+    document.title = `Дастархон · ${city}` // внешняя система: вкладка браузера
+  }, [city]) // повторять, когда city изменился
+
+  return null
+}
+</pre>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 200" role="img" aria-label="Тартиби кори эффект: рендер, баъд коммит ба DOM, баъд экран, баъд эффект. Ҳангоми тағйири вобастагӣ пеш аз оғози нав тозакунии эффекти кӯҳна иҷро мешавад. Ҳангоми хориҷ шудани компонент тозакунӣ иҷро мешавад">
+          <rect class="fill-y" x="10" y="20" width="110" height="46" rx="10" /><text x="65" y="48" text-anchor="middle">рендер</text>
+          <rect class="fill-y" x="150" y="20" width="110" height="46" rx="10" /><text x="205" y="48" text-anchor="middle">коммит</text>
+          <rect class="box" x="290" y="20" width="110" height="46" rx="10" /><text x="345" y="48" text-anchor="middle">экран</text>
+          <rect class="fill-g" x="430" y="20" width="130" height="46" rx="10" /><text x="495" y="48" text-anchor="middle">эффект</text>
+          <path class="arr" d="M120 43 H142" /><path class="arr-head" d="M150 43 l-10 -5 v10 z" />
+          <path class="arr" d="M260 43 H282" /><path class="arr-head" d="M290 43 l-10 -5 v10 z" />
+          <path class="arr" d="M400 43 H422" /><path class="arr-head" d="M430 43 l-10 -5 v10 z" />
+          <rect class="fill-r" x="10" y="110" width="170" height="46" rx="10" /><text x="95" y="138" text-anchor="middle">тозакунии кӯҳна</text>
+          <rect class="fill-g" x="215" y="110" width="170" height="46" rx="10" /><text x="300" y="138" text-anchor="middle">эффекти нав</text>
+          <path class="arr" d="M180 133 H207" /><path class="arr-head" d="M215 133 l-10 -5 v10 z" />
+          <text class="sub t-b" x="10" y="98">вобастагӣ тағйир ёфт: аввал тозакунӣ, баъд оғози нав</text>
+          <rect class="fill-r" x="430" y="110" width="170" height="46" rx="10" /><text x="515" y="138" text-anchor="middle">тозакунӣ</text>
+          <text class="sub t-b" x="430" y="98">компонентро аз экран хориҷ карданд</text>
+          <text class="sub" x="12" y="186">Эффект ҳамеша баъд аз он меояд, ки экран аллакай кашида шудааст: он нишон додани саҳифаро дер намекунад.</text>
+        </svg>
+        <figcaption>Эффект баъд аз коммит оғоз мешавад. Тағйири вобастагӣ ё хориҷ шудани компонент аввал тозакуниро даъват мекунад</figcaption>
+      </figure>
+
+      <h3>Массиви вобастагиҳо</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Сабт</th><th>Эффект кай иҷро мешавад</th><th>Эзоҳ</th></tr></thead>
+          <tbody>
+            <tr><td><code>useEffect(fn)</code></td><td>Баъд аз ҳар рендер</td><td>Қариб ҳамеша хато: гирифтани давраи беохир осон аст</td></tr>
+            <tr><td><code>useEffect(fn, [])</code></td><td>Баъд аз нишон додани аввалини компонент</td><td>Танҳо агар эффект ба props ва ҳолат ниёз надошта бошад</td></tr>
+            <tr><td><code>useEffect(fn, [a, b])</code></td><td>Баъд аз нишон додани аввалин ва ҳар дафъае, ки <code>a</code> ё <code>b</code> тағйир ёфтанд</td><td>Муқоиса тавассути <code>Object.is</code>: барои объектҳо ва массивҳо <b>истинод</b> муҳим аст, на мундариҷа</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Қоидаи асосӣ: <b>вобастагиҳоро шумо интихоб намекунед, онҳоро код муайян мекунад</b>. Ҳар як қимати «реактивӣ» (prop, ҳолат, тағйирёбанда ё функсия, ки дар бадани компонент сохта шудааст), ки дар дохили эффект хонда мешавад, бояд дар массив бошад. Фаромӯш кардани он маънои эффектеро дорад, ки бо қимати «кӯҳна» кор мекунад. Инро линтер месанҷад: Oxlint аз дарси 1 қоидаи <code>react-hooks/exhaustive-deps</code>-ро дорад.</p>
+
+<pre class="code" data-title="Терминал — npm run lint барои эффект бо вобастагиҳои намерасида">
+src/Bad.tsx:6:25: warning react-hooks(exhaustive-deps): React Hook useEffect has missing dependencies: 'query', and 'n'
+  help: Either include it or remove the dependency array.
+</pre>
+
+      <p>Ин огоҳиро бо шарҳи <code>// eslint-disable</code> хомӯш накунед: он қариб ҳамеша ба хатои воқеӣ ишора мекунад. Ба ҷои ин кодро тағйир диҳед. Чор роҳи стандартӣ ҳаст:</p>
+      <ol class="steps">
+        <li><b>Қимат ба эффект лозим аст</b> — онро ба вобастагиҳо илова кунед. Эффект такроран оғоз мешавад ва ин дуруст аст: маълумот тағйир ёфтааст.</li>
+        <li><b>Қимат тағйир намеёбад</b> (собит, функсия бе замкунӣ) — онро аз ҳудуди компонент бароред ва он ба вобастагиҳо намеафтад.</li>
+        <li><b>Эффект танҳо «ҳолати пештара»-ро талаб мекунад</b> — навсозии функсионалӣ <code>setCount((c) =&gt; c + 1)</code>-ро истифода баред: худи <code>count</code>-ро хондан лозим намешавад.</li>
+        <li><b>Эффект бояд қимати тозаро бихонад, вале бо сабаби он аз нав оғоз нашавад</b> — «рӯйдод»-ро аз эффект тавассути <code>useEffectEvent</code> ҷудо кунед (дар поён).</li>
+      </ol>
+
+      <h3>Объектҳо ва функсияҳо дар вобастагиҳо</h3>
+      <p>Объекте, ки дар бадани компонент сохта шудааст, дар ҳар рендер <b>нав</b> аст, ҳатто агар майдонҳо яканд. Агар чунин объект дар вобастагиҳо бошад, эффект баъд аз ҳар рендер оғоз мешавад. Объектро дар дохили эффект созед ва аз қиматҳои оддӣ вобаста шавед.</p>
+
+<pre class="code" data-lang="tsx" data-title="Объект дар вобастагиҳо: бад ва хуб">
+type Options = { city: string; onlyOpen: boolean }
+
+function Catalog({ city, onlyOpen }: Options) {
+  const options = { city, onlyOpen } // новый объект при каждом рендере
+
+  // Плохо: options каждый раз другой, эффект запускается после каждого рендера
+  useEffect(() =&gt; {
+    load(options)
+  }, [options])
+
+  // Хорошо: объект собирается внутри, зависимости — простые значения
+  useEffect(() =&gt; {
+    load({ city, onlyOpen })
+  }, [city, onlyOpen])
+}
+</pre>
+
+      <h3>Замкунии кӯҳнашуда (stale closure)</h3>
+      <p>Ҳар рендер нусхаи худи функсияҳо ва қиматҳоро месозад (дарси 3: ҳолат — акс). Эффект бо массиви холӣ қиматҳои рендери аввалро барои ҳамеша «ба ёд мегирад». Доми классикӣ: ҳисобкунак дар <code>setInterval</code>.</p>
+
+      <div class="playground" data-mode="react" data-title="Таймер бо замкунии кӯҳнашуда">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+export default function App() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() =&gt; {
+    const id = setInterval(() =&gt; {
+      setCount(count + 1); // count здесь всегда 0: замыкание первого рендера
+    }, 200);
+    return () =&gt; clearInterval(id);
+  }, []);
+
+  return &lt;p&gt;Секунд: {count}&lt;/p&gt;;
+}
+</pre>
+      </div>
+      <p>Ҳисоб то 1 мерасад ва ях мекунад: ҳар тик <code>setCount(0 + 1)</code>-ро иҷро мекунад. Бо навсозии функсионалӣ ислоҳ мешавад: <code>setCount((c) =&gt; c + 1)</code> қимати ҷориро аз React мегирад ва вобастагӣ аз <code>count</code> лозим нест.</p>
+
+      <h3>useEffectEvent: рӯйдод дар дохили эффект</h3>
+      <p>Баъзан эффект бояд қимати тозаро бихонад, аммо ҳангоми тағйири он аз нав оғоз нашавад. Мисол: ҳангоми пайвастшавӣ ба чат огоҳиро бо мавзӯи ҷории тарроҳӣ нишон медиҳем. Тағйири мавзӯъ набояд чатро аз нав пайваст кунад. Аз React 19.2 барои ин <code>useEffectEvent</code> ҳаст: функсияе, ки дар дохили эффект ҳамеша props ва ҳолати тозаро мебинад, аммо худаш вобастагӣ ҳисоб намешавад.</p>
+
+<pre class="code" data-lang="tsx" data-title="useEffectEvent (React 19.2 ва навтар)">
+import { useEffect, useEffectEvent } from 'react'
+
+type ChatProps = { roomId: string; theme: 'light' | 'dark' }
+
+export default function Chat({ roomId, theme }: ChatProps) {
+  // свежая theme внутри, но в зависимости её добавлять не нужно
+  const onConnected = useEffectEvent(() =&gt; {
+    showToast('Подключено', theme)
+  })
+
+  useEffect(() =&gt; {
+    const connection = createConnection(roomId)
+    connection.on('connected', onConnected)
+    connection.connect()
+    return () =&gt; connection.disconnect()
+  }, [roomId]) // перезапуск только при смене комнаты
+
+  return null
+}
+</pre>
+      <p>Чунин функсияро танҳо аз дохили эффектҳо даъват кардан мумкин аст, ва онро ба компонентҳои дигар додан мумкин нест. Агар шубҳа дошта бошед, аввал яке аз се ҳалли болоиро кӯшиш кунед: <code>useEffectEvent</code> кам лозим мешавад.</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Эффект — ин маршруткаи бо лавҳаи «Рӯдакӣ — Сино». Лавҳа (вобастагӣ) мегӯяд, ки бо кадом хат мераванд. Хат иваз шуд — ронанда мегардад ва бо хати нав меравад. Массиви холии вобастагиҳо — монанди маршруткаест, ки ҳамеша бо лавҳаи кӯҳна мондааст: мусофирон кайҳо ба ҷои дигар мераванд, ва вай ҳамоно бо хати пештара мебарад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>[]</code>-и холӣ «то ки такрор нашавад», ҳол он ки эффект props-ро мехонад: маълумоти кӯҳна мегиред. <b>2.</b> Шарҳи хомӯшкунандаи линтер ба ҷои ислоҳи код. <b>3.</b> Объект ё функсия аз бадани компонент дар вобастагиҳо: эффект баъд аз ҳар рендер оғоз мешавад. <b>4.</b> Эффект умуман бе массив ва <code>setState</code> дар дохил: давраи беохири рендерҳо, дар консол <code>Maximum update depth exceeded</code> ё ях кардани варақа. <b>5.</b> Эффектро «коркардкунандаи рӯйдод» ҳисобидан: вокуниш ба клик бояд дар <code>onClick</code> навишта шавад (бахши 3).</p>
+      </div>
+
+      <article class="task" id="q-effects">
+        <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Худро санҷед: эффектҳо ва вобастагиҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Эффект prop-и <code>city</code> ва ҳолати <code>onlyOpen</code>-ро мехонад. Кадом массиви вобастагиҳо дуруст аст?</p>
+          <ol class="options">
+            <li><code>[]</code>: то ки эффект як маротиба кор кунад</li>
+            <li><code>[city, onlyOpen]</code>: ҳамаи қиматҳои реактивӣ, ки эффект мехонад</li>
+            <li><code>[city]</code>: ҳолатро нишон надодан мумкин аст</li>
+            <li>Бе массив: ин боэътимодтар аст</li>
+          </ol>
+          <div class="explain"><p>Вобастагиҳоро коди эффект муайян мекунад, на хоҳиши «камтар оғоз кардан». Бо массиви холӣ эффект қиматҳои рендери аввалро барои ҳамеша ба ёд мегирад, бе массив баъд аз ҳар рендер оғоз мешавад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Эффект бо <code>[options]</code>, ки дар он <code>const options = { city }</code> дар бадани компонент эълон шудааст, баъд аз ҳар рендер оғоз мешавад. Кадом ислоҳҳо кӯмак мекунанд? Ду вариантро интихоб кунед.</p>
+          <ol class="options">
+            <li>Объектро дар дохили эффект сохтан ва вобастагии <code>[city]</code>-ро нишон додан</li>
+            <li>Шарҳи хомӯшкунии линтерро илова кардан</li>
+            <li>Массиви вобастагиҳоро ба <code>[options, options]</code> иваз кардан</li>
+            <li>Ба вобастагиҳо танҳо қимати оддии <code>city</code>-ро додан, на объектро</li>
+          </ol>
+          <div class="explain"><p>Объект дар бадани компонент ҳар дафъа нав аст, барои <code>Object.is</code> ин қимати дигар аст. Ё бояд онро дар дохили эффект сохт, ё аз қиматҳои ибтидоӣ вобаста шуд.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p><code>setCount((c) =&gt; c + 1)</code> дар эффект бо интервал дар муқобили <code>setCount(count + 1)</code> чӣ мекунад?</p>
+          <ol class="options">
+            <li>Ҳеҷ чиз, ин танҳо навишти дигар аст</li>
+            <li>Тезтар иҷро мешавад</li>
+            <li>Қимати ҷориро аз React мегирад, бинобар ин <code>count</code>-ро хондан ва ба вобастагиҳо илова кардан лозим нест</li>
+            <li>Дар эффектҳо манъ аст</li>
+          </ol>
+          <div class="explain"><p>Навсозии функсионалӣ ҳолати охиринро аз React мегирад, на аз замкунӣ. Бо ин ҳам қимати кӯҳна, ҳам вобастагии нолозим нест мешавад.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-deps">
+        <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Сарлавҳа нав намешавад</h4><span class="level easy">осон</span></header>
+        <p>Компоненти <code>PageTitle</code> бояд ҳангоми ҳар тағйири тарабхона сарлавҳаи варақаро гузорад. Ҳоло дар консол танҳо қимати аввал аст: эффект массиви холии вобастагиҳо дорад, ҳол он ки <code>name</code>-ро мехонад. Ислоҳ кунед. Стенд тарабхонаро ду маротиба иваз мекунад.</p>
+        <div class="playground" data-mode="react" data-title="Сарлавҳаи варақа">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+// стенд: вместо document.title печатаем в консоль
+function setTitle(text) {
+  console.log("заголовок:", text);
+}
+
+function PageTitle({ name }) {
+  useEffect(() =&gt; {
+    setTitle(name);
+  }, []);
+  return &lt;h1&gt;{name}&lt;/h1&gt;;
+}
+
+export default function App() {
+  const [name, setName] = useState("Navruz");
+  useScript([
+    [50, () =&gt; setName("Rohat")],
+    [100, () =&gt; setName("Vatan")],
+  ]);
+  return &lt;PageTitle name={name} /&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>заголовок: Navruz
+заголовок: Rohat
+заголовок: Vatan</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Эффект <code>name</code>-ро мехонад, бинобар ин <code>name</code> бояд дар массиви вобастагиҳо бошад.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>useEffect(() =&gt; { setTitle(name); }, [name]);</code></p></details>
+      </article>
+
+      <article class="task" id="t1-stale">
+        <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Ҳисобкунак дар якум ях кард</h4><span class="level mid">миёна</span></header>
+        <p>Ҳисобкунак ҳар 100 мс тик мекунад, ва стенд онро баъд аз 350 мс аз экран хориҷ мекунад. Ду чизро ислоҳ кунед: ҳисоб бояд афзояд (навсозии функсионалӣ, массиви вобастагиҳоро холӣ гузоред) ва ҳангоми хориҷ шудани компонент таймер бояд бо паёми <code>таймер остановлен</code> қатъ шавад.</p>
+        <div class="playground" data-mode="react" data-title="Ҳисобкунак">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+function Counter() {
+  const [count, setCount] = useState(0);
+  console.log("счёт", count);
+
+  useEffect(() =&gt; {
+    const id = setInterval(() =&gt; {
+      setCount(count + 1); // TODO 1: используйте функциональное обновление
+    }, 100);
+    // TODO 2: верните cleanup: clearInterval и console.log("таймер остановлен")
+  }, []);
+
+  return &lt;p&gt;Счёт: {count}&lt;/p&gt;;
+}
+
+export default function App() {
+  const [show, setShow] = useState(true);
+  useScript([[350, () =&gt; setShow(false)]]); // стенд: через 350 мс счётчик убирают
+  return show ? &lt;Counter /&gt; : &lt;p&gt;Скрыто&lt;/p&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>счёт 0
+счёт 1
+счёт 2
+счёт 3
+таймер остановлен</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p><code>setCount((c) =&gt; c + 1)</code>: функсия қимати ҷориро мегирад, ва хондани <code>count</code> дар дохили эффект дигар лозим нест.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>return () =&gt; { clearInterval(id); console.log("таймер остановлен"); };</code></p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/synchronizing-with-effects" target="_blank" rel="noopener">react.dev — Synchronizing with Effects</a> · <a href="https://react.dev/learn/lifecycle-of-reactive-effects" target="_blank" rel="noopener">react.dev — Lifecycle of Reactive Effects</a> · <a href="https://react.dev/learn/separating-events-from-effects" target="_blank" rel="noopener">react.dev — Separating Events from Effects</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="cleanup">
+      <h2 data-toc="Тозакунии эффект"><span class="num">02</span> Тозакунии эффект ва оғози дукарата дар StrictMode</h2>
+
+      <p>Эффект аксар вақт чизеро «фаъол» мекунад: таймер, обуна, пайвастшавӣ, дархост. Функсияе, ки эффект бармегардонад, <b>тозакунӣ</b> аст: он ончиро, ки эффект фаъол кардааст, «хомӯш» мекунад. React онро дар ду ҳолат даъват мекунад: пеш аз оғози навбатии эффект (ҳангоми тағйири вобастагиҳо) ва ҳангоми хориҷ шудани компонент. Тартиб ҳангоми тағйири вобастагиҳо ҳамеша чунин аст: тозакунӣ бо қиматҳои <b>кӯҳна</b>, баъд эффекти нав бо қиматҳои нав.</p>
+
+<pre class="code" data-lang="tsx" data-title="Обуна ва аз обуна баромадан: ду амали оинавӣ">
+useEffect(() =&gt; {
+  function handleResize() {
+    setWidth(window.innerWidth)
+  }
+  window.addEventListener('resize', handleResize) // включили
+  return () =&gt; window.removeEventListener('resize', handleResize) // выключили
+}, [])
+</pre>
+
+      <p>Тозакунии хуб — оинаи танзим аст: <code>addEventListener</code> ва <code>removeEventListener</code>, <code>setInterval</code> ва <code>clearInterval</code>, <code>connect</code> ва <code>disconnect</code>, <code>fetch</code> ва <code>abort</code> (бахши 5). Бе тозакунӣ обунаҳо ҷамъ мешаванд: баъд аз даҳ маротиба нишон додани компонент ба ҳар рӯйдод даҳ коркардкунанда амал мекунад.</p>
+
+      <h3>Чаро эффект ду маротиба оғоз мешавад</h3>
+      <p>Лоиҳа аз қолаби Vite сохта шудааст, ва дар <code>main.tsx</code> барнома дар <code>StrictMode</code> печонида шудааст (дарси 3: он компонентҳоро ду маротиба даъват мекунад). Он як чизи дигар низ мекунад: <b>дар реҷаи таҳия баъд аз нишон додани аввалини компонент фавран тозакуниро иҷро мекунад ва эффектро аз нав оғоз менамояд</b>. Ин санҷиши устуворӣ аст: React «рафтем ва баргаштем»-ро тақлид мекунад ва мебинад, ки чизе вайрон намешавад. Дар ҷамъбасти истеҳсолӣ оғози дукарата нест.</p>
+
+<pre class="code" data-title="Терминал — консоли браузер дар реҷаи dev барои connect/disconnect дар эффект">
+подключились: Общий
+отключились: Общий
+подключились: Общий
+</pre>
+
+      <p>Агар эффект тозакунии дуруст дошта бошад, ҷуфти «оғоз — тозакунӣ — оғоз» мисли як оғоз менамояд. Агар шумо хатоеро танҳо аз сабаби даъвати дукарата бинед (ду дархост, ду пайвастшавӣ, сабтҳои такроршуда), ин хатои StrictMode не, балки тозакунии намерасида аст. Бо он бо парчамҳо дар <code>useRef</code> мубориза набаред: эффектро бояд ислоҳ кард.</p>
+
+      <div class="yt" data-id="ivtRckdgfts" data-title="Секреты useEffect: жизненный цикл и функция очистки — канал Михаил Непомнящий"></div>
+      <p class="muted">Ролик бо забони русӣ (11 дақиқа, августи 2024): тартиби оғози эффект ва тозакунӣ. Модели ролик барои React 19 низ дуруст аст.</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Эффект — ин иҷораи самокат. Самокат гирифтед (обуна шудед), саворӣ кардед, ба истгоҳ баргардонидед (тозакунӣ). Агар барнагардонед, баъд аз як ҳафта истгоҳ холӣ аст, ва дар ҳавлии шумо даҳ самокат истодааст. StrictMode — мисли санҷиш ҳангоми додан: фавран «баргардон ва аз нав гир», то боварӣ ҳосил шавад, ки баргардонидан кор мекунад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Тозакунӣ нест дар <code>setInterval</code>, <code>addEventListener</code> ва обунаҳо. <b>2.</b> Тозакунӣ оинавӣ нест: <code>removeEventListener</code> функсияи дигареро мегирад, ки <code>addEventListener</code> гирифта буд, ва ҳеҷ чиз хориҷ намекунад (коркардкунандаро бояд як маротиба дар дохили эффект эълон кард). <b>3.</b> Парчами «аллакай оғоз шуда буд» дар <code>useRef</code>, то ки оғози дукаратаро пинҳон кунад: дар ҷамъбасти истеҳсолӣ ин ҳеҷ чизро тағйир намедиҳад, ва хато мемонад. <b>4.</b> Интизор шудан, ки тозакунӣ танҳо ҳангоми хориҷ шудани компонент даъват мешавад: он ҳангоми ҳар тағйири вобастагиҳо низ даъват мешавад.</p>
+      </div>
+
+      <article class="task" id="q-cleanup">
+        <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Худро санҷед: тозакунӣ</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Эффекти <code>connect(room)</code> бо тозакунии <code>disconnect(room)</code> ва вобастагии <code>[room]</code>. Корбар ҳуҷраро аз «Общий» ба «Группа JS» иваз кард. Функсияҳо бо кадом тартиб даъват мешаванд?</p>
+          <ol class="options">
+            <li>connect(«Группа JS»), баъд disconnect(«Общий»)</li>
+            <li>Танҳо connect(«Группа JS»)</li>
+            <li>disconnect(«Общий»), баъд connect(«Группа JS»)</li>
+            <li>disconnect(«Группа JS»), баъд connect(«Общий»)</li>
+          </ol>
+          <div class="explain"><p>Аввал тозакунии оғози пештара (он ҳуҷраи кӯҳнаро «ба ёд дорад»), баъд эффекти нав бо қимати нав.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Дар реҷаи dev шумо ҳангоми нишон додани аввалини компонент дар шабака ду дархости якхеларо мебинед. Ин чӣ маъно дорад?</p>
+          <ol class="options">
+            <li>Ба сервер бояд гуфт, ки вай вайрон шудааст</li>
+            <li>StrictMode эффектро оғоз кард, тоза кард ва аз нав оғоз кард: санҷед, ки тозакунӣ дархости аввалро бекор мекунад, ва дар ҷамъбасти истеҳсолӣ дархост як дона мешавад</li>
+            <li>Бояд парчамро дар <code>useRef</code> илова кард, то ки оғози дуюм гузаронида шавад</li>
+            <li>Ҳамеша <code>fetch</code> чунин кор мекунад</li>
+          </ol>
+          <div class="explain"><p>Оғози дукарата — санҷиши StrictMode танҳо дар таҳия. Вокуниши дуруст: боварӣ ҳосил кардан, ки тозакунӣ дуруст аст (дархост бекор мешавад), на пинҳон кардани оғози дукарата бо парчам.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t2-sub">
+        <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Аз огоҳиҳо аз обуна бароед</h4><span class="level mid">миёна</span></header>
+        <p>Компоненти <code>Inbox</code> ба «шина»-и огоҳиҳо обуна мешавад. Стенд «A» ва «B»-ро мефиристад, баъд компонентро хориҷ мекунад ва «C»-ро мефиристад. Эффектро пурра кунед: ҳангоми нишон додан обуна, ва ҳангоми хориҷ шудани компонент аз обуна баромадан. Функсияи <code>bus.subscribe</code> аллакай функсияи аз обуна баромаданро бармегардонад. Агар обуна шавед, вале аз обуна набароед, дар консол «получено: C» баъд аз хориҷ шудани компонент пайдо мешавад.</p>
+        <div class="playground" data-mode="react" data-title="Огоҳиҳо">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+// стенд: «шина» уведомлений
+const listeners = new Set();
+const bus = {
+  subscribe(fn) {
+    listeners.add(fn);
+    return () =&gt; {
+      listeners.delete(fn);
+      console.log("отписались");
+    };
+  },
+  emit(message) {
+    listeners.forEach((fn) =&gt; fn(message));
+  },
+};
+
+function Inbox() {
+  const [last, setLast] = useState("—");
+
+  // TODO: подпишитесь через bus.subscribe, в обработчике
+  // выведите console.log("получено:", message) и сохраните message в состояние;
+  // верните функцию отписки
+
+  return &lt;p&gt;Последнее: {last}&lt;/p&gt;;
+}
+
+export default function App() {
+  const [show, setShow] = useState(true);
+  useScript([
+    [50, () =&gt; bus.emit("A")],
+    [100, () =&gt; bus.emit("B")],
+    [150, () =&gt; setShow(false)],
+    [200, () =&gt; bus.emit("C")],
+  ]);
+  return show ? &lt;Inbox /&gt; : &lt;p&gt;Почта закрыта&lt;/p&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>получено: A
+получено: B
+отписались</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Эффект ба props ва ҳолат ниёз надорад, бинобар ин массиви вобастагиҳо холӣ аст. Натиҷаи <code>bus.subscribe(...)</code>-ро аз эффект ҳамон тавр баргардонед: ин ҳамон тозакунӣ аст.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>useEffect(() =&gt; bus.subscribe((message) =&gt; { console.log("получено:", message); setLast(message); }), []);</code></p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/synchronizing-with-effects#how-to-handle-the-effect-firing-twice-in-development" target="_blank" rel="noopener">react.dev — Effect firing twice in development</a> · <a href="https://react.dev/reference/react/StrictMode" target="_blank" rel="noopener">react.dev — StrictMode</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="no-effect">
+      <h2 data-toc="Эффект лозим нест"><span class="num">03</span> «Шояд ба шумо эффект лозим набошад»</h2>
+
+      <p>Одати асосии касбӣ: пеш аз он ки <code>useEffect</code> нависед, аз худ бипурсед, ки он компонентро бо кадом <b>системаи беруна</b> ҳамоҳанг мекунад. Агар ҷавоб «бо ҳеҷ кадом, ман танҳо мехоҳам ҳолати худамро ҳисоб кунам ё навсозӣ намоям» бошад, эффект лозим нест. Эффекти нолозим рендери иловагӣ медиҳад (аввал экран бо қимати кӯҳна, баъд ислоҳшуда), коди иловагӣ ва хатоҳои нав. Линтер дар ин ҷо кӯмак мекунад: ба <code>setState</code> бевосита дар дохили эффект Oxlint огоҳӣ медиҳад.</p>
+
+<pre class="code" data-title="Терминал — npm run lint барои setState дар дохили эффект">
+src/Bad.tsx:9:5: warning react(set-state-in-effect): Calling setState synchronously within an effect can trigger cascading renders
+  help: Effects should synchronize React with external systems. [...] Derive the value during render, initialize state directly, or update it from the event that caused the change.
+</pre>
+
+      <h3>Шаш ҳолате, ки эффект нолозим аст</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Вазъият</th><th>Эффекти нолозим</th><th>Чӣ тавр дуруст</th></tr></thead>
+          <tbody>
+            <tr><td><b>1. Маълумоти ҳосилшуда</b>: рӯйхат баъд аз ҷустуҷӯ, маблағ, миқдор</td><td>Ҳолат + эффект, ки онро аз нав ҳисоб мекунад</td><td>Бевосита дар бадани компонент ҳисоб кардан</td></tr>
+            <tr><td><b>2. Ҳолатро ҳангоми тағйири prop барқарор кардан</b></td><td>Эффект, ки аз рӯи <code>id</code> лоиҳаро сифр мекунад</td><td><code>key</code> дар компонент: тағйири калид онро аз нав месозад</td></tr>
+            <tr><td><b>3. Вокуниш ба клик ё фиристодани форма</b></td><td>Парчам дар ҳолат + эффект, ки ба парчам менигарад</td><td>Код бевосита дар коркардкунандаи <code>onClick</code> / <code>onSubmit</code></td></tr>
+            <tr><td><b>4. Занҷири эффектҳо</b>: яке ҳолатро мегузорад, дигаре вокуниш мекунад</td><td>Қаторкаскади рендерҳо</td><td>Ҳамаро дар як коркардкунанда ё дар рендер ҳисоб кардан</td></tr>
+            <tr><td><b>5. Додани маълумот ба волид</b></td><td>Эффект <code>onChange</code>-и волидро даъват мекунад</td><td><code>onChange</code>-ро дар ҳамон коркардкунанда даъват кунед, ки <code>setState</code> аст</td></tr>
+            <tr><td><b>6. Мутобиқ кардани ҳолат ба props</b></td><td>Нусхаи prop дар ҳолат + эффекти ҳамоҳангсозӣ</td><td>Нусха накунед: prop-ро бевосита истифода баред</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre class="code" data-lang="tsx" data-title="Ҳолати 1: маълумоти ҳосилшуда">
+// Плохо: два рендера, на первом visible устарел
+const [visible, setVisible] = useState&lt;Restaurant[]&gt;([])
+useEffect(() =&gt; {
+  setVisible(restaurants.filter((r) =&gt; r.name.includes(query)))
+}, [restaurants, query])
+
+// Хорошо: посчитали в рендере, состояния нет
+const visible = restaurants.filter((r) =&gt; r.name.includes(query))
+</pre>
+
+<pre class="code" data-lang="tsx" data-title="Ҳолати 2: барқарорсозии ҳолат тавассути key">
+// Плохо: черновик сначала показывается от старого ресторана
+function Notes({ restaurantId }: { restaurantId: number }) {
+  const [draft, setDraft] = useState('')
+  useEffect(() =&gt; {
+    setDraft('')
+  }, [restaurantId])
+  // ...
+}
+
+// Хорошо: родитель отдаёт компоненту key, смена key = новый экземпляр с чистым состоянием
+// &lt;Notes key={restaurantId} restaurantId={restaurantId} /&gt;
+</pre>
+
+<pre class="code" data-lang="tsx" data-title="Ҳолати 3: вокуниш ба рӯйдод">
+// Плохо: событие превращено в состояние, а потом в эффект
+const [sent, setSent] = useState(false)
+useEffect(() =&gt; {
+  if (sent) sendOrder(cart)
+}, [sent, cart])
+// &lt;button onClick={() =&gt; setSent(true)}&gt;Заказать&lt;/button&gt;
+
+// Хорошо: действие там, где оно произошло
+function handleOrder() {
+  sendOrder(cart)
+}
+// &lt;button onClick={handleOrder}&gt;Заказать&lt;/button&gt;
+</pre>
+
+      <p>Агар дар рендер ҳисобкунии гарон лозим бошад, ин ҳам барои эффект сабаб нест: дар бораи оптимизатсия (<code>useMemo</code> ва React Compiler) дар дарси 6 сухан меронем. Қоида осон ба ёд мемонад: <b>агар қиматро аз props ва ҳолат гирифтан мумкин бошад, онро нигоҳ доштан лозим нест</b>.</p>
+
+      <h3>Ва кай эффект лозим аст</h3>
+      <p>Эффект лозим аст, вақте ки компонент бояд бо чизе ҳамоҳанг шавад, ки React онро идора намекунад: шабака (дархости маълумот), обунаҳои браузер (<code>resize</code>, <code>keydown</code>, <code>online</code>), таймерҳо, амалиёти DOM баъд аз рендер (ҳаракат ба унсур), виҷетҳои шахси сеюм (харита, диаграмма). Дар лоиҳа мо маҳз чунин эффектҳоро истифода мебарем: боркунии тарабхонаҳо, тугмаи гарм «/» ва ҳаракат ба тарабхонаи интихобшуда.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Нақшаи қарор: оё useEffect лозим аст. Савол 1: шумо ба амали корбар вокуниш мекунед? Ҳа: коркардкунандаи рӯйдод. Савол 2: қимат аз props ва ҳолат ҳисоб карда мешавад? Ҳа: дар рендер ҳисоб кунед. Савол 3: ҳолатро ҳангоми тағйири prop барқарор кардан лозим аст? Ҳа: key. Вагарна: ҳамоҳангсозӣ бо системаи беруна, useEffect ва тозакунӣ лозим аст">
+          <rect class="box" x="10" y="12" width="250" height="46" rx="10" /><text x="135" y="40" text-anchor="middle">Вокуниш ба клик, фиристодан?</text>
+          <path class="arr" d="M260 35 H322" /><path class="arr-head" d="M330 35 l-10 -5 v10 z" />
+          <rect class="fill-g" x="330" y="12" width="380" height="46" rx="10" /><text x="520" y="40" text-anchor="middle">Ҳа: код дар коркардкунандаи рӯйдод</text>
+          <path class="arr" d="M135 58 V76" /><path class="arr-head" d="M135 84 l-5 -10 h10 z" /><text class="sub" x="146" y="74">не</text>
+          <rect class="box" x="10" y="84" width="250" height="46" rx="10" /><text x="135" y="112" text-anchor="middle">Аз props ҳисоб кардан мумкин?</text>
+          <path class="arr" d="M260 107 H322" /><path class="arr-head" d="M330 107 l-10 -5 v10 z" />
+          <rect class="fill-g" x="330" y="84" width="380" height="46" rx="10" /><text x="520" y="112" text-anchor="middle">Ҳа: бевосита дар рендер ҳисоб кунед</text>
+          <path class="arr" d="M135 130 V148" /><path class="arr-head" d="M135 156 l-5 -10 h10 z" /><text class="sub" x="146" y="146">не</text>
+          <rect class="box" x="10" y="156" width="250" height="46" rx="10" /><text x="135" y="184" text-anchor="middle">Ҳолатро аз рӯи prop барқарор?</text>
+          <path class="arr" d="M260 179 H322" /><path class="arr-head" d="M330 179 l-10 -5 v10 z" />
+          <rect class="fill-g" x="330" y="156" width="380" height="46" rx="10" /><text x="520" y="184" text-anchor="middle">Ҳа: key дар компонент</text>
+          <path class="arr" d="M135 202 V220" /><path class="arr-head" d="M135 228 l-5 -10 h10 z" /><text class="sub" x="146" y="218">не</text>
+          <rect class="fill-y" x="10" y="228" width="700" height="38" rx="10" /><text x="360" y="252" text-anchor="middle">Ҳамоҳангсозӣ бо беруна (шабака, таймер, обуна, DOM): useEffect ва тозакунӣ</text>
+        </svg>
+        <figcaption>Се савол пеш аз ҳар <code>useEffect</code>. Эффект варианти охирин мемонад</figcaption>
+      </figure>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Эффекти нолозим — мисли ошпаз аст, ки аввал палави бе намак мепазад, ба дастархон мебарад ва баъд бо намакдон медавад, чунки «аз рӯи дастури дигар чунин карданд». Осонтар аст, ки ҳангоми пухтан фавран намак резад: қимате, ки онро дар рендер ҳисоб кардан мумкин аст, ҳамон ҷо бояд ҳисоб шавад, на баъдтар ислоҳ гардад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Нусхаи prop дар ҳолат: <code>useState(props.price)</code> аз тағйири prop пайравӣ намекунад. <b>2.</b> Эффект бо <code>setState</code> дар дохил, ки аз ҳамон ҳолат вобаста аст: давраи беохир, дар консол <code>Maximum update depth exceeded</code>. <b>3.</b> Дархост ба сервер ҳангоми клики «Фармоиш» дар дохили эффект ба ҷои коркардкунанда. <b>4.</b> <code>fetch</code> дар эффект бе тозакунӣ (бахши 5). <b>5.</b> Эффект «барои тартиб» бе системаи беруна: хориҷ кунед ва бубинед, ки чӣ вайрон шуд.</p>
+      </div>
+
+      <article class="task" id="q-noeffect">
+        <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Худро санҷед: оё эффект лозим аст</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1,3">
+          <p>Дар кадом ҳолатҳо <code>useEffect</code> <b>лозим нест</b>? Ду вариантро интихоб кунед.</p>
+          <ol class="options">
+            <li>Нишон додани рӯйхати тарабхонаҳо, ки ба матни дар ҷустуҷӯ воридшуда мувофиқанд</li>
+            <li>Ба пахши тугмаи «/» дар тамоми тиреза обуна шудан</li>
+            <li>Фиристодани фармоиш баъд аз пахши тугмаи «Фармоиш»</li>
+            <li>Дархости менюи тарабхона аз сервер ҳангоми нишон додани аввалини саҳифа</li>
+          </ol>
+          <div class="explain"><p>Филтркуниро дар рендер ҳисоб мекунанд, фиристодани фармоишро дар коркардкунандаи клик иҷро мекунанд. Клавиатураи тиреза ва шабака — системаҳои беруна, дар онҳо эффект лозим аст (бо тозакунӣ).</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Форма ёддошти тарабхонаро таҳрир мекунад. Ҳангоми гузаштан ба тарабхонаи дигар ёддошт бояд холӣ бошад. Соддатарин ҳалли дуруст?</p>
+          <ol class="options">
+            <li>Эффект бо <code>[restaurantId]</code>, ки <code>setNote('')</code>-ро даъват мекунад</li>
+            <li>Ба компонент <code>key={restaurantId}</code> додан: ҳолат худаш барқарор мешавад</li>
+            <li>Ёддоштро дар тағйирёбандаи глобалӣ нигоҳ доштан</li>
+            <li>Тугмаи «Тоза кардан»-ро илова кардан ва умедвор шудан, ки корбар онро мепахшад</li>
+          </ol>
+          <div class="explain"><p>Тағйири <code>key</code> компонентро аз нав бо ҳолати ибтидоӣ месозад. Эффект бо <code>setNote('')</code> як кадр бо матни кӯҳна ва рендери иловагӣ медиҳад.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Огоҳии <code>react(set-state-in-effect)</code> чиро нишон медиҳад?</p>
+          <ol class="options">
+            <li>Ки компонент хеле калон аст</li>
+            <li>Ки дар лоиҳа ягон эффект нест</li>
+            <li>Ки вобастагиҳоро илова кардан лозим аст</li>
+            <li>Ки <code>setState</code> бевосита дар бадани эффект даъват мешавад: аксар вақт қиматро дар рендер ҳисоб кардан ё дар коркардкунандаи рӯйдод навсозӣ кардан мумкин аст</li>
+          </ol>
+          <div class="explain"><p>Ин ишора аст: «шояд эффект нолозим бошад». Истисноҳо ҳастанд (обунаҳое, ки ҳолатро дар коркардкунандаи рӯйдод дар дохили эффект навсозӣ мекунанд: ин даъвати синхронӣ нест), аммо аввал се саволи нақшаро санҷед.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t3-derived">
+        <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Рендери иловагии рӯйхатро хориҷ кунед</h4><span class="level mid">миёна</span></header>
+        <p>Компоненти <code>Catalog</code> рӯйхати филтршударо дар ҳолат нигоҳ медорад ва онро бо эффект навсозӣ мекунад. Аз ин сабаб ба ҳар тағйири дархост экрани <b>кӯҳна</b> ва баъд ислоҳшуда чоп мешавад. Ҳолат ва эффектро хориҷ кунед: рӯйхатро дар рендер ҳисоб кунед. Консол бояд барои ҳар рендер айнан як сатр нишон диҳад.</p>
+        <div class="playground" data-mode="react" data-title="Филтри рӯйхат">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+const RESTAURANTS = ["Navruz", "Rohat", "Samarkand"];
+
+function Catalog({ query }) {
+  const [visible, setVisible] = useState([]);
+
+  useEffect(() =&gt; {
+    setVisible(RESTAURANTS.filter((name) =&gt; name.toLowerCase().includes(query)));
+  }, [query]);
+
+  console.log("рендер:", visible.join(", ") || "пусто");
+  return &lt;ul&gt;{visible.map((name) =&gt; &lt;li key={name}&gt;{name}&lt;/li&gt;)}&lt;/ul&gt;;
+}
+
+export default function App() {
+  const [query, setQuery] = useState("");
+  useScript([[50, () =&gt; setQuery("nav")]]); // стенд: пользователь набрал «nav»
+  return &lt;Catalog query={query} /&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>рендер: Navruz, Rohat, Samarkand
+рендер: Navruz</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Ҳолати <code>visible</code> он чизеро нигоҳ медорад, ки онро аз <code>query</code> гирифтан мумкин аст. Чунинро нигоҳ намедоранд: онро ба тағйирёбандаи оддӣ табдил диҳед ва <code>useEffect</code>-ро пурра хориҷ кунед.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>const visible = RESTAURANTS.filter((name) =&gt; name.toLowerCase().includes(query));</code> Импорти <code>useState</code> дар <code>Catalog</code> лозим намешавад.</p></details>
+      </article>
+
+      <article class="task" id="t3-key">
+        <header><span class="task-num">ВАЗИФАИ 3.3</span><h4>Ёддошт ба тарабхона: барқарорсозӣ тавассути key</h4><span class="level easy">осон</span></header>
+        <p>Компоненти <code>Notes</code> барои тарабхона лоиҳаи холӣ месозад. Функсия дар <code>useState</code> танҳо ҳангоми сохтани компонент иҷро мешавад: дар консол дида мешавад, ки лоиҳаи «нав» кай оғоз ёфт. Ҳоло ҳангоми тағйири <code>restaurantId</code> компонент ҳамон боқӣ мемонад, ва сатри дуюм пайдо намешавад. Дар <code>App</code> як тафсилотро илова кунед, то тағйири тарабхона <code>Notes</code>-ро аз нав созад.</p>
+        <div class="playground" data-mode="react" data-title="Ёддоштҳо">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+function Notes({ restaurantId }) {
+  const [draft, setDraft] = useState(() =&gt; {
+    console.log("новый черновик для ресторана", restaurantId);
+    return "";
+  });
+  return (
+    &lt;textarea
+      value={draft}
+      onChange={(e) =&gt; setDraft(e.target.value)}
+      placeholder={"Заметка к ресторану " + restaurantId}
+    /&gt;
+  );
+}
+
+export default function App() {
+  const [id, setId] = useState(1);
+  useScript([[50, () =&gt; setId(2)]]); // стенд: выбрали другой ресторан
+  // TODO: пусть смена id создаёт Notes заново
+  return &lt;Notes restaurantId={id} /&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>новый черновик для ресторана 1
+новый черновик для ресторана 2</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Prop-и <code>key</code> дар худи компоненти <code>Notes</code> лозим аст: қимат бояд бо тарабхона якҷоя тағйир ёбад.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>&lt;Notes key={id} restaurantId={id} /&gt;</code></p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/you-might-not-need-an-effect" target="_blank" rel="noopener">react.dev — You Might Not Need an Effect</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="ref">
+      <h2 data-toc="useRef"><span class="num">04</span> useRef: DOM ва қиматҳо берун аз рендер</h2>
+
+      <p><b>Ref</b> — ин «қуттича»-и <code>{ current: … }</code> аст, ки React онро байни рендерҳо нигоҳ медорад. Баръакси ҳолат, <b>навиштан ба <code>ref.current</code> аз нав кашиданро ба вуҷуд намеорад</b>. Бинобар ин ref ду кор дорад: истинодро ба унсури DOM нигоҳ доштан (то ки майдонро фокус кунед ё ба блок ҳаракат намоед) ва қиматеро нигоҳ доштан, ки бояд ба ёд монд, вале нишон дода намешавад (шиносаи таймер, қимати пештара).</p>
+
+      <h3>Ref ба унсури DOM</h3>
+      <p>Дар TypeScript навъи гиреҳро дар қавсҳои кунҷӣ нишон медиҳанд, ва қимати ибтидоӣ ҳамеша <code>null</code> аст: то нишон додани компонент унсур ҳанӯз нест. React 19 қимати ибтидоиро ошкоро талаб мекунад (<code>useRef()</code> бе аргумент хато медиҳад). Вақте ки унсур пайдо шавад, React онро ба <code>ref.current</code> менависад, ва ҳангоми хориҷ шудан <code>null</code> бармегардонад. Бинобар ин пеш аз истифода ба <code>null</code> санҷед.</p>
+
+<pre class="code" data-lang="tsx" data-title="src/components/SearchField.tsx (мисол: ref ва фокус)">
+import { useRef } from 'react'
+
+export default function SearchField() {
+  const inputRef = useRef&lt;HTMLInputElement&gt;(null)
+
+  function handleClick() {
+    inputRef.current?.focus() // current может быть null
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;input ref={inputRef} placeholder="Найти ресторан" /&gt;
+      &lt;button onClick={handleClick}&gt;В поиск&lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+
+<pre class="code" data-title="Терминал — tsc -b: хатогиҳои маъмул бо ref">
+src/Bad.tsx(18,18): error TS2554: Expected 1 arguments, but got 0.
+src/Bad.tsx(20,3): error TS18047: 'inputRef.current' is possibly 'null'.
+src/Bad.tsx(22,37): error TS2322: Type 'RefObject&lt;HTMLDivElement | null&gt;' is not assignable to type 'Ref&lt;HTMLInputElement&gt; | undefined'.
+</pre>
+      <p>Хатои якум: <code>useRef()</code> бе қимати ибтидоӣ. Дуюм: <code>inputRef.current.focus()</code> бе санҷиш. Сеюм: ref-и <code>div</code>-ро ба <code>input</code> овехтанд. Навъ дар <code>useRef&lt;…&gt;</code> бояд бо унсуре, ки ref-ро ба он мебандед, мувофиқ ояд.</p>
+
+      <h3>Ref ҳамчун prop-и оддӣ (React 19)</h3>
+      <p>Барои он ки волид майдонро дар дохили компоненти шумо идора кунад, <code>ref</code>-ро ҳамчун prop қабул кунед. Печонаки кӯҳнаи <code>forwardRef</code> лозим нест (дарси 1). Дар лоиҳа ин тавр дар <code>SearchBox</code> сохта мешавад.</p>
+
+<pre class="code" data-lang="tsx" data-title="Компонент ref-ро ҳамчун prop қабул мекунад">
+import type { Ref } from 'react'
+
+type SearchBoxProps = {
+  value: string
+  onChange: (value: string) =&gt; void
+  ref?: Ref&lt;HTMLInputElement&gt;
+}
+
+export default function SearchBox({ value, onChange, ref }: SearchBoxProps) {
+  return (
+    &lt;input ref={ref} value={value} onChange={(e) =&gt; onChange(e.target.value)} /&gt;
+  )
+}
+</pre>
+
+      <h3>Ref ҳамчун «захираи қимат»</h3>
+      <p>Таймерро бо тугма қатъ кардан лозим аст, ва шиносаи <code>setInterval</code> байни рендерҳо зиндагӣ мекунад. Агар онро дар ҳолат нигоҳ доред, ҳар оғоз аз нав кашидани иловагиро ба вуҷуд меорад, ҳол он ки дар экран чизе тағйир намеёбад. Ref беҳтар мебошад.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th><code>useState</code></th><th><code>useRef</code></th></tr></thead>
+          <tbody>
+            <tr><td><b>Тағйир аз нав кашиданро ба вуҷуд меорад</b></td><td>Ҳа</td><td>Не</td></tr>
+            <tr><td><b>Ҳангоми рендер хондан мумкин аст</b></td><td>Ҳа, ин акс аст</td><td>Лозим нест: қимат «зинда» аст, на акс</td></tr>
+            <tr><td><b>Кай истифода мебаранд</b></td><td>Он чизе, ки корбар мебинад</td><td>Гиреҳҳои DOM, шиносаҳои таймер, «қимати пештара», ҳисобкунакҳо барои ислоҳи хато</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="playground" data-mode="react" data-title="Секундомер: id-и таймер дар ref">
+<pre class="code" data-lang="jsx">
+import { useRef, useState } from "react";
+
+export default function App() {
+  const [seconds, setSeconds] = useState(0);
+  const timerRef = useRef(null); // хранит id таймера, но не показывается на экране
+
+  function start() {
+    if (timerRef.current !== null) return; // уже идёт
+    timerRef.current = setInterval(() =&gt; setSeconds((s) =&gt; s + 1), 1000);
+  }
+
+  function stop() {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Секунд: {seconds}&lt;/p&gt;
+      &lt;button onClick={start}&gt;Старт&lt;/button&gt;
+      &lt;button onClick={stop}&gt;Стоп&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout tip">
+        <b>Қоида</b>
+        <p><code>ref.current</code>-ро ҳангоми рендер нахонед ва нанависед (ба ғайр аз оғозёбии аввал): вагарна компонент тоза буданро бас мекунад (дарси 3). Ref-ро дар коркардкунандаҳои рӯйдод ва дар эффектҳо тағйир диҳед. Як чизи муҳими дигар: фокус ва ҳаракати саҳифаро беҳтар аст дар коркардкунандаи рӯйдод (<code>handleClick</code>) иҷро кунед. Эффект танҳо он вақт лозим аст, ки унсур бояд баъд аз рендер пайдо шавад: масалан, ҳаракат ба блоке, ки мундариҷааш баъд аз интихоб тағйир меёбад.</p>
+      </div>
+
+      <div class="yt" data-id="heBRA9LVpsA" data-title="Управляемые и неуправляемые компоненты в React. Хук useRef и работа с DOM — канал Александр Ламков — Friendly Frontend"></div>
+      <p class="muted">Ролик бо забони русӣ (19 дақиқа, ноябри 2025): useRef ва кор бо DOM. Қисмати дар бораи компонентҳои идоранашавандаро ҳоло гузаронидан мумкин аст: формаҳоро дар дарси 7 мебинем.</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Ҳолат — ин менюи дар девори чойхона: тағйир ёфт, ва ҳама ҷадиди онро мебинанд. Ref — дафтарчаи пешхизмат дар киса: вай навиштааст, ки ба кадом миз чӣ бояд бурд, вале деворро тағйир додан лозим нест. Дафтарча ба кор кӯмак мекунад, вале толор онро намебинад. Ref ба DOM — рақами рӯи миз: аз рӯи он пешхизмат мизи лозимиро меёбад ва тамоми толорро давр намезанад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>ref.current</code>-ро дар экран нишон додан: интерфейс нав намешавад, зеро аз нав кашидан нест. Чизи нишондодашаванда бояд дар ҳолат бошад. <b>2.</b> <code>inputRef.current.focus()</code> бе <code>?.</code>: хатои <code>TS18047</code>, ва ҳангоми нишон додан пеш аз пайдо шудани унсур — вайроншавии воқеии <code>Cannot read properties of null</code>. <b>3.</b> DOM-ро дастӣ тавассути ref тағйир додан (<code>innerHTML</code>, услубҳо), ҳол он ки инро бо ҳолат кардан мумкин аст: React ва коди шумо барои як гиреҳ мубориза мебаранд. <b>4.</b> Ба ref маълумотеро гузоштан, ки ба нишонагузорӣ таъсир мерасонад. <b>5.</b> Ба ҷои ref <code>document.getElementById</code>-ро истифода бурдан: ҳангоми якчанд нусхаи компонент унсури бегонаро мегиред.</p>
+      </div>
+
+      <article class="task" id="q-ref">
+        <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Худро санҷед: ref</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Агар ба <code>ref.current</code> қимати нав навишта шавад, чӣ рӯй медиҳад?</p>
+          <ol class="options">
+            <li>Компонент бо қимати нав аз нав кашида мешавад</li>
+            <li>Қимат нигоҳ дошта мешавад, вале аз нав кашидан нест</li>
+            <li>React хато медиҳад: ref танҳо барои хондан аст</li>
+            <li>Қимат дар рендери навбатӣ барқарор мешавад</li>
+          </ol>
+          <div class="explain"><p>Ref байни рендерҳо нигоҳ дошта мешавад ва бе аз нав кашидан тағйир меёбад. Бинобар ин онро дар экран нишон додан мумкин нест: барои ин ҳолат ҳаст.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Кадом чиз барои <code>useRef</code> мувофиқ аст? Ду вариантро интихоб кунед.</p>
+          <ol class="options">
+            <li>Гиреҳи <code>input</code>, то ки онро баъд аз клик фокус кунанд</li>
+            <li>Матн дар сатри ҷустуҷӯ, ки корбар онро мебинад ва таҳрир мекунад</li>
+            <li>Шиносаи таймер, ки онро бо тугма қатъ кардан лозим аст</li>
+            <li>Рӯйхати тарабхонаҳо барои намоиш дар саҳифа</li>
+          </ol>
+          <div class="explain"><p>Ба ref чизеро мегузоранд, ки бояд ба ёд монд, вале нишон дода намешавад: гиреҳҳои DOM ва шиносаҳо. Матни ҷустуҷӯ ва рӯйхат ба экран таъсир мерасонанд, онҳо ба ҳолат ниёз доранд.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t4-focus">
+        <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Фокус ба майдони ҷустуҷӯ бо тугма</h4><span class="level easy">осон</span></header>
+        <p>Бо клик ба тугмаи «В поиск» фокус бояд ба майдони воридкунӣ гузарад. Барои <code>input</code> ref созед, онро бибандед ва <code>focus()</code>-ро дар коркардкунандаи клик даъват кунед. Стенд худаш тугмаро мепахшад ва чоп мекунад, ки кадом унсур дар фокус аст.</p>
+        <div class="playground" data-mode="react" data-title="Фокус тавассути ref">
+<pre class="code" data-lang="jsx">
+import { useRef } from "react";
+
+export default function App() {
+  // TODO 1: const inputRef = useRef(null);
+
+  function handleClick() {
+    // TODO 3: сфокусируйте поле через ref (current может быть null)
+  }
+
+  return (
+    &lt;div&gt;
+      {/* TODO 2: привяжите ref к полю: ref={inputRef} */}
+      &lt;input placeholder="Найти ресторан" /&gt;
+      &lt;button id="go" onClick={handleClick}&gt;В поиск&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: стенд нажимает кнопку и смотрит, где фокус
+setTimeout(() =&gt; {
+  document.getElementById("go").click();
+  console.log("в фокусе:", document.activeElement.tagName);
+}, 300);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>в фокусе: INPUT</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Се қадам: <code>useRef(null)</code>, <code>ref={inputRef}</code> дар <code>input</code>, <code>inputRef.current?.focus()</code> дар коркардкунанда.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Не <code>document.getElementById</code>: мақсади вазифа — гирифтани гиреҳ тавассути ref аст.</p></details>
+      </article>
+
+      <article class="task" id="t4-timer">
+        <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Таймер, ки экранро аз нав кашидани иловагӣ намекунад</h4><span class="level mid">миёна</span></header>
+        <p>Тугмаҳои «Старт» ва «Стоп» интервалро идора мекунанд, ки ҳар 100 мс ҳисобкунакро зиёд мекунад. Шиносаи интервалро бояд дар ref нигоҳ дошт, на дар ҳолат: оғоз ва қатъ аз нав кашидани экранро ба вуҷуд наоранд. <code>start</code> ва <code>stop</code>-ро пурра кунед. Стенд «Старт»-ро баъд аз 200 мс ва «Стоп»-ро баъд аз 450 мс мепахшад. Сатри «рендер» ҳангоми ҳар аз нав кашидан чоп мешавад: иловагӣ набояд бошад.</p>
+        <div class="playground" data-mode="react" data-title="Секундомер">
+<pre class="code" data-lang="jsx">
+import { useRef, useState } from "react";
+
+export default function App() {
+  const [ticks, setTicks] = useState(0);
+  const timerRef = useRef(null);
+  console.log("рендер");
+
+  function start() {
+    // TODO: если таймер уже идёт (timerRef.current не null), ничего не делаем;
+    // иначе запускаем setInterval: каждый тик печатает "тик" и увеличивает ticks,
+    // а id кладём в timerRef.current
+  }
+
+  function stop() {
+    // TODO: остановите таймер, обнулите timerRef.current и напечатайте "остановлено"
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;Тиков: {ticks}&lt;/p&gt;
+      &lt;button id="start" onClick={start}&gt;Старт&lt;/button&gt;
+      &lt;button id="stop" onClick={stop}&gt;Стоп&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+// автопроверка: стенд нажимает кнопки
+setTimeout(() =&gt; document.getElementById("start").click(), 200);
+setTimeout(() =&gt; document.getElementById("stop").click(), 450);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>рендер
+тик
+рендер
+тик
+рендер
+остановлено</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Дар <code>start</code>: <code>timerRef.current = setInterval(() =&gt; { console.log("тик"); setTicks((t) =&gt; t + 1); }, 100);</code></p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Дар <code>stop</code>: <code>clearInterval(timerRef.current); timerRef.current = null; console.log("остановлено");</code> Агар id-ро дар ҳолат нигоҳ доред, ҳангоми оғоз ва қатъ сатрҳои иловагии «рендер» пайдо мешаванд.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/referencing-values-with-refs" target="_blank" rel="noopener">react.dev — Referencing Values with Refs</a> · <a href="https://react.dev/learn/manipulating-the-dom-with-refs" target="_blank" rel="noopener">react.dev — Manipulating the DOM with Refs</a> · <a href="https://react.dev/reference/react/useRef" target="_blank" rel="noopener">react.dev — useRef</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="fetch">
+      <h2 data-toc="Боркунии маълумот"><span class="num">05</span> Боркунии маълумот: fetch, бекоркунӣ ва навъҳои ҷавоб</h2>
+
+      <p>Боркунии маълумотро тавассути шабака шумо дар курси «Frontend + ИИ» аллакай иҷро кардаед: <code>useEffect</code>, <code>fetch</code>, ҳолатҳои «боркунӣ / хатогӣ / маълумот». Дар ин ҷо мо инро ба қолаби касбӣ ҷамъ мекунем ва TypeScript-ро илова менамоем: ҳолатҳоро union аз дарси 2 тавсиф мекунад, ва ҷавоби сервер, ки ба он эътимод кардан мумкин нест, бехатар месанҷад.</p>
+
+      <h3>Ҳолати боркунӣ ҳамчун union</h3>
+      <p>Ба ҷои се <code>useState</code>-и алоҳида (<code>loading</code>, <code>error</code>, <code>data</code>) як ҳолат бо нишони <code>status</code> эълон кунед. Он гоҳ омезишҳои имконнопазир («боркунӣ ва хатогӣ якҷоя») содда тасвир намешаванд, ва компилятор намегузорад, ки то санҷидани статус <code>data</code>-ро хонед.</p>
+
+<pre class="code" data-lang="ts" data-title="src/types.ts: навъи умумии ҳолати боркунӣ">
+export type LoadState&lt;T&gt; =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; data: T }
+</pre>
+
+<pre class="code" data-title="Терминал — tsc -b: data-ро бе санҷиши статус мехонем">
+src/Bad.tsx(21,20): error TS2339: Property 'data' does not exist on type 'LoadState&lt;Restaurant[]&gt;'.
+  Property 'data' does not exist on type '{ status: "loading"; }'.
+</pre>
+
+      <h3>Қолаби дархост дар эффект</h3>
+      <p>Дархост — системаи беруна аст, бинобар ин эффект дар ин ҷо мувофиқ аст. Қолаб аз панҷ банд:</p>
+      <ol class="steps">
+        <li><b>AbortController</b> дар дохили эффект сохта мешавад, <code>signal</code>-и он ба <code>fetch</code> дода мешавад.</li>
+        <li><b><code>response.ok</code></b> ҳамеша месанҷад: <code>fetch</code> promise-ро танҳо ҳангоми хатои шабака рад мекунад, ва ҷавобҳои 404 ва 500 барои он «муваффақият» мебошанд.</li>
+        <li><b>Ҷавоб</b> дар <code>unknown</code> хонда мешавад ва бо функсияи санҷишӣ (дар поён) месанҷад, танҳо баъд ба навъи лозимӣ табдил меёбад.</li>
+        <li><b>Хато дар <code>catch</code></b> — ин <code>unknown</code> аст; бекоркуниро (<code>AbortError</code>) нодида мегиранд, боқиро нишон медиҳанд.</li>
+        <li><b>Тозакунии</b> эффект <code>controller.abort()</code>-ро даъват мекунад: агар вобастагӣ иваз шуда бошад ё компонентро хориҷ карда бошанд, дархости кӯҳна бекор мешавад.</li>
+      </ol>
+
+<pre class="code" data-lang="tsx" data-title="Қолаб: дархост бо бекоркунӣ ва ҳолатҳо">
+useEffect(() =&gt; {
+  const controller = new AbortController()
+
+  fetchRestaurants(controller.signal)
+    .then((data) =&gt; setLoad({ status: 'success', data }))
+    .catch((error: unknown) =&gt; {
+      if (isAbortError(error)) return // запрос отменили сами: это не ошибка
+      setLoad({ status: 'error', message: errorMessage(error) })
+    })
+
+  return () =&gt; controller.abort()
+}, [attempt])
+</pre>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Диаграммаи вақт: дархости 1 ба сервер меравад, корбар шартро иваз мекунад, тозакунии эффект дархости 1-ро бекор мекунад (AbortError), дархости 2 меравад ва меояд, экран танҳо ҷавоби дархости 2-ро нишон медиҳад">
+          <line class="arr" x1="20" y1="30" x2="700" y2="30" /><text class="sub" x="12" y="20">вақт →</text>
+          <rect class="fill-y" x="40" y="48" width="330" height="34" rx="8" /><text x="205" y="70" text-anchor="middle">дархости 1: тарабхонаи 1 (суст)</text>
+          <path class="arr" d="M205 90 V120" /><path class="arr-head" d="M205 128 l-5 -10 h10 z" />
+          <rect class="fill-r" x="40" y="128" width="330" height="34" rx="8" /><text x="205" y="150" text-anchor="middle">тозакунии эффект: abort() → AbortError</text>
+          <text class="sub t-r" x="380" y="150">ҷавоби 1 рад шуд, дар экран он нахоҳад буд</text>
+          <rect class="fill-g" x="170" y="176" width="250" height="34" rx="8" /><text x="295" y="198" text-anchor="middle">дархости 2: тарабхонаи 2 (тез)</text>
+          <path class="arr" d="M420 193 H456" /><path class="arr-head" d="M464 193 l-10 -5 v10 z" />
+          <rect class="fill-g" x="464" y="176" width="236" height="34" rx="8" /><text x="582" y="198" text-anchor="middle">дар экран ҷавоби 2</text>
+          <text class="sub" x="12" y="224">Бе бекоркунӣ ҷавоби суст 1 метавонист охирин ояд ва маълумоти тарабхонаи 2-ро пӯшонад.</text>
+        </svg>
+        <figcaption>Мусобиқаи дархостҳо: тозакунии эффект дархости кӯҳнашударо бекор мекунад, ва дар экран ҷавоб ба амали охирин мемонад</figcaption>
+      </figure>
+
+      <h3>unknown ба ҷои any</h3>
+      <p>Усули <code>response.json()</code> <code>any</code> бармегардонад: компилятор шакли маълумотро намедонад ва ҳамаи санҷишҳоро хомӯш мекунад. Агар <code>const list: Restaurant[] = await response.json()</code> нависед, хатои навъ пайдо намешавад, вале агар сервер чизи дигар фиристад, барнома дар ҷои дури аз дархост меафтад. Бехатартар аст, ки ҷавобро ҳамчун <code>unknown</code> («чизе, ки ҳанӯз санҷида нашудааст») қабул кунед ва ба компилятор шакли қиматро исбот намоед.</p>
+
+<pre class="code" data-title="Терминал — tsc -b: unknown-ро бе санҷиш ба навъ додан мумкин нест">
+src/Bad.tsx(8,11): error TS2322: Type 'unknown' is not assignable to type 'Restaurant[]'.
+</pre>
+
+      <p>Исботро <b>type guard</b> (муҳофизи навъ) иҷро мекунад: функсияе, ки <code>value is Тип</code> бармегардонад. Агар вай <code>true</code> баргардонад, дар дохили шохаи <code>if</code> компилятор қиматро аз навъи лозимӣ мешуморад.</p>
+
+<pre class="code" data-lang="ts" data-title="Type guard барои ҷавоби API">
+type MenuItem = { id: number; title: string; price: number }
+
+function isRecord(value: unknown): value is Record&lt;string, unknown&gt; {
+  return typeof value === 'object' &amp;&amp; value !== null
+}
+
+function isMenuItem(value: unknown): value is MenuItem {
+  return (
+    isRecord(value) &amp;&amp;
+    typeof value.id === 'number' &amp;&amp;
+    typeof value.title === 'string' &amp;&amp;
+    typeof value.price === 'number'
+  )
+}
+
+const data: unknown = await response.json()
+if (!Array.isArray(data) || !data.every(isMenuItem)) {
+  throw new Error('Сервер прислал данные в неожиданном формате')
+}
+// здесь data: MenuItem[]
+</pre>
+      <p>Санҷиши дастӣ — варианти оддӣ ва босифат барои ҷавобҳои хурд аст. Барои схемаҳои калон дар дарси 7 шумо бо китобхонаи Zod шинос мешавед, ки шакли маълумотро як маротиба тавсиф мекунад ва аз он ҳам санҷиш, ҳам навъро ҳосил менамояд.</p>
+
+      <h3>Хато дар catch низ unknown аст</h3>
+      <p>Дар реҷаи <code>strict</code> тағйирёбанда дар <code>catch</code> навъи <code>unknown</code> дорад, зеро партофтан мумкин аст ҳар чиз: <code>throw "нет сети"</code> низ ҷоиз аст. <code>error.message</code>-ро бевосита хондан мумкин нест: аввал навъро тавассути <code>instanceof</code> танг мекунем.</p>
+
+<pre class="code" data-title="Терминал — tsc -b: message дар unknown">
+src/Bad.tsx(11,17): error TS18046: 'error' is of type 'unknown'.
+</pre>
+
+<pre class="code" data-lang="ts" data-title="Танг кардани хато">
+export function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException &amp;&amp; error.name === 'AbortError'
+}
+
+export function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message // здесь error: Error
+  }
+  return 'Неизвестная ошибка'
+}
+</pre>
+
+      <div class="callout tip">
+        <b>Мо дар лоиҳа чӣ мекунем ва баъд чӣ мешавад</b>
+        <p>Боркунии маълумот дар эффект — усули корӣ, вале «дастӣ» аст: кэш нест (бозгашт ба саҳифа боз маълумотро бор мекунад), такроркунии кӯшишҳо нест, ҳолатҳои умумии боркунӣ байни компонентҳо нест. Бинобар ин минбаъд курс онро бо RTK Query иваз мекунад (дарси 10), ва дар Next.js (дарсҳои 16–17) маълумотро сервер ҳанӯз пеш аз фиристодани саҳифа мебарад. Аммо қоидаҳои бекоркунӣ ва навъбандии ҷавоб аз ин дарс ҳамон мемонанд.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Дархости маълумот — мисли фармоиши палав аз расонанда. Шумо гуфтед «Navruz», баъд фикратонро иваз кардед ва занг задед «Rohat». Агар фармоиши якумро бекор накунед, ҳарду қосид меоянд, ва дар болои миз он чиз мемонад, ки охирин оварданд, ва на ҳатман ончи шумо мехоҳед. Бекоркунӣ — занги «фармоиши якум лозим нест» аст. Санҷиши ҷавоб — кушодани қуттӣ пеш аз гузоштан ба миз: оё дар дохил палав аст.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>response.ok</code>-ро нашиносидан: ҷавоби 500 бо бадани <code>{"message": …}</code> ҳамчун «маълумот» ба ҳолат меафтад. <b>2.</b> <code>const data = await response.json()</code> ва баъд <code>data.map</code>: <code>any</code> ҳама чизро хомӯшона мегузаронад. <b>3.</b> <code>AbortError</code>-ро ҳамчун хато ба корбар нишон додан: бекоркунӣ — рӯйдоди муқаррарӣ. <b>4.</b> <code>async</code> бевосита дар <code>useEffect(async () =&gt; …)</code>: эффект бояд функсияи тозакунӣ ё ҳеҷ чизро баргардонад, на promise. Функсияи <code>async</code>-ро берун аз эффект эълон кунед (мисли <code>fetchRestaurants</code>) ва даъват кунед. <b>5.</b> «Боркунӣ»-ро дар худи эффект тавассути <code>setLoad(…)</code> барқарор кардан: ин <code>setState</code>-и синхронӣ дар эффект аст. Онро дар коркардкунанда (тугмаи «Такрор») ё тавассути <code>key</code> барқарор кунед. <b>6.</b> Навъро тавассути <code>as Restaurant[]</code> овардан: ин ваъда ба компилятор бе санҷиш аст.</p>
+      </div>
+
+      <article class="task" id="q-fetch">
+        <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Худро санҷед: дархостҳо ва навъҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Сервер бо рамзи 500 ҷавоб дод. <code>await fetch(url)</code> чӣ мекунад?</p>
+          <ol class="options">
+            <li>Хатоеро мепартояд, ки <code>catch</code> онро мегирад</li>
+            <li><code>response</code>-ро бо <code>ok === false</code> бармегардонад: санҷиш бояд аз тарафи шумо бошад</li>
+            <li><code>null</code> бармегардонад</li>
+            <li>Дархостро худкор такрор мекунад</li>
+          </ol>
+          <div class="explain"><p><code>fetch</code> танҳо ҳангоми хатои шабака рад мешавад. Барои хатогиҳои HTTP шумо <code>response.ok</code>-ро месанҷед ва худатон хато меандозед.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Чаро натиҷаи <code>response.json()</code>-ро ҳамчун <code>unknown</code> қабул мекунанд, на ҳамчун навъи лозимӣ?</p>
+          <ol class="options">
+            <li>То ки компилятор шакли ҷавобро то истифода санҷиданро талаб кунад: сервер метавонад чизи дигареро фиристад, на он чизе, ки интизорем</li>
+            <li>То ки код зудтар иҷро шавад</li>
+            <li>Зеро <code>json()</code> маълумот бармегардонад</li>
+            <li>То ки <code>await</code> нанависем</li>
+          </ol>
+          <div class="explain"><p>Навишти <code>const x: Restaurant[] = await response.json()</code> бе санҷиш тартиб дода мешавад: <code>any</code> ба ҳар навъ мувофиқ аст. Бо <code>unknown</code> бе type guard навъро додан мумкин нест.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Ба <code>catch (error)</code> аз сабаби даъвати <code>controller.abort()</code> дар cleanup <code>AbortError</code> афтод. Чӣ бояд кард?</p>
+          <ol class="options">
+            <li>Ба корбар паёми хатогӣ нишон додан</li>
+            <li>Дархостро такрор кардан</li>
+            <li>Нодида гирифтан: бекоркунӣ — қарори худи мо аст, на вайроншавӣ</li>
+            <li><code>AbortController</code>-ро хориҷ кардан</li>
+          </ol>
+          <div class="explain"><p>Бекоркунӣ вақте рух медиҳад, ки дархост лозим намемонад (вобастагӣ иваз шуд ё компонентро хориҷ карданд). Онро ҳамчун хато нишон додан — яъне корбарро бесабаб тарсондан.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t5-catch">
+        <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Хато дар catch: unknown-ро танг кунед</h4><span class="level mid">миёна</span></header>
+        <p>Компилятор намегузорад, ки <code>error.message</code>-ро хонед: навъи <code>error</code> — <code>unknown</code> аст. Онро бо санҷиши <code>instanceof Error</code> танг кунед. Агар хато нест, балки чизи дигар (масалан, сатр) партофта шуда бошад, «Ошибка: Неизвестная ошибка»-ро баргардонед.</p>
+<pre class="code" data-run data-lang="ts">
+async function load(url: string): Promise&lt;string&gt; {
+  try {
+    if (url === "/bad") throw new Error("Сервер ответил 500");
+    if (url === "/offline") throw "нет сети"; // выбросили строку, а не Error
+    return "данные";
+  } catch (error) {
+    return "Ошибка: " + error.message;
+  }
+}
+
+console.log(await load("/ok"));
+console.log(await load("/bad"));
+console.log(await load("/offline"));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>данные
+Ошибка: Сервер ответил 500
+Ошибка: Неизвестная ошибка</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Дар дохили <code>catch</code> <code>if (error instanceof Error)</code>-ро санҷед: дар ин шоха навъи <code>error</code> аллакай <code>Error</code> аст ва <code>message</code> дастрас аст.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>if (error instanceof Error) return "Ошибка: " + error.message; return "Ошибка: Неизвестная ошибка";</code></p></details>
+      </article>
+
+      <article class="task" id="t5-guard">
+        <header><span class="task-num">ВАЗИФАИ 5.3</span><h4>Type guard барои мавқеи меню</h4><span class="level hard">душвор</span></header>
+        <p>Сервер массиви шакли номаълумро фиристод. <code>isMenuItem</code>-ро пурра кунед: он бояд танҳо он вақт <code>true</code> баргардонад, ки қиммат дорои <code>id</code> ва <code>price</code>-и ададӣ ва <code>title</code>-и сатрӣ бошад. Аз се унсур як дона мувофиқ аст; санҷед, ки компилятор <code>i.title.toUpperCase()</code>-ро қабул мекунад.</p>
+<pre class="code" data-run data-lang="ts">
+type MenuItem = { id: number; title: string; price: number };
+
+function isRecord(value: unknown): value is Record&lt;string, unknown&gt; {
+  return typeof value === "object" &amp;&amp; value !== null;
+}
+
+function isMenuItem(value: unknown): value is MenuItem {
+  // TODO: проверьте, что value — объект с id: number, title: string, price: number
+  return false;
+}
+
+const raw: unknown = JSON.parse(
+  '[{"id":1,"title":"Плов","price":45},{"id":2,"title":"Чай"},{"id":"3","title":"Самса","price":12}]'
+);
+
+if (Array.isArray(raw)) {
+  const items = raw.filter(isMenuItem);
+  console.log("верных позиций:", items.length);
+  console.log(items.map((i) =&gt; i.title.toUpperCase()).join(", "));
+}
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>верных позиций: 1
+ПЛОВ</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Аввал <code>isRecord(value)</code>, баъд аз он ба майдонҳо муроҷиат кардан мумкин аст: онҳо навъи <code>unknown</code> доранд, ва ҳар яке тавассути <code>typeof</code> месанҷад.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>return isRecord(value) &amp;&amp; typeof value.id === "number" &amp;&amp; typeof value.title === "string" &amp;&amp; typeof value.price === "number";</code></p></details>
+      </article>
+
+      <article class="task" id="t5-fetch">
+        <header><span class="task-num">ВАЗИФАИ 5.4</span><h4>Чор ҳолат ва бекоркунии дархост</h4><span class="level hard">душвор</span></header>
+        <p>Эффектро дар <code>Catalog</code> пурра кунед: дархост бо <code>AbortController</code>, санҷиши <code>response.ok</code>, ҳолатҳои <code>loading / error / success</code>. Стенд аввал суроғаи «суст»-ро дархост мекунад, баъд аз 50 мс ба суроғаи бо хатои 500 мегузарад, ва баъд аз 150 мс — ба «суроғаи бе шабака». Компонент ҳангоми тағйири суроға аз нав сохта мешавад (барои ин <code>key</code> ҷавобгар аст), бинобар ин дархости якум бояд дар cleanup бекор шавад, ва дар <code>catch</code> шумо барои <code>AbortError</code> <code>запрос отменён</code>-ро чоп мекунед. Хаторо тавассути <code>error instanceof Error</code> нишон диҳед.</p>
+        <div class="playground" data-mode="react" data-title="Феҳрист: боркунӣ ва бекоркунӣ">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+function useScript(steps) {
+  useEffect(() =&gt; {
+    const ids = steps.map(([ms, fn]) =&gt; setTimeout(fn, ms));
+    return () =&gt; ids.forEach(clearTimeout);
+  }, []);
+}
+
+const LIST = [{ id: 1, name: "Navruz" }, { id: 2, name: "Samarkand" }, { id: 3, name: "Shirin" }];
+
+// стенд: «сервер». /slow отвечает через 100 мс, /broken даёт 500, /offline — сетевая ошибка
+function fakeFetch(url, { signal } = {}) {
+  return new Promise((resolve, reject) =&gt; {
+    const t = setTimeout(() =&gt; {
+      if (url === "/offline") reject(new TypeError("Failed to fetch"));
+      else if (url === "/broken") resolve({ ok: false, status: 500, json: async () =&gt; ({}) });
+      else resolve({ ok: true, status: 200, json: async () =&gt; LIST });
+    }, url === "/slow" ? 100 : 30);
+    signal?.addEventListener("abort", () =&gt; {
+      clearTimeout(t);
+      reject(new DOMException("Aborted", "AbortError"));
+    });
+  });
+}
+
+function Catalog({ url }) {
+  const [load, setLoad] = useState({ status: "loading" });
+
+  // TODO: useEffect: создайте AbortController, вызовите fakeFetch(url, { signal }),
+  // при !response.ok выбросьте Error("Сервер ответил " + response.status),
+  // прочитайте response.json(), положите { status: "success", data };
+  // в catch: AbortError → console.log("запрос отменён") и return;
+  // иначе { status: "error", message } (message из error instanceof Error);
+  // в cleanup вызовите controller.abort(). Зависимости: [url]
+
+  if (load.status === "loading") console.log("экран: загрузка");
+  else if (load.status === "error") console.log("экран: ошибка —", load.message);
+  else console.log("экран: список (" + load.data.length + ")");
+  return null;
+}
+
+export default function App() {
+  const [url, setUrl] = useState("/slow");
+  useScript([
+    [50, () =&gt; setUrl("/broken")],
+    [150, () =&gt; setUrl("/offline")],
+  ]);
+  return &lt;Catalog key={url} url={url} /&gt;;
+}
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>экран: загрузка
+экран: загрузка
+запрос отменён
+экран: ошибка — Сервер ответил 500
+экран: загрузка
+экран: ошибка — Failed to fetch</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Контроллер дар дохили эффект сохта мешавад. Санҷиши бекоркунӣ: <code>error instanceof DOMException &amp;&amp; error.name === "AbortError"</code>. Барои паём: <code>error instanceof Error ? error.message : "Неизвестная ошибка"</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p>Дар охири эффект: <code>return () =&gt; controller.abort();</code> Бе ин «запрос отменён» пайдо намешавад, ва ҷавоби аввал ба компоненти аллакай хориҷшуда меояд.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN — AbortController</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch" target="_blank" rel="noopener">MDN — Using the Fetch API</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/narrowing.html" target="_blank" rel="noopener">TypeScript — Narrowing</a></p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai-effects">
+      <h2 data-toc="ЗС: эффектҳои нолозим"><span class="num">06</span> Блоки ЗС: агент эффектҳои нолозимро дӯст медорад</h2>
+
+      <p>Агар аз агент хоҳиш кунед «боркунии маълумотро илова кун» ё «маблағро ҳисоб кун», вай қариб ҳамеша <code>useEffect</code> менависад: дар матнҳои таълимӣ ва лоиҳаҳои кӯҳна эффектҳо бисёранд, ва вай ин одатро такрор мекунад. Бинобар ин баррасии коди агент барои ҳукҳо аз як саволи асосӣ иборат аст: <b>ин эффект бо кадом системаи беруна ҳамоҳанг мешавад?</b> Инак ҷавоби маъмули агент ба хоҳиши «сабадро бо ҷамъ нишон деҳ»:</p>
+
+<pre class="code" data-lang="tsx" data-title="Коди маъмул аз агент (бо нолозим)">
+function Cart({ items }: { items: CartItem[] }) {
+  const [total, setTotal] = useState(0)
+  const [count, setCount] = useState(0)
+  const [sent, setSent] = useState(false)
+
+  useEffect(() =&gt; {
+    setTotal(items.reduce((sum, i) =&gt; sum + i.item.price * i.qty, 0))
+  }, [items])
+
+  useEffect(() =&gt; {
+    setCount(items.reduce((sum, i) =&gt; sum + i.qty, 0))
+  }, [items])
+
+  useEffect(() =&gt; {
+    if (sent) sendOrder(items)
+  }, [sent])
+
+  return (
+    &lt;div&gt;
+      &lt;p&gt;{count} позиций, {total} сомони&lt;/p&gt;
+      &lt;button onClick={() =&gt; setSent(true)}&gt;Заказать&lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+      <p>Дар ин ҷо ҳар се эффект нолозиманд: ду нафар <b>маълумоти ҳосилшуда</b>-ро аз нав ҳисоб мекунанд (<code>total</code> ва <code>count</code>-ро дар рендер ҳисоб кардан мумкин аст), сеюм <b>кликро ба парчам</b> табдил медиҳад. Ҳамзамон дар он вобастагии <code>items</code> гузошта шудааст. Баъд аз ислоҳ ҳолатҳо тамоман нестанд.</p>
+
+      <div class="callout ai">
+        <b>Формулаи промпт: контекст → вазифа → маҳдудиятҳо → формат → санҷиш</b>
+        <p>Дархости бад ба агент озодии навиштани эффектҳоро мемонад. Дархости хуб ошкоро эффектро дар ҷое, ки набояд бошад, манъ мекунад, асоснок кардани ҳар як боқимондаро талаб менамояд ва системаи берунаро номбар мекунад.</p>
+      </div>
+
+      <div class="prompt bad-prompt">добавь в каталог загрузку ресторанов с API</div>
+
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), прочитай AGENTS.md. Каталог ресторанов в src/App.tsx, тип Restaurant в src/types.ts. API: GET /api/restaurants отдаёт JSON-массив ресторанов, адрес /api проксируется на localhost:3001.
+Задача: загрузи рестораны при открытии страницы, покажи состояния loading, error (с кнопкой «Повторить») и success.
+Ограничения: один useEffect для запроса с AbortController и очисткой, зависимости честные; состояние описано union-типом LoadState; ответ принимается как unknown и проверяется type guard, без any и без as; отфильтрованный список и счётчики считай в рендере, без useState и useEffect; AbortError не показывай пользователю; новых библиотек не добавляй.
+Формат ответа: сначала список изменений по файлам (без кода), потом код. Для каждого useEffect в проекте напиши одну строку: «с какой внешней системой синхронизируется и почему это не обработчик события и не вычисление в рендере».
+Проверка: в конце перечисли, какие пункты ограничений выполнены, и покажи, что произойдёт при StrictMode (двойной запуск эффекта) и при быстрой смене условий (гонка запросов).</div>
+
+      <h3>Чӣ тавр эффектҳои аз тарафи агент навишташударо месанҷанд</h3>
+      <ol class="steps">
+        <li><b>Системаи берунаро ном баред.</b> Барои ҳар <code>useEffect</code> бо як ибора: шабака, таймер, обунаи браузер, DOM. Агар ҷавоб набошад, эффект нолозим аст.</li>
+        <li><b><code>setState</code> бевосита дар эффект.</b> Ин қариб ҳамеша маълумоти ҳосилшуда ё вокуниш ба рӯйдод аст. Линтер онҳоро бо огоҳии <code>set-state-in-effect</code> мегирад.</li>
+        <li><b>Вобастагиҳо.</b> <code>[]</code>-и холӣ ҳангоми хондани props нест, объектҳо аз бадани компонент нестанд, шарҳҳои «disable lint» нестанд.</li>
+        <li><b>Тозакунӣ.</b> Ҳар як таймер, обуна ва дархост амали оинавӣ дорад. Дар StrictMode санҷед: баъд аз оғози дукарата чизе такрор намешавад.</li>
+        <li><b>Дархост.</b> Санҷиши <code>response.ok</code>, <code>unknown</code> ва type guard ба ҷои <code>as</code> ва <code>any</code>, <code>AbortError</code> ҳамчун хато нишон дода намешавад, <code>async</code> бевосита ба <code>useEffect</code> дода нашудааст.</li>
+        <li><b>Ref.</b> <code>document.getElementById</code> нест, санҷиш ба <code>null</code> ҳаст, дар ref он чизе, ки бояд дар экран нишон дода шавад, нест.</li>
+        <li><b>Бехатарӣ.</b> Дар код калидҳо ва токенҳо нестанд: сирриётро ба коди клиентӣ намегузоранд (дар Vite чунин қиматҳоро ҳар кас тавассути DevTools мебинад). Матни аз сервер омадаро ҳамчун матни оддӣ дар JSX мебароранд, на ҳамчун HTML-и тайёр ба саҳифа ворид мекунанд.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул ҳангоми кор бо агент</b>
+        <p><b>1.</b> Версияи аввалро бо се эффект «зеро кор мекунад» қабул кардан: рендери иловагӣ то суст шудан намоён нест. <b>2.</b> Хоҳиш «огоҳии линтерро ислоҳ кун» бе шарҳ: агент шарҳи хомӯшкунӣ илова мекунад. Хоҳиш кунед «сабабро ислоҳ кун, қоидаро хомӯш накун». <b>3.</b> Дар StrictMode иҷро накардан: хатогиҳои оғози дукарата танҳо дар dev зоҳир мешаванд, ва дар санҷиши ментор. <b>4.</b> Network-ро нагузаронидан: бояд дид, ки дархости бекоршуда воқеан canceled қайд шудааст. <b>5.</b> <code>useEffect(async () =&gt; …)</code>-и агентро бе тағйир мондан.</p>
+      </div>
+
+      <article class="task" id="q-ai-effects">
+        <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Худро санҷед: баррасии эффектҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Дар коди агент се эффект ҳаст: (а) <code>setFullName(first + ' ' + last)</code> ҳангоми тағйири ном; (б) обуна ба <code>keydown</code>-и тиреза бо тозакунӣ; (в) дархости меню бо <code>AbortController</code> ва тозакунӣ. Кадоме аз онҳо нолозим аст?</p>
+          <ol class="options">
+            <li>Танҳо (а): номи пурраро дар рендер ҳисоб кардан мумкин аст, ва (б) бо (в) бо системаҳои беруна ҳамоҳанг мешаванд</li>
+            <li>Танҳо (б): обунаҳо ба клавиатура ҳамеша нолозиманд</li>
+            <li>Танҳо (в): дархостҳоро танҳо дар коркардкунанда кардан мумкин аст</li>
+            <li>Ҳар се баробар лозиманд</li>
+          </ol>
+          <div class="explain"><p>Танҳо (а) нолозим аст: ин маълумоти ҳосилшуда аст. Обуна ба тиреза ва дархост — системаҳои воқеии беруна, эффект дар онҳо мувофиқ аст, агар тозакунӣ бошад.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Кадом ду ибора дар промпт ба агент кӯмак мекунанд, то эффектҳои нолозим набошанд?</p>
+          <ol class="options">
+            <li>«Тезтар кун, асосӣ ин ки кор кунад»</li>
+            <li>«Қиматҳое, ки аз props ва ҳолат ҳисоб кардан мумкин аст, дар рендер ҳисоб кун, бе useState ва useEffect»</li>
+            <li>«Барои боэътимодӣ дар ҳама ҷо, ки ҳолат ҳаст, useEffect илова кун»</li>
+            <li>«Барои ҳар useEffect бинавис, ки бо кадом системаи беруна ҳамоҳанг мешавад»</li>
+          </ol>
+          <div class="explain"><p>Промпти хуб маҳдудият мегузорад (на эффект, ки дар он ҷо рендер басанда аст) ва асосноккунии ҳар як эффекти боқимондаро талаб мекунад. Ин баррасиро ба санҷиши изҳороти мушаххас табдил медиҳад.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t6-review">
+        <header><span class="task-num">ВАЗИФАИ 6.2</span><h4>Дар сабади агент нолозимро ёбед</h4><span class="level hard">душвор</span></header>
+        <p>Ин ҳамон коде, ки дар боло буд, дар майдонча. Ҳар се эффект ва се ҳолатро хориҷ кунед: <code>total</code> ва <code>count</code>-ро дар рендер ҳисоб кунед, ва фиристодани фармоишро бевосита дар коркардкунанда иҷро намоед. Консол бояд як рендер ва як паёми фиристоданро нишон диҳад. Стенд тугмаи «Заказать»-ро баъд аз 200 мс мепахшад.</p>
+        <div class="playground" data-mode="react" data-title="Сабад аз агент">
+<pre class="code" data-lang="jsx">
+import { useEffect, useState } from "react";
+
+const ITEMS = [
+  { title: "Плов праздничный", price: 45, qty: 1 },
+  { title: "Чай зелёный", price: 8, qty: 2 },
+  { title: "Самбуса с мясом", price: 12, qty: 1 },
+];
+
+function Cart({ items }) {
+  const [total, setTotal] = useState(0);
+  const [count, setCount] = useState(0);
+  const [sent, setSent] = useState(false);
+
+  useEffect(() =&gt; {
+    setTotal(items.reduce((sum, i) =&gt; sum + i.price * i.qty, 0));
+  }, [items]);
+
+  useEffect(() =&gt; {
+    setCount(items.reduce((sum, i) =&gt; sum + i.qty, 0));
+  }, [items]);
+
+  useEffect(() =&gt; {
+    if (sent) console.log("заказ отправлен, сумма:", total);
+  }, [sent]);
+
+  console.log("рендер: позиций", count, "сумма", total);
+  return (
+    &lt;div&gt;
+      &lt;p&gt;{count} позиций, {total} сомони&lt;/p&gt;
+      &lt;button id="send" onClick={() =&gt; setSent(true)}&gt;Заказать&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return &lt;Cart items={ITEMS} /&gt;;
+}
+
+// автопроверка: стенд нажимает «Заказать»
+setTimeout(() =&gt; document.getElementById("send").click(), 200);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>рендер: позиций 4 сумма 73
+заказ отправлен, сумма: 73</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p><code>const total = items.reduce(…)</code> ва <code>const count = items.reduce(…)</code> дар бадани компонент. Якҷоя бо онҳо <code>useState</code> барои <code>total</code>, <code>count</code> ва <code>sent</code> меравад.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>function handleOrder() { console.log("заказ отправлен, сумма:", total); }</code>-ро созед ва ба <code>onClick</code> бибандед. Ҳолат нест, бинобар ин клик аз нав кашиданро ба вуҷуд намеорад ва сатри дуюми «рендер» пайдо намешавад.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/you-might-not-need-an-effect" target="_blank" rel="noopener">react.dev — You Might Not Need an Effect</a> · <a href="https://react.dev/learn/synchronizing-with-effects" target="_blank" rel="noopener">react.dev — Synchronizing with Effects</a></p>
+    </section>
+
+    <!-- ============ 07 · Машқ ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Машқ: маълумот аз API"><span class="num">07</span> Машқ: «Дастархон» тарабхонаҳоро аз API бор мекунад</h2>
+
+      <p>Лоиҳаи 1-ро идома медиҳем. Баъд аз дарсҳои 3 ва 4 феҳрист тарабхонаҳоро аз массиви <code>data.ts</code> мегирад, ва сабад бо <code>useReducer</code> кор мекунад. Ҳоло мо массивро бо дархост иваз мекунем: API-и таълимии маҳаллиро дар Node.js мебардорем, онро ба Vite мепайвандем, боркунии навъбандишударо бо бекоркунӣ менависем ва ҳолатҳои боркунӣ ва хатогиро нишон медиҳем. Ҳамзамон фокус ба ҷустуҷӯро аз рӯи тугмаи «/» ва ҳаракати саҳифаро ба тарабхонаи интихобшуда тавассути ref илова мекунем. Сабад аз машқи дарси 4 ва филтрҳо аз вазифаи хонагии он дарсро мо ламс намекунем.</p>
+
+      <h3>Чӣ ҳосил мешавад</h3>
+<div class="ftree"><b>server/</b> <i>нав: API-и таълимӣ дар Node.js-и тоза, бе бастаҳо</i>
+├─ <b>api.mjs</b> <i>/api/restaurants ва /api/restaurants/:id/menu, ?delay=, ?fail=1</i>
+├─ <b>restaurants.json</b>, <b>menu.json</b> <i>маълумот</i>
+<b>src/</b>
+├─ <b>api.ts</b> <i>нав: fetchRestaurants, type guard, isAbortError, errorMessage</i>
+├─ <b>types.ts</b> <i>+ LoadState&lt;T&gt;</i>
+├─ <b>data.ts</b> <i>танҳо menu монд: тарабхонаҳо ба сервер кӯчиданд</i>
+├─ <b>App.tsx</b> <i>+ ҳолати load, се эффект, ду ref</i>
+└─ <b>components/</b> <i>+ LoadingGrid, ErrorMessage; SearchBox ref қабул мекунад</i></div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 220" role="img" aria-label="Роҳи дархост: браузер fetch-ро ба /api/restaurants иҷро мекунад, сервери таҳияи Vite дар порти 5173 дархостро ба API-и маҳаллӣ дар порти 3001 равона мекунад, API бо JSON ҷавоб медиҳад, браузер ҷавобро бо type guard месанҷад ва ба ҳолати load мегузорад">
+          <rect class="fill-y" x="10" y="20" width="150" height="56" rx="12" /><text x="85" y="44" text-anchor="middle">App.tsx</text><text class="sub mono" x="85" y="62" text-anchor="middle">fetch('/api/…')</text>
+          <rect class="box b" x="230" y="20" width="170" height="56" rx="12" /><text x="315" y="44" text-anchor="middle">Vite dev :5173</text><text class="sub mono" x="315" y="62" text-anchor="middle">server.proxy</text>
+          <rect class="fill-g" x="470" y="20" width="240" height="56" rx="12" /><text x="590" y="44" text-anchor="middle">server/api.mjs :3001</text><text class="sub mono" x="590" y="62" text-anchor="middle">JSON аз файл</text>
+          <path class="arr" d="M160 48 H222" /><path class="arr-head" d="M230 48 l-10 -5 v10 z" />
+          <path class="arr" d="M400 48 H462" /><path class="arr-head" d="M470 48 l-10 -5 v10 z" />
+          <rect class="box" x="10" y="130" width="150" height="56" rx="12" /><text x="85" y="154" text-anchor="middle">unknown</text><text class="sub mono" x="85" y="172" text-anchor="middle">isRestaurant</text>
+          <rect class="fill-g" x="230" y="130" width="170" height="56" rx="12" /><text x="315" y="154" text-anchor="middle">LoadState</text><text class="sub mono" x="315" y="172" text-anchor="middle">success / error</text>
+          <rect class="box" x="470" y="130" width="240" height="56" rx="12" /><text x="590" y="154" text-anchor="middle">RestaurantList</text><text class="sub mono" x="590" y="172" text-anchor="middle">ё ErrorMessage</text>
+          <path class="arr" d="M590 76 V104 H85 V122" /><path class="arr-head" d="M85 130 l-5 -10 h10 z" /><text class="sub t-b" x="300" y="100">ҷавоб</text>
+          <path class="arr" d="M160 158 H222" /><path class="arr-head" d="M230 158 l-10 -5 v10 z" />
+          <path class="arr" d="M400 158 H462" /><path class="arr-head" d="M470 158 l-10 -5 v10 z" />
+        </svg>
+        <figcaption>Роҳи маълумот: компонент суроғаро бе хост дархост мекунад, Vite ба API-и таълимӣ равона мекунад, ҷавоб месанҷад ва ба ҳолат меафтад</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Мо аз дарси 4 чиро фарз мекунем</b>
+        <p>Дар <code>App.tsx</code> баъд аз машқи дарси 4: ҳолатҳои <code>cuisine</code>, <code>query</code>, <code>selectedId</code> ва сабади <code>cart</code> бо <code>useReducer(cartReducer, [])</code>; тарабхонаҳо аз <code>restaurants</code> (воридкунӣ аз <code>./data</code>) гирифта мешаванд ва ба <code>visible</code>, <code>selected</code>, <code>TopRestaurants</code> ва <code>ClosedRestaurants</code> мераванд; дар тарафи рост сутуни <code>&lt;aside&gt;</code> бо меню (<code>menu</code> аз <code>data.ts</code>) ва сабад. Дар поён <code>App.tsx</code>-и пурра бо чунин намуд ва рӯйхати панҷ дохилкунӣ оварда шудааст. Агар чизе дар шумо фарқ кунад (масалан, баъд аз ВХ-4 дархост ва ошхона дар <code>filters</code>-и редюсер ҷойгиранд), ба файли худ танҳо ин дохилкуниҳоро гузаронед, ва қисмҳои бегонаро ламс накунед; барқарорсозии ҷустуҷӯро дар <code>clearSearch</code> бо усуле иҷро кунед, ки дар шумо ҳаст (<code>setQuery('')</code> ё <code>dispatch(…)</code>).</p>
+      </div>
+
+      <h3>Қадамҳо</h3>
+      <ol class="steps">
+        <li><b>Оғозро санҷед ва main-ро ҷамъ кунед.</b> Папкаи корӣ тоза аст, ҳамаи санҷишҳо мегузаранд. Машқи дарси 4-ро (шохаи <code>feat/cart</code>) шумо дар охир аллакай ба <code>main</code> ворид кардаед. Агар ВХ-4-ро (шохаи <code>feat/filters</code>) иҷро карда бошед, онро низ ворид кунед; агар не, дарс бе он ҳам кор мекунад:
+<pre class="code" data-title="Терминал">
+git status
+npm run typecheck
+npm run lint
+git switch main
+git merge feat/filters
+</pre>
+          Низоъҳо, агар пайдо шуданд, дастӣ ҳал кунед ва коди ҳарду шохаро нигоҳ доред. Баъд шохаи дарсро созед:
+<pre class="code" data-title="Терминал">
+git switch -c feat/api
+</pre>
+        </li>
+        <li><b>Навъи ҳолати боркунӣ.</b> Ба охири <code>src/types.ts</code> илова кунед (боқии файлро тағйир надиҳед):
+<pre class="code" data-lang="ts" data-title="src/types.ts (ба охир илова кунед)">
+export type LoadState&lt;T&gt; =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; data: T }
+</pre>
+        </li>
+        <li><b>Маълумот барои сервер.</b> Папкаи <code>server</code>-ро созед ва дар он ду файл. Тарабхонаҳо — ҳамон шаш дона, ки дар <code>data.ts</code> баъд аз дарси 3 буданд. Агар шумо тарабхонаҳои худро илова карда бошед (дар вазифаи хонагии дарси 3 на камтар аз нӯҳ), онҳоро дар ҳамон формат ба ин ҷо илова кунед: калидҳо дар нохунак, байни объектҳо вергул, вале пас аз охирин не.
+<pre class="code" data-lang="json" data-title="server/restaurants.json">
+[
+  { "id": 1, "name": "Navruz", "cuisine": "плов", "rating": 4.8, "open": true, "emoji": "🍚", "deliveryMin": 35, "minOrder": 60, "address": "пр. Рудаки, 45" },
+  { "id": 2, "name": "Rohat", "cuisine": "шашлык", "rating": 4.5, "open": false, "emoji": "🍢", "deliveryMin": 45, "minOrder": 80 },
+  { "id": 3, "name": "Samarkand", "cuisine": "самбуса", "rating": 4.6, "open": true, "emoji": "🥟", "deliveryMin": 30, "minOrder": 40 },
+  { "id": 4, "name": "Vatan", "cuisine": "шашлык", "rating": 4.3, "open": true, "emoji": "🍢", "deliveryMin": 40, "minOrder": 50 },
+  { "id": 5, "name": "Shirin", "cuisine": "десерты", "rating": 4.7, "open": true, "emoji": "🍰", "deliveryMin": 25, "minOrder": 35 },
+  { "id": 6, "name": "Bahor", "cuisine": "плов", "rating": 3.9, "open": false, "emoji": "🍚", "deliveryMin": 50, "minOrder": 90 }
+]
+</pre>
+          Меню дар вазифаи хонагӣ лозим мешавад. Инҳо ҳамон 14 хӯрок аз массиви <code>menu</code> дар <code>data.ts</code> (дарси 4) мебошанд: <code>id</code> ва <code>restaurantId</code> мувофиқанд.
+<pre class="code" data-lang="json" data-title="server/menu.json">
+[
+  { "id": 1, "restaurantId": 1, "title": "Плов праздничный", "price": 45 },
+  { "id": 2, "restaurantId": 1, "title": "Чай зелёный", "price": 8 },
+  { "id": 3, "restaurantId": 3, "title": "Самбуса с мясом", "price": 12 },
+  { "id": 4, "restaurantId": 1, "title": "Салат «Шакароб»", "price": 15 },
+  { "id": 5, "restaurantId": 2, "title": "Шашлык из баранины", "price": 38 },
+  { "id": 6, "restaurantId": 2, "title": "Лепёшка", "price": 5 },
+  { "id": 7, "restaurantId": 3, "title": "Самбуса с тыквой", "price": 10 },
+  { "id": 8, "restaurantId": 3, "title": "Лагман", "price": 30 },
+  { "id": 9, "restaurantId": 4, "title": "Шашлык куриный", "price": 28 },
+  { "id": 10, "restaurantId": 4, "title": "Айран", "price": 7 },
+  { "id": 11, "restaurantId": 5, "title": "Пахлава", "price": 20 },
+  { "id": 12, "restaurantId": 5, "title": "Чак-чак", "price": 18 },
+  { "id": 13, "restaurantId": 6, "title": "Плов с курицей", "price": 35 },
+  { "id": 14, "restaurantId": 6, "title": "Компот", "price": 6 }
+]
+</pre>
+        </li>
+        <li><b>API-и таълимӣ.</b> Ин сервери хурд дар модулҳои дарунсохти Node.js аст, бастаҳо лозим нестанд. Вай ончиро мекунад, ки бэкенди воқеӣ мекунад: фавран ҷавоб намедиҳад (600 мс), метавонад бо хатогӣ ҷавоб диҳад ва барои суроғаҳои номаълум 404 бармегардонад. Параметри <code>?delay=2000</code> ҷавобро суст мекунад, ва <code>?fail=1</code> маҷбур мекунад, ки бо рамзи 500 ҷавоб диҳад: барои тамошои ҳолатҳои боркунӣ ва хатогӣ кор меояд.
+<pre class="code" data-lang="js" data-title="server/api.mjs">
+import { createServer } from 'node:http'
+import { readFile } from 'node:fs/promises'
+
+const restaurants = JSON.parse(
+  await readFile(new URL('./restaurants.json', import.meta.url), 'utf8'),
+)
+const menu = JSON.parse(
+  await readFile(new URL('./menu.json', import.meta.url), 'utf8'),
+)
+
+const server = createServer(async (req, res) =&gt; {
+  const url = new URL(req.url ?? '/', 'http://localhost')
+  // ?delay=2000 замедляет ответ, ?fail=1 отвечает ошибкой 500
+  const delay = Number(url.searchParams.get('delay') ?? 600)
+  await new Promise((resolve) =&gt; setTimeout(resolve, delay))
+
+  const send = (status, body) =&gt; {
+    res.writeHead(status, {
+      'Content-Type': 'application/json; charset=utf-8',
+    })
+    res.end(JSON.stringify(body))
+  }
+
+  if (url.searchParams.get('fail') === '1') {
+    return send(500, { message: 'Сервер временно недоступен' })
+  }
+
+  const path = url.pathname
+  if (path === '/api/restaurants') {
+    return send(200, restaurants)
+  }
+  const menuMatch = path.match(/^\/api\/restaurants\/(\d+)\/menu$/)
+  if (menuMatch) {
+    const id = Number(menuMatch[1])
+    if (!restaurants.some((r) =&gt; r.id === id)) {
+      return send(404, { message: 'Ресторан не найден' })
+    }
+    return send(
+      200,
+      menu.filter((item) =&gt; item.restaurantId === id),
+    )
+  }
+  send(404, { message: 'Такого адреса нет' })
+})
+
+server.listen(3001, () =&gt; {
+  console.log('API: http://localhost:3001/api/restaurants')
+})
+</pre>
+          Фармонро ба <code>scripts</code>-и файли <code>package.json</code> илова кунед ва серверро дар <b>тирезаи алоҳидаи терминал</b> оғоз кунед (вай бояд ҳамеша кор кунад, ҳангоме ки шумо код менависед):
+<pre class="code" data-lang="json" data-title="package.json (scripts)">
+"api": "node server/api.mjs"
+</pre>
+<pre class="code" data-title="Терминали 2">
+npm run api
+</pre>
+          Дар браузер <code>http://localhost:3001/api/restaurants</code>-ро кушоед: баъд аз ним сония JSON бо шаш тарабхона пайдо мешавад. Барои суроғаи <code>…/api/restaurants/99/menu</code> шумо ҷавоби «Ресторан не найден»-ро бо рамзи 404 мебинед.</li>
+        <li><b>API-ро ба Vite пайвандед.</b> Дар браузер дархост ба <code>/api/restaurants</code> (бе хост) меравад: сервери таҳияи Vite чунин дархостҳоро ба порти 3001 равона мекунад. Бо ин CORS ва суроғаҳои гуногун барои dev ва истеҳсолот лозим нестанд. Блоки <code>server</code>-ро ба <code>vite.config.ts</code> илова кунед ва <code>npm run dev</code>-ро <b>аз нав оғоз кунед</b>: конфигро танҳо ҳангоми оғоз мехонанд.
+<pre class="code" data-lang="ts" data-title="vite.config.ts">
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  server: {
+    proxy: { '/api': 'http://localhost:3001' },
+  },
+})
+</pre>
+        </li>
+        <li><b>Қабати дархостҳо <code>src/api.ts</code>.</b> Ҳамаи донишҳои бахши 5 дар як файл: ҷавоб ҳамчун <code>unknown</code> меояд, бо type guard месанҷад, ва хатоҳо танг карда мешаванд. Ҳамин папка (<code>src/api</code>) дар <code>AGENTS.md</code> ба нақша гирифта шуда буд; ҳоло як файл басанда аст.
+<pre class="code" data-lang="ts" data-title="src/api.ts">
+import { CUISINES, type Restaurant } from './types'
+
+function isRecord(value: unknown): value is Record&lt;string, unknown&gt; {
+  return typeof value === 'object' &amp;&amp; value !== null
+}
+
+function isRestaurant(value: unknown): value is Restaurant {
+  return (
+    isRecord(value) &amp;&amp;
+    typeof value.id === 'number' &amp;&amp;
+    typeof value.name === 'string' &amp;&amp;
+    typeof value.cuisine === 'string' &amp;&amp;
+    (CUISINES as readonly string[]).includes(value.cuisine) &amp;&amp;
+    typeof value.rating === 'number' &amp;&amp;
+    typeof value.open === 'boolean' &amp;&amp;
+    typeof value.emoji === 'string' &amp;&amp;
+    typeof value.deliveryMin === 'number' &amp;&amp;
+    typeof value.minOrder === 'number'
+  )
+}
+
+export async function fetchRestaurants(
+  signal: AbortSignal,
+): Promise&lt;Restaurant[]&gt; {
+  const response = await fetch('/api/restaurants', { signal })
+  if (!response.ok) {
+    throw new Error(`Сервер ответил ${response.status}`)
+  }
+  const data: unknown = await response.json()
+  if (!Array.isArray(data) || !data.every(isRestaurant)) {
+    throw new Error('Сервер прислал данные в неожиданном формате')
+  }
+  return data
+}
+
+export function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException &amp;&amp; error.name === 'AbortError'
+}
+
+export function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message
+  }
+  return 'Неизвестная ошибка'
+}
+</pre>
+          Ба <code>(CUISINES as readonly string[])</code> диққат диҳед: <code>includes</code> дар кортежи литералҳо танҳо худи ҳамин литералҳоро қабул мекунад, ва ба мо сатри дилхоҳ меояд. Ин ягона ҷоест, ки мо навъро васеъ мекунем, ва танҳо барои санҷиш.</li>
+        <li><b>Скелетон ва хатогӣ.</b> Ду компоненти хурд. Скелетон — шаш лавҳачаи хокистарӣ бо набзанӣ (<code>animate-pulse</code>), калид аз рақам ҷоиз аст: рӯйхат статикӣ аст ва ҳеҷ гоҳ тағйир намеёбад (дарси 3). Блоки хатогӣ нақши <code>alert</code> дорад: хонандагони экранӣ онро худашон хонда медиҳанд.
+<pre class="code" data-lang="tsx" data-title="src/components/LoadingGrid.tsx">
+export default function LoadingGrid() {
+  return (
+    &lt;div
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      role="status"
+      aria-label="Загрузка ресторанов"
+    &gt;
+      {[1, 2, 3, 4, 5, 6].map((n) =&gt; (
+        &lt;div
+          key={n}
+          className="h-48 animate-pulse rounded-2xl border border-stone-200 bg-stone-100"
+        /&gt;
+      ))}
+    &lt;/div&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/ErrorMessage.tsx">
+type ErrorMessageProps = {
+  message: string
+  onRetry: () =&gt; void
+}
+
+export default function ErrorMessage({ message, onRetry }: ErrorMessageProps) {
+  return (
+    &lt;div
+      className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800"
+      role="alert"
+    &gt;
+      &lt;p className="font-semibold"&gt;Не удалось загрузить рестораны&lt;/p&gt;
+      &lt;p className="mt-1 text-sm"&gt;{message}&lt;/p&gt;
+      &lt;button
+        className="mt-3 rounded-lg bg-brand-600 px-3 py-1.5 font-semibold text-white hover:bg-brand-700"
+        onClick={onRetry}
+      &gt;
+        Повторить
+      &lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>SearchBox ref қабул мекунад.</b> Файлро пурра иваз кунед. Ин React 19 аст: <code>ref</code> — prop-и оддӣ, <code>forwardRef</code> лозим нест. Ишора дар <code>placeholder</code> дар бораи тугмаи гарм хабар медиҳад.
+<pre class="code" data-lang="tsx" data-title="src/components/SearchBox.tsx">
+import type { ChangeEvent, Ref } from 'react'
+
+type SearchBoxProps = {
+  value: string
+  onChange: (value: string) =&gt; void
+  ref?: Ref&lt;HTMLInputElement&gt;
+}
+
+export default function SearchBox({ value, onChange, ref }: SearchBoxProps) {
+  function handleChange(event: ChangeEvent&lt;HTMLInputElement&gt;) {
+    onChange(event.target.value)
+  }
+  return (
+    &lt;input
+      ref={ref}
+      className="w-full max-w-xs rounded-lg border border-stone-300 bg-white px-3 py-2"
+      value={value}
+      onChange={handleChange}
+      placeholder="Найти ресторан (/)"
+    /&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Тарабхонаҳоро аз <code>data.ts</code> хориҷ кунед.</b> Ҳоло онҳоро сервер медиҳад. Массиви <code>restaurants</code>-ро аз <code>src/data.ts</code> пурра хориҷ кунед, ва дар сатри аввал танҳо навъи лозимиро монед. Массиви <code>menu</code>-ро ламс накунед: вай ба сабад лозим аст.
+<pre class="code" data-lang="ts" data-title="src/data.ts (оғози файл)">
+import type { MenuItem } from './types'
+
+export const menu: MenuItem[] = [
+  // ...ваши позиции меню остаются как были
+]
+</pre>
+          Фавран <code>npm run typecheck</code>-ро иҷро кунед: компилятор нишон медиҳад, ки <code>App.tsx</code> дигар наметавонад <code>restaurants</code>-ро ворид кунад. Ин интизор аст, қадами навбатӣ онро ислоҳ мекунад.
+<pre class="code" data-title="Терминал — tsc -b">
+src/App.tsx(6,10): error TS2305: Module '"./data"' has no exported member 'restaurants'.
+</pre>
+        </li>
+        <li><b>Ҳамаро дар App ҷамъ кунед.</b> Дар поён <code>App.tsx</code>-и пурра дар ҳолати «баъд аз машқи дарси 4». Агар файли шумо фарқ кунад, аз он танҳо панҷ дохилкуниро гузаронед. <b>1.</b> Воридкуниҳо: <code>useEffect</code>, <code>useRef</code>, функсияҳо аз <code>./api</code>, <code>ErrorMessage</code>, <code>LoadingGrid</code>, навъҳои <code>LoadState</code> ва <code>Restaurant</code>; дар воридкунӣ аз <code>./data</code> танҳо <code>menu</code>-ро нигоҳ доред. <b>2.</b> Ҳолати <code>load</code>, ҳисобкунаки <code>attempt</code> ва ду ref <code>searchRef</code>, <code>selectedRef</code>; сатри <code>const restaurants = …</code> минбаъд ба коди шумо ҳамон массивро медиҳад, ки пештар буд. <b>3.</b> Се эффект: боркунӣ, тугмаи «/», ҳаракат. <b>4.</b> Функсияҳои <code>retry</code> ва <code>clearSearch</code>. <b>5.</b> Дар нишонагузорӣ: <code>ref</code> дар <code>SearchBox</code>, тугмаи «Очистить», се шоха ба ҷои як <code>RestaurantList</code>, блокҳои «Топ рейтинга» ва «Закрыто сейчас» танҳо ҳангоми <code>success</code> (то омадани тарабхонаҳо массив холӣ аст, ва «Сейчас работают все рестораны» нодуруст мебуд) ва <code>ref</code> дар <code>&lt;aside&gt;</code>.
+<pre class="code" data-lang="tsx" data-title="src/App.tsx">
+import { useEffect, useReducer, useRef, useState } from 'react'
+import { errorMessage, fetchRestaurants, isAbortError } from './api'
+import { cartReducer } from './cartReducer'
+import CartItemRow from './components/CartItemRow'
+import CartSummary from './components/CartSummary'
+import ClosedRestaurants from './components/ClosedRestaurants'
+import CuisineFilter from './components/CuisineFilter'
+import ErrorMessage from './components/ErrorMessage'
+import Layout from './components/Layout'
+import LoadingGrid from './components/LoadingGrid'
+import MenuItemRow from './components/MenuItemRow'
+import RestaurantList from './components/RestaurantList'
+import SearchBox from './components/SearchBox'
+import Section from './components/Section'
+import TopRestaurants from './components/TopRestaurants'
+import { menu } from './data'
+import type { Cuisine, LoadState, Restaurant } from './types'
+
+export default function App() {
+  const [cuisine, setCuisine] = useState&lt;Cuisine | null&gt;(null)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState&lt;number | null&gt;(null)
+  const [cart, dispatch] = useReducer(cartReducer, [])
+  const [load, setLoad] = useState&lt;LoadState&lt;Restaurant[]&gt;&gt;({
+    status: 'loading',
+  })
+  const [attempt, setAttempt] = useState(0)
+  const searchRef = useRef&lt;HTMLInputElement&gt;(null)
+  const selectedRef = useRef&lt;HTMLElement&gt;(null)
+
+  const restaurants = load.status === 'success' ? load.data : []
+
+  // 1. Загрузка: внешняя система — сеть
+  useEffect(() =&gt; {
+    const controller = new AbortController()
+    fetchRestaurants(controller.signal)
+      .then((data) =&gt; setLoad({ status: 'success', data }))
+      .catch((error: unknown) =&gt; {
+        if (isAbortError(error)) return
+        setLoad({ status: 'error', message: errorMessage(error) })
+      })
+    return () =&gt; controller.abort()
+  }, [attempt])
+
+  // 2. Горячая клавиша «/»: внешняя система — событие окна браузера
+  useEffect(() =&gt; {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === '/' &amp;&amp; document.activeElement !== searchRef.current) {
+        event.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () =&gt; window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // 3. Прокрутка: колонка с меню нужна после выбора, поэтому ждём коммита
+  useEffect(() =&gt; {
+    if (selectedId !== null) {
+      selectedRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      })
+    }
+  }, [selectedId])
+
+  function retry() {
+    setLoad({ status: 'loading' })
+    setAttempt((n) =&gt; n + 1)
+  }
+
+  function clearSearch() {
+    setQuery('')
+    searchRef.current?.focus()
+  }
+
+  const visible = restaurants.filter(
+    (r) =&gt;
+      (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+      r.name.toLowerCase().includes(query.toLowerCase()),
+  )
+  const selected = restaurants.find((r) =&gt; r.id === selectedId) ?? null
+  const menuItems = menu.filter((m) =&gt; m.restaurantId === selectedId)
+
+  return (
+    &lt;Layout&gt;
+      &lt;h1 className="mb-4 text-3xl font-bold"&gt;Рестораны Душанбе&lt;/h1&gt;
+      &lt;div className="flex flex-wrap items-center gap-3"&gt;
+        &lt;SearchBox ref={searchRef} value={query} onChange={setQuery} /&gt;
+        {query !== '' &amp;&amp; (
+          &lt;button
+            className="text-sm text-stone-600 underline"
+            onClick={clearSearch}
+          &gt;
+            Очистить
+          &lt;/button&gt;
+        )}
+        &lt;CuisineFilter selected={cuisine} onChange={setCuisine} /&gt;
+      &lt;/div&gt;
+      &lt;div className="grid gap-8 lg:grid-cols-[1fr_22rem]"&gt;
+        &lt;div&gt;
+          &lt;Section title="Все рестораны"&gt;
+            {load.status === 'loading' &amp;&amp; &lt;LoadingGrid /&gt;}
+            {load.status === 'error' &amp;&amp; (
+              &lt;ErrorMessage message={load.message} onRetry={retry} /&gt;
+            )}
+            {load.status === 'success' &amp;&amp; (
+              &lt;RestaurantList restaurants={visible} onSelect={setSelectedId} /&gt;
+            )}
+          &lt;/Section&gt;
+          {load.status === 'success' &amp;&amp; (
+            &lt;&gt;
+              &lt;TopRestaurants restaurants={restaurants} /&gt;
+              &lt;ClosedRestaurants restaurants={restaurants} /&gt;
+            &lt;/&gt;
+          )}
+        &lt;/div&gt;
+        &lt;aside ref={selectedRef}&gt;
+          &lt;Section title={selected ? `Меню: ${selected.name}` : 'Меню'}&gt;
+            {selected === null ? (
+              &lt;p className="text-stone-500"&gt;Выберите ресторан в каталоге&lt;/p&gt;
+            ) : (
+              &lt;ul&gt;
+                {menuItems.map((item) =&gt; (
+                  &lt;MenuItemRow
+                    key={item.id}
+                    item={item}
+                    onAdd={(menuItem) =&gt;
+                      dispatch({ type: 'add', item: menuItem })
+                    }
+                  /&gt;
+                ))}
+              &lt;/ul&gt;
+            )}
+          &lt;/Section&gt;
+          &lt;Section title="Корзина"&gt;
+            &lt;CartSummary
+              entries={cart}
+              onClear={() =&gt; dispatch({ type: 'clear' })}
+            &gt;
+              {cart.map((entry) =&gt; (
+                &lt;CartItemRow
+                  key={entry.item.id}
+                  entry={entry}
+                  onQtyChange={(itemId, qty) =&gt;
+                    dispatch({ type: 'setQty', itemId, qty })
+                  }
+                  onRemove={(itemId) =&gt; dispatch({ type: 'remove', itemId })}
+                /&gt;
+              ))}
+            &lt;/CartSummary&gt;
+          &lt;/Section&gt;
+        &lt;/aside&gt;
+      &lt;/div&gt;
+    &lt;/Layout&gt;
+  )
+}
+</pre>
+          <b>Чаро маҳз ин тавр.</b> Ҳолати «боркунӣ» дар дохили эффект гузошта намешавад: қимати ибтидоӣ аллакай <code>loading</code> аст, ва ҳангоми такрор онро <code>retry</code> мегузорад — коркардкунандаи рӯйдод (бахши 3). Ҳаракат бо эффект иҷро шудааст, на дар <code>onSelect</code>: дар лаҳзаи клик сутун ҳанӯз мундариҷаи кӯҳнаро нишон медиҳад, ва ҳаракат бояд баъд аз он бошад, ки React DOM-ро навсозӣ кардааст. Фокус баъд аз «Очистить» бевосита дар коркардкунанда иҷро мешавад: майдон аллакай дар саҳифа ҳаст.</li>
+        <li><b>Оғоз кунед ва бубинед.</b> Ду тирезаи терминал: дар аввалӣ <code>npm run api</code>, дар дуюмӣ <code>npm run dev</code>. Саҳифаро кушоед: 600 мс лавҳачаҳои хокистарӣ, баъд шаш корт. Тугмаи «/»-ро пахш кунед (фокус дар майдони ҷустуҷӯ, аломати «/» ба майдон намеафтад), «nav» ворид кунед, «Очистить»-ро пахш кунед: майдон холӣ, фокус дар он. Тарабхонаеро интихоб кунед ва дар тирезаи танг (375 px) боварӣ ҳосил кунед, ки саҳифа ба ҳамвори ба сутуни «Меню: …» ҳаракат кард (дар чунин паҳноӣ он дар зери рӯйхат ҷойгир аст).</li>
+        <li><b>Ба шабака нигоҳ кунед.</b> DevTools, варақаи Network, филтри Fetch/XHR-ро кушоед, саҳифаро нав кунед. Шумо <b>ду</b> дархост ба <code>/api/restaurants</code> мебинед, якумаш ҳамчун <code>canceled</code> қайд шудааст. Ин StrictMode аст: эффект оғоз ёфт, тозакунӣ дархостро тавассути <code>abort()</code> бекор кард, эффект аз нав оғоз ёфт. Дар ҷамъбасти истеҳсолӣ (<code>npm run build</code>, баъд <code>npm run preview</code>) дархост як дона аст. Дар Network троттлинги «Slow 3G»-ро фаъол кунед: скелетон дарозтар меистад.</li>
+        <li><b>Қасдан вайрон кунед.</b> (а) <code>npm run api</code>-ро қатъ кунед (Ctrl+C) ва саҳифаро нав кунед: ба ҷои кортҳо блоки «Не удалось загрузить рестораны» бо матни «Сервер ответил 502» (прокси-и Vite вақте ки сервер дастнорас аст, ҳамин тавр ҷавоб медиҳад). API-ро аз нав оғоз кунед ва «Повторить»-ро пахш кунед: кортҳо бе навсозии саҳифа пайдо мешаванд. (б) Дар <code>api.ts</code> суроғаро муваққатан ба <code>'/api/restaurants?fail=1'</code> иваз кунед: сервер бо 500 ҷавоб медиҳад, дар блоки хатогӣ «Сервер ответил 500» мешавад. Суроғаро баргардонед. (в) Ба оғози эффекти якум сатри <code>console.log('попытка', attempt)</code>-ро илова кунед, <code>[attempt]</code>-ро ба <code>[]</code> иваз кунед ва <code>npm run lint</code>-ро иҷро кунед: огоҳии <code>react-hooks(exhaustive-deps)</code>-ро хонед. Вобастагиро баргардонед ва сатрро хориҷ кунед. (г) Сатри <code>return () =&gt; controller.abort()</code>-ро хориҷ кунед: дар Network ба ҷои <code>canceled</code> ҳарду дархост то охир мераванд. Сатрро баргардонед.
+<pre class="code" data-title="Терминал — npm run lint: attempt хонда мешавад, вале нишон дода нашудааст">
+src/App.tsx:26:35: warning react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'attempt'
+  help: Either include it or remove the dependency array.
+</pre>
+          Бе сатри бо <code>console.log</code> огоҳӣ намешавад: қоида танҳо онро талаб мекунад, ки эффект воқеан мехонад, ва <code>attempt</code> худ ба худ танҳо такрорро «тела медиҳад».</li>
+        <li><b>Санҷишҳо ва коммит.</b> Ҳар чор фармон бояд бигузаранд:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+          Агар Prettier файлҳои JSON-и серверро дар якчанд сатр аз нав навишта бошад, ин муқаррарӣ аст. Баъд коммит, ворид кардан ба <code>main</code> ва фиристодан:
+<pre class="code" data-title="Терминал">
+git add .
+git commit -m "load restaurants from api"
+git switch main
+git merge feat/api
+git push
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Агар вайрон шуд</b>
+        <p><b>Саҳифаи сафед ё хатои «Сервер ответил 502» фавран:</b> <code>npm run api</code> оғоз нашудааст ё Vite баъд аз таҳрири <code>vite.config.ts</code> аз нав оғоз нашудааст. <b>«Port 3001 is already in use» / <code>EADDRINUSE</code>:</b> порт аз тарафи барномаи дигар ё оғози кӯҳна банд аст: онро пӯшед (Ctrl+C дар тирезаи кӯҳна) ё рақами портро дар <code>api.mjs</code> ва дар прокси иваз кунед. <b>Скелетон намеравад:</b> Network-ро кушоед: агар дархост сурх бошад, статус ва ҷавобро бинед; агар дархост нест, санҷед, ки эффект хориҷ нашудааст ва <code>fetchRestaurants</code> даъват мешавад. <b>«Сервер прислал данные в неожиданном формате»:</b> дар <code>restaurants.json</code> дар ягон тарабхона майдони нодуруст аст: ошхона на аз рӯйхати <code>CUISINES</code>, адад ҳамчун сатр навишта шудааст ё <code>emoji</code>, <code>deliveryMin</code>, <code>minOrder</code> намерасад. <b><code>SyntaxError: Unexpected token</code> ҳангоми оғози API:</b> хато дар JSON, аксар вақт вергули иловагӣ баъд аз объекти охирин. <b>Тугмаи «/» кор намекунад:</b> майдон аллакай дар фокус аст (ҳамин тавр бояд бошад) ё эффекти <code>keydown</code> илова нашудааст. <b>Саҳифа ҳаракат намекунад:</b> тиреза хеле калон аст ва сутуни меню аллакай дар экран аст (дар экрани васеъ он дар тарафи рост меистад): тирезаро то 375 px танг кунед.</p>
+      </div>
+
+      <article class="task" id="t-build">
+        <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Рӯйхати санҷиш: боркунии маълумот кор мекунад</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-build">
+          <li>Кор дар шохаи <code>feat/api</code> мешавад, ва кори дарсҳои пешин ба <code>main</code> ворид шудааст</li>
+          <li>Дар <code>src/types.ts</code> <code>LoadState&lt;T&gt;</code> ҳаст, дар <code>server/</code> се файл, дар <code>package.json</code> фармони <code>api</code>, дар <code>vite.config.ts</code> блоки <code>server.proxy</code></li>
+          <li>Дар <code>src/api.ts</code> ҷавоб ҳамчун <code>unknown</code> хонда мешавад, <code>isRestaurant</code> месанҷад, <code>any</code> ва <code>as</code> барои маълумот нест (ба ғайр аз <code>CUISINES as readonly string[]</code>)</li>
+          <li>Аз <code>data.ts</code> массиви <code>restaurants</code> хориҷ шудааст, феҳрист тарабхонаҳоро аз сервер нишон медиҳад</li>
+          <li>Ман скелетони боркуниро, баъд кортҳоро мебинам; ҳангоми API-и қатъшуда хатогиро мебинам, ва «Повторить» баъд аз оғози API маълумотро бор мекунад</li>
+          <li>Дар Network дархости бекоршуда (<code>canceled</code>) намоён аст, ман шарҳ дода метавонам, ки ин StrictMode ва тозакунии эффект аст</li>
+          <li>Тугмаи «/» фокусро ба ҷустуҷӯ мегузорад, «Очистить» майдонро тоза мекунад ва фокусро бармегардонад, интихоби тарабхона саҳифаро ба сутуни меню ҳаракат медиҳад</li>
+          <li>Дар лоиҳа се эффект ҳаст, ва барои ҳар яки он ман системаи берунаро номбар карда метавонам: шабака, тирезаи браузер, DOM</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> ва <code>npm run build</code> бе хатогӣ мегузаранд, коммит анҷом дода шудааст, <code>feat/api</code> ба <code>main</code> ворид шудааст</li>
+        </ul>
+      </article>
+
+      <article class="task" id="t-observe">
+        <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Рӯйхати санҷиш: мушоҳидаҳо ва вайроншавиҳо</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-observe">
+          <li>Ман API-ро қатъ кардам, блоки хатогиро бо матни «Сервер ответил 502» дидам, API-ро оғоз кардам ва «Повторить»-ро пахш намудам</li>
+          <li>Ман муваққатан <code>?fail=1</code>-ро истифода бурдам, «Сервер ответил 500»-ро хондам ва суроғаро баргардондам</li>
+          <li>Ман вобастагиро аз массив хориҷ кардам ва огоҳии <code>exhaustive-deps</code>-ро хондам, баъд онро баргардондам</li>
+          <li>Ман <code>controller.abort()</code>-ро хориҷ кардам, дидам, ки ҳоло ҳарду дархост ба анҷом мерасанд, ва сатрро баргардондам</li>
+          <li>Ман ҷамъбасти истеҳсолиро ҷамъ кардам (<code>npm run build</code>, <code>npm run preview</code>) ва боварӣ ҳосил кардам, ки дархост як дона аст</li>
+          <li>Ман ҳамаи <code>console.log</code>-ҳои муваққатиро пеш аз коммит хориҷ кардам</li>
+        </ul>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://vite.dev/config/server-options" target="_blank" rel="noopener">vite.dev — server.proxy</a> · <a href="https://react.dev/learn/synchronizing-with-effects" target="_blank" rel="noopener">react.dev — Synchronizing with Effects</a> · <a href="https://nodejs.org/api/http.html" target="_blank" rel="noopener">nodejs.org — HTTP</a></p>
+    </section>
+
+    <!-- ============ 08 · Вазифаи хонагӣ ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">08</span> Вазифаи хонагӣ: менюи тарабхона аз API ва аудити эффектҳо</h2>
+
+      <p>Дар машқ шумо тарабхонаҳоро бор кардед. Дар вазифаи хонагӣ ҳамин корро барои меню мекунед: вақте ки тарабхонаро интихоб мекунанд, дар зери феҳрист менюи он бор мешавад. Дар ин ҷо мусобиқаи воқеии дархостҳо пайдо мешавад (корбар зуд-зуд тарабхонаҳоро иваз мекунад), ва шумо меомӯзед, ки исбот кунед, ки дар лоиҳа эффектҳои нолозим нестанд. Дар шохаи нави <code>feat/api-menu</code> аз <code>main</code> кор кунед, ва дар охир истиноди репозиторийи <code>dastarkhon</code>-ро супоред: ментор ҳамин шохаро мекушояд.</p>
+
+      <h3>Чӣ бояд кард</h3>
+      <ol class="steps">
+        <li><b>Оғоз.</b> <code>git switch main</code>, <code>git switch -c feat/api-menu</code>. API аллакай метавонад менюро диҳад: <code>GET /api/restaurants/1/menu</code> массиви мавқеъҳоро бармегардонад, барои тарабхонаи номаълум ҷавоб 404 аст.</li>
+        <li><b>Дархости меню.</b> Дар <code>src/api.ts</code> <code>isMenuItem</code> (type guard барои навъи <code>MenuItem</code> аз <code>types.ts</code>) ва функсияи <code>fetchMenu(restaurantId: number, signal: AbortSignal): Promise&lt;MenuItem[]&gt;</code>-ро илова кунед. Қоидаҳо ҳамон: <code>response.ok</code>, <code>unknown</code>, type guard, паёмҳои фаҳмо («Сервер ответил 404», «неожиданный формат»), бе <code>any</code> ва <code>as</code>.</li>
+        <li><b>Компоненти <code>RestaurantMenu</code>.</b> Props: <code>{ restaurantId: number; onAdd: (item: MenuItem) =&gt; void }</code>. Вай худаш менюро дар эффект бо <code>AbortController</code> ва тозакунӣ бор мекунад ва чор ҳолатро нишон медиҳад: боркунӣ (матн ё скелетон), хатогӣ (матн ва тугмаи «Повторить»), менюи холӣ («Меню пока пусто») ва рӯйхати хӯрокҳо бо нарх ба сомонӣ (<code>key</code> аз <code>id</code>). Ҳолатро тавассути <code>LoadState&lt;MenuItem[]&gt;</code> тавсиф кунед, <code>AbortError</code>-ро нишон надиҳед.</li>
+        <li><b>Пайвастшавӣ.</b> Дар сутуни <code>&lt;aside&gt;</code> ба ҷои <code>menuItems.map(…)</code> <code>RestaurantMenu</code>-ро нишон диҳед; хӯрокҳоро дар он бо <code>MenuItemRow</code>-и аллакай шинос аз дарси 4 намоиш диҳед, ва илова кардан ба сабадро бо prop-и <code>onAdd</code> гузаронед (<code>dispatch({ type: 'add', item })</code> дар <code>App</code> мемонад). Тағйирёбандаи <code>menuItems</code> дар <code>App</code> баъд аз ин лозим нест: онро хориҷ кунед (массиви <code>menu</code> дар <code>data.ts</code>-ро ҳоло нигоҳ доред). То ки ҳангоми тағйири тарабхона ҳолат аз пештара кашида нашавад, ба компонент <code>key={selectedId}</code> диҳед (бахши 3): ягон «барқарорсозии» <code>setState</code> дар эффект набояд бошад. Сарлавҳаи «Меню: …» ҳамон тавр мемонад (онро <code>selected</code> медиҳад). Ҳаракат ба сутун аз машқ нигоҳ дошта мешавад.</li>
+        <li><b>Мусобиқаи дархостҳо.</b> Дархости менюро муваққатан суст кунед (<code>?delay=2500</code> дар суроға), як тарабхонаро интихоб кунед, ва фавран баъд аз он дигарашро. Дар Network дархости якум бояд <code>canceled</code> шавад, ва дар экран менюи дуюм монад. Скриншоти Network-ро ба <code>docs/effects.md</code> замима кунед (метавонад бо истинод ба файл дар репозиторий бошад). Суроғаро бе <code>delay</code> баргардонед.</li>
+        <li><b>Ref.</b> Тугмаи «Закрыть»-ро дар болои менюи тарабхонаи интихобшуда илова кунед: баъд аз пӯшидан (<code>setSelectedId(null)</code>) фокус тавассути <code>searchRef</code> ба майдони ҷустуҷӯ бармегардад. Фокусро дар коркардкунанда иҷро кунед, на дар эффект.</li>
+        <li><b>Аудити эффектҳо.</b> <code>docs/effects.md</code>-ро созед: ҷадвали ҳамаи <code>useEffect</code>-ҳо дар лоиҳа (файл, системаи беруна, вобастагиҳо, тозакунӣ чӣ мекунад) ва ҷавобҳо <b>бо суханони худатон</b> ба панҷ саволи поён. Агар эффекти бе системаи беруна ёфтед, онро хориҷ кунед ва нависед, ки бо чӣ иваз кардед.</li>
+        <li><b>Санҷишҳо ва коммитҳо.</b> <code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> (бе огоҳиҳо дар бораи эффектҳо), <code>npm run build</code> мегузаранд. Дар шоха на камтар аз се коммити пурмазмун, шоха ба GitHub фиристода шудааст.</li>
+      </ol>
+
+      <h3>Панҷ савол барои docs/effects.md</h3>
+      <ol class="steps">
+        <li>Эффект чист ва аз коркардкунандаи рӯйдод чӣ фарқ дорад? Аз лоиҳаи худ барои ҳар кадом як мисол оред.</li>
+        <li>Агар дар эффекти якуми <code>App</code> массиви вобастагиҳоро хориҷ кунед, чӣ мешавад, ва агар дар <code>RestaurantMenu</code> (ки вобастагии он — <code>restaurantId</code>) <code>[]</code> гузоред, чӣ? Ҳарду вазъиятро тасвир кунед.</li>
+        <li>Барои чӣ дархост тозакунӣ дорад? Ҳангоми иваз кардани зуд-зуди тарабхона дар Network чиро дидед?</li>
+        <li>Чаро дар реҷаи dev эффект ду маротиба оғоз мешавад ва чаро дар ҷамъбасти истеҳсолӣ дархост як дона аст? Агар оғози дуюм барномаро вайрон мекард, чӣ мешуд?</li>
+        <li>Чаро ҷавоби сервер ҳамчун <code>unknown</code> қабул мешавад ва бо type guard месанҷад, на тавассути <code>as</code> оварда мешавад? Агар сервер <code>price</code>-ро ҳамчун сатр барогардонад, чӣ мешавад?</li>
+      </ol>
+
+      <h3>Чӣ тавр месанҷанд</h3>
+      <ul>
+        <li><b>Эффектҳо:</b> ҳар эффект системаи беруна дорад, вобастагиҳо ҳалоланд, тозакунӣ оинавӣ аст, «барқарорсозӣ»-и <code>setState</code> дар эффект нест, <code>useEffect(async …)</code> нест.</li>
+        <li><b>Маълумот ва навъҳо:</b> <code>unknown</code> ва type guard, <code>response.ok</code>, <code>AbortError</code> нишон дода намешавад, <code>any</code> ва <code>as</code> барои маълумот нест.</li>
+        <li><b>Рафтор:</b> чор ҳолати меню кор мекунанд, иваз кардани зуд менюи бегонаро нишон намедиҳад, фокус ба ҷустуҷӯ бармегардад, саҳифа дар 375 px вайрон намешавад.</li>
+        <li><b>Аудит:</b> ҷадвал бо код мувофиқ аст, ҷавобҳо бо суханони худатон навишта шудаанд ва ба лоиҳаи шумо истинод мекунанд.</li>
+        <li><b>Раванд:</b> шоха фиристода шудааст, на камтар аз се коммит, <code>main</code> кори машқро дорад.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул дар вазифаи хонагӣ</b>
+        <p><b>1.</b> Меню дар <code>App</code> барои ҳамаи тарабхонаҳо якбора бор мешавад: бояд аз рӯи интихобшуда бошад. <b>2.</b> Барқарорсозии ҳолат тавассути <code>setState</code> дар эффект ба ҷои <code>key</code>. <b>3.</b> Тозакунии дархост нест: ҳангоми иваз кардани зуд дар экран менюи тарабхонаи дигар. <b>4.</b> <code>AbortError</code> ҳамчун хатои «Меню бор нашуд» нишон дода мешавад. <b>5.</b> Фокус дар эффект бо <code>[selectedId]</code> ба ҷои коркардкунандаи «Закрыть». <b>6.</b> Ҷавоби агент ба <code>docs/effects.md</code> бе тағйир гузошта шудааст. <b>7.</b> Репозиторий хусусӣ аст ё истинод ба профил меравад, на ба репозиторий.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Рӯйхати талаботи ВХ-5</h4><span class="level mid">миёна</span></header>
+        <p>Пеш аз супоридан банд ба банд санҷед.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Машқи дарс кор мекунад ва ба <code>main</code> ворид шудааст, ВХ дар шохаи <code>feat/api-menu</code> иҷро шудааст</li>
+          <li>Дар <code>api.ts</code> <code>isMenuItem</code> ва <code>fetchMenu</code> бо <code>response.ok</code>, <code>unknown</code> ва type guard ҳастанд</li>
+          <li><code>RestaurantMenu</code> боркунӣ, хатогиро бо «Повторить», менюи холӣ ва рӯйхатро бо нархҳо нишон медиҳад</li>
+          <li>Блоки меню бо <code>key={selectedId}</code> пайваст шудааст, иваз кардани зуди тарабхонаҳо менюи бегонаро нишон намедиҳад</li>
+          <li>Дар <code>docs/effects.md</code> скриншоти Network бо дархости бекоршуда ҳаст</li>
+          <li>Тугмаи «Закрыть» интихобро барқарор мекунад ва фокусро тавассути ref бе эффект ба ҷустуҷӯ бармегардонад</li>
+          <li><code>docs/effects.md</code> ҷадвали эффектҳои лоиҳа ва панҷ ҷавобро бо суханони худатон дорад</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> мегузаранд, дар шоха на камтар аз се коммит</li>
+          <li>Шохаи <code>feat/api-menu</code> ба GitHub фиристода шудааст, репозиторий оммавӣ аст: ман истиноддро дар реҷаи инкогнито кушодам</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Супоридан: истиноди репозиторийи GitHub</h4><span class="level mid">миёна</span></header>
+        <p>Истиноди намуди <code>https://github.com/ваш-логин/dastarkhon</code>-ро гузоред. Онро дар реҷаи инкогнито кушоед: шохаи <code>feat/api-menu</code>, код ва <code>docs/effects.md</code> бояд намоён бошанд.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/learn/you-might-not-need-an-effect" target="_blank" rel="noopener">react.dev — You Might Not Need an Effect</a> · <a href="https://react.dev/learn/lifecycle-of-reactive-effects" target="_blank" rel="noopener">react.dev — Lifecycle of Reactive Effects</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/AbortController" target="_blank" rel="noopener">MDN — AbortController</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Хулоса"><span class="num">✓</span> Хулосаи дарс</h2>
+      <ul>
+        <li><b>Эффект</b> компонентро бо системаи беруна (шабака, таймер, обуна, DOM) баъд аз коммит ҳамоҳанг мекунад. Вобастагиҳоро код муайян мекунад: ҳар чизи реактивӣ, ки эффект мехонад. <code>exhaustive-deps</code>-ро хомӯш накунед: қиматро илова кунед, аз компонент бароред, <code>setX((v) =&gt; …)</code> ё <code>useEffectEvent</code>-ро истифода баред (React 19.2+).</li>
+        <li><b>Объектҳо ва функсияҳо аз бадани компонент</b> дар ҳар рендер нав мешаванд: онҳоро ба вобастагиҳо нагузоред, дар дохили эффект созед. <code>[]</code>-и холӣ ҳангоми хондани props замкунии кӯҳнашударо медиҳад.</li>
+        <li><b>Тозакунӣ</b> оинаи танзим аст: <code>removeEventListener</code>, <code>clearInterval</code>, <code>disconnect</code>, <code>abort</code>. Тартиб ҳангоми тағйири вобастагиҳо: тозакунии кӯҳна, баъд эффекти нав. StrictMode дар dev эффектро ду маротиба оғоз мекунад: агар ин код вайрон кунад, тозакуниро бояд ислоҳ кард, на оғози дукаратаро пинҳон.</li>
+        <li><b>Эффект лозим нест:</b> маълумоти ҳосилшуда дар рендер ҳисоб мешавад, ҳолат тавассути <code>key</code> барқарор мешавад, вокуниш ба клик дар коркардкунанда навишта мешавад, занҷири эффектҳо бо як коркардкунанда иваз мешавад. Огоҳии <code>set-state-in-effect</code> — сабаби санҷиши он, ки оё эффект нолозим нест.</li>
+        <li><b>useRef</b>: <code>useRef&lt;HTMLInputElement&gt;(null)</code>, санҷиши <code>?.</code>; навиштан ба <code>ref.current</code> рендерро ба вуҷуд намеорад; ҳангоми рендер нахонед ва нанависед. Ref ҳамчун prop-и оддӣ дар React 19 (<code>ref?: Ref&lt;…&gt;</code>), <code>forwardRef</code> лозим нест. Фокус ва ҳаракатро дар коркардкунанда иҷро мекунанд; эффект лозим аст, агар унсур баъд аз рендер пайдо шавад.</li>
+        <li><b>fetch дар эффект:</b> <code>AbortController</code> дар дохили эффект, <code>response.ok</code>, ҷавоб ҳамчун <code>unknown</code> ва type guard, <code>AbortError</code>-ро нодида гирифтан, дар cleanup <code>abort()</code>. «Боркунӣ» бо қимати ибтидоӣ ё дар коркардкунанда гузошта мешавад, на дар эффект.</li>
+        <li><b>LoadState&lt;T&gt;</b> — union-и <code>loading | error | success</code> бо майдони <code>status</code>: <code>data</code>-ро бе санҷиш хондан мумкин нест. Дар <code>catch</code> хато — <code>unknown</code>: <code>error instanceof Error</code>.</li>
+        <li><b>Лоиҳаи 1 «Дастархон»:</b> тарабхонаҳо аз <code>server/api.mjs</code> тавассути прокси-и Vite меоянд, дар <code>App</code> се эффект (боркунӣ, тугмаи «/», ҳаракат), <code>SearchBox</code> <code>ref</code> қабул мекунад. Минбаъд: ҳукҳои худӣ <code>useFetch</code> ва <code>useDebounce</code> (дарси 6) ва формаҳо бо Zod (дарси 7).</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ВАЗИФАИ 9.1</span><h4>Ман мавзӯъро воқеан фаҳмидам</h4><span class="level easy">осон</span></header>
+        <p>Танҳо он чизеро қайд кунед, ки бе маслиҳат иҷро карда метавонед.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Метавонам шарҳ диҳам, ки эффект чист, ва вобастагиҳоро аз рӯи ишораи линтер ҷойгир кунам</li>
+          <li>Метавонам замкунии кӯҳнашударо бо навсозии функсионалии ҳолат ислоҳ кунам</li>
+          <li>Метавонам эффектро бо тозакунӣ барои таймер, обуна ва дархост нависам</li>
+          <li>Метавонам шарҳ диҳам, ки чаро дар dev эффект ду маротиба оғоз мешавад ва чӣ тавр инро санҷидан мумкин аст</li>
+          <li>Метавонам эффекти нолозимро ёбам ва онро бо ҳисобкунӣ дар рендер, коркардкунанда ё <code>key</code> иваз кунам</li>
+          <li>Метавонам <code>useRef</code>-ро барои фокус, ҳаракат ва қимат бе аз нав кашидан истифода барам</li>
+          <li>Метавонам маълумотро бо <code>AbortController</code>, ҳолатҳои <code>LoadState</code> ва ҷавоб тавассути <code>unknown</code> ва type guard бор кунам</li>
+          <li>Метавонам хаторо дар <code>catch</code> танг кунам ва <code>AbortError</code>-ро аз хатои воқеӣ фарқ намоям</li>
+          <li>Метавонам эффектҳои аз тарафи агент навишташударо аз рӯи рӯйхати бахши 6 санҷам</li>
+        </ul>
+      </article>
+    </section>
