@@ -1,0 +1,1630 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 2 · TypeScript и модель React</p>
+      <h1>TypeScript: от JavaScript к типам</h1>
+      <p class="lead">К концу урока вы будете читать и писать типы TypeScript: описывать данные ресторана, блюда и корзины, ограничивать значения списком вариантов, обращаться с <code>null</code> и <code>undefined</code>, типизировать функции, props, события и <code>useState</code>. В проекте «Дастархон» появятся файлы <code>types.ts</code>, <code>data.ts</code> и пять типизированных компонентов, а на любую красную ошибку компилятора у вас будет план: прочитать, понять, исправить без <code>any</code>.</p>
+      <ul class="goals">
+        <li>Объяснить, что ловит TypeScript, чего не ловит JavaScript, и почему типы исчезают при сборке</li>
+        <li>Описывать данные через <code>type</code> и <code>interface</code>, делать поля необязательными и только для чтения</li>
+        <li>Ограничивать значения union- и literal-типами, сужать тип проверкой и выводить тип из <code>as const</code></li>
+        <li>Безопасно работать с <code>null</code> и <code>undefined</code> (<code>?.</code>, <code>??</code>, проверка) и типизировать функции</li>
+        <li>Типизировать props, <code>children</code>, обработчики событий и <code>useState</code> в React-компоненте</li>
+        <li>Исправлять типовые ошибки компилятора и просить ИИ объяснить ошибку, а не «починить любой ценой»</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужен проект «Дастархон» из урока 1 (откройте его в Cursor или VS Code), терминал и около 3,5 часов. Теорию (разделы 1–8) читайте по частям. Блоки на тёмном фоне запускаются прямо на странице: типы в них проверяет настоящий компилятор TypeScript, поэтому ошибки вы увидите сразу, с номером строки и кодом. Раздел 9 — «лаборатория»: 15 типовых ошибок компилятора, которые вы исправите. Раздел 10 — практика в проекте на вашем компьютере, раздел 11 — домашнее задание.</p>
+      <p>Предполагается, что вы знаете JavaScript и основы React: JSX, компоненты, props, <code>useState</code>. Здесь вы добавляете типы к тому, что уже умеете. Дженерики (угловые скобки с параметром типа) разберём позже в курсе, а пока встретите их только в двух готовых записях: <code>useState&lt;…&gt;</code> и <code>ChangeEvent&lt;…&gt;</code>. Читайте их как готовый шаблон. Утилитные типы (<code>Partial</code>, <code>Pick</code> и другие) тоже появятся позже, в этом уроке их нет.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="why-ts">
+      <h2 data-toc="Зачем типы"><span class="num">01</span> Зачем нужны типы и что такое TypeScript</h2>
+
+      <p>JavaScript не следит за тем, что вы кладёте в переменную. Строка, число, <code>undefined</code> — ему всё равно, пока код не выполнится. Ошибка всплывёт у пользователя, в самый неудобный момент. Запустите блок:</p>
+
+<pre class="code" data-run data-title="JavaScript: ошибка, которую никто не заметил">
+const price = "45";          // цена пришла строкой, например из поля формы
+const delivery = 10;
+console.log("К оплате:", price + delivery);   // ожидали 55
+
+const restaurant = { name: "Navruz" };
+console.log(restaurant.adress.toUpperCase()); // опечатка в adress
+</pre>
+
+      <p>Первая строка выводит <code>4510</code> вместо <code>55</code>: JavaScript склеил строку с числом. Вторая падает с <code>TypeError</code>, но только в момент запуска. <b>TypeScript</b> — это тот же JavaScript плюс <b>типы</b>: пометки о том, какие значения допустимы. Он читает код, не запуская его, и подсвечивает такие места красным ещё в редакторе.</p>
+
+      <p>Теперь тот же код с типами. Нажмите «Запустить»: вы увидите ошибки компилятора до выполнения кода.</p>
+
+<pre class="code" data-run data-lang="ts" data-title="TypeScript: компилятор находит ошибки раньше">
+const price: number = "45";
+const delivery: number = 10;
+console.log("К оплате:", price + delivery);
+
+const restaurant = { name: "Navruz" };
+console.log(restaurant.adress);
+</pre>
+
+      <p>Компилятор сообщит о двух ошибках: <code>Type 'string' is not assignable to type 'number'. (TS2322)</code> и <code>Property 'adress' does not exist on type '{ name: string; }'. (TS2339)</code>. Читать их нужно так: «строку нельзя положить туда, где ожидается число» и «у этого объекта нет поля <code>adress</code>». Англоязычные тексты ошибок — не проблема: в них повторяются одни и те же слова, и скоро вы узнаете их с первого взгляда.</p>
+
+      <h3>Типы живут только до запуска</h3>
+      <p>Браузер не понимает TypeScript. Перед запуском типы вырезаются, и остаётся обычный JavaScript. Поэтому типы ничего не стоят пользователю: они помогают <b>вам</b> писать код. А ещё они работают как документация: по типу функции сразу видно, что ей передать и что она вернёт.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 240" role="img" aria-label="Схема: файл App.tsx идёт по двум путям. Путь первый: tsc и редактор проверяют типы и показывают ошибки. Путь второй: Vite стирает типы и отдаёт браузеру обычный JavaScript">
+          <rect class="fill-y" x="10" y="92" width="140" height="56" rx="12" /><text x="80" y="117" text-anchor="middle">src/App.tsx</text><text class="sub mono" x="80" y="136" text-anchor="middle">код + типы</text>
+          <rect class="fill-g" x="300" y="22" width="170" height="56" rx="12" /><text x="385" y="47" text-anchor="middle">tsc и редактор</text><text class="sub mono" x="385" y="66" text-anchor="middle">проверяют типы</text>
+          <rect class="fill-r" x="560" y="22" width="150" height="56" rx="12" /><text x="635" y="47" text-anchor="middle">ошибки</text><text class="sub mono" x="635" y="66" text-anchor="middle">TS2322, TS2339…</text>
+          <rect class="fill-g" x="300" y="162" width="170" height="56" rx="12" /><text x="385" y="187" text-anchor="middle">Vite</text><text class="sub mono" x="385" y="206" text-anchor="middle">стирает типы</text>
+          <rect class="box" x="560" y="162" width="150" height="56" rx="12" /><text x="635" y="187" text-anchor="middle">браузер</text><text class="sub mono" x="635" y="206" text-anchor="middle">обычный JavaScript</text>
+          <path class="arr" d="M150 108 H225 V50 H292" /><path class="arr-head" d="M300 50 l-10 -5 v10 z" />
+          <path class="arr" d="M150 132 H225 V190 H292" /><path class="arr-head" d="M300 190 l-10 -5 v10 z" />
+          <path class="arr" d="M470 50 H552" /><path class="arr-head" d="M560 50 l-10 -5 v10 z" />
+          <path class="arr" d="M470 190 H552" /><path class="arr-head" d="M560 190 l-10 -5 v10 z" />
+        </svg>
+        <figcaption>Типы проверяет tsc (и редактор), а Vite только вырезает их. В браузер типы не попадают, поэтому проверка работает только на этапе разработки</figcaption>
+      </figure>
+
+      <div class="yt" data-id="zQnBQ4tB3ZA" data-title="TypeScript in 100 Seconds — канал Fireship"></div>
+      <p class="muted">Ролик на английском, включите субтитры (2 минуты): что такое TypeScript и зачем он нужен. Ролик 2022 года, он объясняет идею; команды и настройки берите из этого урока.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Типы — как проверка на входе в аэропорт. В зале ожидания шумно, но по дороге к самолёту у каждого проверяют паспорт и билет. Ошибка найдена в аэропорту, а не в воздухе. JavaScript без типов пускает всех, а проблему замечает, когда самолёт уже летит.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные заблуждения</b>
+        <p><b>1.</b> «TypeScript — отдельный язык, который заменяет JavaScript». Нет, это надстройка: любой JavaScript — уже корректный TypeScript. <b>2.</b> «Типы проверяются в браузере у пользователя». Нет, только при разработке и сборке. <b>3.</b> «Если типы сошлись, багов нет». Типы ловят класс ошибок про формы данных, но не логические: цену можно умножить на неверное число и получить правильный по типу, но неверный по смыслу результат. <b>4.</b> «Типы замедляют работу». На скорость приложения они не влияют, их нет в итоговом коде.</p>
+      </div>
+
+      <article class="task" id="q-why">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: что делают типы</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Когда TypeScript сообщает об ошибке типа?</p>
+          <ol class="options">
+            <li>Когда пользователь нажимает кнопку в браузере</li>
+            <li>Только при деплое на хостинг</li>
+            <li>Ещё до запуска: в редакторе и при проверке <code>tsc</code>, по тексту кода</li>
+            <li>Когда сервер возвращает ответ</li>
+          </ol>
+          <div class="explain"><p>Компилятор читает код, не выполняя его. Поэтому ошибка видна в момент набора, а не у пользователя.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что происходит с типами, когда Vite собирает приложение?</p>
+          <ol class="options">
+            <li>Они превращаются в проверки, которые работают в браузере</li>
+            <li>Они вырезаются, в браузер уходит обычный JavaScript</li>
+            <li>Они отправляются на сервер</li>
+            <li>Браузер сам проверяет типы при загрузке страницы</li>
+          </ol>
+          <div class="explain"><p>Типы нужны разработчику, не пользователю. Данные, которые приходят во время работы (например, из формы), типы сами не проверят: для этого нужен код.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-2">
+        <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Первые ошибки типов</h4><span class="level easy">лёгкая</span></header>
+        <p>В коде три ошибки <code>TS2322</code>: значения не подходят под объявленные типы. Исправьте <b>значения</b> (не типы), чтобы компилятор был доволен и вывод совпал с ожидаемым.</p>
+<pre class="code" data-run data-lang="ts">
+const title: string = "Плов";
+const price: number = "45";
+const qty: number = "2";
+const open: boolean = "да";
+
+console.log(title + ": " + price * qty + " сомони");
+console.log(open ? "открыто" : "закрыто");
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Плов: 90 сомони
+открыто</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Число пишется без кавычек, логическое значение — <code>true</code> или <code>false</code> тоже без кавычек.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Вторая строка вывода должна быть «открыто», значит, нужно <code>true</code>.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://www.typescriptlang.org/docs/handbook/typescript-from-scratch.html" target="_blank" rel="noopener">typescriptlang.org — TypeScript for the New Programmer</a> · <a href="https://react.dev/learn/typescript" target="_blank" rel="noopener">react.dev — Using TypeScript</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="basics">
+      <h2 data-toc="Базовые типы и вывод"><span class="num">02</span> Базовые типы и вывод типов</h2>
+
+      <p>Типы, которые нужны каждый день: <code>string</code> (строка), <code>number</code> (любое число, целое и дробное), <code>boolean</code> (<code>true</code>/<code>false</code>). Тип пишется после имени и двоеточия: <code>const name: string = "Navruz"</code>.</p>
+
+      <h3>Вывод типов: чаще всего тип писать не нужно</h3>
+      <p>Если вы сразу присваиваете значение, TypeScript <b>сам определяет тип</b>. Это называется выводом типов (type inference). Писать тип вручную в таких местах — лишний шум.</p>
+
+<pre class="code" data-run data-lang="ts" data-title="Вывод типов">
+let city = "Душанбе";    // TypeScript решил: city — string
+city = "Худжанд";        // можно: снова строка
+city = 5;                // ошибка: число в string-переменную
+
+const rating = 4.8;      // number
+const isOpen = true;     // boolean
+console.log(city, rating, isOpen);
+</pre>
+
+      <p>У <code>let</code> и <code>const</code> вывод немного разный. <code>let city = "Душанбе"</code> получает тип <code>string</code>, потому что значение можно менять. А <code>const city = "Душанбе"</code> получает точный тип <code>"Душанбе"</code> (литерал): значение никогда не изменится. В разделе 4 вы увидите, зачем это нужно.</p>
+
+      <h3>Когда тип пишут руками</h3>
+      <ul>
+        <li><b>Параметры функций:</b> TypeScript не знает, что вы передадите, поэтому параметры нужно описывать всегда (раздел 6).</li>
+        <li><b>Данные, которые пришли «снаружи»:</b> ответ API, поле формы. Их форму вы описываете сами (раздел 3).</li>
+        <li><b>Пустые значения:</b> пустой массив <code>[]</code> и значение <code>null</code> несут мало информации, поэтому тип указывают явно.</li>
+      </ul>
+
+      <h3>Массивы</h3>
+      <p>Тип массива — тип элемента и квадратные скобки: <code>number[]</code> (массив чисел), <code>string[]</code> (массив строк). Если вы положите в такой массив элемент другого типа, будет ошибка. Методы <code>map</code>, <code>filter</code>, <code>find</code> знают тип элементов сами: в <code>prices.map((p) =&gt; p * 2)</code> параметр <code>p</code> — число, типизировать его не нужно.</p>
+
+<pre class="code" data-run data-lang="ts" data-title="Массивы и вывод внутри map">
+const cuisines: string[] = ["плов", "шашлык"];
+cuisines.push("самбуса");       // можно
+
+const prices: number[] = [45, 8, 12];
+const doubled = prices.map((p) =&gt; p * 2);   // p — number, doubled — number[]
+console.log(cuisines.length, doubled);
+</pre>
+
+      <div class="callout warn">
+        <b>Тип <code>any</code>: запрещён в курсе</b>
+        <p><code>any</code> означает «любое значение»: компилятор перестаёт проверять эту переменную. Он выключает защиту, ради которой мы подключили TypeScript, и «заражает» код: всё, что вычислено из <code>any</code>, тоже становится <code>any</code>. Мы не пишем <code>any</code> ни в учебных примерах, ни в проекте. Если не получается подобрать тип, это повод спросить: «что именно приходит сюда?», а не сдаться.</p>
+      </div>
+
+      <div class="yt" data-id="rPaRVcH9big" data-title="TypeScript самый полноценный КУРС с 0 до Pro — канал AI Introvert (Дмитрий Колотильщиков)" data-start="1417"></div>
+      <p class="muted">Курс на русском (май 2025, 4,4 часа), смотрите по частям. К этому уроку: 23:37–33:54 (примитивные типы, массивы), 1:08:16–1:23:35 (union и функции), 1:27:17–1:49:43 (интерфейсы и типы, литералы, необязательные поля). Пропускайте <code>enums</code> (41:38): в нашем проекте они запрещены настройкой <code>erasableSyntaxOnly</code>. Классы, декораторы и Angular в курсе нам не нужны.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вывод типов — как опытный продавец на бозоре. Вы кладёте на весы товар, и он сам понимает: это лук, считаем по килограммам. Подписывать каждый товар вручную не нужно. Но когда вы заказываете по телефону («пришлите чего-нибудь»), без уточнения не обойтись: нужно сказать, что именно и сколько. Параметры функций — такой же заказ по телефону.</p>
+      </div>
+
+      <article class="task" id="t2-1">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Массивы: найдите лишний элемент</h4><span class="level easy">лёгкая</span></header>
+        <p>В обоих массивах попал элемент не того типа. Замените его на подходящий (во втором массиве добавьте кухню «самбуса»).</p>
+<pre class="code" data-run data-lang="ts">
+const prices: number[] = [45, 8, "12", 30];
+const total = prices.reduce((sum, p) =&gt; sum + p, 0);
+console.log("Итого:", total);
+
+const cuisines: string[] = ["плов", "шашлык", 5];
+console.log(cuisines.length + " кухни");
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Итого: 95
+3 кухни</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В <code>prices</code> вместо <code>"12"</code> нужно число <code>12</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>В <code>cuisines</code> замените <code>5</code> на строку <code>"самбуса"</code>.</p></details>
+      </article>
+
+      <article class="task" id="q-basics">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Проверь себя: вывод типов и any</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Какой тип у переменной <code>let city = "Душанбе"</code>, и можно ли потом написать <code>city = 5</code>?</p>
+          <ol class="options">
+            <li><code>number</code>, можно</li>
+            <li><code>string</code>, нельзя: TS2322</li>
+            <li><code>any</code>, можно</li>
+            <li>Тип не определён, пока код не запущен</li>
+          </ol>
+          <div class="explain"><p>Тип выводится из начального значения. Присвоить число в <code>string</code>-переменную компилятор не даст.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Почему в курсе запрещён <code>any</code>?</p>
+          <ol class="options">
+            <li>Он выключает проверку типов для значения и «заражает» всё, что из него вычислено</li>
+            <li>Он медленно работает в браузере</li>
+            <li>Он не поддерживается в React 19</li>
+            <li>Он занимает много места в сборке</li>
+          </ol>
+          <div class="explain"><p>Ошибка при <code>any</code> не исчезает, а прячется: она проявится у пользователя. Типы нужны, чтобы этого не было.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://www.typescriptlang.org/docs/handbook/2/everyday-types.html" target="_blank" rel="noopener">typescriptlang.org — Everyday Types</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="objects">
+      <h2 data-toc="Объекты: type и interface"><span class="num">03</span> Объекты: type, interface, необязательные поля</h2>
+
+      <p>Данные в приложении — это объекты: ресторан, блюдо, позиция корзины. Форму объекта описывают <b>именем типа</b>. Так он пишется один раз и используется везде.</p>
+
+<pre class="code" data-run data-lang="ts" data-title="type: описание объекта">
+type Restaurant = {
+  id: number;
+  name: string;
+  rating: number;
+  open: boolean;
+  address?: string;        // ? — поле необязательное
+  readonly createdAt: number;   // readonly — после создания менять нельзя
+};
+
+const navruz: Restaurant = { id: 1, name: "Navruz", rating: 4.8, open: true, createdAt: 2024 };
+console.log(navruz.name, navruz.address);   // address может быть undefined
+navruz.rating = 4.9;                        // можно
+navruz.createdAt = 2025;                    // ошибка: readonly
+</pre>
+
+      <p>Что здесь важно:</p>
+      <ul>
+        <li>Поле <code>address?: string</code> необязательное: его можно не указывать, а его тип — <code>string | undefined</code>. Читая такое поле, вы обязаны учесть, что значения может не быть (раздел 5).</li>
+        <li><code>readonly</code> запрещает менять поле после создания. Это защита от случайных правок.</li>
+        <li>Лишнее поле или поле с опечаткой в литерале объекта тоже ошибка: <code>{ name: "A", nmae: "B" }</code> компилятор не пропустит.</li>
+        <li>Объект, у которого поля вложены, описывается так же: <code>type CartItem = { item: MenuItem; qty: number }</code>.</li>
+      </ul>
+
+      <h3>interface и type: что выбрать</h3>
+      <p>Описать форму объекта можно двумя способами: <code>type</code> и <code>interface</code>. Для объектов они почти равны:</p>
+
+<pre class="code" data-run data-lang="ts" data-title="interface и extends">
+interface Dish {
+  id: number;
+  title: string;
+  price: number;
+}
+
+interface Drink extends Dish {   // Drink получает все поля Dish и добавляет своё
+  volumeMl: number;
+}
+
+const tea: Drink = { id: 7, title: "Чай", price: 8, volumeMl: 300 };
+console.log(tea.title, tea.volumeMl);
+</pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th><code>type</code></th><th><code>interface</code></th></tr></thead>
+          <tbody>
+            <tr><td>Описать объект</td><td>да</td><td>да</td></tr>
+            <tr><td>Расширить</td><td><code>&amp;</code> (пересечение)</td><td><code>extends</code></td></tr>
+            <tr><td>Union (<code>"a" | "b"</code>), литералы, массивы, функции</td><td><b>да</b></td><td>нет, только объекты</td></tr>
+            <tr><td>Объединение одноимённых объявлений</td><td>нет (дубликат — ошибка)</td><td>да (declaration merging)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><b>Правило курса:</b> всегда <code>type</code>. Он умеет всё, что нужно для props и данных, включая union, а один способ проще держать в голове. <code>interface</code> вы будете встречать в чужом коде и в документации библиотек: понимать его надо, использовать необязательно.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Тип объекта — это бланк заказа в чойхоне: «блюдо (обязательно), количество (обязательно), пожелания (необязательно)». Заполнить бланк неправильно (без блюда, с «количеством» из слов) официант не примет. А <code>readonly</code> — штамп «подтверждено»: после него заказ править нельзя.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Писать <code>name?: string</code> «на всякий случай»: тогда везде придётся проверять, есть ли имя. Делайте поле необязательным только если данные реально бывают без него. <b>2.</b> Описывать форму объекта в каждом файле заново: тип пишут один раз в <code>types.ts</code> и импортируют. <b>3.</b> Ставить точку с запятой между полями в одних местах и запятую в других: в объектных типах работают оба варианта, выберите один (в проекте Prettier приведёт всё к одному виду). <b>4.</b> Типы в имени: <code>IRestaurant</code>, <code>TRestaurant</code> — устаревшая привычка, мы пишем просто <code>Restaurant</code>.</p>
+      </div>
+
+      <article class="task" id="t3-1">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Опишите тип блюда</h4><span class="level easy">лёгкая</span></header>
+        <p>Опишите тип <code>Dish</code>: <code>id</code> (число), <code>title</code> (строка), <code>price</code> (число) и необязательное поле <code>spicy</code> (логическое). Сейчас у типа нет полей, и компилятор жалуется на обращения к ним.</p>
+<pre class="code" data-run data-lang="ts">
+type Dish = {
+  // TODO: поля
+};
+
+const dishes: Dish[] = [
+  { id: 1, title: "Плов", price: 45 },
+  { id: 2, title: "Лагман", price: 38, spicy: true },
+];
+
+for (const d of dishes) {
+  console.log(d.title, d.price, d.spicy ? "острое" : "обычное");
+}
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Плов 45 обычное
+Лагман 38 острое</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Каждое поле — строка вида <code>имя: тип;</code>. Необязательное поле — <code>имя?: тип;</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>У первого блюда нет <code>spicy</code>, значит, поле нужно сделать необязательным: <code>spicy?: boolean;</code>.</p></details>
+      </article>
+
+      <article class="task" id="t3-2">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>interface и extends</h4><span class="level mid">средняя</span></header>
+        <p>Опишите <code>Drink</code> как расширение <code>Dish</code>: все поля блюда и ещё <code>volumeMl</code> (число).</p>
+<pre class="code" data-run data-lang="ts">
+interface Dish {
+  id: number;
+  title: string;
+  price: number;
+}
+
+// TODO: интерфейс Drink расширяет Dish и добавляет volumeMl
+interface Drink {}
+
+const tea: Drink = { id: 7, title: "Чай", price: 8, volumeMl: 300 };
+console.log(`${tea.title}: ${tea.volumeMl} мл, ${tea.price} сомони`);
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Чай: 300 мл, 8 сомони</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>После имени интерфейса пишут <code>extends</code> и имя родителя.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>interface Drink extends Dish { volumeMl: number; }</code></p></details>
+      </article>
+
+      <article class="task" id="q-objects">
+        <header><span class="task-num">ЗАДАЧА 3.3</span><h4>Проверь себя: type и interface</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Что умеет <code>type</code>, но не умеет <code>interface</code>?</p>
+          <ol class="options">
+            <li>Описывать объект с полями</li>
+            <li>Делать поле необязательным</li>
+            <li>Описывать union, например <code>"new" | "done"</code></li>
+            <li>Содержать вложенные объекты</li>
+          </ol>
+          <div class="explain"><p>Объекты описывают оба способа. Union, литералы и типы функций можно задать только через <code>type</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Поле объявлено как <code>address?: string</code>. Какого типа значение при чтении?</p>
+          <ol class="options">
+            <li><code>string | undefined</code>: значения может не быть</li>
+            <li>Всегда <code>string</code></li>
+            <li><code>null</code></li>
+            <li><code>any</code></li>
+          </ol>
+          <div class="explain"><p>Знак вопроса делает поле необязательным, и при чтении TypeScript заставит учесть <code>undefined</code>.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://www.typescriptlang.org/docs/handbook/2/objects.html" target="_blank" rel="noopener">typescriptlang.org — Object Types</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#differences-between-type-aliases-and-interfaces" target="_blank" rel="noopener">type и interface: различия</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="union">
+      <h2 data-toc="Union и literal-типы"><span class="num">04</span> Union, literal-типы и as const</h2>
+
+      <p>Часто значение может быть не «любой строкой», а одним из нескольких вариантов: статус заказа, кухня, размер порции. Для этого у TypeScript есть <b>union</b> (объединение) и <b>literal-типы</b> (точные значения).</p>
+
+<pre class="code" data-run data-lang="ts" data-title="Literal-типы и union">
+type OrderStatus = "new" | "cooking" | "delivering" | "done";   // только эти 4 строки
+
+let status: OrderStatus = "new";
+status = "cooking";        // можно
+status = "ready";          // ошибка: такого варианта нет
+
+type Id = number | string;  // union из типов: число или строка
+const id: Id = 42;
+console.log(status, id);
+</pre>
+
+      <p>Такой тип лучше, чем просто <code>string</code>: опечатка <code>"cookng"</code> становится ошибкой компилятора, а не тихим багом. Редактор ещё и подсказывает варианты при наборе.</p>
+
+      <h3>Сужение типа (narrowing)</h3>
+      <p>С union-значением нельзя делать то, что подходит не всем вариантам. Сначала нужно <b>проверить</b>, какой вариант перед вами. После проверки TypeScript «сужает» тип внутри ветки.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Схема сужения типа: значение price имеет тип number или string, проверка typeof price равно string делит поток на две ветки: внутри if это string, после if остаётся number">
+          <rect class="fill-y" x="10" y="82" width="190" height="56" rx="12" /><text x="105" y="107" text-anchor="middle">price</text><text class="sub mono" x="105" y="126" text-anchor="middle">number | string</text>
+          <rect class="box b" x="270" y="82" width="200" height="56" rx="12" /><text x="370" y="107" text-anchor="middle">проверка</text><text class="sub mono" x="370" y="126" text-anchor="middle">typeof price === "string"</text>
+          <rect class="fill-g" x="540" y="14" width="170" height="56" rx="12" /><text x="625" y="39" text-anchor="middle">внутри if: string</text><text class="sub mono" x="625" y="58" text-anchor="middle">price.toUpperCase()</text>
+          <rect class="fill-g" x="540" y="150" width="170" height="56" rx="12" /><text x="625" y="175" text-anchor="middle">дальше: number</text><text class="sub mono" x="625" y="194" text-anchor="middle">price.toFixed(2)</text>
+          <path class="arr" d="M200 110 H262" /><path class="arr-head" d="M270 110 l-10 -5 v10 z" />
+          <path class="arr" d="M470 100 H505 V42 H532" /><path class="arr-head" d="M540 42 l-10 -5 v10 z" />
+          <path class="arr" d="M470 120 H505 V178 H532" /><path class="arr-head" d="M540 178 l-10 -5 v10 z" />
+          <text class="sub t-g" x="478" y="90">да</text><text class="sub t-r" x="478" y="140">нет</text>
+        </svg>
+        <figcaption>Сужение типа: после проверки <code>typeof</code> в каждой ветке остаётся один вариант, и TypeScript разрешает методы именно этого типа</figcaption>
+      </figure>
+
+<pre class="code" data-run data-lang="ts" data-title="Сужение: typeof и сравнение">
+function showPrice(price: number | string): string {
+  // price.toFixed(2) здесь было бы ошибкой: у string нет toFixed
+  if (typeof price === "string") {
+    return price;                  // внутри if — это string
+  }
+  return price.toFixed(2) + " сомони";   // здесь остался number
+}
+console.log(showPrice(45));
+console.log(showPrice("по запросу"));
+</pre>
+
+      <h3>Union с меткой: «или то, или другое»</h3>
+      <p>Когда варианты — объекты с разными полями, в каждый кладут общее поле-метку с литералом. По метке TypeScript понимает, какой именно вариант перед вами. Так описывают состояния загрузки данных (в уроке 5 это пригодится):</p>
+
+<pre class="code" data-run data-lang="ts" data-title="Union с меткой status">
+type LoadState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ok"; count: number };
+
+function describe(state: LoadState): string {
+  if (state.status === "error") return "Ошибка: " + state.message;   // здесь есть message
+  if (state.status === "ok") return "Найдено: " + state.count;       // здесь есть count
+  return "Загрузка…";                                                // остался loading
+}
+console.log(describe({ status: "ok", count: 3 }));
+console.log(describe({ status: "error", message: "нет сети" }));
+console.log(describe({ status: "loading" }));
+</pre>
+
+      <h3>as const: список значений один раз</h3>
+      <p>Допустим, кухни хранятся в массиве, и их же нужно использовать как тип. Дублировать список в двух местах опасно: добавили в одном и забыли в другом. Решение — <code>as const</code> («считай это константой»): массив становится «только для чтения», а его элементы — точными литералами. Тип можно <b>вывести из значения</b>:</p>
+
+<pre class="code" data-run data-lang="ts" data-title="as const и тип из значения">
+const CUISINES = ["плов", "шашлык", "самбуса"] as const;
+
+// typeof CUISINES — тип самого массива, [number] — «тип любого его элемента»
+type Cuisine = (typeof CUISINES)[number];   // "плов" | "шашлык" | "самбуса"
+
+const favorite: Cuisine = "плов";
+const wrong: Cuisine = "суши";              // ошибка: такого варианта нет
+console.log(favorite, CUISINES.length);
+</pre>
+
+      <p>Запись <code>(typeof CUISINES)[number]</code> пока читайте как готовый рецепт: «тип элемента массива». Добавили кухню в массив — тип обновился сам, а <code>.map</code> по <code>CUISINES</code> даёт те же значения для кнопок фильтра. В проекте вы сделаете ровно так.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Объявить статус как <code>string</code>: опечатки не ловятся. <b>2.</b> Вызвать метод union-значения без проверки: <code>Property 'toFixed' does not exist on type 'string | number'. (TS2339)</code>. Сузьте тип проверкой. <b>3.</b> Сравнивать с несуществующим вариантом: <code>This comparison appears to be unintentional… (TS2367)</code> — вероятно, опечатка. <b>4.</b> Использовать <code>enum</code>: в проекте включён <code>erasableSyntaxOnly</code>, а union из литералов делает то же без лишнего кода.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Union литералов — это меню с ограниченным выбором. В чойхоне вы выбираете «чай чёрный» или «чай зелёный», а «чай по-марсиански» официант не примет: такого пункта нет. Сужение — как вопрос официанта «вам с лимоном?» перед тем, как нести стакан: пока не знает ответа, не может принести ни то, ни другое.</p>
+      </div>
+
+      <article class="task" id="t4-1">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Статусы заказа без опечаток</h4><span class="level easy">лёгкая</span></header>
+        <p>Компилятор нашёл две опечатки в значениях статусов. Исправьте их, ничего не меняя в типе <code>OrderStatus</code>.</p>
+<pre class="code" data-run data-lang="ts">
+type OrderStatus = "new" | "cooking" | "delivering" | "done";
+
+function statusLabel(status: OrderStatus): string {
+  switch (status) {
+    case "new": return "Принят";
+    case "cooking": return "Готовится";
+    case "delivering": return "В пути";
+    case "done": return "Доставлен";
+  }
+}
+
+console.log(statusLabel("new"));
+console.log(statusLabel("delivred"));
+
+const current: OrderStatus = "ready";
+console.log(statusLabel(current));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Принят
+В пути
+Доставлен</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В вызове <code>statusLabel("delivred")</code> опечатка: правильное значение — <code>"delivering"</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Последняя строка вывода — «Доставлен», значит, у <code>current</code> должно быть значение <code>"done"</code>.</p></details>
+      </article>
+
+      <article class="task" id="t4-2">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Сужение типа: цена или «по запросу»</h4><span class="level mid">средняя</span></header>
+        <p>Цена бывает числом или строкой «по запросу». Метод <code>toFixed</code> есть только у числа, и компилятор это видит. Добавьте проверку так, чтобы для строки возвращалась она сама, а для числа — цена с двумя знаками и словом «сомони».</p>
+<pre class="code" data-run data-lang="ts">
+function formatPrice(price: number | string): string {
+  return price.toFixed(2) + " сомони";
+}
+
+console.log(formatPrice(45));
+console.log(formatPrice("по запросу"));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>45.00 сомони
+по запросу</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Проверьте <code>typeof price === "string"</code> и сразу верните <code>price</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Строка кода после <code>if</code> уже работает с числом: там <code>toFixed</code> разрешён.</p></details>
+      </article>
+
+      <article class="task" id="q-union">
+        <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Проверь себя: union и as const</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Чем <code>type Size = "S" | "M" | "L"</code> лучше, чем <code>type Size = string</code>?</p>
+          <ol class="options">
+            <li>Ничем, это одно и то же</li>
+            <li>Компилятор не пропустит значения вне списка и подскажет варианты</li>
+            <li>Он быстрее работает в браузере</li>
+            <li>Он автоматически создаёт функцию проверки на сервере</li>
+          </ol>
+          <div class="explain"><p>Тип с вариантами защищает от опечаток на этапе разработки. В готовом приложении типов нет, поэтому данные с сервера всё равно нужно проверять кодом.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что даёт <code>as const</code> в <code>const CUISINES = ["плов", "шашлык"] as const</code>?</p>
+          <ol class="options">
+            <li>Запрещает использовать массив в React</li>
+            <li>Превращает массив в строку</li>
+            <li>Делает массив неизменяемым, а элементы — точными литералами, из которых можно вывести union</li>
+            <li>Ничего: работает так же, как без него</li>
+          </ol>
+          <div class="explain"><p>Без <code>as const</code> элементы получили бы тип <code>string</code>, и вывести из них список допустимых значений не получилось бы.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>В <code>function f(state: LoadState)</code> проверили <code>state.status === "error"</code>. Что можно использовать внутри этой ветки?</p>
+          <ol class="options">
+            <li>Поле <code>message</code>: TypeScript знает, что это вариант с ошибкой</li>
+            <li>Любое поле любого варианта</li>
+            <li>Ничего, сужение работает только с <code>typeof</code></li>
+            <li>Только поле <code>status</code></li>
+          </ol>
+          <div class="explain"><p>Литеральное поле-метка позволяет сузить union до одного объекта.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://www.typescriptlang.org/docs/handbook/2/narrowing.html" target="_blank" rel="noopener">typescriptlang.org — Narrowing</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#union-types" target="_blank" rel="noopener">Union Types</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/typeof-types.html" target="_blank" rel="noopener">typeof</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/indexed-access-types.html" target="_blank" rel="noopener">Indexed Access Types</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="nullable">
+      <h2 data-toc="null и undefined"><span class="num">05</span> null, undefined и необязательные значения</h2>
+
+      <p>Самая частая причина падения JavaScript-приложений — <code>Cannot read properties of undefined</code>. Значения «нет» бывают двух видов: <code>undefined</code> («не задано», так ведёт себя пропущенное поле или <code>find</code>, не нашедший элемент) и <code>null</code> («намеренно пусто»). В strict-режиме TypeScript считает их <b>отдельными типами</b>: в <code>string</code> нельзя положить <code>null</code>. Если «пусто» возможно, его нужно написать в типе: <code>string | null</code>.</p>
+
+<pre class="code" data-run data-lang="ts" data-title="null в типе и защита от него">
+const dishes = [
+  { id: 1, title: "Плов", note: "без острого" },
+  { id: 2, title: "Чай" },
+];
+
+const found = dishes.find((d) =&gt; d.id === 2);   // тип: объект | undefined
+// console.log(found.title);    // ошибка: 'found' is possibly 'undefined'
+
+if (found) {
+  console.log(found.title);     // внутри if значение точно есть
+}
+
+let selected: string | null = null;   // «пока ничего не выбрано»
+selected = "Navruz";
+console.log(selected);
+</pre>
+
+      <h3>Три инструмента для «значения может не быть»</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Инструмент</th><th>Что делает</th><th>Пример</th></tr></thead>
+          <tbody>
+            <tr><td>Проверка <code>if</code></td><td>Сужает тип: внутри значение точно есть</td><td><code>if (found) { found.title }</code></td></tr>
+            <tr><td>Optional chaining <code>?.</code></td><td>Если слева <code>null</code> или <code>undefined</code>, весь результат <code>undefined</code>, без падения</td><td><code>found?.title</code></td></tr>
+            <tr><td>Nullish <code>??</code></td><td>Подставляет запасное значение, только если слева <code>null</code> или <code>undefined</code></td><td><code>found?.title ?? "нет блюда"</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><b><code>??</code> и <code>||</code> — не одно и то же.</b> <code>||</code> подставляет запасное значение для любого «ложного» (<code>0</code>, пустая строка, <code>false</code>). Для рейтинга <code>0</code> это ошибка: <code>rating || 5</code> превратит <code>0</code> в <code>5</code>. Оператор <code>??</code> заменяет только <code>null</code> и <code>undefined</code>, и <code>rating ?? 5</code> оставит <code>0</code>.</p>
+
+      <div class="callout warn">
+        <b>Не заглушайте, а проверяйте</b>
+        <p>Восклицательный знак после значения (<code>found!.title</code>, «поверь мне, значение есть») и приведение <code>as Restaurant</code> заставляют компилятор замолчать, но не делают значение безопасным. Если вы ошиблись, приложение упадёт у пользователя. Исключение, которое вы уже видели, — <code>document.getElementById('root')!</code> в <code>main.tsx</code>: корневой элемент точно есть в <code>index.html</code>. В остальном кода выбирайте проверку, <code>?.</code> или <code>??</code>.</p>
+        <p><b>Реальные тексты:</b> <code>'found' is possibly 'undefined'. (TS18048)</code>, <code>'x' is possibly 'null'. (TS18047)</code>, <code>Type 'null' is not assignable to type 'string'. (TS2322)</code>.</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Вы отправились за покупками и просите «принеси лук с бозора». Продавца у прилавка может не быть: тогда вы вернётесь «с пустыми руками» (<code>undefined</code>). Если вы сразу достаёте деньги, не посмотрев, есть ли кто за прилавком, получится неловко. Проверка <code>if (продавец)</code> — это взгляд на прилавок до того, как достать кошелёк.</p>
+      </div>
+
+      <article class="task" id="t5-1">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Блюдо, которого может не быть</h4><span class="level mid">средняя</span></header>
+        <p><code>find</code> возвращает блюдо или <code>undefined</code>. Исправьте обе строки с выводом, не используя <code>!</code> и <code>as</code>: если блюда нет, выводите «нет такого блюда».</p>
+<pre class="code" data-run data-lang="ts">
+const menu = [
+  { id: 1, title: "Плов", price: 45 },
+  { id: 2, title: "Чай", price: 8 },
+];
+
+function findDish(id: number) {
+  return menu.find((d) =&gt; d.id === id);
+}
+
+const dish = findDish(2);
+console.log(dish.title);
+
+const missing = findDish(99);
+console.log(missing.title);
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Чай
+нет такого блюда</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Используйте <code>dish?.title</code>: если <code>dish</code> равен <code>undefined</code>, результат тоже <code>undefined</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Запасной текст добавляется через <code>??</code>: <code>dish?.title ?? "нет такого блюда"</code>.</p></details>
+      </article>
+
+      <article class="task" id="q-nullable">
+        <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Проверь себя: null и undefined</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что выведет <code>console.log(0 ?? 5)</code> и <code>console.log(0 || 5)</code>?</p>
+          <ol class="options">
+            <li>5 и 5</li>
+            <li>0 и 5</li>
+            <li>0 и 0</li>
+            <li>5 и 0</li>
+          </ol>
+          <div class="explain"><p><code>??</code> подставляет запасное значение только для <code>null</code> и <code>undefined</code>, <code>||</code> — для любого «ложного», включая <code>0</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Как правильнее всего обработать <code>'user' is possibly 'null'</code>?</p>
+          <ol class="options">
+            <li>Проверить значение (<code>if (user)</code>, <code>user?.name</code>) и решить, что делать в случае <code>null</code></li>
+            <li>Добавить <code>!</code> после <code>user</code>, чтобы ошибка исчезла</li>
+            <li>Заменить тип на <code>any</code></li>
+            <li>Выключить strict-режим</li>
+          </ol>
+          <div class="explain"><p>Остальные варианты прячут проблему: приложение упадёт, когда <code>user</code> окажется <code>null</code> у реального пользователя.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://www.typescriptlang.org/tsconfig/#strictNullChecks" target="_blank" rel="noopener">TSConfig — strictNullChecks</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#null-and-undefined" target="_blank" rel="noopener">null и undefined</a></p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="functions">
+      <h2 data-toc="Функции"><span class="num">06</span> Типы в функциях</h2>
+
+      <p>У функции типизируют <b>параметры</b>. Тип результата TypeScript обычно выводит сам, и ручная запись нужна, когда хочется зафиксировать «контракт» функции (для экспортируемых и сложных функций).</p>
+
+<pre class="code" data-run data-lang="ts" data-title="Параметры, результат, необязательный параметр">
+function lineTotal(price: number, qty: number): number {
+  return price * qty;
+}
+
+// необязательный параметр: ? или значение по умолчанию
+function greet(name: string, city: string = "Душанбе"): string {
+  return `Салом, ${name} из города ${city}!`;
+}
+
+const double = (n: number) =&gt; n * 2;   // стрелочная: результат number выведен сам
+
+console.log(lineTotal(45, 2), greet("Зарина"), double(21));
+</pre>
+
+      <ul>
+        <li>Параметры без типа в strict-режиме — ошибка <code>Parameter 'price' implicitly has an 'any' type. (TS7006)</code> (в деструктуризации: <code>Binding element 'name' implicitly has an 'any' type. (TS7031)</code>).</li>
+        <li>Вызов с неверным числом аргументов — <code>Expected 2 arguments, but got 1. (TS2554)</code>.</li>
+        <li>Неверный тип аргумента — <code>Argument of type 'string' is not assignable to parameter of type 'number'. (TS2345)</code>.</li>
+        <li>Необязательные параметры ставят <b>в конец</b> списка.</li>
+        <li><code>void</code> — «ничего не возвращает». Типично для обработчиков и колбэков.</li>
+      </ul>
+
+      <h3>Тип функции: для колбэков</h3>
+      <p>Функцию можно передать другой функции или компоненту. Тип такого параметра описывает «форму» функции: что она принимает и что возвращает. Записывают как стрелку: <code>(id: number) =&gt; void</code>. Именно так в React описывают <code>onSelect</code> и <code>onChange</code>.</p>
+
+<pre class="code" data-run data-lang="ts" data-title="Функция как параметр">
+type OnPick = (id: number) =&gt; void;
+
+function renderButtons(ids: number[], onPick: OnPick): void {
+  for (const id of ids) {
+    onPick(id);       // «нажимаем» каждую кнопку
+  }
+}
+
+renderButtons([1, 2, 3], (id) =&gt; console.log("выбран:", id));   // id — number выведен сам
+</pre>
+
+      <p>Обратите внимание: у стрелки внутри вызова параметр <code>id</code> типизировать не пришлось. TypeScript берёт тип из <code>OnPick</code>. Такой вывод вы будете видеть в React постоянно.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Тип функции — это заявка на маршрутку: «примет пассажира (число), довезёт, ничего не вернёт». Любой водитель с таким маршрутом подходит. Если в заявке написано «принимает номер маршрута», а вы пришли со строкой «автобус», диспетчер сразу скажет: не подходит.</p>
+      </div>
+
+      <article class="task" id="t6-1">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Типизируйте функции</h4><span class="level mid">средняя</span></header>
+        <p>Параметры функций без типов, и компилятор ругается на каждый из них. Добавьте типы. Параметру <code>currency</code> дайте значение по умолчанию <code>"сомони"</code>, чтобы вызов с одним аргументом тоже работал.</p>
+<pre class="code" data-run data-lang="ts">
+function lineTotal(price, qty) {
+  return price * qty;
+}
+
+function formatMoney(amount, currency) {
+  return amount.toFixed(2) + " " + currency;
+}
+
+console.log(formatMoney(lineTotal(45, 2)));
+console.log(formatMoney(lineTotal(8, 3), "TJS"));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>90.00 сомони
+24.00 TJS</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Оба параметра <code>lineTotal</code> и первый параметр <code>formatMoney</code> — числа.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>function formatMoney(amount: number, currency: string = "сомони")</code></p></details>
+      </article>
+
+      <article class="task" id="q-functions">
+        <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Проверь себя: функции</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="4">
+          <p>Как записать тип параметра <code>onSelect</code>, который получает число и ничего не возвращает?</p>
+          <ol class="options">
+            <li><code>onSelect: number</code></li>
+            <li><code>onSelect: Function</code></li>
+            <li><code>onSelect: void</code></li>
+            <li><code>onSelect: (id: number) =&gt; void</code></li>
+          </ol>
+          <div class="explain"><p>Тип функции описывает параметры и результат. <code>Function</code> слишком общий и пропускает любые вызовы.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Нужно ли всегда писать тип результата функции?</p>
+          <ol class="options">
+            <li>Нет: TypeScript выводит его из <code>return</code>, пишите вручную там, где хотите зафиксировать контракт</li>
+            <li>Да, без него функция не скомпилируется</li>
+            <li>Нет, результат вообще не проверяется</li>
+            <li>Да, иначе результат будет <code>any</code></li>
+          </ol>
+          <div class="explain"><p>Параметры — обязательно, результат — по желанию. Если вы написали тип результата, TypeScript проверит все <code>return</code>.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://www.typescriptlang.org/docs/handbook/2/functions.html" target="_blank" rel="noopener">typescriptlang.org — More on Functions</a></p>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="react-ts">
+      <h2 data-toc="TypeScript в React"><span class="num">07</span> TypeScript в React: props, children, события, useState</h2>
+
+      <p>В React всё то же самое, только типы применяются к компонентам. Компонент — это функция: её параметр — объект props, а результат — JSX. Поэтому типизировать нужно props.</p>
+
+      <h3>Props: тип рядом с компонентом</h3>
+<pre class="code" data-lang="tsx" data-title="src/RestaurantCard.tsx">
+import type { Restaurant } from './types'
+
+type RestaurantCardProps = {
+  restaurant: Restaurant
+  onSelect: (id: number) =&gt; void   // колбэк: родитель получит id
+}
+
+export default function RestaurantCard({ restaurant, onSelect }: RestaurantCardProps) {
+  return (
+    &lt;article className="card"&gt;
+      &lt;h3&gt;{restaurant.name}&lt;/h3&gt;
+      &lt;button onClick={() =&gt; onSelect(restaurant.id)}&gt;Выбрать&lt;/button&gt;
+    &lt;/article&gt;
+  )
+}
+</pre>
+
+      <ul>
+        <li>Имя типа props — <code>ИмяКомпонентаProps</code>, он лежит в том же файле. Если тип нужен в двух файлах, выносите в <code>types.ts</code>.</li>
+        <li>Тип результата компонента не пишем: TypeScript выводит его сам. Старую запись <code>React.FC</code> в новом коде не используют.</li>
+        <li>Тип <code>Restaurant</code> — это тип, поэтому он импортируется через <code>import type</code> (в проекте включён <code>verbatimModuleSyntax</code>).</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Схема контракта props: компонент App передаёт в RestaurantCard данные restaurant типа Restaurant, а карточка вызывает onSelect с числом, и App получает событие обратно. TypeScript проверяет оба направления">
+          <rect class="fill-y" x="10" y="72" width="170" height="70" rx="12" /><text x="95" y="102" text-anchor="middle">App</text><text class="sub mono" x="95" y="124" text-anchor="middle">selectedId</text>
+          <rect class="fill-g" x="450" y="72" width="260" height="70" rx="12" /><text x="580" y="102" text-anchor="middle">RestaurantCard</text><text class="sub mono" x="580" y="124" text-anchor="middle">RestaurantCardProps</text>
+          <path class="arr" d="M180 92 H442" /><path class="arr-head" d="M450 92 l-10 -5 v10 z" />
+          <path class="arr" d="M450 122 H188" /><path class="arr-head" d="M180 122 l10 -5 v10 z" />
+          <text class="sub t-g mono" x="315" y="82" text-anchor="middle">restaurant: Restaurant</text>
+          <text class="sub t-b mono" x="315" y="146" text-anchor="middle">onSelect: (id: number) =&gt; void</text>
+          <text class="sub" x="12" y="204">Данные идут вниз через props, события — вверх через колбэки. TypeScript проверяет оба направления.</text>
+        </svg>
+        <figcaption>Props — контракт между родителем и компонентом: какие данные и какие функции нужно передать</figcaption>
+      </figure>
+
+      <h3>children</h3>
+      <p>Всё, что вы пишете между тегами компонента (<code>&lt;Section&gt;…&lt;/Section&gt;</code>), приходит в prop <code>children</code>. Его тип — <code>ReactNode</code>: это «всё, что React умеет отрисовать» (строка, число, элемент, массив элементов, <code>null</code>).</p>
+
+<pre class="code" data-lang="tsx" data-title="src/Section.tsx">
+import type { ReactNode } from 'react'
+
+type SectionProps = {
+  title: string
+  children: ReactNode
+}
+
+export default function Section({ title, children }: SectionProps) {
+  return (
+    &lt;section&gt;
+      &lt;h2&gt;{title}&lt;/h2&gt;
+      {children}
+    &lt;/section&gt;
+  )
+}
+</pre>
+
+      <h3>События</h3>
+      <p>У обработчика события есть свой тип: у <code>onChange</code> поля ввода это <code>ChangeEvent&lt;HTMLInputElement&gt;</code>. В угловых скобках указано, на каком элементе случилось событие (это даёт доступ к <code>event.target.value</code>). Если обработчик пишется прямо в JSX, тип выводится сам, и записывать его не нужно:</p>
+
+<pre class="code" data-lang="tsx" data-title="src/SearchBox.tsx">
+import type { ChangeEvent } from 'react'
+
+type SearchBoxProps = {
+  value: string
+  onChange: (value: string) =&gt; void
+}
+
+export default function SearchBox({ value, onChange }: SearchBoxProps) {
+  // вынесенный в функцию обработчик: тип события пишем сами
+  function handleChange(event: ChangeEvent&lt;HTMLInputElement&gt;) {
+    onChange(event.target.value)
+  }
+  return &lt;input value={value} onChange={handleChange} placeholder="Найти ресторан" /&gt;
+  // та же логика в JSX: onChange={(e) =&gt; onChange(e.target.value)} — тип e выведен
+}
+</pre>
+
+      <p>Другие частые события: <code>MouseEvent</code> (клик), <code>FormEvent</code> (отправка формы), <code>KeyboardEvent</code>. Если не знаете тип — напишите обработчик прямо в JSX и наведите курсор на параметр: редактор покажет тип.</p>
+
+      <h3>useState</h3>
+      <p>Если начальное значение говорит само за себя, тип выводится: <code>useState(0)</code> — число, <code>useState('')</code> — строка. Когда состояние может быть «пусто» или принимает значения из списка, тип указывают в угловых скобках: <code>useState&lt;Restaurant | null&gt;(null)</code>. Без скобок TypeScript решил бы, что состояние всегда <code>null</code>, и не разрешил бы положить ресторан.</p>
+
+<pre class="code" data-lang="tsx" data-title="useState: когда тип нужно указать">
+const [count, setCount] = useState(0)                          // выведено: number
+const [query, setQuery] = useState('')                         // выведено: string
+const [selected, setSelected] = useState&lt;Restaurant | null&gt;(null)   // «пока не выбран»
+const [cuisine, setCuisine] = useState&lt;Cuisine | null&gt;(null)         // кухня из списка или «все»
+</pre>
+
+      <div class="yt" data-id="aJP1AbZSqz8" data-title="TypeScript in React - Full Tutorial — канал freeCodeCamp.org" data-start="847"></div>
+      <p class="muted">Ролик на английском, включите субтитры (51 минута, июль 2026). Смотрите с 14:07: типизация <code>useState</code>, затем 25:12–36:53: компоненты, props и импортированные типы, и 44:49: функции как props. Строку про <code>React.FC</code> и «JSX.Element» в нём можно пропустить: мы пишем без них.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки и их тексты</b>
+        <p><b>1.</b> Забыли обязательный prop: <code>Property 'onSelect' is missing in type … (TS2741)</code>. <b>2.</b> Передали не тот тип: <code>Type 'string' is not assignable to type 'number'. (TS2322)</code>. <b>3.</b> Забыли <code>children</code> в типе props: <code>Property 'children' does not exist on type 'IntrinsicAttributes &amp; SectionProps'. (TS2322)</code>. <b>4.</b> Положили значение в состояние, выведенное как <code>null</code>: <code>Argument of type '3' is not assignable to parameter of type 'SetStateAction&lt;null&gt;'. (TS2345)</code> — укажите тип в угловых скобках. <b>5.</b> Передали строку из поля ввода туда, где ждут число: <code>Argument of type 'string' is not assignable to parameter of type 'SetStateAction&lt;number&gt;'</code> — значение <code>event.target.value</code> всегда строка, число из него делают явно (<code>Number(...)</code>).</p>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Props — это заказ в чойхоне, оформленный по бланку: стол, блюдо, количество. Колбэк <code>onSelect</code> — звонок официанту: «стол 5 выбрал плов». Бланк и звонок строго оформлены: официант (компонент) знает, какие данные он получит и в каком виде, а заказчик знает, какую информацию надо сообщить. TypeScript — это тот, кто следит, чтобы бланк был заполнен полностью.</p>
+      </div>
+
+      <p><b>Важно про песочницы ниже.</b> В браузерных React-песочницах типы только вырезаются, но не проверяются. Поэтому задачи 7.1 и 7.2 проверяют <b>поведение</b>: что нарисовал компонент. Типы в них оставлены как в настоящем проекте, а их проверку вы запустите на своём компьютере в разделе 10.</p>
+
+      <article class="task" id="t7-1">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Section с children и список ресторанов</h4><span class="level mid">средняя</span></header>
+        <p>Допишите компонент <code>Section</code>: он выводит <code>&lt;section&gt;</code> с заголовком <code>h2</code> из <code>title</code> и вложенным содержимым <code>children</code>. В <code>App</code> выведите рестораны: название, а у закрытого ресторана после названия добавьте текст <code> (закрыто)</code>.</p>
+        <div class="playground" data-mode="react" data-title="Section и список">
+<pre class="code" data-lang="jsx">
+import type { ReactNode } from "react";
+
+type Restaurant = { id: number; name: string; open: boolean };
+type SectionProps = { title: string; children: ReactNode };
+
+function Section({ title, children }: SectionProps) {
+  // TODO: section с h2 (title) и children внутри
+  return &lt;div&gt;&lt;/div&gt;;
+}
+
+const restaurants: Restaurant[] = [
+  { id: 1, name: "Navruz", open: true },
+  { id: 2, name: "Rohat", open: false },
+];
+
+export default function App() {
+  return (
+    &lt;Section title="Рестораны"&gt;
+      &lt;ul&gt;
+        {/* TODO: li с названием, key из id */}
+      &lt;/ul&gt;
+    &lt;/Section&gt;
+  );
+}
+
+// автопроверка: печатает разметку, которую построил React
+setTimeout(() =&gt; console.log(document.getElementById("root").innerHTML.replaceAll("&gt;&lt;", "&gt;\n&lt;")), 100);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>&lt;section&gt;
+&lt;h2&gt;Рестораны&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;Navruz&lt;/li&gt;
+&lt;li&gt;Rohat (закрыто)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/section&gt;</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Верните <code>&lt;section&gt;&lt;h2&gt;{title}&lt;/h2&gt;{children}&lt;/section&gt;</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>{restaurants.map((r) =&gt; &lt;li key={r.id}&gt;{r.name}{!r.open &amp;&amp; " (закрыто)"}&lt;/li&gt;)}</code></p></details>
+      </article>
+
+      <article class="task" id="t7-2">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Поиск: событие ввода и состояние</h4><span class="level mid">средняя</span></header>
+        <p>Подключите поле поиска: обработчик сохраняет <code>event.target.value</code> в состояние, а список показывает только названия, содержащие введённый текст (без учёта регистра).</p>
+        <div class="playground" data-mode="react" data-title="Поиск ресторанов">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+import type { ChangeEvent } from "react";
+
+const names: string[] = ["Navruz", "Rohat", "Samarkand", "Sitora"];
+
+export default function App() {
+  const [query, setQuery] = useState("");
+
+  function handleChange(event: ChangeEvent&lt;HTMLInputElement&gt;) {
+    // TODO: сохраните event.target.value в состояние
+  }
+
+  // TODO: оставьте только названия, содержащие query (без учёта регистра)
+  const visible = names;
+
+  return (
+    &lt;div&gt;
+      &lt;input value={query} onChange={handleChange} placeholder="Найти" /&gt;
+      &lt;ul&gt;
+        {visible.map((n) =&gt; &lt;li key={n}&gt;{n}&lt;/li&gt;)}
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять): «печатает» в поле и показывает список ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+const typeText = async (text) =&gt; {
+  const input = document.querySelector("input");
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, text);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  await wait();
+  console.log([...document.querySelectorAll("li")].map((li) =&gt; li.textContent).join(", "));
+};
+(async () =&gt; {
+  await wait();
+  await typeText("nav");
+  await typeText("SA");
+  await typeText("");
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Navruz
+Samarkand
+Navruz, Rohat, Samarkand, Sitora</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В обработчике: <code>setQuery(event.target.value);</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const visible = names.filter((n) =&gt; n.toLowerCase().includes(query.toLowerCase()));</code></p></details>
+      </article>
+
+      <article class="task" id="q-react-ts">
+        <header><span class="task-num">ЗАДАЧА 7.3</span><h4>Проверь себя: типы в React</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Какой тип у prop <code>children</code>?</p>
+          <ol class="options">
+            <li><code>string</code></li>
+            <li><code>ReactNode</code> (импортируется как тип: <code>import type { ReactNode } from 'react'</code>)</li>
+            <li><code>HTMLElement</code></li>
+            <li><code>any</code></li>
+          </ol>
+          <div class="explain"><p><code>ReactNode</code> объединяет всё, что React умеет отрисовать: строки, числа, элементы, массивы, <code>null</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Состояние «выбранный ресторан или ничего». Как его объявить?</p>
+          <ol class="options">
+            <li><code>useState(null)</code></li>
+            <li><code>useState&lt;any&gt;(null)</code></li>
+            <li><code>useState&lt;Restaurant | null&gt;(null)</code></li>
+            <li><code>useState&lt;Restaurant&gt;()</code></li>
+          </ol>
+          <div class="explain"><p>Без указания типа состояние решило бы, что оно всегда <code>null</code>. <code>any</code> отключает проверку. Нужно перечислить оба варианта.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Вы передали <code>&lt;RestaurantCard restaurant={r} /&gt;</code>, а в типе props есть обязательный <code>onSelect</code>. Что произойдёт?</p>
+          <ol class="options">
+            <li>Редактор и <code>tsc</code> покажут <code>TS2741: Property 'onSelect' is missing…</code>, а <code>npm run build</code> остановится</li>
+            <li>Ничего, React подставит пустую функцию</li>
+            <li>Браузер покажет предупреждение пользователю</li>
+            <li>Vite сам добавит prop</li>
+          </ol>
+          <div class="explain"><p>Это работа TypeScript: он проверяет контракт между родителем и компонентом до запуска.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/typescript" target="_blank" rel="noopener">react.dev — Using TypeScript</a> · <a href="https://react.dev/reference/react/useState" target="_blank" rel="noopener">react.dev — useState</a></p>
+    </section>
+
+    <!-- ============ 08 · ИИ-блок ============ -->
+    <section class="topic" id="ai-errors">
+      <h2 data-toc="ИИ — переводчик ошибок"><span class="num">08</span> ИИ-блок: переводчик ошибок TypeScript</h2>
+
+      <p>Тексты ошибок TypeScript часто длинные и на английском. Это идеальная работа для ИИ-агента: <b>объяснить</b>, что сказал компилятор. Но у агента есть соблазн «починить любой ценой»: он ставит <code>any</code>, <code>as</code>, <code>!</code> или <code>// @ts-ignore</code>, и ошибка исчезает. Проблема остаётся, просто вы её больше не видите. Наша цель — понять ошибку и выбрать решение самим.</p>
+
+      <div class="callout ai">
+        <b>Правила работы с ошибками типов</b>
+        <p><b>1.</b> Сначала <b>объяснение</b>, потом правка: просите перевести ошибку и показать причину. <b>2.</b> Копируйте ошибку <b>целиком</b>, вместе с кодом <code>TSxxxx</code> и путём к файлу, плюс 10–20 строк вокруг. <b>3.</b> Просите <b>два варианта</b> решения и объяснение, чем они отличаются. <b>4.</b> Запретите заглушки: без <code>any</code>, <code>as</code>, <code>!</code>, <code>@ts-ignore</code>, без отключения strict. <b>5.</b> После правки запускайте <code>npm run typecheck</code>: агент мог перенести ошибку в другое место.</p>
+      </div>
+
+      <p>Сравните два запроса к агенту (формула: контекст → задача → ограничения → формат ответа → проверка).</p>
+
+      <div class="prompt bad-prompt">исправь ошибки TypeScript в проекте</div>
+
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript 7 (strict), правила в AGENTS.md. Файл src/App.tsx, строка 27. Компилятор пишет:
+src/App.tsx(27,12): error TS2741: Property 'onSelect' is missing in type '{ key: number; restaurant: Restaurant; }' but required in type 'RestaurantCardProps'.
+Задача: объясни по-русски, что означает каждая часть этой ошибки и почему она возникла. Предложи два варианта исправления и скажи, в каком случае лучше каждый. Код пока не меняй.
+Ограничения: без any, as, ! и @ts-ignore; не отключай правила в tsconfig.
+Формат ответа: «что значит ошибка» (2–3 предложения), затем таблица «вариант — что изменить — когда подходит».
+Проверка: после моего выбора внеси правку и запусти npm run typecheck, покажи вывод целиком.</div>
+
+      <p>Хороший запрос даёт агенту всё, чтобы объяснить: ошибку целиком, место, ограничения и желаемый формат. Плохой оставляет агенту выбор «как заставить компилятор замолчать», и самый быстрый способ — именно заглушка.</p>
+
+      <h3>Как проверять типы, которые написал агент</h3>
+      <ol class="steps">
+        <li><b>Заглушки.</b> В коде нет <code>any</code>, <code>as</code> (кроме <code>as const</code>), <code>!</code> после значений, <code>@ts-ignore</code>, <code>@ts-expect-error</code> без причины. Быстрая проверка: <code>grep -rnE "\bany\b|@ts-ignore|@ts-expect-error" src</code>.</li>
+        <li><b>Слишком широкие типы.</b> Для статуса или кухни — union из литералов, а не <code>string</code>. Для объектов — свой <code>type</code>, а не <code>object</code> или <code>{}</code>.</li>
+        <li><b>Дубли типов.</b> Тип ресторана описан один раз в <code>types.ts</code>. Если агент создал вторую копию в компоненте — это повод объединить.</li>
+        <li><b>Необязательные поля.</b> Каждое <code>?</code> объясняется данными: не появилось ли оно «чтобы не ругался компилятор».</li>
+        <li><b>Props.</b> Есть отдельный <code>type XxxProps</code>, <code>children: ReactNode</code>, колбэки с точной сигнатурой, а не <code>Function</code>.</li>
+        <li><b>Устаревший стиль.</b> Нет <code>React.FC</code>, <code>enum</code>, префиксов <code>I</code> в названиях типов, <code>propTypes</code>.</li>
+        <li><b>Проверка запуском.</b> <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> без ошибок и пустая вкладка Console в браузере.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Принять «готово», не запустив <code>npm run typecheck</code>. <b>2.</b> Согласиться на <code>as unknown as Restaurant</code>: это ложь компилятору, а не исправление. <b>3.</b> Просить агента «переписать на TypeScript» целый проект одним шагом: на выходе сотни изменений без проверки. <b>4.</b> Не читать объяснение: если вы не можете пересказать ошибку своими словами, вы её не поняли, а значит, она вернётся.</p>
+      </div>
+
+      <article class="task" id="q-ai-ts">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Проверь себя: ИИ и ошибки типов</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Агент «исправил» <code>TS18048: 'found' is possibly 'undefined'</code>, написав <code>found!.title</code>. Ваш ответ?</p>
+          <ol class="options">
+            <li>Принять: ошибка исчезла</li>
+            <li>Добавить ещё <code>as any</code> на всякий случай</li>
+            <li>Отклонить: просить объяснить, когда значения может не быть, и добавить проверку или <code>?.</code> с запасным значением</li>
+            <li>Выключить strict-режим</li>
+          </ol>
+          <div class="explain"><p>Восклицательный знак только заставляет компилятор замолчать. Если <code>find</code> ничего не найдёт, приложение упадёт у пользователя.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что самое важное включить в запрос на объяснение ошибки?</p>
+          <ol class="options">
+            <li>Слово «срочно»</li>
+            <li>Текст ошибки целиком с кодом <code>TSxxxx</code>, нужный фрагмент кода и запрет на заглушки</li>
+            <li>Только название файла</li>
+            <li>Пароль от аккаунта GitHub</li>
+          </ol>
+          <div class="explain"><p>Агент объясняет хорошо, когда у него есть полный текст и границы. Секреты и пароли в чат не отправляют никогда.</p></div>
+        </div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://www.typescriptlang.org/docs/handbook/2/everyday-types.html#type-assertions" target="_blank" rel="noopener">Type Assertions (почему <code>as</code> — не безопасность)</a> · <a href="https://cursor.com/docs/context/rules" target="_blank" rel="noopener">Cursor — Rules и AGENTS.md</a></p>
+    </section>
+
+    <!-- ============ 09 · Лаборатория ошибок ============ -->
+    <section class="topic" id="lab">
+      <h2 data-toc="Лаборатория: 15 ошибок"><span class="num">09</span> Лаборатория: 15 типовых ошибок компилятора</h2>
+
+      <p>Теперь отработаем главный навык: читать ошибку и исправлять причину. В каждой из пяти задач по три ошибки. Нажмите «Запустить», прочитайте сообщение (номер строки, столбец, код <code>TSxxxx</code>) и исправьте код. Типы не удаляйте и не заменяйте на <code>any</code>: правьте значения, вызовы и типы так, как подсказывает ошибка. Исключение: в задаче 9.4 тип можно расширить (<code>string | null</code>), и в 9.3 значение из списка вариантов выбирайте сами.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Код</th><th>Что значит</th><th>Типичная причина</th></tr></thead>
+          <tbody>
+            <tr><td><code>TS2322</code></td><td>Значение не подходит под тип</td><td>Строка вместо числа, значение вне списка вариантов</td></tr>
+            <tr><td><code>TS2339</code> / <code>TS2551</code></td><td>У значения нет такого свойства (TS2551 добавляет «Did you mean…?»)</td><td>Опечатка в имени поля, поле нужно добавить в тип</td></tr>
+            <tr><td><code>TS2345</code></td><td>Аргумент не подходит под параметр</td><td>Не тот тип или в массив кладут элемент другого типа</td></tr>
+            <tr><td><code>TS2554</code></td><td>Не то количество аргументов</td><td>Пропущен обязательный аргумент</td></tr>
+            <tr><td><code>TS2741</code></td><td>В объекте нет обязательного поля</td><td>Забыли поле или prop</td></tr>
+            <tr><td><code>TS2367</code></td><td>Сравнение никогда не бывает истинным</td><td>Сравнили с значением, которого нет в union</td></tr>
+            <tr><td><code>TS18047</code> / <code>TS18048</code> / <code>TS2532</code></td><td>Значение может быть <code>null</code> / <code>undefined</code></td><td>Не учтено «значения нет»</td></tr>
+            <tr><td><code>TS7006</code> / <code>TS7031</code></td><td>Неявный <code>any</code></td><td>Параметр функции без типа</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="practice">
+        <h3>Практика: 15 ошибок</h3>
+
+        <article class="task" id="t9-1">
+          <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Лаборатория 1: данные объекта</h4><span class="level easy">лёгкая</span></header>
+          <p>Три ошибки: неверный тип значения, пропущенное обязательное поле и опечатка в имени поля.</p>
+<pre class="code" data-run data-lang="ts">
+type Restaurant = { id: number; name: string; rating: number; open: boolean };
+
+const navruz: Restaurant = { id: 1, name: "Navruz", rating: "4.8", open: true };
+const rohat: Restaurant = { id: 2, name: "Rohat", rating: 4.5 };
+
+console.log(navruz.name + " " + navruz.raiting);
+console.log(rohat.name + " " + rohat.rating);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Navruz 4.8
+Rohat 4.5</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Рейтинг — число, а не строка. Ресторану <code>rohat</code> не хватает поля <code>open</code>: добавьте <code>open: false</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Компилятор подсказывает: <code>Did you mean 'rating'?</code>. Исправьте имя поля.</p></details>
+        </article>
+
+        <article class="task" id="t9-2">
+          <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Лаборатория 2: вызов функции</h4><span class="level easy">лёгкая</span></header>
+          <p>Три ошибки в вызовах и в типе переменной. Саму функцию <code>lineTotal</code> не меняйте.</p>
+<pre class="code" data-run data-lang="ts">
+function lineTotal(price: number, qty: number): number {
+  return price * qty;
+}
+
+console.log(lineTotal("45", 2));
+console.log(lineTotal(8));
+
+const label: string = lineTotal(10, 3);
+console.log(label);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>90
+24
+30</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>Цена — число (<code>45</code> без кавычек). Во втором вызове не хватает количества: порций нужно три.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Функция возвращает число, поэтому переменная должна иметь тип <code>number</code>.</p></details>
+        </article>
+
+        <article class="task" id="t9-3">
+          <header><span class="task-num">ЗАДАЧА 9.3</span><h4>Лаборатория 3: union и литералы</h4><span class="level mid">средняя</span></header>
+          <p>Три ошибки: значение вне списка, сравнение с несуществующим вариантом и элемент вне списка в массиве. Правьте значения, список вариантов в <code>type Cuisine</code> не трогайте.</p>
+<pre class="code" data-run data-lang="ts">
+type Cuisine = "плов" | "шашлык" | "самбуса";
+
+const favorite: Cuisine = "суши";
+
+function base(c: Cuisine): string {
+  if (c === "плов") return "рис";
+  if (c === "шашлык") return "мясо";
+  if (c === "десерты") return "тесто";
+  return "неизвестно";
+}
+
+const offered: Cuisine[] = ["плов", "самбуса"];
+offered.push("сладости");
+
+console.log(base(favorite));
+console.log(base("шашлык"));
+console.log(offered.join(", "));
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>рис
+мясо
+плов, самбуса, шашлык</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p>В <code>favorite</code> подойдёт <code>"плов"</code>: ожидаемый вывод первой строки — «рис». Сравнение должно быть с вариантом из списка: <code>"самбуса"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>В <code>push</code> нужен вариант из <code>Cuisine</code>, который даст итоговый список «плов, самбуса, шашлык».</p></details>
+        </article>
+
+        <article class="task" id="t9-4">
+          <header><span class="task-num">ЗАДАЧА 9.4</span><h4>Лаборатория 4: «значения может не быть»</h4><span class="level mid">средняя</span></header>
+          <p>Три ошибки про <code>undefined</code> и <code>null</code>. Без <code>!</code> и <code>as</code>: используйте проверку, <code>?.</code>, <code>??</code> и расширение типа.</p>
+<pre class="code" data-run data-lang="ts">
+type Dish = { id: number; title: string; note?: string };
+
+const dishes: Dish[] = [
+  { id: 1, title: "Плов", note: "без острого" },
+  { id: 2, title: "Чай" },
+];
+
+const first = dishes.find((d) =&gt; d.id === 1);
+console.log(first.title);
+
+console.log(dishes[1].note.toUpperCase());
+
+let city: string = null;
+console.log(city ?? "город не выбран");
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Плов
+без заметки
+город не выбран</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>first?.title</code> и <code>dishes[1].note?.toUpperCase() ?? "без заметки"</code>.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Переменная, в которую можно положить <code>null</code>, имеет тип <code>string | null</code>.</p></details>
+        </article>
+
+        <article class="task" id="t9-5">
+          <header><span class="task-num">ЗАДАЧА 9.5</span><h4>Лаборатория 5: массивы и колбэки</h4><span class="level mid">средняя</span></header>
+          <p>Три места с ошибками: неверный тип результата <code>map</code>, несовместимые типы функций (компилятор сообщит о них дважды: при присваивании и при вызове) и неполный объект в <code>push</code>.</p>
+<pre class="code" data-run data-lang="ts">
+type CartItem = { title: string; price: number; qty: number };
+
+const cart: CartItem[] = [
+  { title: "Плов", price: 45, qty: 2 },
+  { title: "Чай", price: 8, qty: 3 },
+];
+
+const titles: number[] = cart.map((i) =&gt; i.title);
+console.log(titles.join(", "));
+
+function onPick(id: number): void {
+  console.log("Выбрано: " + id);
+}
+const handler: (id: string) =&gt; void = onPick;
+handler(3);
+
+cart.push({ title: "Самбуса", price: 12 });
+console.log(cart.length);
+</pre>
+          <div class="expected"><b>Ожидаемый результат</b><pre>Плов, Чай
+Выбрано: 3
+3</pre></div>
+          <details class="hint"><summary>Подсказка 1</summary><p><code>map</code> по названиям возвращает массив строк. Подгоните тип переменной.</p></details>
+          <details class="hint"><summary>Подсказка 2</summary><p>Тип <code>handler</code> должен совпадать с <code>onPick</code>: параметр <code>id</code> — число. А в <code>push</code> не хватает поля <code>qty</code>.</p></details>
+        </article>
+      </div>
+
+      <p class="muted">Читать подробнее: <a href="https://www.typescriptlang.org/docs/handbook/2/everyday-types.html" target="_blank" rel="noopener">typescriptlang.org — Everyday Types</a> · <a href="https://typescript.tv/errors/" target="_blank" rel="noopener">typescript.tv — каталог ошибок TypeScript</a></p>
+    </section>
+
+    <!-- ============ 10 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: типы в Дастархоне"><span class="num">10</span> Практика: типы и компоненты «Дастархона»</h2>
+
+      <p>Продолжаем <b>проект 1</b> из урока 1. Сейчас в нём только заголовок. К концу практики будут типы данных, тестовые данные и пять типизированных компонентов, из которых три вы допишете в домашнем задании. Как и раньше, работаем на ветке <code>main</code> и делаем коммит после каждого законченного шага.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Карта файлов проекта Дастархон после урока 2: types.ts и data.ts в основе, над ними компоненты RestaurantCard, CuisineFilter, SearchBox, Section, а над ними App, который хранит состояние">
+          <rect class="fill-g" x="170" y="10" width="380" height="44" rx="10" /><text x="360" y="37" text-anchor="middle">App.tsx: состояние (query, cuisine, selectedId)</text>
+          <rect class="box b" x="40" y="80" width="150" height="44" rx="10" /><text x="115" y="107" text-anchor="middle">SearchBox</text>
+          <rect class="box b" x="215" y="80" width="150" height="44" rx="10" /><text x="290" y="107" text-anchor="middle">CuisineFilter</text>
+          <rect class="box b" x="390" y="80" width="150" height="44" rx="10" /><text x="465" y="107" text-anchor="middle">Section</text>
+          <rect class="box b" x="565" y="80" width="130" height="44" rx="10" /><text x="630" y="107" text-anchor="middle">RestaurantCard</text>
+          <rect class="fill-y" x="170" y="160" width="190" height="44" rx="10" /><text x="265" y="187" text-anchor="middle">types.ts: Restaurant, Cuisine…</text>
+          <rect class="fill-y" x="380" y="160" width="170" height="44" rx="10" /><text x="465" y="187" text-anchor="middle">data.ts: restaurants, menu</text>
+          <path class="arr" d="M115 80 V70 H300 V62" /><path class="arr-head" d="M300 54 l-5 10 h10 z" />
+          <path class="arr" d="M290 80 V54" /><path class="arr-head" d="M290 54 l-5 10 h10 z" />
+          <path class="arr" d="M630 80 V68 H470 V62" /><path class="arr-head" d="M470 54 l-5 10 h10 z" />
+          <path class="arr" d="M265 160 V132" /><path class="arr-head" d="M265 124 l-5 10 h10 z" />
+          <text class="sub" x="12" y="236">Все компоненты берут типы из types.ts, а данные — из data.ts. Так тип описывается один раз.</text>
+        </svg>
+        <figcaption>Файлы проекта после этого урока (SearchBox, CuisineFilter, Section и RestaurantCard вы напишете сейчас; в домашнем задании добавите ещё меню и корзину)</figcaption>
+      </figure>
+
+      <h3>Шаги</h3>
+      <ol class="steps">
+        <li><b>Откройте проект и проверьте старт.</b> В терминале в папке <code>dastarkhon</code>:
+<pre class="code" data-title="Терминал">
+git status
+npm run typecheck
+npm run lint
+</pre>
+          Рабочая папка чистая, обе проверки молчат. Если вы пропустили урок 1, вернитесь и сделайте его практику: этот урок опирается на проект оттуда.</li>
+        <li><b>Опишите типы данных.</b> Создайте <code>src/types.ts</code>:
+<pre class="code" data-lang="ts" data-title="src/types.ts">
+export const CUISINES = ['плов', 'шашлык', 'самбуса', 'десерты'] as const
+
+export type Cuisine = (typeof CUISINES)[number]
+
+export type Restaurant = {
+  id: number
+  name: string
+  cuisine: Cuisine
+  rating: number
+  open: boolean
+  address?: string
+}
+
+export type MenuItem = {
+  id: number
+  restaurantId: number
+  title: string
+  price: number // в сомони
+}
+
+export type CartItem = {
+  item: MenuItem
+  qty: number
+}
+</pre>
+          В уроке 1 вы видели <code>cuisine: string</code>. Теперь кухня — один из вариантов списка, а список используется и как тип, и как данные для кнопок.</li>
+        <li><b>Добавьте тестовые данные.</b> Создайте <code>src/data.ts</code>:
+<pre class="code" data-lang="ts" data-title="src/data.ts">
+import type { MenuItem, Restaurant } from './types'
+
+export const restaurants: Restaurant[] = [
+  {
+    id: 1,
+    name: 'Navruz',
+    cuisine: 'плов',
+    rating: 4.8,
+    open: true,
+    address: 'пр. Рудаки, 45',
+  },
+  { id: 2, name: 'Rohat', cuisine: 'шашлык', rating: 4.5, open: false },
+  { id: 3, name: 'Samarkand', cuisine: 'самбуса', rating: 4.6, open: true },
+]
+
+export const menu: MenuItem[] = [
+  { id: 1, restaurantId: 1, title: 'Плов праздничный', price: 45 },
+  { id: 2, restaurantId: 1, title: 'Чай зелёный', price: 8 },
+  { id: 3, restaurantId: 3, title: 'Самбуса с мясом', price: 12 },
+]
+</pre>
+          Проверьте <code>npm run typecheck</code>. Попробуйте на секунду написать <code>cuisine: 'суши'</code> у одного ресторана: компилятор откажет, потому что такой кухни нет в списке. Верните как было.</li>
+        <li><b>Переведите компонент с JS на TS.</b> Так мог бы выглядеть компонент из JavaScript-проекта. Создайте <code>src/RestaurantCard.tsx</code> с <b>непечатанным</b> кодом и запустите проверку:
+<pre class="code" data-lang="tsx" data-title="src/RestaurantCard.tsx (версия без типов)">
+export default function RestaurantCard({ restaurant, onSelect }) {
+  return (
+    &lt;article className="card"&gt;
+      &lt;h3&gt;{restaurant.name}&lt;/h3&gt;
+      &lt;button onClick={() =&gt; onSelect(restaurant.id)}&gt;Выбрать&lt;/button&gt;
+    &lt;/article&gt;
+  )
+}
+</pre>
+<pre class="code" data-title="Терминал">
+npm run typecheck
+</pre>
+<pre class="code" data-title="Терминал — вывод">
+src/RestaurantCard.tsx(1,42): error TS7031: Binding element 'restaurant' implicitly has an 'any' type.
+src/RestaurantCard.tsx(1,54): error TS7031: Binding element 'onSelect' implicitly has an 'any' type.
+</pre>
+          Компилятор требует описать props. Замените файл целиком на типизированную версию:
+<pre class="code" data-lang="tsx" data-title="src/RestaurantCard.tsx">
+import type { Restaurant } from './types'
+
+type RestaurantCardProps = {
+  restaurant: Restaurant
+  onSelect: (id: number) =&gt; void
+}
+
+export default function RestaurantCard({
+  restaurant,
+  onSelect,
+}: RestaurantCardProps) {
+  return (
+    &lt;article className="card"&gt;
+      &lt;h3&gt;{restaurant.name}&lt;/h3&gt;
+      &lt;p&gt;
+        {restaurant.cuisine} · {restaurant.rating}
+      &lt;/p&gt;
+      {restaurant.address &amp;&amp; &lt;p&gt;{restaurant.address}&lt;/p&gt;}
+      &lt;button
+        disabled={!restaurant.open}
+        onClick={() =&gt; onSelect(restaurant.id)}
+      &gt;
+        {restaurant.open ? 'Выбрать' : 'Закрыто'}
+      &lt;/button&gt;
+    &lt;/article&gt;
+  )
+}
+</pre>
+          Обратите внимание на <code>{restaurant.address &amp;&amp; …}</code>: поле необязательное, поэтому блок показывается, только если адрес есть.</li>
+        <li><b>Фильтр по кухне.</b> Создайте <code>src/CuisineFilter.tsx</code>:
+<pre class="code" data-lang="tsx" data-title="src/CuisineFilter.tsx">
+import { CUISINES, type Cuisine } from './types'
+
+type CuisineFilterProps = {
+  selected: Cuisine | null
+  onChange: (cuisine: Cuisine | null) =&gt; void
+}
+
+export default function CuisineFilter({
+  selected,
+  onChange,
+}: CuisineFilterProps) {
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; onChange(null)} disabled={selected === null}&gt;
+        Все
+      &lt;/button&gt;
+      {CUISINES.map((c) =&gt; (
+        &lt;button key={c} onClick={() =&gt; onChange(c)} disabled={selected === c}&gt;
+          {c}
+        &lt;/button&gt;
+      ))}
+    &lt;/div&gt;
+  )
+}
+</pre>
+          Здесь значение берётся из <code>CUISINES</code>, а тип <code>Cuisine</code> — из него же. Один список управляет и кнопками, и проверкой типов.</li>
+        <li><b>Поле поиска и обёртка раздела.</b> Создайте <code>src/SearchBox.tsx</code> и <code>src/Section.tsx</code>:
+<pre class="code" data-lang="tsx" data-title="src/SearchBox.tsx">
+import type { ChangeEvent } from 'react'
+
+type SearchBoxProps = {
+  value: string
+  onChange: (value: string) =&gt; void
+}
+
+export default function SearchBox({ value, onChange }: SearchBoxProps) {
+  function handleChange(event: ChangeEvent&lt;HTMLInputElement&gt;) {
+    onChange(event.target.value)
+  }
+  return (
+    &lt;input value={value} onChange={handleChange} placeholder="Найти ресторан" /&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/Section.tsx">
+import type { ReactNode } from 'react'
+
+type SectionProps = {
+  title: string
+  children: ReactNode
+}
+
+export default function Section({ title, children }: SectionProps) {
+  return (
+    &lt;section&gt;
+      &lt;h2&gt;{title}&lt;/h2&gt;
+      {children}
+    &lt;/section&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Соберите всё в <code>App.tsx</code>.</b> Замените файл:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx">
+import { useState } from 'react'
+import { restaurants } from './data'
+import type { Cuisine } from './types'
+import CuisineFilter from './CuisineFilter'
+import RestaurantCard from './RestaurantCard'
+import SearchBox from './SearchBox'
+import Section from './Section'
+
+export default function App() {
+  const [cuisine, setCuisine] = useState&lt;Cuisine | null&gt;(null)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState&lt;number | null&gt;(null)
+
+  const visible = restaurants.filter(
+    (r) =&gt;
+      (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+      r.name.toLowerCase().includes(query.toLowerCase()),
+  )
+
+  return (
+    &lt;main&gt;
+      &lt;h1&gt;Дастархон&lt;/h1&gt;
+      &lt;SearchBox value={query} onChange={setQuery} /&gt;
+      &lt;CuisineFilter selected={cuisine} onChange={setCuisine} /&gt;
+      &lt;Section title="Рестораны"&gt;
+        {visible.map((r) =&gt; (
+          &lt;RestaurantCard key={r.id} restaurant={r} onSelect={setSelectedId} /&gt;
+        ))}
+      &lt;/Section&gt;
+      {selectedId !== null &amp;&amp; &lt;p&gt;Выбран ресторан №{selectedId}&lt;/p&gt;}
+    &lt;/main&gt;
+  )
+}
+</pre>
+          Добавьте в конец <code>src/index.css</code> стиль карточки:
+<pre class="code" data-lang="css" data-title="src/index.css (добавить в конец)">
+.card {
+  max-width: 320px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid #c9ced6;
+  border-radius: 10px;
+}
+</pre>
+          Ещё раз посмотрите на состояние: <code>setQuery</code> передаётся прямо в <code>onChange</code>, потому что его тип <code>(value: string) =&gt; void</code> совпадает с тем, что ждёт <code>SearchBox</code>. Так же <code>setSelectedId</code> подходит к <code>onSelect</code>, а <code>setCuisine</code> — к <code>onChange</code> фильтра.</li>
+        <li><b>Запустите и проверьте в браузере.</b>
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run dev
+</pre>
+          На странице должны быть поле поиска, кнопки «Все / плов / шашлык / самбуса / десерты» и три карточки. Введите «nav»: останется Navruz. Нажмите кнопку «шашлык»: останется Rohat с неактивной кнопкой «Закрыто». Нажмите «Выбрать» у Navruz: внизу появится «Выбран ресторан №1». В React DevTools (вкладка Components) выберите <code>RestaurantCard</code> и посмотрите props справа.</li>
+        <li><b>Сломайте нарочно.</b> В <code>App.tsx</code> удалите <code>onSelect={setSelectedId}</code> из <code>RestaurantCard</code> и запустите <code>npm run typecheck</code>:
+<pre class="code" data-title="Терминал — вывод">
+src/App.tsx(12,22): error TS6133: 'setSelectedId' is declared but its value is never read.
+src/App.tsx(27,12): error TS2741: Property 'onSelect' is missing in type '{ key: number; restaurant: Restaurant; }' but required in type 'RestaurantCardProps'.
+</pre>
+          Прочитайте обе строки: файл, строка, код. Вторая сообщает о главной проблеме, первая — следствие. Верните prop на место. Затем поменяйте в <code>data.ts</code> <code>rating: 4.8</code> на <code>rating: '4.8'</code>, прочитайте <code>TS2322</code> и тоже верните.</li>
+        <li><b>Спросите у агента.</b> Снова вызовите ошибку с <code>onSelect</code> и отправьте агенту хороший запрос из раздела 8 (ошибка целиком, ограничения, два варианта, код не менять). Проверьте, что он не предложил <code>any</code>, <code>as</code>, <code>!</code> или <code>@ts-ignore</code>. Верните код к рабочему состоянию.</li>
+        <li><b>Обновите <code>AGENTS.md</code>.</b> В раздел «Правила кода» добавьте строки:
+<pre class="code" data-title="AGENTS.md (добавить)">
+- Типы данных живут в src/types.ts, дублировать их в компонентах нельзя
+- Статусы и категории — union из литералов или as const, не string
+- Для props — type ИмяКомпонентаProps в том же файле; children: ReactNode
+- Колбэки типизировать точно: (id: number) =&gt; void, не Function
+- Ошибки TypeScript сначала объяснять, потом исправлять; any, as, ! и
+  @ts-ignore запрещены
+</pre>
+        </li>
+        <li><b>Сделайте коммит и отправьте на GitHub.</b>
+<pre class="code" data-title="Терминал">
+npm run build
+git add .
+git commit -m "add domain types and typed components"
+git push
+</pre>
+          Если <code>npm run build</code> показывает ошибку, исправьте её до коммита.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>«Cannot find module './types' or its corresponding type declarations»</b>: файл назван иначе или лежит не в <code>src/</code>. <b>«'X' is a type and must be imported using a type-only import…» (TS1484)</b>: импорт типа без <code>type</code>, например <code>import { Restaurant } from './types'</code>; напишите <code>import type { Restaurant } from './types'</code>. <b>«Type 'string' is not assignable to type 'Cuisine'»</b> при сборке массива объектов: проверьте, что в данных кухня написана точно как в <code>CUISINES</code>. <b>Prettier меняет файл при <code>format:check</code></b>: запустите <code>npm run format</code> и сделайте коммит снова. <b>В редакторе нет красных подчёркиваний, хотя <code>tsc</code> ругается</b>: редактор использует свою копию TypeScript; выберите версию из проекта командой «TypeScript: Select TypeScript Version» → «Use Workspace Version».</p>
+      </div>
+
+      <article class="task" id="t-practice">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Чек-лист: типы в проекте</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-practice">
+          <li>Создан <code>src/types.ts</code> с типами <code>Restaurant</code>, <code>MenuItem</code>, <code>CartItem</code> и списком <code>CUISINES</code> с <code>as const</code></li>
+          <li>Создан <code>src/data.ts</code> с массивами <code>restaurants</code> и <code>menu</code>, типы взяты из <code>types.ts</code></li>
+          <li>Компоненты <code>RestaurantCard</code>, <code>CuisineFilter</code>, <code>SearchBox</code>, <code>Section</code> написаны с типами props, без <code>any</code></li>
+          <li>Состояния в <code>App.tsx</code> типизированы: <code>Cuisine | null</code>, <code>string</code>, <code>number | null</code></li>
+          <li>Страница работает: поиск, фильтр по кухне и выбор ресторана</li>
+          <li>Я нарочно удалил обязательный prop, прочитал ошибку <code>TS2741</code> (файл, строка, код) и вернул prop</li>
+          <li><code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> и <code>npm run format:check</code> проходят без ошибок</li>
+          <li><code>AGENTS.md</code> дополнен правилами про типы</li>
+          <li>Коммит отправлен на GitHub, в репозитории виден <code>src/types.ts</code></li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/typescript" target="_blank" rel="noopener">react.dev — Using TypeScript</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/objects.html" target="_blank" rel="noopener">typescriptlang.org — Object Types</a></p>
+    </section>
+
+    <!-- ============ 11 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">11</span> Домашнее задание: мини-магазин из 5 компонентов без any</h2>
+
+      <p>Закончите типизацию «Дастархона»: у вас уже есть <code>RestaurantCard</code> и <code>CuisineFilter</code>, теперь допишите меню и корзину. На выходе пять типизированных компонентов, которые вместе работают как мини-магазин: выбрал ресторан, увидел меню, положил блюдо в корзину, увидел итог. Код пишете сами, агент может объяснять ошибки, как в разделе 8.</p>
+
+      <h3>Что нужно сделать</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Компонент</th><th>Props (типы напишите сами)</th><th>Что делает</th></tr></thead>
+          <tbody>
+            <tr><td><code>RestaurantCard</code>, <code>CuisineFilter</code></td><td>уже готовы</td><td>карточка ресторана и фильтр</td></tr>
+            <tr><td><code>MenuItemRow</code></td><td><code>item: MenuItem</code>, <code>onAdd: (item: MenuItem) =&gt; void</code></td><td>строка меню: название, цена в сомони, кнопка «В корзину»</td></tr>
+            <tr><td><code>CartItemRow</code></td><td><code>entry: CartItem</code>, <code>onRemove: (itemId: number) =&gt; void</code></td><td>строка корзины: название, количество, сумма строки, кнопка «Убрать»</td></tr>
+            <tr><td><code>CartSummary</code></td><td><code>entries: CartItem[]</code>, <code>children: ReactNode</code></td><td>блок «Корзина»: заголовок, <code>children</code> со строками и итог в сомони; при пустой корзине надпись «Корзина пуста»</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>В <code>App.tsx</code> добавьте состояние <code>cart</code> типа <code>CartItem[]</code> и состояние выбранного ресторана <code>useState&lt;Restaurant | null&gt;(null)</code> (вместо числа из практики). Показывайте меню выбранного ресторана (<code>menu.filter</code> по <code>restaurantId</code>). Добавление в корзину: если позиция уже есть, увеличивайте <code>qty</code>, иначе добавляйте новую. Состояние обновляйте <b>без изменения старого массива</b> (через <code>map</code>, <code>filter</code> и копию с <code>...</code>). Итог считайте функцией <code>cartTotal(entries: CartItem[]): number</code> в отдельном файле <code>src/cart.ts</code>.</p>
+
+      <h3>Требования</h3>
+      <ul>
+        <li><b>Типы:</b> нет <code>any</code>, <code>as</code> (кроме <code>as const</code>), <code>!</code>, <code>@ts-ignore</code> и <code>@ts-expect-error</code>. Проверка: <code>grep -rnE "\bany\b|@ts-ignore|@ts-expect-error" src</code> ничего не находит.</li>
+        <li><b>types.ts:</b> все типы данных лежат здесь и импортируются через <code>import type</code>; есть минимум один union или <code>as const</code> (кухни), одно необязательное поле (<code>address?</code>).</li>
+        <li><b>Props:</b> у каждого из пяти компонентов отдельный <code>type ИмяProps</code>; есть минимум один колбэк с точной сигнатурой, один <code>children: ReactNode</code>.</li>
+        <li><b>Состояние:</b> <code>useState&lt;Restaurant | null&gt;</code> и <code>useState&lt;CartItem[]&gt;</code> типизированы без <code>any</code>.</li>
+        <li><b>Проверки:</b> <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code>, <code>npm run format:check</code> проходят.</li>
+        <li><b>Работает:</b> выбор ресторана показывает меню, добавление увеличивает <code>qty</code>, «Убрать» удаляет позицию, итог сходится с ручным подсчётом.</li>
+        <li><b>Git:</b> минимум два новых коммита с понятными сообщениями (например, «add menu and cart components» и «type cart state»), репозиторий публичный.</li>
+        <li><b>AGENTS.md:</b> дополнен правилами про типы (из практики) и одним вашим собственным правилом.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Тип <code>CartItem</code> продублирован в компоненте вместо импорта из <code>types.ts</code>. <b>2.</b> Для <code>onAdd</code> написан тип <code>Function</code> или <code>any</code>. <b>3.</b> Корзина изменяется «на месте» (<code>cart.push(...)</code>): React не заметит изменения, а типы это не поймают. <b>4.</b> <code>useState([])</code> без типа: массив получает тип <code>never[]</code>, и добавить в него позицию не получится, нужно <code>useState&lt;CartItem[]&gt;([])</code>. <b>5.</b> Ошибка <code>possibly 'undefined'</code> «закрыта» восклицательным знаком. <b>6.</b> Один коммит «всё»: история должна показывать шаги.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 11.1</span><h4>Чек-лист требований к ДЗ-2</h4><span class="level mid">средняя</span></header>
+        <p>Перед сдачей проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Поиск <code>grep</code> по <code>any</code>, <code>@ts-ignore</code> и <code>@ts-expect-error</code> в <code>src</code> ничего не находит, <code>as</code> и <code>!</code> нет (кроме <code>as const</code> и <code>!</code> у <code>getElementById('root')</code> в <code>main.tsx</code>)</li>
+          <li>Все типы данных в <code>src/types.ts</code>, импорт через <code>import type</code></li>
+          <li>Пять компонентов с отдельными типами props, есть колбэк с точной сигнатурой и <code>children: ReactNode</code></li>
+          <li>Состояния <code>cart</code> и выбранного ресторана типизированы (<code>CartItem[]</code>, <code>Restaurant | null</code>)</li>
+          <li>Выбор ресторана, добавление, увеличение количества и удаление работают в браузере, итог верный</li>
+          <li><code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> и <code>npm run format:check</code> проходят</li>
+          <li>В репозитории минимум два новых осмысленных коммита, репозиторий публичный</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 11.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку на ваш репозиторий <code>dastarkhon</code>. Откройте её в режиме инкогнито: в <code>src/</code> должны быть <code>types.ts</code>, <code>data.ts</code>, <code>cart.ts</code> и пять компонентов.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/updating-arrays-in-state" target="_blank" rel="noopener">react.dev — Updating Arrays in State</a> · <a href="https://react.dev/learn/typescript" target="_blank" rel="noopener">react.dev — Using TypeScript</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>TypeScript</b> = JavaScript + типы. Проверяет код до запуска (<code>tsc</code>, редактор), типы вырезаются при сборке, в браузере их нет.</li>
+        <li><b>Базовое:</b> <code>string</code>, <code>number</code>, <code>boolean</code>, <code>string[]</code>. Вывод типов работает сам, писать тип вручную нужно у параметров функций и «пустых» значений. <code>any</code> запрещён.</li>
+        <li><b>Объекты:</b> <code>type Имя = { поле: тип; необязательное?: тип; readonly id: number }</code>. <code>interface … extends</code> встречается в чужом коде, в курсе используем <code>type</code>. Типы данных лежат в <code>types.ts</code>.</li>
+        <li><b>Варианты:</b> <code>"a" | "b"</code> — union литералов; сужение через <code>typeof</code>, <code>===</code>, поле-метку; <code>as const</code> и <code>(typeof X)[number]</code> выводят тип из массива. <code>enum</code> не используем.</li>
+        <li><b>Пусто:</b> <code>T | null</code>, <code>T | undefined</code>, <code>?.</code>, <code>??</code>, проверка <code>if</code>. <code>!</code> и <code>as</code> — не лечение. <code>??</code> реагирует только на <code>null</code> и <code>undefined</code>.</li>
+        <li><b>Функции:</b> параметры типизируем, результат выводится; необязательный параметр <code>x?: T</code> или <code>x = значение</code> в конце; тип функции <code>(id: number) =&gt; void</code>.</li>
+        <li><b>React:</b> <code>type ИмяProps</code> рядом с компонентом, <code>children: ReactNode</code>, колбэки <code>(…) =&gt; void</code>, события <code>ChangeEvent&lt;HTMLInputElement&gt;</code>, <code>useState&lt;T | null&gt;(null)</code>. Типы только для импорта — <code>import type</code>.</li>
+        <li><b>Частые ошибки:</b> <code>TS2322</code> (не тот тип), <code>TS2339</code>/<code>TS2551</code> (нет поля), <code>TS2345</code> (не тот аргумент), <code>TS2554</code> (число аргументов), <code>TS2741</code> (нет поля или prop), <code>TS2367</code> (сравнение без смысла), <code>TS18047</code>/<code>TS18048</code> (может не быть значения), <code>TS7006</code>/<code>TS7031</code> (неявный <code>any</code>), <code>TS1484</code> (нужен <code>import type</code>).</li>
+        <li><b>С агентом:</b> сначала просите объяснить ошибку целиком, с кодом <code>TSxxxx</code>; два варианта решения; запрет на <code>any</code>, <code>as</code>, <code>!</code>, <code>@ts-ignore</code>; после правки — <code>npm run typecheck</code>.</li>
+        <li><b>Проект 1 «Дастархон»:</b> теперь есть <code>types.ts</code>, <code>data.ts</code> и типизированные компоненты. Дальше (урок 3) строим дерево компонентов и каталог.</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 12.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить, что ловит TypeScript, почему типов нет в браузере и чем <code>tsc</code> отличается от Vite</li>
+          <li>Могу описать данные через <code>type</code>, сделать поле необязательным и объяснить разницу с <code>interface</code></li>
+          <li>Могу задать значения списком вариантов (union литералов, <code>as const</code>) и сузить union проверкой</li>
+          <li>Могу обработать <code>null</code> и <code>undefined</code> без <code>!</code> и <code>as</code>: проверка, <code>?.</code>, <code>??</code></li>
+          <li>Могу типизировать функцию, колбэк и необязательный параметр</li>
+          <li>Могу типизировать props, <code>children</code>, событие <code>onChange</code> и <code>useState</code> с union</li>
+          <li>Могу прочитать ошибку компилятора (файл, строка, код) и исправить десяток типовых без <code>any</code></li>
+          <li>Могу попросить агента объяснить ошибку, а не «починить любой ценой», и проверить его правку</li>
+        </ul>
+      </article>
+    </section>
