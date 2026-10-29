@@ -1,0 +1,1936 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 4 · Хуки, формы, стили</p>
+      <h1>Состояние: useState и useReducer</h1>
+      <p class="lead">К концу урока у вас будет интерактивный «Дастархон»: рядом с каталогом ресторанов появятся меню выбранного ресторана и корзина заказа, которой управляет редьюсер на <code>useReducer</code> с типизированными действиями. Вы будете понимать, что хранить в состоянии, а что вычислять, как обновлять массивы и объекты, не ломая React, и почему хуки нельзя вызывать где попало.</p>
+      <ul class="goals">
+        <li>Отличить состояние от props и от обычной переменной и решить, нужно ли данным своё состояние</li>
+        <li>Обновлять массивы и объекты в состоянии без мутаций (<code>map</code>, <code>filter</code>, spread) и объяснить, почему React сравнивает ссылки</li>
+        <li>Поднять состояние к ближайшему общему родителю и передать вниз значение и колбэк</li>
+        <li>Находить производные данные и не дублировать их в состоянии</li>
+        <li>Написать чистый редьюсер и вызвать его через <code>dispatch</code>, выбрать между <code>useState</code> и <code>useReducer</code></li>
+        <li>Типизировать состояние и действия через discriminated union и проверить полноту <code>switch</code> с помощью <code>never</code></li>
+        <li>Назвать правила хуков, объяснить их причину и прочитать ошибки, которые появляются при нарушении</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: проект <code>dastarkhon</code> после урока 3 (Vite + React + TypeScript, Tailwind CSS 4, четырнадцать компонентов в <code>src/components</code>, файлы <code>types.ts</code> и <code>data.ts</code>, ветка <code>feat/catalog</code> с домашним заданием), терминал, редактор и около 3,5 часов. Разделы 1–7 — теория с живыми песочницами: код на тёмном фоне выполняется прямо на странице. Раздел 8 — работа с ИИ-агентом, раздел 9 — практика на вашем компьютере. Результат урока — каталог с корзиной на <code>useReducer</code>, а в домашнем задании к нему добавятся фильтры и сортировка.</p>
+      <p>Предполагается, что вы знаете JavaScript и основы React: JSX, props, <code>useState</code> (его повторяет самотест урока 1), а также типы props и <code>useState</code> из урока 2 и модель «триггер — рендер — коммит» из урока 3. Здесь мы разбираем состояние глубже: как его хранить, как менять и как не запутаться, когда его станет много.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="state-props">
+      <h2 data-toc="Состояние и props"><span class="num">01</span> Состояние и props: у кого какие данные</h2>
+
+      <p>У компонента есть два источника данных. <b>Props</b> — это то, что ему передал родитель: компонент только читает их, как аргументы функции. <b>Состояние</b> (state) — это память самого компонента: значение, которое он хранит между рендерами и может менять сам. Меняется состояние — React вызывает компонент заново (триггер из урока 3) и показывает результат.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Схема: родитель передаёт компоненту props сверху вниз, компонент хранит внутри своё состояние и сообщает родителю о событиях через функции-колбэки">
+          <rect class="box g" x="250" y="10" width="240" height="60" rx="12" /><text x="370" y="36" text-anchor="middle">Родитель</text><text class="sub" x="370" y="56" text-anchor="middle">владеет данными</text>
+          <rect class="box" x="250" y="110" width="240" height="106" rx="14" /><text x="370" y="134" text-anchor="middle">Компонент</text>
+          <rect class="fill-y" x="266" y="146" width="100" height="56" rx="10" /><text x="316" y="168" text-anchor="middle">state</text><text class="sub" x="316" y="188" text-anchor="middle">своё</text>
+          <rect class="fill-g" x="378" y="146" width="100" height="56" rx="10" /><text x="428" y="168" text-anchor="middle">props</text><text class="sub" x="428" y="188" text-anchor="middle">только читает</text>
+          <path class="arr" d="M330 70 V102" /><path class="arr-head" d="M330 110 l-5 -10 h10 z" />
+          <text class="sub t-b" x="322" y="94" text-anchor="end">props: данные вниз</text>
+          <path class="arr" d="M410 110 V78" /><path class="arr-head" d="M410 70 l-5 10 h10 z" />
+          <text class="sub t-g" x="420" y="94">колбэк: событие вверх</text>
+          <text class="sub" x="510" y="150">Состояние принадлежит тому,</text><text class="sub" x="510" y="170">кто его объявил.</text><text class="sub" x="510" y="190">Props принадлежат родителю.</text>
+        </svg>
+        <figcaption>Данные идут вниз через props, события — вверх через колбэки; состояние живёт внутри того компонента, где вызван <code>useState</code></figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Props</th><th>Состояние</th></tr></thead>
+          <tbody>
+            <tr><td><b>Откуда</b></td><td>Приходят от родителя</td><td>Создаётся в самом компоненте через <code>useState</code></td></tr>
+            <tr><td><b>Кто меняет</b></td><td>Только родитель, компонент их читает</td><td>Сам компонент, через функцию <code>set…</code></td></tr>
+            <tr><td><b>Что после изменения</b></td><td>Родитель перерисовался и передал новые props</td><td>React вызывает компонент заново с новым значением</td></tr>
+            <tr><td><b>Пример в «Дастархоне»</b></td><td><code>restaurant</code> и <code>onSelect</code> в <code>RestaurantCard</code></td><td><code>query</code> и <code>cuisine</code> в <code>App</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Почему не обычная переменная</h3>
+      <p>Можно подумать: «зачем <code>useState</code>, ведь есть <code>let qty = 1</code>». У обычной переменной две проблемы. Во-первых, её присваивание не запускает рендер: React не узнает, что экран нужно обновить. Во-вторых, при следующем рендере функция компонента выполняется с начала, и <code>let qty = 1</code> снова станет единицей. <code>useState</code> решает обе: React хранит значение <b>вне функции</b>, возвращает его при каждом рендере, а вызов <code>setQty</code> запускает новый рендер.</p>
+
+      <h3>Нужно ли данным состояние: четыре вопроса</h3>
+      <ol class="steps">
+        <li><b>Оно меняется со временем?</b> Если нет, это константа или prop.</li>
+        <li><b>Его передал родитель через props?</b> Тогда оно не ваше: не копируйте его в своё состояние, а читайте prop.</li>
+        <li><b>Его можно вычислить из другого состояния или props?</b> Тогда это не состояние, а производные данные (раздел 4).</li>
+        <li><b>Оно влияет на то, что видно на экране?</b> Если нет (например, номер таймера), ему место не в состоянии (позже для таких значений будет <code>useRef</code>, урок 5).</li>
+      </ol>
+
+      <h3>Состояние у каждого экземпляра своё</h3>
+      <p>Два одинаковых компонента на странице не делят состояние: каждый вызов <code>&lt;Portions /&gt;</code> получает собственную «ячейку» памяти. Состояние привязано к <b>месту компонента в дереве</b>: пока компонент стоит на том же месте, React его помнит, а когда компонент пропадает из разметки, состояние выбрасывается (вспомните задачу про <code>key</code> и «компонент внутри компонента» из урока 3).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Официант в чойхоне принёс на два стола по чайнику. Чайник на столе — это состояние: он принадлежит столу, и сколько в нём чая, знают только за этим столом. Гостей за столом (props) приводит администратор, и официант их не выбирает. Если компанию пересадили за другой стол, чайник остаётся на прежнем: так и компонент, который переехал на другое место в дереве, для React новый и начинает с пустой памяти.</p>
+      </div>
+
+      <h3>Попробуйте: у каждой карточки своё состояние</h3>
+      <p>Нажмите «+» у плова и у чая, потом нажмите «Сбросить плов». Обратите внимание, как <code>initial</code> (prop) задаёт только <b>стартовое</b> значение, а дальше состояние живёт само.</p>
+
+      <div class="playground" data-mode="react" data-title="Порции: props и состояние">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Portions({ name, initial }: { name: string; initial: number }) {
+  const [qty, setQty] = useState(initial);
+  return (
+    &lt;p&gt;
+      {name}: &lt;button onClick={() =&gt; setQty(qty - 1)}&gt;−&lt;/button&gt;{" "}
+      &lt;b&gt;{qty}&lt;/b&gt; &lt;button onClick={() =&gt; setQty(qty + 1)}&gt;+&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; setQty(initial)}&gt;Сбросить {name.toLowerCase()}&lt;/button&gt;
+    &lt;/p&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Portions name="Плов" initial={1} /&gt;
+      &lt;Portions name="Чай" initial={2} /&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Копировать prop в состояние «на всякий случай»: <code>useState(props.restaurant)</code> запоминает значение только на первом рендере, дальше новые props игнорируются, и данные устаревают. <b>2.</b> Хранить в состоянии то, что можно посчитать (раздел 4). <b>3.</b> Менять prop внутри компонента: props только для чтения. <b>4.</b> Ждать, что <code>setQty</code> изменит <code>qty</code> прямо в этой же функции: новое значение увидит следующий рендер (раздел 4 урока 3). <b>5.</b> Объявлять один и тот же кусок состояния в двух местах «чтобы было удобнее»: потом они расходятся.</p>
+      </div>
+
+      <div class="yt" data-id="iHQ7fwXTqik" data-title="Состояние компонента в React. useState на практике: добавляем и обновляем данные — канал Friendly Frontend"></div>
+      <p class="muted">Ролик на русском (16 минут, 2025 год): <code>useState</code> на практике, добавление и обновление данных. Автор пишет на JavaScript, у вас те же приёмы с типами.</p>
+
+      <article class="task" id="q-state">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: состояние и props</h4><span class="level easy">лёгкая</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Почему счётчик нельзя хранить в обычной переменной <code>let qty = 1</code> внутри компонента?</p>
+          <ol class="options">
+            <li>Потому что <code>let</code> нельзя использовать в функциях</li>
+            <li>Присваивание не запускает рендер, а при следующем рендере функция выполнится заново и переменная снова станет единицей</li>
+            <li>Потому что React запрещает числа</li>
+            <li>Потому что переменную нельзя вывести в JSX</li>
+          </ol>
+          <div class="explain"><p>Состояние хранится вне функции компонента, а его setter сообщает React, что экран нужно обновить. С переменной нет ни того, ни другого.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>На странице два компонента <code>&lt;Portions name="Плов" /&gt;</code> и <code>&lt;Portions name="Чай" /&gt;</code> с одинаковым кодом. Нажали «+» в первом. Что будет со вторым?</p>
+          <ol class="options">
+            <li>Его счётчик тоже увеличится, ведь код один</li>
+            <li>Он перестанет работать</li>
+            <li>Ничего: у каждого экземпляра своё состояние</li>
+            <li>React выдаст предупреждение</li>
+          </ol>
+          <div class="explain"><p>Состояние принадлежит конкретному месту в дереве, а не коду компонента. Два экземпляра — две независимые ячейки памяти.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Что из этого разумно хранить в состоянии компонента <code>App</code>? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Текст в поле поиска: он меняется и влияет на экран</li>
+            <li>Название сайта «Дастархон»: оно не меняется</li>
+            <li>Число найденных ресторанов: его можно посчитать по списку</li>
+            <li>Содержимое корзины: оно меняется по действиям пользователя и показывается на экране</li>
+          </ol>
+          <div class="explain"><p>Название — константа, а число найденных — производное значение: <code>visible.length</code>. В состояние идёт только то, что нельзя получить из другого.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-portions">
+        <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Порции с собственным состоянием</h4><span class="level easy">лёгкая</span></header>
+        <p>Сейчас <code>qty</code> — просто константа из prop, кнопки ничего не делают. Заведите состояние с начальным значением <code>initial</code> и оживите кнопки: «+» увеличивает на 1, «−» уменьшает, но не ниже 1 (используйте <code>Math.max</code>). Автопроверка нажимает «+» у плова дважды, «−» у чая дважды и печатает числа.</p>
+        <div class="playground" data-mode="react" data-title="Порции">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Portions({ name, initial }) {
+  // TODO: состояние qty с начальным значением initial
+  const qty = initial;
+  return (
+    &lt;p&gt;
+      {name}: &lt;button onClick={() =&gt; {}}&gt;−&lt;/button&gt; &lt;b&gt;{qty}&lt;/b&gt;{" "}
+      &lt;button onClick={() =&gt; {}}&gt;+&lt;/button&gt;
+    &lt;/p&gt;
+  );
+}
+
+export default function App() {
+  return (
+    &lt;div&gt;
+      &lt;Portions name="Плов" initial={1} /&gt;
+      &lt;Portions name="Чай" initial={2} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  const b = () =&gt; document.querySelectorAll("button");
+  b()[1].click(); await wait();
+  b()[1].click(); await wait();
+  b()[2].click(); await wait();
+  b()[2].click(); await wait();
+  console.log([...document.querySelectorAll("b")].map((x) =&gt; x.textContent).join(" "));
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>3 1</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p><code>const [qty, setQty] = useState(initial);</code></p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>У «−»: <code>setQty(Math.max(1, qty - 1))</code>. Чай стартует с 2, после двух нажатий остаётся 1, а не 0.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/state-a-components-memory" target="_blank" rel="noopener">react.dev — State: A Component's Memory</a> · <a href="https://react.dev/learn/choosing-the-state-structure" target="_blank" rel="noopener">react.dev — Choosing the State Structure</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="immutable">
+      <h2 data-toc="Иммутабельные обновления"><span class="num">02</span> Иммутабельные обновления: не менять, а заменять</h2>
+
+      <p>Когда вы вызываете <code>setCart(newCart)</code>, React сравнивает новое значение со старым <b>по ссылке</b> (как <code>Object.is</code>). Если ссылка та же, React решает, что ничего не изменилось, и пропускает рендер. Поэтому состояние с массивом или объектом нельзя менять «на месте»: нужно создать <b>новый</b> массив или объект и передать его в <code>set…</code>. Это называется <b>иммутабельное обновление</b>. Старое значение считайте замороженным снимком.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 220" role="img" aria-label="Схема: слева мутация, push меняет содержимое массива, но ссылка остаётся прежней, и React не перерисовывает компонент. Справа копия: создаётся новый массив с новой ссылкой, React видит различие и перерисовывает">
+          <text x="12" y="22">Мутация</text>
+          <rect class="fill-r" x="12" y="36" width="130" height="50" rx="10" /><text x="77" y="58" text-anchor="middle">cart</text><text class="sub mono" x="77" y="76" text-anchor="middle">ссылка #1</text>
+          <path class="arr" d="M142 61 H172" /><path class="arr-head" d="M180 61 l-10 -5 v10 z" />
+          <rect class="box" x="180" y="36" width="150" height="50" rx="10" /><text class="sub mono" x="255" y="66" text-anchor="middle">cart.push(item)</text>
+          <path class="arr" d="M330 61 H360" /><path class="arr-head" d="M368 61 l-10 -5 v10 z" />
+          <rect class="fill-r" x="368" y="36" width="110" height="50" rx="10" /><text x="423" y="58" text-anchor="middle">ссылка #1</text><text class="sub" x="423" y="76" text-anchor="middle">та же</text>
+          <text class="sub t-r" x="12" y="116">React: «ссылка не изменилась, рендер не нужен». Экран не обновился.</text>
+          <text x="12" y="148">Копия</text>
+          <rect class="fill-g" x="12" y="162" width="130" height="50" rx="10" /><text x="77" y="184" text-anchor="middle">cart</text><text class="sub mono" x="77" y="202" text-anchor="middle">ссылка #1</text>
+          <path class="arr" d="M142 187 H172" /><path class="arr-head" d="M180 187 l-10 -5 v10 z" />
+          <rect class="box" x="180" y="162" width="190" height="50" rx="10" /><text class="sub mono" x="275" y="192" text-anchor="middle">[...cart, item]</text>
+          <path class="arr" d="M370 187 H400" /><path class="arr-head" d="M408 187 l-10 -5 v10 z" />
+          <rect class="fill-g" x="408" y="162" width="130" height="50" rx="10" /><text x="473" y="184" text-anchor="middle">новый cart</text><text class="sub mono" x="473" y="202" text-anchor="middle">ссылка #2</text>
+          <text class="sub t-g" x="552" y="192">рендер, экран обновился</text>
+        </svg>
+        <figcaption>Мутация оставляет прежнюю ссылку, и React не видит изменения; копия даёт новую ссылку, и рендер запускается</figcaption>
+      </figure>
+
+      <h3>Что меняет на месте, а что создаёт копию</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Мутирует (не использовать с состоянием)</th><th>Возвращает новое (использовать)</th></tr></thead>
+          <tbody>
+            <tr><td><b>Массив</b></td><td><code>push</code>, <code>pop</code>, <code>shift</code>, <code>unshift</code>, <code>splice</code>, <code>sort</code>, <code>reverse</code>, <code>arr[i] = …</code></td><td><code>[...arr, x]</code>, <code>filter</code>, <code>map</code>, <code>slice</code>, <code>concat</code>, <code>[...arr].sort()</code></td></tr>
+            <tr><td><b>Объект</b></td><td><code>obj.qty = 5</code>, <code>obj.qty++</code>, <code>delete obj.qty</code></td><td><code>{ ...obj, qty: 5 }</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Все операции над корзиной выражаются этими четырьмя приёмами. Здесь <code>CartItem</code> — тип из урока 2 (<code>{ item: MenuItem; qty: number }</code>):</p>
+
+<pre class="code" data-lang="tsx" data-title="Пять операций над массивом без мутаций">
+// добавить в конец
+setCart([...cart, { item, qty: 1 }])
+
+// убрать по id
+setCart(cart.filter((entry) =&gt; entry.item.id !== itemId))
+
+// изменить одну запись: у остальных вернуть тот же объект
+setCart(
+  cart.map((entry) =&gt;
+    entry.item.id === itemId ? { ...entry, qty: entry.qty + 1 } : entry,
+  ),
+)
+
+// вставить в начало
+setCart([{ item, qty: 1 }, ...cart])
+
+// отсортировать: сначала копия, потом sort
+setCart([...cart].sort((a, b) =&gt; a.item.price - b.item.price))
+</pre>
+
+      <p>Копия <b>поверхностная</b>: <code>{ ...entry, qty: 5 }</code> создаёт новый объект записи, но вложенный объект <code>entry.item</code> остаётся тем же. Это нормально, если вы меняете только верхний уровень. Если нужно изменить поле вложенного объекта, копируйте каждый уровень на пути к нему:</p>
+
+<pre class="code" data-lang="tsx" data-title="Вложенное поле: копия на каждом уровне">
+// поменять цену блюда внутри записи корзины
+setCart(
+  cart.map((entry) =&gt;
+    entry.item.id === itemId
+      ? { ...entry, item: { ...entry.item, price: 50 } }
+      : entry,
+  ),
+)
+</pre>
+
+      <p>Глубокая вложенность быстро становится неудобной. Поэтому в состоянии стараются держать данные <b>плоскими</b>, а для сложных случаев есть библиотека Immer: она позволяет писать «как будто с мутацией», а на деле делает копии. Вы встретите её в Redux Toolkit (урок 9). Пока достаточно <code>map</code>, <code>filter</code> и spread.</p>
+
+      <h3>Типы помогают: readonly</h3>
+      <p>TypeScript умеет запрещать мутации. Тип <code>readonly CartItem[]</code> (или <code>ReadonlyArray&lt;CartItem&gt;</code>) убирает у массива методы-мутаторы и запрещает присваивание по индексу. Если объявить так параметр функции, компилятор не даст случайно изменить пришедший массив:</p>
+
+<pre class="code" data-title="Терминал — вывод tsc -b для readonly-массива">
+src/ro.ts(3,9): error TS2339: Property 'push' does not exist on type 'readonly CartItem[]'.
+src/ro.ts(4,3): error TS2542: Index signature in type 'readonly CartItem[]' only permits reading.
+</pre>
+
+      <p><code>readonly</code> — защита времени компиляции, в работающей программе массив остаётся обычным. Поле объекта защищается так: <code>readonly qty: number</code>. Тип <code>Readonly&lt;T&gt;</code> делает все поля объекта <code>T</code> доступными только для чтения (утилитные типы подробнее — урок 9).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Меню в чойхоне печатают на листе. Если на нём ручкой зачеркнуть блюдо, администратор, сверяющий листы по номеру партии, не заметит правки: номер тот же. Поэтому для нового меню печатают новый лист с новым номером. Лист — массив, номер партии — ссылка, а типографская печать — spread и <code>map</code>.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> <code>cart.push(item); setCart(cart)</code>: ссылка прежняя, рендера нет. <b>2.</b> <code>entry.qty += 1; setCart([...cart])</code>: массив новый, но <b>объекты внутри изменены</b>, а значит, «старый снимок» тоже испорчен. Другие части программы, которые держат ссылку на запись, увидят чужое изменение. <b>3.</b> <code>const sorted = cart.sort(…)</code>: <code>sort</code> меняет сам массив и возвращает его же. <b>4.</b> <code>setUser(user.name = 'Алишер')</code>: присваивание — выражение, оно вернёт строку, а не объект. <b>5.</b> Копировать массив через <code>const copy = cart</code>: это ещё одна ссылка на тот же массив, а не копия.</p>
+      </div>
+
+      <div class="yt" data-id="O704OnjrL7o" data-title="Иммутабельность от А до Я — ReactJS Полный курс, канал Евгений Паромов" data-start="60"></div>
+      <p class="muted">Ролик на русском (30 минут, 2023 год): что такое иммутабельность и как её соблюдать в React. Для урока достаточно первой половины.</p>
+
+      <article class="task" id="q-immut">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: иммутабельность</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Разработчик написал <code>cart.push(item); setCart(cart);</code> и жалуется, что экран не меняется. Почему?</p>
+          <ol class="options">
+            <li>Метод <code>push</code> не работает с массивами объектов</li>
+            <li>Нельзя вызывать <code>setCart</code> два раза подряд</li>
+            <li>Ссылка на массив осталась прежней, React сравнивает ссылки и не видит изменения</li>
+            <li>Нужно вызвать <code>forceUpdate</code></li>
+          </ol>
+          <div class="explain"><p>React решает, нужен ли рендер, сравнением нового значения со старым по ссылке. Передайте новый массив: <code>setCart([...cart, item])</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Какие записи обновляют состояние корректно? Выберите два варианта.</p>
+          <ol class="options">
+            <li><code>cart[0].qty = 5; setCart(cart)</code></li>
+            <li><code>setCart(cart.map((e) =&gt; (e.item.id === 1 ? { ...e, qty: 5 } : e)))</code></li>
+            <li><code>setCart(cart.sort((a, b) =&gt; a.qty - b.qty))</code></li>
+            <li><code>setCart([...cart].sort((a, b) =&gt; a.qty - b.qty))</code></li>
+          </ol>
+          <div class="explain"><p>В первом варианте мутация, в третьем <code>sort</code> меняет исходный массив и возвращает ту же ссылку. Во втором и четвёртом создаются новые значения.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>В коде <code>setCart(cart.map((e) =&gt; { e.qty += 1; return e; }))</code> массив новый. Что не так?</p>
+          <ol class="options">
+            <li>Объекты внутри изменены на месте: старый снимок испорчен, другие ссылки на эти объекты увидят чужое изменение</li>
+            <li>Ничего: массив новый, значит, всё правильно</li>
+            <li><code>map</code> нельзя использовать с состоянием</li>
+            <li>Нужно вернуть массив, а не объект</li>
+          </ol>
+          <div class="explain"><p>Новый массив не отменяет мутацию объектов внутри него. Для записи нужен новый объект: <code>{ ...e, qty: e.qty + 1 }</code>.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t2-push">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Добавление блюда без мутации</h4><span class="level mid">средняя</span></header>
+        <p>Кнопка «Добавить» ничего не показывает: функция <code>add</code> меняет массив на месте. Перепишите её так, чтобы список обновлялся: создайте новый массив со старыми блюдами и новым в конце. Автопроверка нажимает кнопку два раза и печатает число строк в списке.</p>
+        <div class="playground" data-mode="react" data-title="Корзина: добавление">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [dishes, setDishes] = useState(["Плов"]);
+
+  function add() {
+    // TODO: не меняйте dishes на месте
+    dishes.push("Самбуса");
+    setDishes(dishes);
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={add}&gt;Добавить&lt;/button&gt;
+      &lt;ul&gt;
+        {/* список только растёт, поэтому индекс как key здесь безопасен */}
+        {dishes.map((d, i) =&gt; (
+          &lt;li key={i}&gt;{d}&lt;/li&gt;
+        ))}
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("button").click(); await wait();
+  document.querySelector("button").click(); await wait();
+  console.log("строк: " + document.querySelectorAll("li").length);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>строк: 3</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В <code>add</code> оставьте одну строку: новое значение собирается из старого.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>setDishes([...dishes, "Самбуса"]);</code></p></details>
+      </article>
+
+      <article class="task" id="t2-qty">
+        <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Количество без порчи старого снимка</h4><span class="level hard">сложная</span></header>
+        <p>Здесь массив новый, но запись внутри меняется на месте. Автопроверка нажимает «+» и печатает количество на экране и в исходном объекте <code>initial</code>. Исправьте <code>increment</code> так, чтобы исходный объект остался нетронутым: для нужной записи верните <b>новый объект</b> <code>{ ...entry, qty: entry.qty + 1 }</code>, остальные записи оставьте как есть.</p>
+        <div class="playground" data-mode="react" data-title="Корзина: количество">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+const initial = [
+  { id: 1, title: "Плов", qty: 1 },
+  { id: 2, title: "Чай", qty: 1 },
+];
+
+export default function App() {
+  const [cart, setCart] = useState(initial);
+
+  function increment(id) {
+    // TODO: не меняйте entry на месте
+    setCart(
+      cart.map((entry) =&gt; {
+        if (entry.id === id) {
+          entry.qty += 1;
+        }
+        return entry;
+      }),
+    );
+  }
+
+  return (
+    &lt;ul&gt;
+      {cart.map((entry) =&gt; (
+        &lt;li key={entry.id}&gt;
+          {entry.title}: &lt;b&gt;{entry.qty}&lt;/b&gt;{" "}
+          &lt;button onClick={() =&gt; increment(entry.id)}&gt;+&lt;/button&gt;
+        &lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("button").click(); await wait();
+  console.log("на экране: " + document.querySelector("b").textContent + ", в initial: " + initial[0].qty);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>на экране: 2, в initial: 1</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Вместо блока с <code>entry.qty += 1</code> используйте тернарный оператор: если <code>id</code> совпал, верните копию записи, иначе саму запись.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>cart.map((entry) =&gt; entry.id === id ? { ...entry, qty: entry.qty + 1 } : entry)</code></p></details>
+      </article>
+
+      <article class="task" id="t2-ts">
+        <header><span class="task-num">ЗАДАЧА 2.4</span><h4>readonly не даёт мутировать</h4><span class="level mid">средняя</span></header>
+        <p>Функция принимает массив как <code>readonly</code> и всё равно пытается сделать <code>push</code>: компилятор отказывается. Верните <b>новый</b> массив, не трогая пришедший. Нажмите «Запустить»: ошибок типов быть не должно.</p>
+<pre class="code" data-run data-lang="ts">
+type Entry = { title: string; qty: number };
+
+function addEntry(entries: readonly Entry[], entry: Entry): Entry[] {
+  // TODO: верните новый массив вместо push
+  entries.push(entry);
+  return entries;
+}
+
+const before: readonly Entry[] = [{ title: "Плов", qty: 1 }];
+const after = addEntry(before, { title: "Чай", qty: 2 });
+console.log(before.length, after.length);
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>1 2</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Ошибка <code>TS2339</code> говорит, что у <code>readonly</code>-массива нет метода <code>push</code>. Нужен способ получить новый массив из старого.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>return [...entries, entry];</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/updating-objects-in-state" target="_blank" rel="noopener">react.dev — Updating Objects in State</a> · <a href="https://react.dev/learn/updating-arrays-in-state" target="_blank" rel="noopener">react.dev — Updating Arrays in State</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/objects.html#readonly-properties" target="_blank" rel="noopener">typescriptlang.org — readonly</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="lifting">
+      <h2 data-toc="Подъём состояния"><span class="num">03</span> Подъём состояния: один источник правды</h2>
+
+      <p>Бывает, что двум компонентам нужны одни и те же данные. В «Дастархоне» меню добавляет блюда в корзину, а корзина их показывает. Пока у каждого своё состояние, они не синхронизируются: меню «не знает», что лежит в корзине. Решение называется <b>подъёмом состояния</b> (lifting state up): перенесите состояние в <b>ближайшего общего родителя</b>, а детям передайте значение через props и функцию-обработчик через колбэк.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Схема подъёма состояния. Слева: у компонентов Menu и Cart своё состояние, они не синхронизированы. Справа: состояние cart лежит в родителе App, Menu получает колбэк onAdd, Cart получает значение cart через props">
+          <text x="12" y="20">До: два состояния</text>
+          <rect class="box" x="30" y="40" width="130" height="38" rx="10" /><text x="95" y="64" text-anchor="middle">App</text>
+          <path class="arr" d="M95 78 V96 H60 V112" /><path class="arr" d="M95 96 H150 V112" />
+          <rect class="fill-r" x="10" y="112" width="100" height="56" rx="10" /><text x="60" y="134" text-anchor="middle">Menu</text><text class="sub mono" x="60" y="154" text-anchor="middle">cart #1</text>
+          <rect class="fill-r" x="120" y="112" width="100" height="56" rx="10" /><text x="170" y="134" text-anchor="middle">Cart</text><text class="sub mono" x="170" y="154" text-anchor="middle">cart #2</text>
+          <text class="sub t-r" x="12" y="196">две копии: расходятся</text>
+          <text x="400" y="20">После: одно состояние выше</text>
+          <rect class="fill-y" x="440" y="40" width="190" height="52" rx="10" /><text x="535" y="62" text-anchor="middle">App</text><text class="sub mono" x="535" y="82" text-anchor="middle">cart — один источник</text>
+          <rect class="box" x="420" y="140" width="100" height="42" rx="10" /><text x="470" y="166" text-anchor="middle">Menu</text>
+          <rect class="box" x="570" y="140" width="100" height="42" rx="10" /><text x="620" y="166" text-anchor="middle">Cart</text>
+          <path class="arr" d="M490 92 V132" /><path class="arr-head" d="M490 140 l-5 -10 h10 z" />
+          <path class="arr" d="M450 140 V100" /><path class="arr-head" d="M450 92 l-5 10 h10 z" />
+          <path class="arr" d="M620 92 V132" /><path class="arr-head" d="M620 140 l-5 -10 h10 z" />
+          <text class="sub t-b" x="440" y="124" text-anchor="end">onAdd(item) вверх</text>
+          <text class="sub t-g" x="380" y="214">cart вниз: Menu и Cart видят одно значение</text>
+        </svg>
+        <figcaption>Состояние поднимают к ближайшему общему родителю: значения идут вниз через props, события вверх через колбэки</figcaption>
+      </figure>
+
+      <p>Алгоритм из четырёх шагов: <b>1)</b> найти все компоненты, которым нужны эти данные; <b>2)</b> найти их ближайшего общего родителя; <b>3)</b> объявить состояние там; <b>4)</b> передать значение вниз через props, а изменение — через функцию (<code>onAdd</code>, <code>onChange</code>). Дочерний компонент не хранит копию, он показывает то, что получил, и сообщает о событии.</p>
+
+<pre class="code" data-lang="tsx" data-title="Подъём состояния: счётчик порций и итог">
+function PortionControl({ qty, onChange }: { qty: number; onChange: (qty: number) =&gt; void }) {
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; onChange(qty - 1)}&gt;−&lt;/button&gt; {qty}{' '}
+      &lt;button onClick={() =&gt; onChange(qty + 1)}&gt;+&lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+
+function OrderTotal({ qty, price }: { qty: number; price: number }) {
+  return &lt;p&gt;Итого: {qty * price} сомони&lt;/p&gt;
+}
+
+export default function App() {
+  const [qty, setQty] = useState(1) // состояние живёт у родителя
+  return (
+    &lt;&gt;
+      &lt;PortionControl qty={qty} onChange={setQty} /&gt;
+      &lt;OrderTotal qty={qty} price={45} /&gt;
+    &lt;/&gt;
+  )
+}
+</pre>
+
+      <p>Не поднимайте состояние выше, чем нужно. Если данные нужны только одному компоненту, пусть живут в нём. Другая крайность: состояние поднято на самый верх, и приходится передавать его через пять уровней компонентов, которым оно не нужно. Это называется <b>prop drilling</b>. Для него есть Context (урок 8), но сначала проверьте, нельзя ли решить задачу композицией: передать готовый JSX через <code>children</code> (урок 3).</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>На свадьбе в Душанбе два повара готовят плов и самбусу и оба ведут свой список гостей. Один записал 120 человек, другой 150: еды то слишком много, то не хватает. Нужен один список у распорядителя (общий родитель). Повара получают от него число и сообщают ему «добавился гость».</p>
+      </div>
+
+      <article class="task" id="q-lift">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Проверь себя: подъём состояния</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Компонентам <code>Menu</code> и <code>Cart</code> нужна одна и та же корзина. Где объявить состояние?</p>
+          <ol class="options">
+            <li>В <code>Menu</code>, а <code>Cart</code> пусть копирует его себе</li>
+            <li>В обоих компонентах и синхронизировать вручную</li>
+            <li>В ближайшем общем родителе, который передаёт данные вниз через props, а событие принимает через колбэк</li>
+            <li>В глобальной переменной за пределами компонентов</li>
+          </ol>
+          <div class="explain"><p>Единственный источник правды в общем родителе исключает расхождение данных. Глобальная переменная не запускала бы рендер.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>Что делает дочерний компонент, когда пользователь нажал «+» и родитель должен обновить состояние?</p>
+          <ol class="options">
+            <li>Сам меняет prop <code>qty</code></li>
+            <li>Вызывает колбэк из props (например, <code>onChange(qty + 1)</code>), а состояние меняет родитель</li>
+            <li>Вызывает <code>setState</code> родителя напрямую по ссылке</li>
+            <li>Ничего: дети не могут сообщить родителю о событии</li>
+          </ol>
+          <div class="explain"><p>Данные идут вниз, события вверх: ребёнок вызывает переданную функцию, родитель обновляет состояние и перерисовывает всех, кто его использует.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t3-lift">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Поднимите состояние порций</h4><span class="level mid">средняя</span></header>
+        <p>У <code>PortionControl</code> своё состояние, а <code>OrderTotal</code> получает число 1 и поэтому всегда показывает 45. Поднимите состояние в <code>App</code>: объявите там <code>qty</code>, передайте его в оба компонента, а в <code>PortionControl</code> замените свой <code>useState</code> на props <code>qty</code> и <code>onChange</code>. Автопроверка нажимает «+» два раза.</p>
+        <div class="playground" data-mode="react" data-title="Порции и итог">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+// TODO: уберите отсюда состояние, получайте qty и onChange через props
+function PortionControl() {
+  const [qty, setQty] = useState(1);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setQty(Math.max(1, qty - 1))}&gt;−&lt;/button&gt; &lt;b&gt;{qty}&lt;/b&gt;{" "}
+      &lt;button onClick={() =&gt; setQty(qty + 1)}&gt;+&lt;/button&gt;
+    &lt;/div&gt;
+  );
+}
+
+function OrderTotal({ qty }) {
+  return &lt;p&gt;Итого: {qty * 45} сомони&lt;/p&gt;;
+}
+
+export default function App() {
+  // TODO: состояние qty должно жить здесь
+  return (
+    &lt;div&gt;
+      &lt;PortionControl /&gt;
+      &lt;OrderTotal qty={1} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  const plus = document.querySelectorAll("button")[1];
+  plus.click(); await wait();
+  plus.click(); await wait();
+  console.log(document.querySelector("p").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Итого: 135 сомони</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В <code>App</code>: <code>const [qty, setQty] = useState(1);</code>, затем <code>&lt;PortionControl qty={qty} onChange={setQty} /&gt;</code> и <code>&lt;OrderTotal qty={qty} /&gt;</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>PortionControl({ qty, onChange })</code>: кнопки вызывают <code>onChange(Math.max(1, qty - 1))</code> и <code>onChange(qty + 1)</code>.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/sharing-state-between-components" target="_blank" rel="noopener">react.dev — Sharing State Between Components</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="derived">
+      <h2 data-toc="Производные данные"><span class="num">04</span> Производные данные: не храните то, что можно посчитать</h2>
+
+      <p>Чем меньше состояния, тем меньше мест, где данные могут разойтись. Правило: если значение можно <b>вычислить</b> из props или другого состояния, не заводите для него отдельное состояние, а считайте прямо в теле компонента при каждом рендере. Рендер дешёвый, а расхождение данных дорогое.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 200" role="img" aria-label="Схема: из минимального состояния (query, cuisine, selectedId, cart) в теле компонента при каждом рендере вычисляются производные значения: visible, selected, total, count">
+          <rect class="fill-y" x="10" y="24" width="190" height="150" rx="12" /><text x="105" y="48" text-anchor="middle">Состояние</text>
+          <text class="sub mono" x="105" y="76" text-anchor="middle">query</text><text class="sub mono" x="105" y="98" text-anchor="middle">cuisine</text><text class="sub mono" x="105" y="120" text-anchor="middle">selectedId</text><text class="sub mono" x="105" y="142" text-anchor="middle">cart</text>
+          <path class="arr" d="M200 99 H262" /><path class="arr-head" d="M270 99 l-10 -5 v10 z" />
+          <text class="sub" x="235" y="86" text-anchor="middle">рендер</text>
+          <rect class="fill-g" x="270" y="24" width="220" height="150" rx="12" /><text x="380" y="48" text-anchor="middle">Вычисляем в теле</text>
+          <text class="sub mono" x="380" y="76" text-anchor="middle">visible = filter(…)</text><text class="sub mono" x="380" y="98" text-anchor="middle">selected = find(…)</text><text class="sub mono" x="380" y="120" text-anchor="middle">total = cartTotal(cart)</text><text class="sub mono" x="380" y="142" text-anchor="middle">count = cartCount(cart)</text>
+          <path class="arr" d="M490 99 H542" /><path class="arr-head" d="M550 99 l-10 -5 v10 z" />
+          <rect class="box g" x="550" y="60" width="160" height="78" rx="12" /><text x="630" y="94" text-anchor="middle">Экран</text><text class="sub" x="630" y="116" text-anchor="middle">всегда согласован</text>
+        </svg>
+        <figcaption>Минимальное состояние слева, всё остальное вычисляется при каждом рендере и поэтому не может устареть</figcaption>
+      </figure>
+
+      <p>В «Дастархоне» к состоянию относятся только <code>query</code>, <code>cuisine</code>, <code>selectedId</code> и <code>cart</code>. Всё остальное производное:</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Значение</th><th>Как получить</th><th>Если хранить отдельно</th></tr></thead>
+          <tbody>
+            <tr><td><code>visible</code> (найденные рестораны)</td><td><code>restaurants.filter(…)</code> по <code>query</code> и <code>cuisine</code></td><td>Надо не забыть обновить при каждом изменении запроса, фильтра и данных</td></tr>
+            <tr><td><code>selected</code> (выбранный ресторан)</td><td><code>restaurants.find((r) =&gt; r.id === selectedId)</code></td><td>Копия объекта устареет, если данные ресторана изменятся</td></tr>
+            <tr><td><code>total</code>, <code>count</code> (итог и число порций)</td><td><code>cartTotal(cart)</code>, <code>cartCount(cart)</code></td><td>Забыли пересчитать в одном из обработчиков — итог неверный</td></tr>
+            <tr><td><code>isEmpty</code> (корзина пуста)</td><td><code>cart.length === 0</code></td><td>Ещё одна переменная для синхронизации</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Особенно хорошо это видно на выбранном ресторане. Храните <b>идентификатор</b> (<code>selectedId</code>), а сам объект находите по нему: так вы всегда показываете актуальные данные из массива, а не копию, которую сделали при клике.</p>
+
+<pre class="code" data-lang="tsx" data-title="Плохо: дублирование через эффект. Хорошо: вычисление в теле">
+// Плохо: два состояния, которые надо держать в согласии
+const [query, setQuery] = useState('')
+const [visible, setVisible] = useState(restaurants)
+useEffect(() =&gt; {
+  setVisible(restaurants.filter((r) =&gt; r.name.includes(query)))
+}, [query])
+
+// Хорошо: одно состояние и вычисление
+const [query, setQuery] = useState('')
+const visible = restaurants.filter((r) =&gt; r.name.includes(query))
+</pre>
+
+      <p>Первый вариант вызывает лишний рендер (сначала с устаревшим <code>visible</code>, потом с новым) и хрупок. <code>useEffect</code> разберём в уроке 5, а правило запомните уже сейчас: <b>не синхронизируйте состояние через эффект, если значение можно вычислить</b>. Если вычисление окажется тяжёлым, его можно запомнить через <code>useMemo</code> (урок 12), но сначала измерьте, нужно ли это.</p>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> <code>const [count, setCount] = useState(items.length)</code>: число запомнено на первом рендере и не следует за массивом. <b>2.</b> <code>useState(props.value)</code> с ожиданием, что значение будет обновляться вместе с prop. <b>3.</b> Хранить в состоянии и список, и отфильтрованный список. <b>4.</b> Хранить объект выбранного ресторана вместо его <code>id</code>. <b>5.</b> Сортировать массив состояния «на месте» ради удобства показа: сортируйте копию в теле компонента (<code>[...cart].sort(…)</code>).</p>
+      </div>
+
+      <article class="task" id="q-derived">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: производные данные</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1,3">
+          <p>Какие значения в «Дастархоне» лучше вычислять, а не хранить? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Сумму корзины: она считается по записям корзины</li>
+            <li>Текст в поле поиска: пользователь вводит его сам</li>
+            <li>Число найденных ресторанов: <code>visible.length</code></li>
+            <li>Содержимое корзины: его меняют действия пользователя</li>
+          </ol>
+          <div class="explain"><p>Сумма и число найденных вычисляются из состояния. Текст поиска и сама корзина — исходные данные, их нельзя получить из другого.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Почему в состоянии лучше хранить <code>selectedId</code>, а не весь объект ресторана?</p>
+          <ol class="options">
+            <li>Число занимает меньше места в памяти</li>
+            <li>Объекты нельзя хранить в состоянии</li>
+            <li>React запрещает хранить объекты данных</li>
+            <li>Объект придётся копировать, а копия устареет, если данные в массиве изменятся; по <code>id</code> всегда находим актуальный</li>
+          </ol>
+          <div class="explain"><p>Объекты хранить в состоянии можно (корзина — массив объектов). Но копия данных из другого источника — это дубль, который расходится с оригиналом.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t4-derived">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Уберите лишнее состояние итога</h4><span class="level mid">средняя</span></header>
+        <p>В компоненте два состояния: список цен и отдельно «итого». Кнопка «Убрать последнее» забывает обновить итог, и числа расходятся. Удалите состояние <code>total</code>, а итог вычисляйте в теле компонента из списка. Автопроверка добавляет плов (45) и чай (8), убирает последнее и печатает итог.</p>
+        <div class="playground" data-mode="react" data-title="Итог заказа">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [prices, setPrices] = useState([]);
+  // TODO: уберите это состояние, итог должен считаться из prices
+  const [total, setTotal] = useState(0);
+
+  function add(price) {
+    setPrices([...prices, price]);
+    setTotal(total + price);
+  }
+
+  function removeLast() {
+    setPrices(prices.slice(0, -1));
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; add(45)}&gt;Плов 45&lt;/button&gt;
+      &lt;button onClick={() =&gt; add(8)}&gt;Чай 8&lt;/button&gt;
+      &lt;button onClick={removeLast}&gt;Убрать последнее&lt;/button&gt;
+      &lt;p&gt;Итого: {total}&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  const b = () =&gt; document.querySelectorAll("button");
+  b()[0].click(); await wait();
+  b()[1].click(); await wait();
+  b()[2].click(); await wait();
+  console.log(document.querySelector("p").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Итого: 45</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Удалите строку <code>useState(0)</code> и вызов <code>setTotal</code>. Вместо них в теле компонента: <code>const total = ...</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const total = prices.reduce((sum, price) =&gt; sum + price, 0);</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/choosing-the-state-structure" target="_blank" rel="noopener">react.dev — Choosing the State Structure</a> · <a href="https://react.dev/learn/you-might-not-need-an-effect" target="_blank" rel="noopener">react.dev — You Might Not Need an Effect</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="reducer">
+      <h2 data-toc="useReducer и действия"><span class="num">05</span> useReducer: действия вместо россыпи setState</h2>
+
+      <p>Корзине нужны четыре операции: добавить блюдо, убрать, изменить количество, очистить. С <code>useState</code> каждая превращается в отдельную функцию-обработчик со своим <code>setCart(…)</code>, и логика «как меняется корзина» рассыпана по компоненту (а при подъёме состояния ещё и по пропсам). <code>useReducer</code> собирает её в одном месте.</p>
+
+      <p><b>Редьюсер</b> — обычная функция <code>(state, action) =&gt; newState</code>: берёт текущее состояние и <b>действие</b> (action), возвращает следующее состояние. <b>Действие</b> — объект, который описывает <i>что произошло</i>, а не <i>как менять</i>: <code>{ type: 'add', item }</code>, <code>{ type: 'remove', itemId: 3 }</code>. Компонент не меняет состояние сам, а отправляет действие через <code>dispatch</code>.</p>
+
+<pre class="code" data-lang="tsx" data-title="Форма записи (упрощённо, без типов)">
+const [state, dispatch] = useReducer(reducer, initialState)
+
+dispatch({ type: 'add', item })   // «произошло: добавили блюдо»
+// React вызовет reducer(state, { type: 'add', item }) и возьмёт результат как новое состояние
+</pre>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 190" role="img" aria-label="Цикл useReducer: пользователь нажимает кнопку, обработчик вызывает dispatch с действием, React вызывает редьюсер с текущим состоянием и действием, редьюсер возвращает новое состояние, компонент перерисовывается">
+          <rect class="fill-y" x="10" y="40" width="120" height="70" rx="12" /><text x="70" y="68" text-anchor="middle">Событие</text><text class="sub" x="70" y="90" text-anchor="middle">клик «В корзину»</text>
+          <rect class="box b" x="165" y="40" width="130" height="70" rx="12" /><text x="230" y="68" text-anchor="middle">dispatch</text><text class="sub mono" x="230" y="90" text-anchor="middle">{type:'add', item}</text>
+          <rect class="fill-g" x="330" y="40" width="140" height="70" rx="12" /><text x="400" y="68" text-anchor="middle">reducer</text><text class="sub mono" x="400" y="90" text-anchor="middle">(state, action)</text>
+          <rect class="box g" x="505" y="40" width="100" height="70" rx="12" /><text x="555" y="68" text-anchor="middle">Новое</text><text class="sub" x="555" y="90" text-anchor="middle">состояние</text>
+          <rect class="box" x="635" y="40" width="75" height="70" rx="12" /><text x="672" y="80" text-anchor="middle">Рендер</text>
+          <path class="arr" d="M130 75 H157" /><path class="arr-head" d="M165 75 l-10 -5 v10 z" />
+          <path class="arr" d="M295 75 H322" /><path class="arr-head" d="M330 75 l-10 -5 v10 z" />
+          <path class="arr" d="M470 75 H497" /><path class="arr-head" d="M505 75 l-10 -5 v10 z" />
+          <path class="arr" d="M605 75 H627" /><path class="arr-head" d="M635 75 l-10 -5 v10 z" />
+          <text class="sub" x="12" y="150">Компонент описывает событие, а правила перехода состояния живут в редьюсере.</text>
+          <text class="sub t-b" x="12" y="172">Редьюсер — чистая функция: тот же state и action всегда дают тот же результат.</text>
+        </svg>
+        <figcaption>Цикл useReducer: событие, dispatch с действием, редьюсер, новое состояние, рендер</figcaption>
+      </figure>
+
+      <h3>Правила редьюсера</h3>
+      <ol class="steps">
+        <li><b>Чистая функция.</b> Только вычисление: никаких запросов к серверу, <code>Date.now()</code>, <code>Math.random()</code>, записи в <code>localStorage</code> и вывода на экран. Эти вещи делают в обработчиках и эффектах (урок 5). Идентификатор или время вычислите до <code>dispatch</code> и положите в действие.</li>
+        <li><b>Не мутирует состояние.</b> Возвращает новое значение (раздел 2). Если действие ничего не меняет, верните тот же <code>state</code>: React пропустит рендер.</li>
+        <li><b>Описывает событие.</b> <code>{ type: 'add' }</code>, а не <code>{ type: 'setCartToThisArray', cart: … }</code>: действие называют по смыслу, и редьюсер сам решает, что с состоянием делать.</li>
+        <li><b>Содержит всё необходимое для обновления.</b> Редьюсер не обращается к внешним переменным, только к <code>state</code> и <code>action</code>.</li>
+      </ol>
+
+      <p>В режиме разработки React вызывает редьюсер дважды для одного и того же действия (в <code>StrictMode</code>, урок 3) чтобы ошибки нечистоты проявились сразу (мутирующий редьюсер добавит блюдо дважды, в разделе практики вы увидите это своими глазами). Поэтому <code>console.log</code> внутри редьюсера печатает больше строк, чем было кликов:</p>
+
+<pre class="code" data-title="Консоль браузера: после одного клика по «В корзину» (dev-режим)">
+reducer add
+reducer add
+reducer add
+reducer add
+</pre>
+
+      <p>Это не баг: в продакшен-сборке двойного вызова нет. Но именно поэтому редьюсеру запрещены побочные эффекты: повторный вызов не должен ничего ломать. Точное число строк зависит от версии React и режима, считать его не нужно.</p>
+
+      <h3>useState или useReducer</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>useState</th><th>useReducer</th></tr></thead>
+          <tbody>
+            <tr><td><b>Подходит для</b></td><td>Одно значение: текст поиска, флаг «открыто», выбранный id</td><td>Объект или массив, который меняют разными способами: корзина, форма из многих полей, фильтры</td></tr>
+            <tr><td><b>Где логика</b></td><td>В обработчиках, рядом с компонентом</td><td>В одной функции-редьюсере, которую можно вынести в отдельный файл</td></tr>
+            <tr><td><b>Как тестировать</b></td><td>Только через компонент</td><td>Редьюсер — обычная функция: <code>reducer(state, action)</code> проверяют без интерфейса (урок 13)</td></tr>
+            <tr><td><b>Объём кода</b></td><td>Меньше</td><td>Больше: нужны тип действий и <code>switch</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Начинайте с <code>useState</code>. Переходите на <code>useReducer</code>, когда обработчиков, меняющих одно состояние, становится три-четыре и больше, а правила переходов нетривиальны (в корзине: добавление существующей позиции увеличивает количество, количество 0 убирает позицию). Оба хука равноправны: <code>useState</code> внутри устроен так же.</p>
+
+      <h3>Попробуйте: корзина на useReducer</h3>
+      <p>Нажимайте кнопки и следите за списком. Обратите внимание, что компонент ни разу не вызывает <code>setCart</code>: он только отправляет события.</p>
+
+      <div class="playground" data-mode="react" data-title="Мини-корзина на useReducer">
+<pre class="code" data-lang="jsx">
+import { useReducer } from "react";
+
+function reducer(state, action) {
+  switch (action.type) {
+    case "add":
+      return [...state, action.title];
+    case "removeLast":
+      return state.slice(0, -1);
+    case "clear":
+      return [];
+    default:
+      throw new Error("Неизвестное действие: " + action.type);
+  }
+}
+
+export default function App() {
+  const [cart, dispatch] = useReducer(reducer, []);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; dispatch({ type: "add", title: "Плов" })}&gt;+ Плов&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; dispatch({ type: "add", title: "Чай" })}&gt;+ Чай&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; dispatch({ type: "removeLast" })}&gt;Убрать последнее&lt;/button&gt;{" "}
+      &lt;button onClick={() =&gt; dispatch({ type: "clear" })}&gt;Очистить&lt;/button&gt;
+      &lt;p&gt;В корзине: {cart.length === 0 ? "пусто" : cart.join(", ")}&lt;/p&gt;
+    &lt;/div&gt;
+  );
+}
+</pre>
+      </div>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>В чойхоне заказ принимает официант, но готовит и считает повар. Официант не пишет на кухне «положить в казан ещё 200 граммов риса» — он передаёт бланк «стол 5: плов». Бланк — это действие, повар — редьюсер: только он знает правила кухни. Хозяин чойхоны может сменить правила (порция стала больше), и официантам ничего учить заново не придётся.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Мутировать состояние внутри редьюсера: <code>state.push(…); return state</code>. <b>2.</b> Вызывать в редьюсере <code>fetch</code>, <code>Math.random()</code> или <code>Date.now()</code>. <b>3.</b> Забыть <code>return</code> в одной из веток <code>switch</code>: состояние станет <code>undefined</code>. <b>4.</b> Забыть <code>break</code> или <code>return</code> и «провалиться» в следующий <code>case</code>. <b>5.</b> Передавать в <code>dispatch</code> результат вызова редьюсера вместо действия. <b>6.</b> Описывать действие как команду «установи вот это значение» для каждого поля: теряется смысл редьюсера.</p>
+      </div>
+
+      <div class="yt" data-id="44qqbKsFtkw" data-title="Учим useReducer за 14 минут — React Hooks, канал Влад Калачев — JavaScript уроки"></div>
+      <p class="muted">Ролик на русском (14 минут, 2020 год): основы <code>useReducer</code> на JavaScript. Хук с тех пор не изменился; типы и StrictMode разберём здесь, в уроке.</p>
+
+      <article class="task" id="q-reducer">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: useReducer</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Что такое «действие» (action) в <code>useReducer</code>?</p>
+          <ol class="options">
+            <li>Функция, которая сразу меняет состояние</li>
+            <li>Объект, описывающий, что произошло (<code>{ type: 'add', item }</code>); как менять состояние, решает редьюсер</li>
+            <li>Новое значение состояния целиком</li>
+            <li>Обработчик события браузера</li>
+          </ol>
+          <div class="explain"><p>Действие — описание события. Логика перехода состояния находится в редьюсере, а не в компоненте.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Что запрещено делать внутри редьюсера? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Менять переданный массив состояния на месте (<code>state.push</code>)</li>
+            <li>Возвращать новый массив через <code>map</code> и <code>filter</code></li>
+            <li>Отправлять запрос на сервер или вызывать <code>Math.random()</code></li>
+            <li>Использовать <code>switch</code></li>
+          </ol>
+          <div class="explain"><p>Редьюсер должен быть чистым и не мутировать состояние. React в dev-режиме вызывает его дважды, чтобы такие ошибки вылезли сразу.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Когда стоит перейти с <code>useState</code> на <code>useReducer</code>?</p>
+          <ol class="options">
+            <li>Всегда: <code>useReducer</code> быстрее</li>
+            <li>Когда состояние — число</li>
+            <li>Когда нужны эффекты</li>
+            <li>Когда одно состояние меняют несколько обработчиков по нетривиальным правилам и логику хочется собрать в одном месте</li>
+          </ol>
+          <div class="explain"><p>Скорость одинаковая. Редьюсер выигрывает читаемостью и тестируемостью, когда правил много, а для одного флага <code>useState</code> проще.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t5-reducer">
+        <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Допишите редьюсер корзины</h4><span class="level hard">сложная</span></header>
+        <p>Реализуйте три действия. <code>add</code>: если позиции с таким <code>id</code> ещё нет, добавьте её с <code>qty: 1</code>, иначе увеличьте <code>qty</code> на 1. <code>remove</code>: уберите позицию по <code>id</code>. <code>setQty</code>: задайте количество, а при <code>qty</code> меньше 1 уберите позицию. Состояния в проверке заморожены (<code>Object.freeze</code>): любая мутация даст ошибку <code>TypeError</code>. Редьюсер вызывается как обычная функция, интерфейс не нужен.</p>
+        <div class="playground" data-mode="react" data-title="Редьюсер корзины">
+<pre class="code" data-lang="jsx">
+function reducer(state, action) {
+  switch (action.type) {
+    case "add":
+      // TODO: позиции нет — добавить с qty 1, есть — увеличить qty на 1
+      return state;
+    case "remove":
+      // TODO: убрать позицию по action.id
+      return state;
+    case "setQty":
+      // TODO: задать qty по action.id; если qty &lt; 1, убрать позицию
+      return state;
+    default:
+      throw new Error("Неизвестное действие: " + action.type);
+  }
+}
+
+export default function App() {
+  return &lt;p&gt;Редьюсер проверяется в консоли ниже&lt;/p&gt;;
+}
+
+// ---- проверка (не менять) ----
+const freeze = (s) =&gt; (s.forEach(Object.freeze), Object.freeze(s));
+const show = (s) =&gt; s.map((e) =&gt; e.id + "x" + e.qty).join(" ") || "пусто";
+try {
+  const a = freeze(reducer(freeze([]), { type: "add", id: 1, price: 45 }));
+  const b = freeze(reducer(a, { type: "add", id: 1, price: 45 }));
+  const c = freeze(reducer(b, { type: "add", id: 2, price: 8 }));
+  const d = freeze(reducer(c, { type: "setQty", id: 1, qty: 5 }));
+  const e = freeze(reducer(d, { type: "remove", id: 2 }));
+  const f = freeze(reducer(e, { type: "setQty", id: 1, qty: 0 }));
+  console.log([a, b, c, d, e, f].map(show).join(" | "));
+} catch (err) {
+  console.log("Ошибка: " + err.message);
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>1x1 | 1x2 | 1x2 2x1 | 1x5 2x1 | 1x5 | пусто</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В <code>add</code> сначала проверьте, есть ли позиция: <code>state.some((e) =&gt; e.id === action.id)</code>. Если нет, верните <code>[...state, { id: action.id, price: action.price, qty: 1 }]</code>, если есть — <code>state.map</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>remove</code>: <code>state.filter((e) =&gt; e.id !== action.id)</code>. <code>setQty</code>: если <code>action.qty &lt; 1</code>, то то же самое <code>filter</code>, иначе <code>state.map((e) =&gt; e.id === action.id ? { ...e, qty: action.qty } : e)</code>.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/extracting-state-logic-into-a-reducer" target="_blank" rel="noopener">react.dev — Extracting State Logic into a Reducer</a> · <a href="https://react.dev/reference/react/useReducer" target="_blank" rel="noopener">react.dev — useReducer</a></p>
+    </section>
+
+    <!-- ============ 06 ============ -->
+    <section class="topic" id="ts-reducer">
+      <h2 data-toc="TS: действия редьюсера"><span class="num">06</span> TypeScript: типы состояния и действий</h2>
+
+      <p>Редьюсер без типов — это <code>switch</code> по строке, где опечатка в <code>'add'</code> молча не сработает. С типами компилятор сверяет каждое действие и каждую ветку. Основной приём — <b>discriminated union</b> (размеченное объединение, вы видели его в уроке 2): набор объектных типов с общим полем-меткой <code>type</code>, у каждого типа своя литеральная строка и свои дополнительные поля.</p>
+
+<pre class="code" data-lang="ts" data-title="src/cartReducer.ts (тип действий)">
+import { assertNever } from './assertNever'
+import type { CartItem, MenuItem } from './types'
+
+export type CartAction =
+  | { type: 'add'; item: MenuItem }
+  | { type: 'remove'; itemId: number }
+  | { type: 'setQty'; itemId: number; qty: number }
+  | { type: 'clear' }
+
+export function cartReducer(state: CartItem[], action: CartAction): CartItem[] {
+  switch (action.type) {
+    case 'add': {
+      const exists = state.some((entry) =&gt; entry.item.id === action.item.id)
+      if (!exists) {
+        return [...state, { item: action.item, qty: 1 }]
+      }
+      return state.map((entry) =&gt;
+        entry.item.id === action.item.id
+          ? { ...entry, qty: entry.qty + 1 }
+          : entry,
+      )
+    }
+    case 'remove':
+      return state.filter((entry) =&gt; entry.item.id !== action.itemId)
+    case 'setQty': {
+      if (action.qty &lt;= 0) {
+        return state.filter((entry) =&gt; entry.item.id !== action.itemId)
+      }
+      return state.map((entry) =&gt;
+        entry.item.id === action.itemId ? { ...entry, qty: action.qty } : entry,
+      )
+    }
+    case 'clear':
+      return []
+    default:
+      return assertNever(action)
+  }
+}
+</pre>
+
+      <p>Так выглядит файл целиком (в практике вы его создадите сами). Сначала тип действий, потом редьюсер с <code>switch</code>. Что это даёт:</p>
+      <ol class="steps">
+        <li><b>Сужение типа в <code>switch</code>.</b> Внутри <code>case 'add'</code> TypeScript знает, что у <code>action</code> есть поле <code>item</code>, а в <code>case 'remove'</code> — <code>itemId</code>. Обратиться к чужому полю нельзя:
+<pre class="code" data-title="Терминал — вывод tsc -b">
+src/cartReducer.ts(24,63): error TS2339: Property 'item' does not exist on type '{ type: "remove"; itemId: number; }'.
+</pre>
+        </li>
+        <li><b>Проверка при отправке.</b> <code>dispatch</code> принимает только значения типа <code>CartAction</code>. Опечатка в метке, потерянное поле и неверный тип поля находятся до запуска:
+<pre class="code" data-title="Терминал — вывод tsc -b: по одной опечатке за запуск">
+src/App.tsx(66,41): error TS2820: Type '"cleer"' is not assignable to type '"add" | "clear" | "remove" | "setQty"'. Did you mean '"clear"'?
+src/App.tsx(75,30): error TS6133: 'itemId' is declared but its value is never read.
+src/App.tsx(75,50): error TS2345: Argument of type '{ type: "remove"; }' is not assignable to parameter of type 'CartAction'.
+  Property 'itemId' is missing in type '{ type: "remove"; }' but required in type '{ type: "remove"; itemId: number; }'.
+src/App.tsx(73,56): error TS2322: Type 'string' is not assignable to type 'number'.
+</pre>
+        </li>
+        <li><b>Вывод типов в <code>useReducer</code>.</b> Состояние берётся из редьюсера: в <code>const [cart, dispatch] = useReducer(cartReducer, [])</code> тип <code>cart</code> — <code>CartItem[]</code>, а <code>dispatch</code> принимает <code>CartAction</code>. Писать типы руками не нужно.</li>
+      </ol>
+
+      <h3>Проверка полноты: never в default</h3>
+      <p>Самая ценная польза: если вы добавите в объединение новое действие, а в <code>switch</code> ветку забудете, компилятор покажет это. Для этого в <code>default</code> вызывают маленькую функцию, которая принимает значение типа <code>never</code> («значения, которого не может быть»). Пока все ветки разобраны, в <code>default</code> тип <code>action</code> — <code>never</code>, и всё компилируется. Стоит появиться необработанному действию, тип перестаёт быть <code>never</code>:</p>
+
+<pre class="code" data-lang="ts" data-title="src/assertNever.ts">
+export function assertNever(value: never): never {
+  throw new Error(`Unexpected value: ${JSON.stringify(value)}`)
+}
+</pre>
+
+<pre class="code" data-title="Терминал — вывод tsc -b: в union добавили { type: 'applyPromo' }, а case не написали">
+src/cartReducer.ts(37,26): error TS2345: Argument of type '{ type: "applyPromo"; code: string; }' is not assignable to parameter of type 'never'.
+</pre>
+
+      <p>Текст ошибки на «never» сбивает с толку, но читайте его по-другому: в скобках видно, <b>какое именно действие</b> не обработано. Если же случайно удалить ветку, ошибка называет её же: <code>Argument of type '{ type: "clear"; }' is not assignable to parameter of type 'never'</code>. Функция <code>assertNever</code> защищает и в работе: если в редьюсер всё-таки придёт невозможное значение (например, из JavaScript-кода), она выбросит ошибку, а не вернёт молча неверное состояние.</p>
+
+      <h3>Как передать dispatch дочернему компоненту</h3>
+      <p>Два способа. Первый — передавать <b>колбэки</b> с понятными именами (<code>onAdd</code>, <code>onRemove</code>): компонент ничего не знает про редьюсер и его можно использовать с любым источником данных. Этим мы пользуемся в практике. Второй — передать сам <code>dispatch</code> с типом <code>Dispatch&lt;CartAction&gt;</code> (тип импортируется из <code>react</code> через <code>import type</code>). Он проще, но привязывает компонент к конкретным действиям. Оба варианта компилируются; выбирайте колбэки, когда компонент должен быть универсальным.</p>
+
+<pre class="code" data-lang="tsx" data-title="Второй способ: dispatch как prop">
+import type { Dispatch } from 'react'
+import type { CartAction } from '../cartReducer'
+
+type ClearButtonProps = {
+  dispatch: Dispatch&lt;CartAction&gt;
+}
+
+export default function ClearButton({ dispatch }: ClearButtonProps) {
+  return &lt;button onClick={() =&gt; dispatch({ type: 'clear' })}&gt;Очистить&lt;/button&gt;
+}
+</pre>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Тип действия <code>{ type: string }</code> вместо литералов: сужение в <code>switch</code> не работает, а опечатки не ловятся. <b>2.</b> Один тип с необязательными полями (<code>{ type: 'add' | 'remove'; item?: MenuItem; itemId?: number }</code>): в каждой ветке придётся проверять <code>undefined</code>; объединение чище. <b>3.</b> <code>default: return state</code> вместо <code>assertNever</code>: новое действие тихо игнорируется. <b>4.</b> Привести тип через <code>as</code>, чтобы «заглушить» ошибку: ошибка нужна, она показывает забытую ветку. <b>5.</b> Описывать состояние как <code>any</code>: тогда типы не помогают нигде.</p>
+      </div>
+
+      <article class="task" id="q-ts-reducer">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь себя: типы действий</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Зачем в <code>default</code> редьюсера вызывают функцию с параметром типа <code>never</code>?</p>
+          <ol class="options">
+            <li>Чтобы редьюсер работал быстрее</li>
+            <li>Чтобы React не выдавал предупреждений</li>
+            <li>Чтобы компилятор показал ошибку, если в объединение действий добавили новый вариант, а ветку для него не написали</li>
+            <li>Чтобы сбросить состояние в начальное</li>
+          </ol>
+          <div class="explain"><p>Когда разобраны все варианты, в <code>default</code> тип <code>action</code> равен <code>never</code>. Необработанный вариант не подходит под <code>never</code>, и возникает ошибка <code>TS2345</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="2">
+          <p>В <code>case 'remove'</code> вы пишете <code>action.item</code> и получаете ошибку <code>TS2339</code>. Что произошло?</p>
+          <ol class="options">
+            <li>Нужно подключить типы React</li>
+            <li>Внутри ветки <code>'remove'</code> действие сужено до <code>{ type: 'remove'; itemId: number }</code>, поля <code>item</code> у него нет</li>
+            <li>В TypeScript нельзя читать поля действия</li>
+            <li>Нужно написать <code>action!.item</code></li>
+          </ol>
+          <div class="explain"><p>Сужение по полю-метке даёт в каждой ветке свой тип с нужными полями. Восклицательный знак ошибку лишь спрятал бы.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t6-exh">
+        <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Проверка полноты: добавьте забытую ветку</h4><span class="level mid">средняя</span></header>
+        <p>В объединение добавили действие <code>reset</code>, а в <code>switch</code> ветку не написали, и компилятор ругается на <code>assertNever</code>. Допишите <code>case 'reset'</code>, который возвращает <code>0</code>, и запустите: ошибок типов быть не должно.</p>
+<pre class="code" data-run data-lang="ts">
+type Action =
+  | { type: "inc" }
+  | { type: "dec" }
+  | { type: "reset" };
+
+function assertNever(value: never): never {
+  throw new Error("Unexpected: " + JSON.stringify(value));
+}
+
+function reducer(count: number, action: Action): number {
+  switch (action.type) {
+    case "inc":
+      return count + 1;
+    case "dec":
+      return count - 1;
+    // TODO: ветка для "reset"
+    default:
+      return assertNever(action);
+  }
+}
+
+console.log(reducer(reducer(reducer(5, { type: "inc" }), { type: "inc" }), { type: "reset" }));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>0</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Ошибка называет необработанное действие: <code>{ type: "reset" }</code>. Нужна ветка с такой меткой.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>case "reset": return 0;</code> перед <code>default</code>.</p></details>
+      </article>
+
+      <article class="task" id="t6-union">
+        <header><span class="task-num">ЗАДАЧА 6.3</span><h4>Опишите тип действий</h4><span class="level hard">сложная</span></header>
+        <p>Редьюсер порций уже написан и использует три действия: <code>inc</code> (без полей), <code>dec</code> (без полей) и <code>set</code> (с числовым полем <code>value</code>). Тип <code>Action</code> сейчас описывает только первое, и компилятор ругается. Перепишите <code>Action</code> как объединение трёх объектных типов.</p>
+<pre class="code" data-run data-lang="ts">
+// TODO: опишите объединение из трёх действий
+type Action = { type: "inc" };
+
+function reducer(qty: number, action: Action): number {
+  switch (action.type) {
+    case "inc":
+      return qty + 1;
+    case "dec":
+      return Math.max(1, qty - 1);
+    case "set":
+      return Math.max(1, action.value);
+  }
+}
+
+let qty = 1;
+qty = reducer(qty, { type: "inc" });
+qty = reducer(qty, { type: "set", value: 7 });
+qty = reducer(qty, { type: "dec" });
+console.log(qty);
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>6</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Объединение записывается через <code>|</code>: каждый вариант — объектный тип со своей меткой <code>type</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>type Action = { type: "inc" } | { type: "dec" } | { type: "set"; value: number };</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/typescript#typing-usereducer" target="_blank" rel="noopener">react.dev — Using TypeScript: useReducer</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions" target="_blank" rel="noopener">typescriptlang.org — Discriminated unions</a> · <a href="https://www.typescriptlang.org/docs/handbook/2/narrowing.html#exhaustiveness-checking" target="_blank" rel="noopener">typescriptlang.org — Exhaustiveness checking</a></p>
+    </section>
+
+    <!-- ============ 07 ============ -->
+    <section class="topic" id="hooks-rules">
+      <h2 data-toc="Правила хуков"><span class="num">07</span> Правила хуков: почему не где попало</h2>
+
+      <p>Функции <code>useState</code>, <code>useReducer</code>, <code>useEffect</code> и другие, чьё имя начинается с <code>use</code>, называются <b>хуками</b>. У них два правила.</p>
+      <ol class="steps">
+        <li><b>Вызывайте хуки только на верхнем уровне.</b> Не внутри условий (<code>if</code>, тернарного оператора, <code>&amp;&amp;</code>), не в циклах, не во вложенных функциях и не после раннего <code>return</code>.</li>
+        <li><b>Вызывайте хуки только из компонентов или других хуков.</b> Не из обычных функций, обработчиков событий и классов. Свои хуки (функции с именем <code>useЧто-то</code>) вы будете писать в уроке 6.</li>
+      </ol>
+
+      <h3>Почему так</h3>
+      <p>React не знает имён ваших переменных. Он хранит состояние компонента как <b>список ячеек</b>, а каждый вызов хука при рендере берёт следующую ячейку по порядку: первый <code>useState</code> получает ячейку 1, второй — ячейку 2. Поэтому порядок вызовов должен быть одним и тем же при каждом рендере. Если хук окажется в <code>if</code>, при другом значении условия порядок сдвинется, и хук получит чужую ячейку.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Схема: слева порядок вызовов хуков совпадает при двух рендерах, и ячейки состояния сопоставляются верно. Справа во втором рендере первый useState пропущен из-за условия, и второй хук получает ячейку первого, то есть чужое значение">
+          <text x="12" y="20">Одинаковый порядок</text>
+          <rect class="box" x="12" y="34" width="120" height="30" rx="8" /><text class="sub mono" x="72" y="54" text-anchor="middle">ячейка 1: 3</text>
+          <rect class="box" x="12" y="70" width="120" height="30" rx="8" /><text class="sub mono" x="72" y="90" text-anchor="middle">ячейка 2: "чай"</text>
+          <text class="sub" x="150" y="54">рендер 1: useState → 1</text><text class="sub" x="150" y="90">рендер 1: useState → 2</text>
+          <text class="sub" x="150" y="124">рендер 2: useState → 1, useState → 2</text>
+          <text class="sub t-g" x="12" y="148">каждый хук получает свою ячейку</text>
+          <text x="400" y="20">Хук пропущен условием</text>
+          <rect class="box" x="400" y="34" width="120" height="30" rx="8" /><text class="sub mono" x="460" y="54" text-anchor="middle">ячейка 1: 3</text>
+          <rect class="box" x="400" y="70" width="120" height="30" rx="8" /><text class="sub mono" x="460" y="90" text-anchor="middle">ячейка 2: "чай"</text>
+          <text class="sub" x="538" y="54">рендер 2: хук 1 пропущен</text><text class="sub" x="538" y="90">второй хук берёт ячейку 1</text>
+          <rect class="fill-r" x="400" y="118" width="300" height="46" rx="10" /><text class="sub" x="550" y="146" text-anchor="middle">вместо "чай" получил число 3: сбой</text>
+          <text class="sub t-r" x="400" y="186">React не знает имён: он считает вызовы по порядку</text>
+        </svg>
+        <figcaption>React сопоставляет хуки с ячейками состояния по порядку вызовов; пропуск хука сдвигает порядок и перепутывает данные</figcaption>
+      </figure>
+
+      <p>Вам не придётся запоминать это на слух: линтер ловит нарушения правил. Правило <code>react-hooks/rules-of-hooks</code> входит в Oxlint, который настроен в проекте с урока 1. Вот что он печатает для хука после раннего <code>return</code>, внутри цикла и в обычной функции:</p>
+
+<pre class="code" data-title="Терминал — npm run lint">
+src/components/Bad.tsx:9:25: error react-hooks(rules-of-hooks): React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render. help: Move the Hook call before the condition, or call it unconditionally and branch inside the Hook/effect instead.
+src/components/Bad.tsx:11:5: error react-hooks(rules-of-hooks): React Hook "useState" may be executed more than once. Possibly because it is called in a loop. React Hooks must be called in the exact same order in every component render.
+src/components/Bad.tsx:17:10: error react-hooks(rules-of-hooks): React Hook "useState" is called in function "helper" that is neither a React function component nor a custom React Hook function. React component names must start with an uppercase letter. React Hook names must start with the word "use".
+</pre>
+
+      <p>Если всё-таки запустить такой код, в зависимости от случая получится либо ошибка, либо тихий сброс состояния. Вот реальная ошибка в консоли браузера, когда при втором рендере <code>useState</code> вызывается на одну штуку больше, чем в первом (страница после неё пустеет, ведь в проекте нет границ ошибок):</p>
+
+<pre class="code" data-title="Консоль браузера (dev-режим)">
+React has detected a change in the order of Hooks called by Bad. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://react.dev/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useState                   useState
+2. undefined                  useState
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Uncaught Error: Rendered more hooks than during the previous render.
+</pre>
+
+      <p>Что делать, если условие нужно? Переместить хук <b>выше</b> условия и ветвиться уже внутри: сначала объявите все хуки, и только потом пишите <code>if (…) return …</code>.</p>
+
+<pre class="code" data-lang="tsx" data-title="Было и стало">
+// Было: хук после раннего return
+function Dish({ dish }: DishProps) {
+  if (!dish.available) return &lt;p&gt;Нет в наличии&lt;/p&gt;
+  const [qty, setQty] = useState(1) // ошибка линтера
+  // …
+}
+
+// Стало: хук выше любых return
+function Dish({ dish }: DishProps) {
+  const [qty, setQty] = useState(1)
+  if (!dish.available) return &lt;p&gt;Нет в наличии&lt;/p&gt;
+  // …
+}
+</pre>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>В камере хранения на вокзале Душанбе багаж выдают по номеру ячейки в порядке очереди: «первый чемодан, второй чемодан». Если пассажир в какой-то день пропустил первый чемодан и сразу потребовал второй, ему отдадут чужую сумку из первой ячейки. React выдаёт состояние хукам по такой же очереди, и очередь нельзя менять.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Ранний <code>return</code> выше хука (самая частая). <b>2.</b> <code>useState</code> внутри <code>if</code> «чтобы не создавать лишнего». <b>3.</b> Хук в обработчике события: <code>onClick={() =&gt; { const [x, setX] = useState(0) }}</code>. <b>4.</b> Хук в <code>.map</code> по списку: вынесите элемент списка в отдельный компонент, и хуки пойдут в него. <b>5.</b> Отключить правило линтера комментарием, а не исправить код.</p>
+      </div>
+
+      <article class="task" id="q-hooks">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Проверь себя: правила хуков</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Почему нельзя вызывать <code>useState</code> внутри <code>if</code>?</p>
+          <ol class="options">
+            <li>React сопоставляет хуки с ячейками состояния по порядку вызовов; условие может сдвинуть порядок и перепутать данные</li>
+            <li>Потому что <code>if</code> нельзя писать в компонентах</li>
+            <li>Потому что <code>useState</code> работает только с числами</li>
+            <li>Потому что условие замедляет рендер</li>
+          </ol>
+          <div class="explain"><p>У React нет имён переменных, только порядок вызовов. Одинаковый порядок при каждом рендере — условие работы хуков.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Где нарушены правила хуков? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Компонент начинается с <code>const [qty, setQty] = useState(1)</code>, потом <code>if (!open) return null</code></li>
+            <li>Компонент: <code>if (open) { const [qty] = useState(1) }</code></li>
+            <li>Хук вызывается на верхнем уровне компонента <code>Cart</code></li>
+            <li>В обработчике <code>onClick</code> вызван <code>useReducer(…)</code></li>
+          </ol>
+          <div class="explain"><p>Хуки нельзя вызывать в условиях и в обработчиках событий. Первый вариант корректен: все хуки выше раннего <code>return</code>.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t7-hooks">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Хук после раннего return</h4><span class="level hard">сложная</span></header>
+        <p>Количество порций в <code>Dish</code> сбрасывается, если блюдо ненадолго пропало из наличия: хук стоит после раннего <code>return</code>, поэтому в «закрытом» рендере состояние пропадает. Автопроверка делает «+» (количество 2), переключает наличие два раза (выкл. и вкл.) и печатает количество. Исправьте порядок: хук должен стоять до <code>return</code>.</p>
+        <div class="playground" data-mode="react" data-title="Блюдо в наличии">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+function Dish({ title, available }) {
+  if (!available) {
+    return &lt;p&gt;{title}: нет в наличии&lt;/p&gt;;
+  }
+  // TODO: хук должен стоять выше раннего return
+  const [qty, setQty] = useState(1);
+  return (
+    &lt;p&gt;
+      {title}: &lt;b&gt;{qty}&lt;/b&gt; &lt;button onClick={() =&gt; setQty(qty + 1)}&gt;+&lt;/button&gt;
+    &lt;/p&gt;
+  );
+}
+
+export default function App() {
+  const [available, setAvailable] = useState(true);
+  return (
+    &lt;div&gt;
+      &lt;button onClick={() =&gt; setAvailable(!available)}&gt;Переключить наличие&lt;/button&gt;
+      &lt;Dish title="Плов" available={available} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+// ---- проверка (не менять) ----
+const wait = () =&gt; new Promise((r) =&gt; setTimeout(r, 60));
+(async () =&gt; {
+  await wait();
+  document.querySelector("p button").click(); await wait();
+  const toggle = document.querySelector("button");
+  toggle.click(); await wait();
+  toggle.click(); await wait();
+  console.log("порций: " + document.querySelector("b").textContent);
+})();
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>порций: 2</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Порядок строк в компоненте: сначала все хуки, потом условия и <code>return</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p>Перенесите <code>const [qty, setQty] = useState(1);</code> выше <code>if (!available)</code>.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/reference/rules/rules-of-hooks" target="_blank" rel="noopener">react.dev — Rules of Hooks</a> · <a href="https://oxc.rs/docs/guide/usage/linter/rules/react/rules-of-hooks" target="_blank" rel="noopener">oxc.rs — rules-of-hooks</a></p>
+    </section>
+
+    <!-- ============ 08 ============ -->
+    <section class="topic" id="ai-reducer">
+      <h2 data-toc="ИИ: данные и редьюсер"><span class="num">08</span> ИИ-блок: тестовые данные, редьюсер по описанию и ревью иммутабельности</h2>
+
+      <p>Две задачи, с которыми агент справляется хорошо, если ему правильно их поставить: сгенерировать тестовые данные и написать редьюсер по описанию действий. И в обеих агент допускает характерные ошибки, которые вы теперь умеете замечать. Главная: он любит писать «как короче», а короче часто означает мутацию.</p>
+
+      <div class="callout ai">
+        <b>Формула промпта: контекст → задача → ограничения → формат → проверка</b>
+        <p>Сначала просите <b>описание действий в таблице</b>, без кода: так вы сверите правила (что делает «добавить» для уже лежащей позиции, что значит количество 0) раньше, чем увидите 80 строк чужого кода. И только потом просите редьюсер, который реализует утверждённую таблицу.</p>
+      </div>
+
+      <div class="prompt bad-prompt">сделай корзину на useReducer и тестовые данные</div>
+
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), прочитай AGENTS.md. Типы данных лежат в src/types.ts (MenuItem, CartItem, Restaurant), рестораны в src/data.ts с id от 1 до 6, корзина — CartItem[] в useReducer.
+Задача: 1) сгенерируй 12 блюд для массива menu: MenuItem[] — по два на каждый ресторан; 2) опиши действия корзины таблицей, код редьюсера пока не пиши.
+Ограничения: цены целые, в сомони, от 5 до 60; id блюд уникальны, от 1 до 12; названия на русском и реалистичны для Душанбе (плов, лагман, самбуса, шашлык, чай, чак-чак); без any и новых библиотек; редьюсер, который я попрошу следующим шагом, должен быть чистым, без мутаций, с проверкой полноты через assertNever.
+Формат ответа: блок TypeScript для data.ts и таблица «действие — поля — что происходит с состоянием — крайние случаи».
+Проверка: в конце назови пять крайних случаев, которые я должен проверить руками (пустая корзина, повторное добавление, количество 0, несуществующий id и ещё один на твой выбор).</div>
+
+      <h3>Как проверять тестовые данные</h3>
+      <ol class="steps">
+        <li><b>Уникальные id.</b> Повторяющийся <code>id</code> даст дубли ключей и неверную корзину. Проверьте глазами или через <code>new Set(menu.map((m) =&gt; m.id)).size === menu.length</code>.</li>
+        <li><b>Целостность связей.</b> Каждый <code>restaurantId</code> существует в <code>restaurants</code>. Агент любит выдумать ресторан №7.</li>
+        <li><b>Реалистичные значения.</b> Целые цены в сомони, а не 12.99 и не доллары; нет названий вроде «Блюдо 1».</li>
+        <li><b>Типы и форма.</b> Файл проходит <code>npm run typecheck</code> без <code>as</code> и <code>any</code>; поля названы как в <code>MenuItem</code>.</li>
+        <li><b>Крайние случаи.</b> Попросите добавить в данные и такие, что ломают интерфейс: очень длинное название, блюдо за 0 сомони. Затем решите, нужны ли они в проекте.</li>
+        <li><b>Личные данные.</b> Агенту не нужны реальные имена и телефоны клиентов: тестовые данные должны быть выдуманными.</li>
+      </ol>
+
+      <h3>Как проверять редьюсер от агента</h3>
+      <ol class="steps">
+        <li><b>Мутации.</b> Ищите <code>push</code>, <code>splice</code>, <code>sort</code> без копии, присваивания вида <code>entry.qty = …</code>, <code>item.qty++</code>, <code>state[i] = …</code>. Самый коварный случай: <code>const entry = state.find(…); entry.qty += 1; return [...state]</code> — массив новый, объект старый.</li>
+        <li><b>Побочные эффекты.</b> Нет <code>Date.now()</code>, <code>Math.random()</code>, <code>crypto.randomUUID()</code>, <code>localStorage</code>, <code>fetch</code>, <code>console.log</code> в итоговом коде.</li>
+        <li><b>Полнота.</b> В <code>default</code> стоит <code>assertNever(action)</code>, а не <code>return state</code>: иначе новое действие тихо игнорируется.</li>
+        <li><b>Типы действий.</b> Размеченное объединение с литеральными метками, без <code>type: string</code> и без <code>as</code>.</li>
+        <li><b>Правила из таблицы.</b> Повторное добавление увеличивает количество, а не создаёт дубль; <code>qty ≤ 0</code> убирает позицию; неизвестный <code>id</code> не ломает состояние.</li>
+        <li><b>Лишнее.</b> Нет новых пакетов (<code>immer</code>, <code>uuid</code>, <code>zustand</code>) и нового <code>useState</code>, о которых вы не просили.</li>
+        <li><b>Своя проверка.</b> Мысленно (или в консоли) прогоните сценарий из пяти действий. Если вы не можете объяснить, почему результат верен, принимать код рано.</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Принять «работает на странице» за «написано верно»: двойной вызов в StrictMode часто маскирует мутацию. <b>2.</b> Просить редьюсер и данные в одном сообщении: ошибки в одном не видны за размером другого. <b>3.</b> Не сверить таблицу правил с кодом: агент мог реализовать «похожее». <b>4.</b> Оставить в данных выдуманный <code>restaurantId</code>: меню ресторана №7 никогда не покажется. <b>5.</b> Отправить агенту настоящие данные клиентов «для реалистичности».</p>
+      </div>
+
+      <article class="task" id="q-ai-reducer">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Проверь себя: ревью кода агента</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Агент в ветке <code>setQty</code> находит запись через <code>find</code>, присваивает <code>entry.qty = action.qty</code> и возвращает <code>[...state]</code>. Что вы ответите?</p>
+          <ol class="options">
+            <li>Принять: массив новый, значит, всё чисто</li>
+            <li>Принять, но добавить <code>console.log</code></li>
+            <li>Вернуть на доработку: массив новый, но объект записи изменён на месте, то есть это мутация; нужен <code>map</code> с копией записи</li>
+            <li>Заменить <code>find</code> на <code>filter</code> и оставить остальное</li>
+          </ol>
+          <div class="explain"><p>Новый массив не отменяет мутацию объекта внутри. Из-за неё «старый снимок» состояния портится, а в StrictMode поведение редьюсера становится непредсказуемым.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,2">
+          <p>Какие пункты из данных агента нужно проверить обязательно? Выберите два варианта.</p>
+          <ol class="options">
+            <li>Каждый <code>restaurantId</code> существует среди ресторанов</li>
+            <li>Все <code>id</code> блюд уникальны, цены целые и в сомони</li>
+            <li>Названия блюд написаны красиво</li>
+            <li>В файле достаточно комментариев</li>
+          </ol>
+          <div class="explain"><p>Битые связи и повторные id ломают программу. Красота названий и комментарии на работу не влияют.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t8-review">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Найдите мутацию в редьюсере агента</h4><span class="level hard">сложная</span></header>
+        <p>Ниже «ответ агента»: редьюсер выглядит рабочим, но в одной ветке меняет запись на месте. Проверка замораживает состояния, поэтому мутация выдаёт ошибку, которую вы увидите в консоли. Исправьте <code>setQty</code> так, чтобы запись копировалась, а не менялась.</p>
+        <div class="playground" data-mode="react" data-title="Ревью редьюсера">
+<pre class="code" data-lang="jsx">
+function reducer(state, action) {
+  switch (action.type) {
+    case "add": {
+      const exists = state.some((e) =&gt; e.id === action.id);
+      if (!exists) return [...state, { id: action.id, qty: 1 }];
+      return state.map((e) =&gt; (e.id === action.id ? { ...e, qty: e.qty + 1 } : e));
+    }
+    case "setQty": {
+      // ответ агента: ищем запись и меняем
+      const entry = state.find((e) =&gt; e.id === action.id);
+      if (entry) entry.qty = action.qty;
+      return [...state];
+    }
+    default:
+      throw new Error("Неизвестное действие: " + action.type);
+  }
+}
+
+export default function App() {
+  return &lt;p&gt;Редьюсер проверяется в консоли ниже&lt;/p&gt;;
+}
+
+// ---- проверка (не менять) ----
+const freeze = (s) =&gt; (s.forEach(Object.freeze), Object.freeze(s));
+const show = (s) =&gt; s.map((e) =&gt; e.id + "x" + e.qty).join(" ");
+try {
+  const a = freeze(reducer(freeze([]), { type: "add", id: 1 }));
+  const b = freeze(reducer(a, { type: "setQty", id: 1, qty: 4 }));
+  console.log(show(a) + " | " + show(b));
+} catch (err) {
+  console.log("Ошибка: " + err.message);
+}
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>1x1 | 1x4</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В ветке <code>add</code> уже есть образец правильного кода: <code>state.map</code> с копией записи.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>return state.map((e) =&gt; (e.id === action.id ? { ...e, qty: action.qty } : e));</code></p></details>
+      </article>
+
+      <article class="task" id="t8-checklist">
+        <header><span class="task-num">ЗАДАЧА 8.3</span><h4>Чек-лист: работа с агентом проведена</h4><span class="level mid">средняя</span></header>
+        <p>Выполняется на вашем компьютере в практике (шаг 2). Отметьте только то, что действительно сделали.</p>
+        <ul class="checklist" id="cl-ai">
+          <li>Я отправил агенту хороший промпт из раздела 8 и сначала получил таблицу действий и данные, а не код редьюсера</li>
+          <li>Я проверил данные агента: уникальные id, существующие <code>restaurantId</code>, целые цены в сомони</li>
+          <li>Я сравнил таблицу действий агента с таблицей из практики и записал в <code>docs/state-notes.md</code>, чем они отличаются</li>
+          <li>Я не принял готовый редьюсер агента без ревью: проверил его по списку из раздела 8 и записал найденные замечания</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/updating-arrays-in-state" target="_blank" rel="noopener">react.dev — Updating Arrays in State</a> · <a href="https://react.dev/learn/keeping-components-pure" target="_blank" rel="noopener">react.dev — Keeping Components Pure</a></p>
+    </section>
+
+    <!-- ============ 09 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: корзина"><span class="num">09</span> Практика: меню и корзина «Дастархона» на useReducer</h2>
+
+      <p>Продолжаем проект 1. После урока 3 каталог собран из компонентов, а выбор ресторана пока только пишет «Выбран ресторан №…». Сейчас мы покажем меню выбранного ресторана и соберём корзину: добавить блюдо, убрать, изменить количество, очистить, увидеть итог. Состояние корзины поднимем в <code>App</code> и отдадим редьюсеру. Если в ДЗ урока 2 вы делали своё меню и корзину на <code>useState</code>, заменяйте их файлами ниже: компоненты <code>MenuItemRow</code>, <code>CartItemRow</code> и <code>CartSummary</code> получат новые props, а ваши версии пригодятся для сравнения.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 270" role="img" aria-label="Поток данных корзины: App хранит selectedId и cart через useReducer. MenuItemRow вызывает onAdd, App отправляет dispatch с действием add в cartReducer, новое состояние cart передаётся в CartSummary и CartItemRow, итог и число порций вычисляются в CartSummary функциями cartTotal и cartCount">
+          <rect class="fill-y" x="230" y="10" width="260" height="76" rx="12" /><text x="360" y="34" text-anchor="middle">App</text><text class="sub mono" x="360" y="54" text-anchor="middle">cart, dispatch = useReducer(...)</text><text class="sub mono" x="360" y="72" text-anchor="middle">selectedId, query, cuisine</text>
+          <rect class="fill-g" x="520" y="10" width="190" height="76" rx="12" /><text x="615" y="34" text-anchor="middle">cartReducer.ts</text><text class="sub mono" x="615" y="54" text-anchor="middle">(state, action)</text><text class="sub" x="615" y="72" text-anchor="middle">чистая функция</text>
+          <path class="arr" d="M490 48 H512" /><path class="arr-head" d="M520 48 l-10 -5 v10 z" />
+          <path class="arr" d="M300 86 V118 H130 V134" /><path class="arr-head" d="M130 142 l-5 -10 h10 z" />
+          <path class="arr" d="M420 86 V118 H570 V134" /><path class="arr-head" d="M570 142 l-5 -10 h10 z" />
+          <rect class="box b" x="20" y="142" width="220" height="56" rx="12" /><text x="130" y="166" text-anchor="middle">MenuItemRow × N</text><text class="sub mono" x="130" y="186" text-anchor="middle">item, onAdd</text>
+          <rect class="box g" x="460" y="142" width="250" height="56" rx="12" /><text x="585" y="166" text-anchor="middle">CartSummary</text><text class="sub mono" x="585" y="186" text-anchor="middle">entries, onClear, children</text>
+          <path class="arr" d="M585 198 V214" /><path class="arr-head" d="M585 222 l-5 -10 h10 z" />
+          <rect class="box" x="480" y="222" width="210" height="38" rx="10" /><text x="585" y="246" text-anchor="middle">CartItemRow × N</text>
+          <text class="sub t-b" x="20" y="226">клик → onAdd(item) →</text><text class="sub t-b" x="20" y="246">dispatch({ type: 'add', item })</text>
+          <text class="sub t-g" x="260" y="246">cart вниз через props</text>
+        </svg>
+        <figcaption>Корзина в «Дастархоне»: состояние и <code>dispatch</code> живут в <code>App</code>, компоненты получают значения и колбэки, а правила обновления собраны в <code>cartReducer.ts</code></figcaption>
+      </figure>
+
+      <h3>Таблица действий корзины</h3>
+      <p>Сначала правила, потом код. Действия корзины описаны таблицей: по ней вы будете сверять и свой код, и ответ агента.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Действие</th><th>Поля</th><th>Что происходит с состоянием</th><th>Крайние случаи</th></tr></thead>
+          <tbody>
+            <tr><td><code>add</code></td><td><code>item: MenuItem</code></td><td>Позиции нет в корзине: добавить с <code>qty: 1</code>. Есть: увеличить <code>qty</code> на 1</td><td>Повторный клик не создаёт вторую строку</td></tr>
+            <tr><td><code>remove</code></td><td><code>itemId: number</code></td><td>Убрать позицию целиком</td><td>Несуществующий <code>id</code>: корзина не меняется по содержимому</td></tr>
+            <tr><td><code>setQty</code></td><td><code>itemId</code>, <code>qty: number</code></td><td>Задать количество. Если <code>qty</code> меньше 1, убрать позицию</td><td>Кнопка «−» при <code>qty</code> 1 убирает строку</td></tr>
+            <tr><td><code>clear</code></td><td>нет</td><td>Пустая корзина</td><td>Очистка пустой корзины не ломается</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Шаги</h3>
+      <ol class="steps">
+        <li><b>Закройте урок 3 и откройте ветку.</b> Проверьте, что всё чисто и проходит. Затем перенесите ДЗ-3 в <code>main</code> (локальным слиянием: ваша ветка <code>feat/catalog</code> останется на GitHub для ментора) и создайте ветку урока:
+<pre class="code" data-title="Терминал">
+git status
+npm run typecheck
+npm run lint
+git switch main
+git merge feat/catalog
+git switch -c feat/cart
+</pre>
+          Если <code>git merge</code> просит разрешить конфликт, значит, в <code>main</code> появились другие правки: откройте файлы с маркерами <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, оставьте нужный вариант, затем <code>git add .</code> и <code>git commit</code>.</li>
+        <li><b>Данные и таблица вместе с агентом.</b> Отправьте агенту хороший промпт из раздела 8, но данные попросите в формате <b>дополнения</b> к вашему <code>data.ts</code> (по два блюда на каждый из шести ресторанов) и таблицу действий. Проверьте ответ по списку раздела 8, сравните таблицу с нашей и запишите различия в <code>docs/state-notes.md</code>. Данные можно взять и наши (следующий шаг): агента вы используете как собеседника, а не как источник истины.</li>
+        <li><b>Меню.</b> В <code>src/data.ts</code> замените массив <code>menu</code> на этот (14 блюд для шести ресторанов; <code>restaurants</code> не трогайте). Первые три блюда те же, что в уроке 2:
+<pre class="code" data-lang="ts" data-title="src/data.ts (массив menu)">
+export const menu: MenuItem[] = [
+  { id: 1, restaurantId: 1, title: 'Плов праздничный', price: 45 },
+  { id: 2, restaurantId: 1, title: 'Чай зелёный', price: 8 },
+  { id: 3, restaurantId: 3, title: 'Самбуса с мясом', price: 12 },
+  { id: 4, restaurantId: 1, title: 'Салат «Шакароб»', price: 15 },
+  { id: 5, restaurantId: 2, title: 'Шашлык из баранины', price: 38 },
+  { id: 6, restaurantId: 2, title: 'Лепёшка', price: 5 },
+  { id: 7, restaurantId: 3, title: 'Самбуса с тыквой', price: 10 },
+  { id: 8, restaurantId: 3, title: 'Лагман', price: 30 },
+  { id: 9, restaurantId: 4, title: 'Шашлык куриный', price: 28 },
+  { id: 10, restaurantId: 4, title: 'Айран', price: 7 },
+  { id: 11, restaurantId: 5, title: 'Пахлава', price: 20 },
+  { id: 12, restaurantId: 5, title: 'Чак-чак', price: 18 },
+  { id: 13, restaurantId: 6, title: 'Плов с курицей', price: 35 },
+  { id: 14, restaurantId: 6, title: 'Компот', price: 6 },
+]
+</pre>
+          Если вы добавляли свои рестораны в ДЗ-3 или своё меню в ДЗ-2, оставьте их и дозаполните меню: у каждого блюда <code>restaurantId</code> должен указывать на существующий ресторан.</li>
+        <li><b>Вспомогательные функции корзины.</b> Файл <code>src/cart.ts</code> вы создавали в ДЗ-2 с функцией <code>cartTotal</code>. Замените его целиком: добавлено число порций <code>cartCount</code>.
+<pre class="code" data-lang="ts" data-title="src/cart.ts">
+import type { CartItem } from './types'
+
+export function cartTotal(entries: CartItem[]): number {
+  return entries.reduce((sum, entry) =&gt; sum + entry.item.price * entry.qty, 0)
+}
+
+export function cartCount(entries: CartItem[]): number {
+  return entries.reduce((sum, entry) =&gt; sum + entry.qty, 0)
+}
+</pre>
+        </li>
+        <li><b>assertNever и редьюсер.</b> Это файлы из раздела 6. Редьюсер не знает ни про React, ни про интерфейс: он только превращает состояние и действие в новое состояние.
+<pre class="code" data-lang="ts" data-title="src/assertNever.ts">
+export function assertNever(value: never): never {
+  throw new Error(`Unexpected value: ${JSON.stringify(value)}`)
+}
+</pre>
+<pre class="code" data-lang="ts" data-title="src/cartReducer.ts">
+import { assertNever } from './assertNever'
+import type { CartItem, MenuItem } from './types'
+
+export type CartAction =
+  | { type: 'add'; item: MenuItem }
+  | { type: 'remove'; itemId: number }
+  | { type: 'setQty'; itemId: number; qty: number }
+  | { type: 'clear' }
+
+export function cartReducer(state: CartItem[], action: CartAction): CartItem[] {
+  switch (action.type) {
+    case 'add': {
+      const exists = state.some((entry) =&gt; entry.item.id === action.item.id)
+      if (!exists) {
+        return [...state, { item: action.item, qty: 1 }]
+      }
+      return state.map((entry) =&gt;
+        entry.item.id === action.item.id
+          ? { ...entry, qty: entry.qty + 1 }
+          : entry,
+      )
+    }
+    case 'remove':
+      return state.filter((entry) =&gt; entry.item.id !== action.itemId)
+    case 'setQty': {
+      if (action.qty &lt;= 0) {
+        return state.filter((entry) =&gt; entry.item.id !== action.itemId)
+      }
+      return state.map((entry) =&gt;
+        entry.item.id === action.itemId ? { ...entry, qty: action.qty } : entry,
+      )
+    }
+    case 'clear':
+      return []
+    default:
+      return assertNever(action)
+  }
+}
+</pre>
+          Запустите <code>npm run typecheck</code>: ошибок нет. Обратите внимание, что в ветке <code>add</code> нет ни <code>push</code>, ни присваиваний: только <code>[...state, …]</code> и <code>map</code> с копией записи.</li>
+        <li><b>Компоненты меню и корзины.</b> Три компонента, у каждого свой тип props и ни одного знания про редьюсер: они получают значения и колбэки.
+<pre class="code" data-lang="tsx" data-title="src/components/MenuItemRow.tsx">
+import type { MenuItem } from '../types'
+
+type MenuItemRowProps = {
+  item: MenuItem
+  onAdd: (item: MenuItem) =&gt; void
+}
+
+export default function MenuItemRow({ item, onAdd }: MenuItemRowProps) {
+  return (
+    &lt;li className="flex items-center justify-between gap-3 border-b border-stone-200 py-2"&gt;
+      &lt;span&gt;{item.title}&lt;/span&gt;
+      &lt;span className="flex items-center gap-3"&gt;
+        &lt;span className="text-stone-600"&gt;{item.price} сомони&lt;/span&gt;
+        &lt;button
+          className="rounded-lg bg-brand-600 px-3 py-1 text-sm font-semibold text-white hover:bg-brand-700"
+          onClick={() =&gt; onAdd(item)}
+        &gt;
+          В корзину
+        &lt;/button&gt;
+      &lt;/span&gt;
+    &lt;/li&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/CartItemRow.tsx">
+import type { CartItem } from '../types'
+
+type CartItemRowProps = {
+  entry: CartItem
+  onQtyChange: (itemId: number, qty: number) =&gt; void
+  onRemove: (itemId: number) =&gt; void
+}
+
+const stepButton =
+  'h-7 w-7 rounded-full border border-stone-300 bg-white font-bold hover:bg-brand-50'
+
+export default function CartItemRow({
+  entry,
+  onQtyChange,
+  onRemove,
+}: CartItemRowProps) {
+  const { item, qty } = entry
+  return (
+    &lt;li className="flex items-center justify-between gap-2 border-b border-stone-200 py-2"&gt;
+      &lt;span className="flex-1"&gt;{item.title}&lt;/span&gt;
+      &lt;span className="flex items-center gap-2"&gt;
+        &lt;button
+          className={stepButton}
+          aria-label={`Меньше: ${item.title}`}
+          onClick={() =&gt; onQtyChange(item.id, qty - 1)}
+        &gt;
+          −
+        &lt;/button&gt;
+        &lt;span className="w-6 text-center font-semibold"&gt;{qty}&lt;/span&gt;
+        &lt;button
+          className={stepButton}
+          aria-label={`Больше: ${item.title}`}
+          onClick={() =&gt; onQtyChange(item.id, qty + 1)}
+        &gt;
+          +
+        &lt;/button&gt;
+      &lt;/span&gt;
+      &lt;span className="w-20 text-right font-semibold"&gt;
+        {item.price * qty} сомони
+      &lt;/span&gt;
+      &lt;button
+        className="text-sm text-stone-500 underline hover:text-stone-900"
+        onClick={() =&gt; onRemove(item.id)}
+      &gt;
+        Убрать
+      &lt;/button&gt;
+    &lt;/li&gt;
+  )
+}
+</pre>
+<pre class="code" data-lang="tsx" data-title="src/components/CartSummary.tsx">
+import type { ReactNode } from 'react'
+import { cartCount, cartTotal } from '../cart'
+import type { CartItem } from '../types'
+
+type CartSummaryProps = {
+  entries: CartItem[]
+  onClear: () =&gt; void
+  children: ReactNode
+}
+
+export default function CartSummary({
+  entries,
+  onClear,
+  children,
+}: CartSummaryProps) {
+  if (entries.length === 0) {
+    return &lt;p className="py-4 text-stone-500"&gt;Корзина пуста&lt;/p&gt;
+  }
+
+  return (
+    &lt;div&gt;
+      &lt;ul&gt;{children}&lt;/ul&gt;
+      &lt;p className="mt-3 flex justify-between text-lg font-bold"&gt;
+        &lt;span&gt;Итого ({cartCount(entries)} шт.)&lt;/span&gt;
+        &lt;span&gt;{cartTotal(entries)} сомони&lt;/span&gt;
+      &lt;/p&gt;
+      &lt;button
+        className="mt-2 text-sm text-stone-500 underline hover:text-stone-900"
+        onClick={onClear}
+      &gt;
+        Очистить корзину
+      &lt;/button&gt;
+    &lt;/div&gt;
+  )
+}
+</pre>
+          Обратите внимание на два приёма. <code>CartSummary</code> получает строки через <code>children</code> (композиция из урока 3), а итог и число порций вычисляет сам из <code>entries</code>: это производные данные, в состоянии их нет.</li>
+        <li><b>Соберите всё в App.</b> Замените <code>src/App.tsx</code>. Поиск, фильтр, блоки «Топ рейтинга» и «Закрыто сейчас» работают как раньше. Если вы дописывали <code>App.tsx</code> в ДЗ-3 или ДЗ-2, перенесите свои блоки в этот файл: структура та же, добавились состояние <code>cart</code> и колонка с меню и корзиной.
+<pre class="code" data-lang="tsx" data-title="src/App.tsx">
+import { useReducer, useState } from 'react'
+import { cartReducer } from './cartReducer'
+import CartItemRow from './components/CartItemRow'
+import CartSummary from './components/CartSummary'
+import ClosedRestaurants from './components/ClosedRestaurants'
+import CuisineFilter from './components/CuisineFilter'
+import Layout from './components/Layout'
+import MenuItemRow from './components/MenuItemRow'
+import RestaurantList from './components/RestaurantList'
+import SearchBox from './components/SearchBox'
+import Section from './components/Section'
+import TopRestaurants from './components/TopRestaurants'
+import { menu, restaurants } from './data'
+import type { Cuisine } from './types'
+
+export default function App() {
+  const [cuisine, setCuisine] = useState&lt;Cuisine | null&gt;(null)
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState&lt;number | null&gt;(null)
+  const [cart, dispatch] = useReducer(cartReducer, [])
+
+  const visible = restaurants.filter(
+    (r) =&gt;
+      (cuisine === null || r.cuisine === cuisine) &amp;&amp;
+      r.name.toLowerCase().includes(query.toLowerCase()),
+  )
+  const selected = restaurants.find((r) =&gt; r.id === selectedId) ?? null
+  const menuItems = menu.filter((m) =&gt; m.restaurantId === selectedId)
+
+  return (
+    &lt;Layout&gt;
+      &lt;h1 className="mb-4 text-3xl font-bold"&gt;Рестораны Душанбе&lt;/h1&gt;
+      &lt;div className="flex flex-wrap items-center gap-3"&gt;
+        &lt;SearchBox value={query} onChange={setQuery} /&gt;
+        &lt;CuisineFilter selected={cuisine} onChange={setCuisine} /&gt;
+      &lt;/div&gt;
+      &lt;div className="grid gap-8 lg:grid-cols-[1fr_22rem]"&gt;
+        &lt;div&gt;
+          &lt;Section title="Все рестораны"&gt;
+            &lt;RestaurantList restaurants={visible} onSelect={setSelectedId} /&gt;
+          &lt;/Section&gt;
+          &lt;TopRestaurants restaurants={restaurants} /&gt;
+          &lt;ClosedRestaurants restaurants={restaurants} /&gt;
+        &lt;/div&gt;
+        &lt;aside&gt;
+          &lt;Section title={selected ? `Меню: ${selected.name}` : 'Меню'}&gt;
+            {selected === null ? (
+              &lt;p className="text-stone-500"&gt;Выберите ресторан в каталоге&lt;/p&gt;
+            ) : (
+              &lt;ul&gt;
+                {menuItems.map((item) =&gt; (
+                  &lt;MenuItemRow
+                    key={item.id}
+                    item={item}
+                    onAdd={(menuItem) =&gt;
+                      dispatch({ type: 'add', item: menuItem })
+                    }
+                  /&gt;
+                ))}
+              &lt;/ul&gt;
+            )}
+          &lt;/Section&gt;
+          &lt;Section title="Корзина"&gt;
+            &lt;CartSummary
+              entries={cart}
+              onClear={() =&gt; dispatch({ type: 'clear' })}
+            &gt;
+              {cart.map((entry) =&gt; (
+                &lt;CartItemRow
+                  key={entry.item.id}
+                  entry={entry}
+                  onQtyChange={(itemId, qty) =&gt;
+                    dispatch({ type: 'setQty', itemId, qty })
+                  }
+                  onRemove={(itemId) =&gt; dispatch({ type: 'remove', itemId })}
+                /&gt;
+              ))}
+            &lt;/CartSummary&gt;
+          &lt;/Section&gt;
+        &lt;/aside&gt;
+      &lt;/div&gt;
+    &lt;/Layout&gt;
+  )
+}
+</pre>
+          Разберите четыре строки: <code>useReducer(cartReducer, [])</code> даёт <code>cart</code> и <code>dispatch</code> (типы выводятся из редьюсера); <code>selected</code> и <code>menuItems</code> — производные данные от <code>selectedId</code>; три колбэка превращают события интерфейса в действия.</li>
+        <li><b>Запустите и проверьте в браузере.</b>
+<pre class="code" data-title="Терминал">
+npm run format
+npm run dev
+</pre>
+          Нажмите «Выбрать» у Navruz: справа появится меню из трёх блюд. Нажмите «В корзину» у плова дважды и у чая один раз: в корзине две строки, у плова количество 2, внизу «Итого (3 шт.) 98 сомони». Кнопка «−» у плова уменьшает количество, при 1 убирает строку. «Убрать» удаляет строку, «Очистить корзину» опустошает всё, и появляется «Корзина пуста». Нажмите «Выбрать» у Samarkand: меню сменилось, а корзина осталась. Закрытые рестораны (Rohat, Bahor) выбрать нельзя.</li>
+        <li><b>Посмотрите на двойной вызов.</b> В <code>cartReducer.ts</code> первой строкой функции добавьте <code>console.log('reducer', action.type)</code> и нажмите «В корзину» один раз. В консоли браузера будет больше одной строки: StrictMode вызывает редьюсер повторно (раздел 5). Откройте вкладку Components в React DevTools, найдите <code>App</code> и посмотрите на хук <code>Reducer</code> с массивом <code>cart</code>. Лог удалите.</li>
+        <li><b>Сломайте нарочно: мутация.</b> В ветке <code>add</code> замените <code>return [...state, { item: action.item, qty: 1 }]</code> на две строки:
+<pre class="code" data-lang="ts" data-title="src/cartReducer.ts (временно!)">
+state.push({ item: action.item, qty: 1 })
+return state
+</pre>
+          Нажмите «В корзину» у плова один раз. Вы нажали один раз, а в корзине <b>2 порции</b>: в dev-режиме React вызвал редьюсер дважды, первый вызов добавил запись, второй увидел её и увеличил количество. В продакшене такой баг выглядел бы иначе (экран бы вообще не обновился: ссылка на массив прежняя), но причина одна: мутация. Верните код.</li>
+        <li><b>Сломайте нарочно: типы.</b> (а) Удалите ветку <code>case 'clear'</code> и запустите <code>npm run typecheck</code>: прочитайте ошибку про <code>never</code> и найдите в ней забытое действие. Верните ветку. (б) В <code>App.tsx</code> напишите <code>dispatch({ type: 'cleer' })</code>: прочитайте ошибку <code>TS2820</code> с подсказкой <code>Did you mean "clear"?</code>. Верните как было.
+<pre class="code" data-title="Терминал — вывод tsc -b: удалена ветка clear">
+src/cartReducer.ts(34,26): error TS2345: Argument of type '{ type: "clear"; }' is not assignable to parameter of type 'never'.
+</pre>
+        </li>
+        <li><b>Правила для агента и заметки.</b> Допишите в раздел «Правила кода» файла <code>AGENTS.md</code>:
+<pre class="code" data-title="AGENTS.md (добавить)">
+- Состояние только минимальное: всё, что считается из другого состояния
+  или props, вычислять в теле компонента, а не хранить
+- Состояние массивов и объектов не мутировать: map, filter, spread
+- Сложное состояние с несколькими действиями — useReducer; редьюсер чистый,
+  лежит в отдельном файле, без Date.now, Math.random и запросов
+- Действия редьюсера — union с полем type; в default вызывать assertNever
+- Хуки вызывать только на верхнем уровне компонента, выше любых return
+</pre>
+          Создайте <code>docs/state-notes.md</code> (потом вы добавите в него ответы из домашнего задания) и запишите заметки к шагу 2: чем таблица агента отличается от нашей и что вы нашли при ревью.</li>
+        <li><b>Проверки.</b> Все четыре команды проходят без ошибок:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+        </li>
+        <li><b>Коммит и слияние.</b> Отправьте ветку, потом перенесите её в <code>main</code> и начните ветку домашнего задания:
+<pre class="code" data-title="Терминал">
+git add .
+git commit -m "add cart with useReducer"
+git push -u origin feat/cart
+git switch main
+git merge feat/cart
+git push
+git switch -c feat/filters
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>«Cannot find module '../cart' or its corresponding type declarations» (TS2307):</b> файл <code>src/cart.ts</code> не создан или лежит не в <code>src/</code>; путь считается от места файла. <b>«'CartAction' is a type and must be imported using a type-only import» (TS1484):</b> тип нужно импортировать через <code>import type</code> или с <code>type</code> внутри фигурных скобок. <b>Нажатие «В корзину» ничего не делает:</b> проверьте, что колбэк в <code>App</code> вызывает <code>dispatch</code>, а не только объявлен, и что в редьюсере нет мутации. <b>Корзина пропадает при смене ресторана:</b> состояние объявлено не в <code>App</code>, а в компоненте меню; поднимите его. <b>«Each child in a list should have a unique "key" prop»:</b> забыт <code>key={…}</code> в <code>map</code>. <b><code>git merge</code> пишет «Already up to date»:</b> всё уже слито, продолжайте. <b>Prettier меняет файлы при <code>format:check</code>:</b> запустите <code>npm run format</code> и сделайте коммит.</p>
+      </div>
+
+      <article class="task" id="t-build">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Чек-лист: корзина собрана</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-build">
+          <li>Работа ведётся в ветке <code>feat/cart</code>, ДЗ-3 перенесено в <code>main</code></li>
+          <li>В <code>data.ts</code> меню из 14 блюд, у каждого <code>restaurantId</code> существующего ресторана</li>
+          <li>Созданы <code>cart.ts</code> (<code>cartTotal</code>, <code>cartCount</code>), <code>assertNever.ts</code> и <code>cartReducer.ts</code> с четырьмя действиями</li>
+          <li>В редьюсере нет мутаций и побочных эффектов, <code>default</code> вызывает <code>assertNever</code></li>
+          <li>Компоненты <code>MenuItemRow</code>, <code>CartItemRow</code>, <code>CartSummary</code> получают значения и колбэки и не знают о редьюсере</li>
+          <li>В <code>App</code> состояние корзины через <code>useReducer</code>, а <code>selected</code>, <code>menuItems</code>, итог и число порций вычисляются</li>
+          <li>Добавление, изменение количества, удаление и очистка работают; итог совпадает с ручным подсчётом</li>
+          <li><code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> и <code>npm run build</code> проходят без ошибок, <code>any</code> нет</li>
+          <li><code>AGENTS.md</code> дополнен, ветка слита в <code>main</code>, создана ветка <code>feat/filters</code></li>
+        </ul>
+      </article>
+
+      <article class="task" id="t-observe">
+        <header><span class="task-num">ЗАДАЧА 9.2</span><h4>Чек-лист: наблюдения</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-observe">
+          <li>Я увидел в консоли несколько строк <code>reducer add</code> после одного клика и могу объяснить, что это StrictMode, а не баг</li>
+          <li>Я нашёл в React DevTools хук <code>Reducer</code> у <code>App</code> и посмотрел массив <code>cart</code></li>
+          <li>Я сломал редьюсер мутацией через <code>push</code>, увидел две порции после одного клика и вернул код</li>
+          <li>Я удалил ветку <code>clear</code>, прочитал ошибку про <code>never</code> и нашёл в ней забытое действие</li>
+          <li>Я сделал опечатку в <code>type: 'cleer'</code>, прочитал <code>TS2820</code> и исправил</li>
+          <li>Я удалил временный <code>console.log</code> перед коммитом</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/extracting-state-logic-into-a-reducer" target="_blank" rel="noopener">react.dev — Extracting State Logic into a Reducer</a> · <a href="https://react.dev/learn/thinking-in-react" target="_blank" rel="noopener">react.dev — Thinking in React</a> · <a href="https://react.dev/learn/react-developer-tools" target="_blank" rel="noopener">react.dev — React Developer Tools</a></p>
+    </section>
+
+
+    <!-- ============ 10 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">10</span> Домашнее задание: фильтры, сортировка и умная корзина</h2>
+
+      <p>Практика дала корзину на редьюсере. В домашнем задании вы повторяете тот же приём на новом материале: переносите на <code>useReducer</code> фильтры каталога, добавляете сортировку и учите корзину двум правилам. Работайте в ветке <code>feat/filters</code> (вы создали её в конце практики), в конце отправьте ветку на GitHub и сдайте ссылку на репозиторий <code>dastarkhon</code>: ментор откроет эту ветку. В <code>main</code> её до проверки не сливайте.</p>
+
+      <h3>Что сделать</h3>
+      <ol class="steps">
+        <li><b>Редьюсер каталога.</b> Создайте <code>src/catalogReducer.ts</code>. Состояние описывается типами ниже (импортируйте <code>Cuisine</code> из <code>types.ts</code>).
+<pre class="code" data-lang="ts" data-title="src/catalogReducer.ts (типы)">
+type SortKey = 'default' | 'rating' | 'delivery' | 'name'
+
+type CatalogFilters = {
+  query: string
+  cuisine: Cuisine | null
+  openOnly: boolean
+  minRating: number
+  sort: SortKey
+}
+</pre>
+          Действия — размеченное объединение: <code>setQuery</code>, <code>setCuisine</code>, <code>toggleOpenOnly</code>, <code>setMinRating</code>, <code>setSort</code>, <code>reset</code>. Экспортируйте <code>initialFilters</code>, <code>catalogReducer</code> (чистый, без мутаций, в <code>default</code> — <code>assertNever</code>) и типы.</li>
+        <li><b>Функция applyFilters.</b> Там же: <code>applyFilters(restaurants: Restaurant[], filters: CatalogFilters): Restaurant[]</code>. Она оставляет рестораны по запросу (без учёта регистра), кухне, флагу <code>openOnly</code> и минимальному рейтингу, затем сортирует <b>копию</b>: <code>rating</code> — по убыванию рейтинга, <code>delivery</code> — по возрастанию <code>deliveryMin</code>, <code>name</code> — по алфавиту, <code>default</code> — порядок из <code>data.ts</code>. Исходный массив <code>restaurants</code> меняться не должен.</li>
+        <li><b>Подключение в App.</b> Уберите отдельные <code>useState</code> для <code>query</code> и <code>cuisine</code>, объявите <code>const [filters, dispatch] = useReducer(catalogReducer, initialFilters)</code>. Список <code>visible</code> считайте через <code>applyFilters</code> в теле компонента (производные данные). <code>SearchBox</code> и <code>CuisineFilter</code> остаются как есть, колбэки превращаются в <code>dispatch</code>.</li>
+        <li><b>Компонент FilterPanel.</b> Новый компонент с props <code>filters: CatalogFilters</code> и <code>dispatch: Dispatch&lt;CatalogAction&gt;</code> (тип <code>Dispatch</code> из <code>react</code>). В нём: флажок «Только открытые», выбор «Рейтинг от» (0, 4.0, 4.5), выбор «Сортировка» и кнопка «Сбросить». Кнопка неактивна, когда фильтры равны начальным: это вычисляется, не хранится в состоянии.</li>
+        <li><b>Счётчик.</b> Над списком выведите «Найдено: N из M»: оба числа производные.</li>
+        <li><b>Умная корзина.</b> В <code>cartReducer.ts</code> добавьте два правила. <b>а)</b> Не больше 20 порций одной позиции: <code>add</code> и <code>setQty</code> не выходят за <code>MAX_QTY = 20</code>. <b>б)</b> Корзина принадлежит одному ресторану: если добавляется блюдо другого ресторана, корзина заменяется одной записью с этим блюдом. Эти правила живут только в редьюсере, компоненты о них не знают.</li>
+        <li><b>Минимальный заказ.</b> В <code>App</code> вычислите ресторан корзины (по <code>restaurantId</code> первой записи) и передайте его <code>minOrder</code> в <code>CartSummary</code> как новый необязательный prop <code>minOrder?: number</code>. Если итог меньше, под итогом показывайте «До минимального заказа ещё N сомони». Новое состояние не нужно.</li>
+        <li><b>Работа с агентом.</b> Попросите агента составить таблицу действий для <code>catalogReducer</code> по формуле из раздела 8 (сначала таблица, потом код) и сравните её со своей. В <code>docs/state-notes.md</code> запишите, что вы приняли, что отвергли и почему.</li>
+        <li><b>Ответы и проверки.</b> Допишите в <code>docs/state-notes.md</code> ответы <b>своими словами</b> на пять вопросов ниже. <code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code> и <code>npm run build</code> проходят, в ветке не меньше трёх осмысленных коммитов, ветка отправлена на GitHub.</li>
+      </ol>
+
+      <h3>Пять вопросов для docs/state-notes.md</h3>
+      <ol class="steps">
+        <li>Чем состояние отличается от props и от обычной переменной? Назовите три состояния и три производных значения в вашем <code>App</code>.</li>
+        <li>Почему нельзя написать <code>cart.push(item)</code> и передать тот же массив в <code>setCart</code>? Покажите на примере из вашего проекта, как выглядит правильное обновление.</li>
+        <li>Что такое подъём состояния? Где в вашем проекте вам пришлось его поднимать и почему именно туда?</li>
+        <li>Что такое действие и редьюсер? Когда вы выбрали бы <code>useReducer</code>, а когда <code>useState</code>? Почему редьюсер обязан быть чистым?</li>
+        <li>Какие два правила хуков вы знаете и почему они нужны (что хранит React и как сопоставляет)? Что напечатал линтер, когда вы нарушили правило нарочно?</li>
+      </ol>
+
+      <h3>Как проверят</h3>
+      <ul>
+        <li><b>Редьюсеры:</b> чистые, без мутаций и побочных эффектов, действия — размеченное объединение, в <code>default</code> стоит <code>assertNever</code>, без <code>any</code> и <code>as</code>.</li>
+        <li><b>Производные данные:</b> отфильтрованный список, счётчик, итог и признак «фильтры по умолчанию» вычисляются, а не хранятся; <code>applyFilters</code> сортирует копию.</li>
+        <li><b>Состояние:</b> одно место для каждого состояния, подъём там, где он нужен, колбэки и <code>dispatch</code> типизированы точно.</li>
+        <li><b>Поведение:</b> все фильтры и сортировки работают вместе; в корзине не больше 20 порций позиции, блюдо другого ресторана заменяет корзину, подсказка про минимальный заказ верна.</li>
+        <li><b>Хуки:</b> Oxlint не сообщает о нарушениях правил хуков.</li>
+        <li><b>Ответы:</b> написаны своими словами и опираются на ваш проект, а не пересказывают урок или ответ агента.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> <code>restaurants.sort(…)</code> внутри <code>applyFilters</code>: исходный массив меняется. <b>2.</b> Отфильтрованный список хранится в состоянии рядом с фильтрами. <b>3.</b> В редьюсере каталога <code>default: return state</code> вместо <code>assertNever</code>. <b>4.</b> Правило «20 порций» проверяется в компоненте, а не в редьюсере: тогда его можно обойти из другого места. <b>5.</b> При замене корзины блюдом другого ресторана старые записи остаются: нужна <b>одна</b> новая запись. <b>6.</b> <code>filters.minRating</code> хранится строкой из <code>select</code>: приведите значение к числу при отправке действия. <b>7.</b> Ответы вставлены из чата агента без правок.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 10.1</span><h4>Чек-лист требований к ДЗ-4</h4><span class="level mid">средняя</span></header>
+        <p>Перед сдачей проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Корзина из практики работает, меню показывается у выбранного ресторана</li>
+          <li><code>catalogReducer.ts</code> содержит <code>CatalogFilters</code>, <code>SortKey</code>, размеченное объединение <code>CatalogAction</code>, <code>initialFilters</code>, чистый редьюсер с <code>assertNever</code></li>
+          <li><code>applyFilters</code> фильтрует по запросу, кухне, <code>openOnly</code> и минимальному рейтингу, сортирует копию, порядок в <code>data.ts</code> не меняется</li>
+          <li>В <code>App</code> фильтры на <code>useReducer</code>, список, счётчик «Найдено: N из M» и неактивность кнопки «Сбросить» вычисляются</li>
+          <li><code>FilterPanel</code> получает <code>filters</code> и <code>dispatch</code> с типом <code>Dispatch&lt;CatalogAction&gt;</code>, все четыре элемента управления работают</li>
+          <li>Корзина не принимает больше 20 порций позиции, блюдо другого ресторана заменяет корзину, оба правила в редьюсере</li>
+          <li><code>CartSummary</code> показывает «До минимального заказа ещё N сомони» через необязательный prop <code>minOrder</code></li>
+          <li><code>docs/state-notes.md</code> содержит сравнение с таблицей агента и пять ответов своими словами</li>
+          <li><code>npm run format:check</code>, <code>typecheck</code>, <code>lint</code>, <code>build</code> проходят, в ветке не меньше трёх коммитов</li>
+          <li>Ветка <code>feat/filters</code> отправлена на GitHub, репозиторий публичный: я открыл ссылку в режиме инкогнито</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 10.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку вида <code>https://github.com/ваш-логин/dastarkhon</code>. Откройте её в режиме инкогнито: ветка <code>feat/filters</code>, код, <code>catalogReducer.ts</code> и <code>docs/state-notes.md</code> должны быть видны.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/learn/extracting-state-logic-into-a-reducer" target="_blank" rel="noopener">react.dev — Extracting State Logic into a Reducer</a> · <a href="https://react.dev/learn/choosing-the-state-structure" target="_blank" rel="noopener">react.dev — Choosing the State Structure</a> · <a href="https://react.dev/reference/react/useReducer" target="_blank" rel="noopener">react.dev — useReducer</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Состояние и props:</b> props приходят сверху и только читаются, состояние — память компонента (<code>useState</code>), у каждого экземпляра своё. Обычная переменная не запускает рендер и обнуляется. В состояние идёт только то, что меняется, не пришло из props и не вычисляется из другого.</li>
+        <li><b>Иммутабельность:</b> React сравнивает ссылки. Не <code>push</code>, <code>splice</code>, <code>sort</code> и присваивание, а <code>[...arr, x]</code>, <code>filter</code>, <code>map</code>, <code>{ ...obj, поле }</code>. Новый массив с изменённым внутри объектом — всё ещё мутация. <code>readonly</code> в типах ловит мутации при компиляции.</li>
+        <li><b>Подъём состояния:</b> состояние живёт у ближайшего общего родителя; значения вниз через props, события вверх через колбэки. Не поднимайте выше нужного (prop drilling → Context, урок 8).</li>
+        <li><b>Производные данные:</b> то, что считается из props и состояния (<code>visible</code>, <code>selected</code>, итог, число), вычисляйте в теле компонента. В состоянии храните <code>selectedId</code>, а не копию объекта. Синхронизация через эффект — плохой знак.</li>
+        <li><b>useReducer:</b> <code>const [state, dispatch] = useReducer(reducer, initial)</code>; действие — объект «что произошло»; редьюсер <code>(state, action) =&gt; newState</code> — чистая функция без мутаций и побочных эффектов. В StrictMode вызывается дважды. <code>useState</code> для простого, <code>useReducer</code> для связанных обновлений по правилам.</li>
+        <li><b>TypeScript:</b> действия — размеченное объединение с литеральной меткой <code>type</code>; в <code>switch</code> тип сужается; <code>default: return assertNever(action)</code> выдаёт ошибку, если ветку забыли. <code>useReducer</code> выводит типы из редьюсера; для пропса <code>Dispatch&lt;Action&gt;</code>.</li>
+        <li><b>Правила хуков:</b> только на верхнем уровне (не в <code>if</code>, циклах, после <code>return</code>, во вложенных функциях) и только в компонентах и своих хуках. Причина: React сопоставляет хуки с ячейками по порядку вызовов. Нарушения ловит <code>react-hooks/rules-of-hooks</code> в Oxlint.</li>
+        <li><b>С агентом:</b> сначала таблица действий и данные, потом код; ревью: мутации (в том числе внутри <code>map</code> и <code>find</code>), побочные эффекты, <code>assertNever</code>, связи в тестовых данных.</li>
+        <li><b>Проект 1 «Дастархон»:</b> 17 компонентов, <code>cartReducer.ts</code>, <code>cart.ts</code>, <code>assertNever.ts</code>; корзина на <code>useReducer</code>. В ДЗ: <code>catalogReducer</code>, <code>FilterPanel</code>, правила корзины. Дальше: эффекты, ref-ы и загрузка данных (урок 5).</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 11.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить разницу между состоянием, props и обычной переменной и решить, нужно ли данным состояние</li>
+          <li>Могу обновить массив и вложенный объект в состоянии без мутаций и объяснить, почему React сравнивает ссылки</li>
+          <li>Могу поднять состояние к общему родителю и передать вниз значение и колбэк</li>
+          <li>Могу найти в компоненте производные данные и убрать их из состояния</li>
+          <li>Могу написать чистый редьюсер корзины и вызвать его через <code>dispatch</code></li>
+          <li>Могу типизировать действия как размеченное объединение и проверить полноту <code>switch</code> через <code>never</code></li>
+          <li>Могу назвать правила хуков, объяснить их причину и прочитать сообщение линтера</li>
+          <li>Могу проверить код агента на мутации и побочные эффекты в редьюсере</li>
+        </ul>
+      </article>
+    </section>
