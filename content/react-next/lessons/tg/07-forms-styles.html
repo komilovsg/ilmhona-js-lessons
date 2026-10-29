@@ -1,0 +1,1756 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Дарси 7 · Ҳукҳо, формаҳо, услубҳо</p>
+      <h1>Шаклҳо, равзанаҳои модалӣ ва порталҳо</h1>
+      <p class="lead">Дар охири дарс дар «Дастархон» тугмаи «Оформить заказ» пайдо мешавад: он равзанаи модалиро бо шакл мекушояд, ки бо схемаи Zod санҷида мешавад, бо React Hook Form идора мешавад, фармоишро ба API-и таълимӣ мефиристад ва хатоҳои фаҳморо нишон медиҳад. Равзана тавассути портал кашида мешавад, бо Esc баста мешавад, фокусро гум намекунад ва аз тарафи хонандаи экран хонда мешавад. Шумо мефаҳмед, ки майдонҳои идорашаванда аз идоранашаванда чӣ фарқ доранд, ва навъи шаклро аз схема мегиред, на бори дуюм аз дастӣ менависед.</p>
+      <ul class="goals">
+        <li>Майдонҳои идорашаванда ва идоранашавандаро фарқ кунед, қиматҳоро тавассути <code>state</code>, <code>FormData</code> ва <code>ref</code> хонед, рӯйдодҳои шаклро дуруст навъбандӣ кунед</li>
+        <li>Қоидаҳои шаклро бо схемаи Zod тавсиф кунед ва навъи қиматҳоро тавассути <code>z.infer</code> гиред, бе такрори дастӣ</li>
+        <li>Шаклро бо React Hook Form ҷамъ кунед: <code>register</code>, <code>handleSubmit</code>, <code>formState</code>, <code>zodResolver</code>, хатои сервер тавассути <code>setError</code></li>
+        <li>Равзанаи модалиро бо портали <code>createPortal</code> намоиш диҳед ва шарҳ диҳед, ки рӯйдодҳо тавассути портал чӣ тавр боло мераванд</li>
+        <li>Равзанаро дастрас кунед: <code>role="dialog"</code>, <code>aria-modal</code>, <code>aria-labelledby</code>, фокус ба дарун ва баргардонидан, доми Tab (focus trap), бастан бо Esc</li>
+        <li>Майдонро бо нишона ва хато пайваст кунед (<code>label</code>, <code>aria-invalid</code>, <code>aria-describedby</code>) ва шаклро бо клавиатура санҷед</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Ин дарсро чӣ тавр гузаштан лозим аст</b>
+      <p>Лозим аст: лоиҳаи <code>dastarkhon</code> баъд аз дарси 5 (тарабхонаҳо аз API-и таълимӣ бор мешаванд, сабад бо <code>useReducer</code>), терминал бо ду тиреза (API ва Vite), муҳаррир ва тақрибан 3,5 соат. Бахшҳои 1–5 — назария: як қисми код бевосита дар саҳифа иҷро мешавад, аммо React Hook Form ва Zod танҳо ба лоиҳа насб мешаванд (дар майдончаи браузерӣ бастаҳо нест), бинобар ин дар он ҷо шумо кодро мехонед ва худро бо тестҳо ва навъҳо месанҷед. Бахши 6 — дар бораи агенти ЗС, бахши 7 — машқ дар лоиҳа, бахши 8 — вазифаи хонагӣ.</p>
+      <p>Фарз мешавад, ки шумо JavaScript, <code>useState</code>, рӯйдодҳо ва <code>ref</code>-ро (дарси 5), навъҳо ва union-ро (дарси 2), редюсери сабадро (дарси 4) медонед. Ҳукҳои худии дарси 6 барои ин дарс лозим нестанд, аммо агар онҳо дошта бошед (<code>useFetch</code>, <code>useLocalStorage</code>, <code>useDebounce</code>), иловаҳои поён бо онҳо мувофиқанд.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="forms">
+      <h2 data-toc="Идорашаванда ва идоранашаванда"><span class="num">01</span> Майдонҳои идорашаванда ва идоранашаванда</h2>
+
+      <p>Ҳар як майдони воридкунӣ қимат дорад, ва касе бояд соҳиби он бошад. Ду роҳ ҳаст.</p>
+      <ul>
+        <li><b>Майдони идорашаванда</b> (controlled): қиматро React дар ҳолат нигоҳ медорад. Дар майдон шумо <code>value={name}</code> ва <code>onChange</code> менависед, ки қимати навро ба <code>setName</code> мегузорад. Ҳар як аломат аз React мегузарад: метавон фавран санҷид, форматбандӣ кард ё манъ кард.</li>
+        <li><b>Майдони идоранашаванда</b> (uncontrolled): қиматро худи браузер (DOM) нигоҳ медорад. React чизеро намедонад, то шумо напурсед: ҳангоми фиристодани шакл (<code>FormData</code>) ё тавассути <code>ref</code>. Қимати ибтидоиро <code>defaultValue</code> медиҳад.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Тарафи чап майдони идорашаванда: пахши клавиша onChange-ро даъват мекунад, қимат ба ҳолати React меафтад, React онро ба value-и майдон бармегардонад. Тарафи рост майдони идоранашаванда: қимат дар DOM зиндагӣ мекунад, React онро як маротиба ҳангоми фиристодани шакл тавассути FormData ё ref мехонад">
+          <text x="170" y="22" text-anchor="middle">Идорашаванда</text>
+          <rect class="fill-y" x="10" y="40" width="150" height="56" rx="12" /><text x="85" y="64" text-anchor="middle">input</text><text class="sub mono" x="85" y="82" text-anchor="middle">value={name}</text>
+          <rect class="fill-g" x="200" y="40" width="150" height="56" rx="12" /><text x="275" y="64" text-anchor="middle">state</text><text class="sub mono" x="275" y="82" text-anchor="middle">name, setName</text>
+          <path class="arr" d="M160 58 H192" /><path class="arr-head" d="M200 58 l-10 -5 v10 z" /><text class="sub t-b" x="168" y="50" text-anchor="middle">onChange</text>
+          <path class="arr" d="M275 96 V130 H85 V104" /><path class="arr-head" d="M85 96 l-5 10 h10 z" /><text class="sub t-g" x="180" y="148" text-anchor="middle">value дар ҳар рендер</text>
+          <text x="545" y="22" text-anchor="middle">Идоранашаванда</text>
+          <rect class="fill-y" x="400" y="40" width="150" height="56" rx="12" /><text x="475" y="64" text-anchor="middle">input (DOM)</text><text class="sub mono" x="475" y="82" text-anchor="middle">defaultValue</text>
+          <rect class="box b" x="580" y="40" width="130" height="56" rx="12" /><text x="645" y="64" text-anchor="middle">onSubmit</text><text class="sub mono" x="645" y="82" text-anchor="middle">FormData / ref</text>
+          <path class="arr" d="M550 68 H572" /><path class="arr-head" d="M580 68 l-10 -5 v10 z" /><text class="sub t-b" x="565" y="114" text-anchor="middle">1 бор</text>
+          <text class="sub" x="10" y="190">Ҳар клавиша = рендер: барои санҷиши зинда қулай аст</text>
+          <text class="sub" x="400" y="190">То фиристодан рендер нест: кори камтар</text>
+        </svg>
+        <figcaption>Қимати майдон дар куҷо зиндагӣ мекунад: дар ҳолати React ё дар худи DOM</figcaption>
+      </figure>
+
+<pre class="code" data-lang="tsx" data-title="Майдони идорашаванда: навъи рӯйдод дар TypeScript">
+import { useState, type ChangeEvent } from 'react'
+
+export default function NameField() {
+  const [name, setName] = useState('')
+
+  function handleChange(event: ChangeEvent&lt;HTMLInputElement&gt;) {
+    setName(event.target.value)
+  }
+
+  return (
+    &lt;label&gt;
+      Имя
+      &lt;input value={name} onChange={handleChange} /&gt;
+    &lt;/label&gt;
+  )
+}
+</pre>
+
+<pre class="code" data-lang="tsx" data-title="Шакли идоранашаванда: ҳамаро ҳангоми фиристодан мехонем">
+import type { FormEvent } from 'react'
+
+export default function QuickOrder({ onOrder }: { onOrder: (phone: string) =&gt; void }) {
+  function handleSubmit(event: FormEvent&lt;HTMLFormElement&gt;) {
+    event.preventDefault() // без этого браузер перезагрузит страницу
+    const data = new FormData(event.currentTarget)
+    onOrder(String(data.get('phone')))
+  }
+
+  return (
+    &lt;form onSubmit={handleSubmit}&gt;
+      &lt;input name="phone" defaultValue="+992" /&gt;
+      &lt;button&gt;Перезвоните мне&lt;/button&gt;
+    &lt;/form&gt;
+  )
+}
+</pre>
+
+      <p>Диққат диҳед: <code>data.get('phone')</code> <code>FormDataEntryValue | null</code>-ро бармегардонад (сатр, файл ё <code>null</code>), бинобар ин онро бояд ба сатр табдил дод ё санҷид. Қиматҳои майдонҳо ҳамеша сатранд: рақам аз <code>type="number"</code> низ ҳамчун сатр меояд, ва онро бояд табдил дод (<code>Number(value)</code>).</p>
+
+      <h3>Чиро интихоб кардан</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Идорашаванда</th><th>Идоранашаванда</th></tr></thead>
+          <tbody>
+            <tr><td>Қимат дар куҷо</td><td>Дар ҳолати React</td><td>Дар DOM</td></tr>
+            <tr><td>Кай мехонем</td><td>Дар ҳар лаҳза, фавран</td><td>Ҳангоми фиристодан ё тавассути <code>ref</code></td></tr>
+            <tr><td>Рендерҳо</td><td>Барои ҳар аломат</td><td>Не</td></tr>
+            <tr><td>Мувофиқ аст</td><td>Ҷустуҷӯи зинда, ниқоби воридкунӣ, майдонҳои вобаста</td><td>Шаклҳои оддӣ бо санҷиш ҳангоми фиристодан</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Майдони ҷустуҷӯ дар «Дастархон» идорашаванда аст: рӯйхат барои ҳар аломат филтр мешавад. Аммо шакли фармоиш «дар зери капот» идоранашаванда мешавад: React Hook Form (бахши 3) қиматҳоро тавассути <code>ref</code> мехонад, бинобар ин шакл барои ҳар ҳарф аз нав кашида намешавад.</p>
+
+      <h3>Нишона, фиристодан ва тугмаҳо</h3>
+      <ul>
+        <li>Ҳар як майдон <code>&lt;label&gt;</code> дорад: майдонро бо он печонед ё <code>htmlFor</code>-ро бо <code>id</code> пайваст кунед. Барои <code>id</code>-ҳои беназир дар компоненте, ки борҳо кашида мешавад, ҳуки <code>useId()</code>-ро истифода баред. Ишора дар <code>placeholder</code> нишона нест: он ҳангоми воридкунӣ нопадид мешавад.</li>
+        <li>Тугма дар дохили <code>&lt;form&gt;</code> бе <code>type</code> ба таври пешфарз шаклро мефиристад. Тугмаи «Закрыть» дар дохили шакл ба <code>type="button"</code> ниёз дорад.</li>
+        <li>Байрақчаро аз <code>checked</code> мехонанд, на аз <code>value</code>; барои <code>select</code> қимат — <code>event.target.value</code> аст.</li>
+        <li>Дар React 19 <code>&lt;form&gt;</code> prop-и <code>action</code>-ро барои функсияҳои сервер дорад: мо онро дар дарси 18 (Next.js) меомӯзем. Дар SPA, мисли «Дастархон», шаклро <code>onSubmit</code> коркард мекунад.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Майдони идорашаванда — фурӯшандаи бозор аст, ки ҳар як калимаи шуморо дар дафтар менависад ва фавран бо овози баланд ба шумо бармехонад. Идоранашаванда — варақаи фармоиш аст: шумо онро худатон пур мекунед, ва фурӯшанда онро як бор мехонад, вақте ки шумо онро аз болои пештахта дароз кардед.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>value</code> бе <code>onChange</code>: майдон «чоп намекунад». Дар консоли реҷаи таҳия:</p>
+<pre class="code" data-title="Терминал — консоли браузер (реҷаи таҳия)">
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+</pre>
+        <p><b>2.</b> Қимати ибтидоӣ <code>undefined</code>, баъд сатр: майдон аз идоранашаванда ба идорашаванда «мекӯчад». Аз сатр оғоз кунед: <code>useState('')</code>.</p>
+<pre class="code" data-title="Терминал — консоли браузер (реҷаи таҳия)">
+A component is changing an uncontrolled input to be controlled. This is likely caused by the value changing from undefined to a defined value, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components
+</pre>
+        <p><b>3.</b> <code>event.preventDefault()</code> дар <code>onSubmit</code> нест: саҳифа аз нав бор мешавад ва ҳолат нест мешавад. <b>4.</b> Ҳамзамон <code>value</code> ва <code>defaultValue</code> дар як майдон. <b>5.</b> Рақами майдонро ҳамчун сатр ҷамъ мекунанд: <code>"2" + "3"</code> <code>"23"</code> медиҳад.</p>
+      </div>
+
+      <article class="task" id="q-forms">
+        <header><span class="task-num">ВАЗИФАИ 1.1</span><h4>Худро санҷед: майдонҳои идорашаванда</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Майдон ҳамчун <code>&lt;input value={city} /&gt;</code> бе <code>onChange</code> навишта шудааст. Чӣ мешавад?</p>
+          <ol class="options">
+            <li>Майдон мисли ҳамеша кор мекунад</li>
+            <li>Майдон танҳо барои хондан мешавад: React ҳар дафъа <code>city</code>-ро бармегардонад, ва дар консол огоҳӣ пайдо мешавад</li>
+            <li>Қимат дар <code>localStorage</code> нигоҳ дошта мешавад</li>
+            <li>Шакл фиристода намешавад</li>
+          </ol>
+          <div class="explain"><p>Майдони идорашаванда ягона сарчашмаи қимат — ҳолат аст. Бе <code>onChange</code> ҳолат тағйир намеёбад, ва React баъд аз ҳар пахш қимати пештараро бармегардонад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Дар кадом ҳолатҳо интихоби майдони идорашаванда оқилона аст? Ду вариантро интихоб кунед.</p>
+          <ol class="options">
+            <li>Рӯйхати тарабхонаҳо бояд барои ҳар аломати воридшуда филтр шавад</li>
+            <li>Шакли аз ду майдон, ки танҳо ҳангоми фиристодан санҷида мешавад</li>
+            <li>Майдони телефон бояд дар ҳаракат форматбандӣ шавад, масалан <code>+992 90 123 45 67</code></li>
+            <li>Қиматро як маротиба гирифтан лозим аст, вақте ки корбар «Отправить»-ро пахш кард</li>
+          </ol>
+          <div class="explain"><p>Агар қимат дар лаҳзаи воридкунӣ лозим бошад (филтр, ниқоб, майдони вобаста), он бояд дар ҳолат бошад. Агар хондан ҳангоми фиристодан кифоя бошад, майдони идоранашаванда басанда аст.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p><code>new FormData(form).get('qty')</code> барои майдони <code>&lt;input name="qty" type="number" defaultValue="2" /&gt;</code> чиро бармегардонад?</p>
+          <ol class="options">
+            <li>Рақами <code>2</code></li>
+            <li><code>true</code></li>
+            <li>Сатри <code>"2"</code></li>
+            <li><code>undefined</code></li>
+          </ol>
+          <div class="explain"><p>Қиматҳои майдонҳо сатр (ё файл) мебошанд. Рақамро худатон бояд гиред: <code>Number(...)</code>. Сервер ва схема бояд бидонанд, ки сатр омадааст.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-controlled">
+        <header><span class="task-num">ВАЗИФАИ 1.2</span><h4>Майдони ном чоп намекунад</h4><span class="level easy">осон</span></header>
+        <p>Майдони ном бо ҳолат идора мешавад, аммо ба он чизеро ворид кардан мумкин нест. Коркардкунандаро анҷом диҳед. Стенд баъд аз 450 мс калимаи <code>Ali</code>-ро ба майдон «чоп мекунад».</p>
+        <div class="playground" data-mode="react" data-title="Майдони идорашаванда">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [name, setName] = useState("");
+  console.log("имя: [" + name + "]");
+
+  // TODO: добавьте в input onChange, который кладёт event.target.value в состояние
+  return (
+    &lt;label&gt;
+      Имя &lt;input id="name" value={name} /&gt;
+    &lt;/label&gt;
+  );
+}
+
+// стенд: «печатает» в поле, как это делает пользователь
+setTimeout(() =&gt; {
+  const input = document.getElementById("name");
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  setValue.call(input, "Ali");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}, 450);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>имя: []
+имя: [Ali]</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Коркардкунанда рӯйдодро мегирад: <code>event.target.value</code> — он чӣ ҳоло дар майдон аст.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>&lt;input id="name" value={name} onChange={(event) =&gt; setName(event.target.value)} /&gt;</code></p></details>
+      </article>
+
+      <article class="task" id="t1-formdata">
+        <header><span class="task-num">ВАЗИФАИ 1.3</span><h4>Фармоиш аз шакли идоранашаванда</h4><span class="level mid">миёна</span></header>
+        <p>Дар шакл ҳолат нест. <code>handleSubmit</code>-ро анҷом диҳед: аз нав боркуниро бекор кунед, <code>name</code> ва <code>phone</code>-ро тавассути <code>FormData</code> бихонед ва <code>onOrder</code>-ро даъват кунед. Стенд шаклро баъд аз 450 мс мефиристад.</p>
+        <div class="playground" data-mode="react" data-title="Шакли идоранашаванда">
+<pre class="code" data-lang="jsx">
+function OrderForm({ onOrder }) {
+  function handleSubmit(event) {
+    // TODO 1: event.preventDefault()
+    // TODO 2: const data = new FormData(event.currentTarget);
+    // TODO 3: onOrder({ name: String(data.get("name")), phone: String(data.get("phone")) });
+  }
+
+  return (
+    &lt;form id="order" onSubmit={handleSubmit}&gt;
+      &lt;input name="name" defaultValue="Ali" /&gt;
+      &lt;input name="phone" defaultValue="+992901234567" /&gt;
+      &lt;button&gt;Заказать&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}
+
+export default function App() {
+  return &lt;OrderForm onOrder={(order) =&gt; console.log("заказ:", order.name, order.phone)} /&gt;;
+}
+
+// стенд: отправляет форму
+setTimeout(() =&gt; document.getElementById("order").requestSubmit(), 450);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>заказ: Ali +992901234567</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Рӯйдод <code>event.currentTarget</code> дорад: ин худи шакл аст, ва онро ба <code>new FormData(...)</code> медиҳанд.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>event.preventDefault();</code> <code>const data = new FormData(event.currentTarget);</code> <code>onOrder({ name: String(data.get("name")), phone: String(data.get("phone")) });</code></p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/reference/react-dom/components/input" target="_blank" rel="noopener">react.dev — &lt;input&gt;</a> · <a href="https://react.dev/reference/react-dom/components/form" target="_blank" rel="noopener">react.dev — &lt;form&gt;</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/FormData" target="_blank" rel="noopener">MDN — FormData</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="schema">
+      <h2 data-toc="Санҷиш ва схемаи Zod"><span class="num">02</span> Санҷиш: аз санҷиши дастӣ то схемаи Zod</h2>
+
+      <p>Санҷиши шакл ба ду савол ҷавоб медиҳад: <b>чиро дуруст ҳисоб кардан</b> ва <b>кай хаторо нишон додан</b>. Аз он оғоз мекунем, ки ин бе китобхонаҳо чӣ гуна менамояд.</p>
+
+<pre class="code" data-lang="ts" data-title="Санҷиши дастӣ: навъ ва қоидаҳо алоҳида навишта шудаанд">
+type OrderValues = {
+  name: string
+  phone: string
+  address: string
+}
+
+type Errors = Partial&lt;Record&lt;keyof OrderValues, string&gt;&gt;
+
+function validate(values: OrderValues): Errors {
+  const errors: Errors = {}
+  if (values.name.trim().length &lt; 2) {
+    errors.name = 'Введите имя: не меньше 2 букв'
+  }
+  if (!/^\+992\d{9}$/.test(values.phone)) {
+    errors.phone = 'Телефон в формате +992901234567'
+  }
+  if (values.address.trim().length &lt; 5) {
+    errors.address = 'Укажите улицу и дом'
+  }
+  return errors
+}
+</pre>
+      <p>Ин кор мекунад, аммо ду нуқсон мебинем. Аввалан, <b>навъ ва қоидаҳо алоҳида зиндагӣ мекунанд</b>: майдонро ба навъ илова кардед, дар <code>validate</code> фаромӯш кардед, ва TypeScript хомӯш мемонад. Дувум, ҳама чизи боқимонда (кай санҷидан, кадом майдонҳо «ламс шудаанд», чӣ тавр ба майдони аввалини хатогӣ фокус додан, чӣ тавр фиристодан) бояд худатон нависед. Қисми дуюмро React Hook Form (бахши 3) мегирад, қисми аввалро — схема.</p>
+
+      <h3>Кай хаторо нишон додан</h3>
+      <ul>
+        <li><b>Ҳангоми фиристодан</b>: оромтарин вариант ва қимати пешфарз. Корбар то охир нарасида сурхиро намебинад.</li>
+        <li><b>Баъд аз рафтан аз майдон</b> (<code>onBlur</code>, дар React Hook Form реҷаи <code>onTouched</code>): хато вақте пайдо мешавад, ки майдон «ламс шуд», ва баъд ҳангоми ислоҳ фавран нопадид мешавад.</li>
+        <li><b>Барои ҳар аломат</b>: танҳо дар ҷое, ки ин кумак мекунад (қувваи парол, ҳисобкунаки аломатҳо). Хатои сурх дар ҳарфи аввали ном озор медиҳад.</li>
+      </ul>
+
+      <h3>Схема ҳамчун сарчашмаи ягонаи ҳақиқат</h3>
+      <p><b>Zod</b> — китобхонаест, ки дар он қоидаҳо як маротиба дар намуди <b>схема</b> тавсиф мешаванд. Схема се корро метавонад: қиматро дар вақти кори барнома санҷад, хатоҳои фаҳморо диҳад ва <b>ба TypeScript навъи</b> маълумоти санҷидашударо диҳад. Навъҳои TypeScript ҳангоми сохт нопадид мешаванд, ва схема ҳамчун код мемонад ва маълумоти воқеиро, ки аз шакл ё аз сервер омадааст, месанҷад.</p>
+
+<pre class="code" data-lang="ts" data-title="src/orderSchema.ts">
+import { z } from 'zod'
+
+export const PAYMENTS = ['cash', 'card'] as const
+
+export const orderSchema = z.object({
+  name: z.string().trim().min(2, 'Введите имя: не меньше 2 букв'),
+  phone: z.string().regex(/^\+992\d{9}$/, 'Телефон в формате +992901234567'),
+  address: z.string().trim().min(5, 'Укажите улицу и дом'),
+  comment: z.string().max(200, 'Не больше 200 символов'),
+  payment: z.enum(PAYMENTS, { error: 'Выберите способ оплаты' }),
+})
+
+// тип получаем из схемы: второй раз его не пишем
+export type OrderForm = z.infer&lt;typeof orderSchema&gt;
+</pre>
+      <p><code>OrderForm</code> — ин айнан <code>{ name: string; phone: string; address: string; comment: string; payment: 'cash' | 'card' }</code> аст. Қоидаро дар схема тағйир додед, ва навъ худаш тағйир ёфт. Инро чунин хонед: «навъи қиматҳое, ки кафолат дода шудааст, ки аз схема гузаштаанд».</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Схемаи Zod orderSchema дар марказ се натиҷа медиҳад: навъи OrderForm тавассути z.infer, санҷиши қиматҳо тавассути zodResolver дар React Hook Form ва матнҳои хатоҳо барои интерфейс. Баъдтар ҳамин схема маълумотро дар сервер месанҷад">
+          <rect class="fill-y" x="250" y="90" width="220" height="64" rx="12" /><text x="360" y="118" text-anchor="middle">orderSchema</text><text class="sub mono" x="360" y="138" text-anchor="middle">z.object({ … })</text>
+          <rect class="box g" x="20" y="10" width="220" height="56" rx="12" /><text x="130" y="34" text-anchor="middle">Навъи OrderForm</text><text class="sub mono" x="130" y="52" text-anchor="middle">z.infer&lt;typeof …&gt;</text>
+          <rect class="box b" x="480" y="10" width="220" height="56" rx="12" /><text x="590" y="34" text-anchor="middle">Санҷиш дар шакл</text><text class="sub mono" x="590" y="52" text-anchor="middle">zodResolver(schema)</text>
+          <rect class="box" x="20" y="178" width="220" height="56" rx="12" /><text x="130" y="202" text-anchor="middle">Матнҳои хатоҳо</text><text class="sub mono" x="130" y="220" text-anchor="middle">errors.name?.message</text>
+          <rect class="box o" x="480" y="178" width="220" height="56" rx="12" /><text x="590" y="202" text-anchor="middle">Сервер</text><text class="sub" x="590" y="220" text-anchor="middle">ҳамин схема, дарси 18</text>
+          <path class="arr" d="M300 90 L190 66" /><path class="arr-head" d="M182 64 l11 -1 l-3 10 z" />
+          <path class="arr" d="M420 90 L530 66" /><path class="arr-head" d="M538 64 l-11 -1 l3 10 z" />
+          <path class="arr" d="M300 154 L190 178" /><path class="arr-head" d="M182 180 l11 1 l-3 -10 z" />
+          <path class="arr" d="M420 154 L530 178" /><path class="arr-head" d="M538 180 l-11 1 l3 -10 z" />
+        </svg>
+        <figcaption>Як схема навъ, санҷиш, матнҳои хатоҳо ва (баъдтар) серверро таъмин мекунад</figcaption>
+      </figure>
+
+      <h3>Zod ба маълумоти бад чӣ тавр ҷавоб медиҳад</h3>
+      <p><code>schema.parse(data)</code> маълумотро бармегардонад ё хато мепартояд, ва <code>schema.safeParse(data)</code> чизеро намепартояд ва объектро бо майдони <code>success</code> бармегардонад. Шаклҳо ба варианти дуюм ниёз доранд: хатоҳо вазъияти маъмулӣ мебошанд, на истисно.</p>
+<pre class="code" data-lang="ts" data-title="safeParse ва z.flattenError">
+const result = orderSchema.safeParse({
+  name: 'А',
+  phone: '123',
+  address: 'пр. Рудаки, 45',
+  comment: '',
+  payment: 'cheque',
+})
+
+if (!result.success) {
+  console.log(z.flattenError(result.error).fieldErrors)
+}
+</pre>
+<pre class="code" data-title="Терминал — баромад (Zod 4.6)">
+{
+  name: [ 'Введите имя: не меньше 2 букв' ],
+  phone: [ 'Телефон в формате +992901234567' ],
+  payment: [ 'Выберите способ оплаты' ]
+}
+</pre>
+      <p>Шакли натиҷаро дар хотир доред: <b>номи майдон → рӯйхати паёмҳо</b>. React Hook Form хатоҳоро ҳамин тавр ҷойгир мекунад, ва ба шумо танҳо нишон додани <code>errors.name?.message</code> мемонад. Агар майдон тамоман нагузашта бошад, Zod бо матни стандартии <code>Invalid input: expected string, received undefined</code> шикоят мекунад: ин матн ба корбар чизе намегӯяд, бинобар ин дар шакл ҳар як майдон қимати пешфарз дорад.</p>
+
+      <h3>Якчанд усули Zod</h3>
+      <ul>
+        <li><code>z.string().trim().min(2, 'матн')</code>: занҷири санҷишҳо, паём ҳамчун далели дуюм. <code>trim()</code> боз дар натиҷа фосилаҳоро мебуррад.</li>
+        <li><code>z.email('матн')</code>: санҷиши суроға (дар Zod 4 ин навишти кӯтоҳ аст; <code>z.string().email()</code>-и пештара кор мекунад, аммо кӯҳна ҳисоб мешавад, мисли параметри <code>message</code> ба ҷои <code>error</code>).</li>
+        <li><code>z.enum([...] as const)</code>: яке аз қиматҳо, навъ ҳамчун union аз дарси 2 ба даст меояд.</li>
+        <li><code>.refine(санҷиш, { path: ['confirm'], error: '...' })</code>: қоидае, ки ба якчанд майдон якбора менигарад (парол ва такрори парол). Шумо онро дар вазифаи хонагӣ истифода мебаред.</li>
+        <li>Майдони матнии ихтиёрӣ: майдони холии шакл <code>''</code> аст, на <code>undefined</code>, бинобар ин онро ҳамчун <code>z.string()</code> бе ҳадди ақал тавсиф мекунанд, мисли <code>comment</code> дар боло.</li>
+      </ul>
+
+      <h3>TypeScript: навъ аз як сарчашма</h3>
+      <p>Усули «навъ аз қимат гирифта мешавад» бе Zod низ кор мекунад: <code>as const</code> ва <code>typeof</code>-ро шумо дар дарси 2 дар мисоли <code>CUISINES</code> дидед. <code>z.infer</code> — ҳамон чиз, танҳо қимат схема аст. Дар вазифаҳои поён дар мисоли оддӣ машқ кунед.</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Схема — қабулкунандаи анбор дар Душанбе аст: як нафар бо як рӯйхати қоидаҳо. Ӯ ҳар як мошинро (қимат) месанҷад, далелномаи рад бо сабабҳо (паёмҳо) менависад ва мӯҳри «қабул шуд» (навъ) мемонад. Агар қоидаҳоро ҳам ронанда, ҳам анбордор ва ҳам ҳисобдор дар ёд нигоҳ медоштанд, онҳо дер ё зуд аз ҳам ҷудо мешуданд.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Навъи шакл бо даст дар паҳлӯи схема навишта шудааст: ҳангоми ислоҳи схема навъ «қафо мемонад». <code>z.infer</code>-ро гиред. <b>2.</b> Санҷиш танҳо дар клиент: шаклро бо дархости бевосита давр мезананд, сервер вазифадор аст ҳамаро аз нав санҷад (дарси 18). <b>3.</b> Рақамҳо аз майдонҳо: схема сатр мегирад, на рақам; барои рақамҳо табдил лозим аст, ва он гоҳ навъи воридот ва баромади схема гуногун мешавад. Ҳоло майдонҳоро сатр гузоред. <b>4.</b> Паёмҳо бо забони англисӣ ба таври пешфарз: паёмҳои худро нависед, зеро <code>Invalid input: expected string, received undefined</code> ба корбар чизе намегӯяд. <b>5.</b> Майдони ҳатмӣ ҳамчун <code>z.string()</code> тавсиф шудааст: сатри холӣ мегузарад. <code>.min(1, 'матн')</code> ё қоидаи дақиқтарро илова кунед.</p>
+      </div>
+
+      <article class="task" id="q-schema">
+        <header><span class="task-num">ВАЗИФАИ 2.1</span><h4>Худро санҷед: схема ва навъ</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Барои чӣ навъро тавассути <code>z.infer</code> гирифтан лозим аст, на ин ки <code>type OrderForm = { … }</code>-ро дар паҳлӯи схема нависем?</p>
+          <ol class="options">
+            <li>Ба ин тартиб код тезтар иҷро мешавад</li>
+            <li>Қоидаҳо ва навъро аз ҳам ҷудо кардан мумкин нест: схема тағйир меёбад, навъ низ тағйир меёбад</li>
+            <li>Бе ин Zod кор намекунад</li>
+            <li>Навъи дастинавишро дар компонент истифода бурдан мумкин нест</li>
+          </ol>
+          <div class="explain"><p>Ду тавсифи як чиз дер ё зуд аз ҳам ҷудо мешаванд. Схема — сарчашмаи ягона: аз он ҳам санҷиш, ҳам навъ.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Чаро навъи <code>OrderForm</code> худ аз худ аз маълумоти нодурусти корбар муҳофизат намекунад?</p>
+          <ol class="options">
+            <li>Навъҳои TypeScript танҳо ҳангоми сохт мавҷуданд: дар вақти кор танҳо схема месанҷад</li>
+            <li>Чунки TypeScript хато мекунад</li>
+            <li>Чунки навъро ворид кардан мумкин нест</li>
+            <li>Чунки навъ танҳо барои рақамҳо кор мекунад</li>
+          </ol>
+          <div class="explain"><p>Дар браузер аз навъҳо JavaScript-и оддӣ мемонад. Маълумоти шакл ё шабакаро код месанҷад: схемаи Zod ё дастӣ.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Дар шакли фармоиши оддӣ хаторо кай беҳтар аст нишон диҳем?</p>
+          <ol class="options">
+            <li>Барои ҳар аломати воридшуда, то одам фавран мушкилро бинад</li>
+            <li>Танҳо баъд аз аз нав боркунии саҳифа</li>
+            <li>Ҳангоми фиристодан ва баъд аз рафтан аз майдон, ва баъд аз он ҳангоми ислоҳ тоза кардан</li>
+            <li>Ҳеҷ гоҳ: як навиштаи умумии «Шакл нодуруст пур шудааст» кифоя аст</li>
+          </ol>
+          <div class="explain"><p>Сурх дар ҳарфи аввал метарсонад, ва навиштаи умумӣ намегӯяд, ки чиро ислоҳ кардан лозим аст. Хато ҳангоми фиристодан ё баъд аз рафтан аз майдон — варианти ором ва фаҳмо аст.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t2-validate">
+        <header><span class="task-num">ВАЗИФАИ 2.2</span><h4>Функсияи validate бо хатоҳои навъбандишуда</h4><span class="level mid">миёна</span></header>
+        <p><code>validate</code>-ро анҷом диҳед: он объекти хатоҳоро танҳо барои майдонҳои нодуруст бармегардонад. Қоидаҳо: ном — на камтар аз 2 ҳарф баъд аз буридани фосилаҳо, телефон — формати <code>+992</code> ва 9 рақам. Паёмҳоро аз баромади интизоршаванда гиред. Навъи <code>Errors</code> дода шудааст: калидеро, ки дар <code>OrderValues</code> нест, компилятор қабул намекунад.</p>
+<pre class="code" data-run data-lang="ts">
+type OrderValues = { name: string; phone: string };
+type Errors = Partial&lt;Record&lt;keyof OrderValues, string&gt;&gt;;
+
+function validate(values: OrderValues): Errors {
+  const errors: Errors = {};
+  // TODO: заполните errors.name и errors.phone по правилам из задания
+  return errors;
+}
+
+console.log(JSON.stringify(validate({ name: "А", phone: "123" })));
+console.log(JSON.stringify(validate({ name: " Али ", phone: "+992901234567" })));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>{"name":"Введите имя: не меньше 2 букв","phone":"Телефон в формате +992901234567"}
+{}</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Барои ном <code>values.name.trim().length &lt; 2</code>; барои телефон ифодаи оддии <code>/^\+992\d{9}$/</code> ва усули <code>test</code> мувофиқ аст.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>if (values.name.trim().length &lt; 2) errors.name = "Введите имя: не меньше 2 букв";</code> <code>if (!/^\+992\d{9}$/.test(values.phone)) errors.phone = "Телефон в формате +992901234567";</code></p></details>
+      </article>
+
+      <article class="task" id="t2-type">
+        <header><span class="task-num">ВАЗИФАИ 2.3</span><h4>Навъ аз қимат: такрорро хориҷ кунед</h4><span class="level mid">миёна</span></header>
+        <p>Навъи <code>OrderValues</code> бо даст навишта шудааст ва аз <code>emptyOrder</code> қафо мондааст: дар он майдони <code>comment</code> нест, ва <code>payment</code> аз ҳад васеъ навишта шудааст. Компилятор дар бораи хато хабар медиҳад. Майдонҳоро бо даст илова накунед: навъро аз қимат гиред (айнан мисли он ки <code>z.infer</code> онро аз схема мегирад).</p>
+<pre class="code" data-run data-lang="ts">
+const PAYMENTS = ["cash", "card"] as const;
+type Payment = (typeof PAYMENTS)[number];
+
+const emptyOrder = {
+  name: "",
+  phone: "+992",
+  comment: "",
+  payment: "cash" as Payment,
+};
+
+// TODO: замените тип, написанный вручную, на тип, полученный из emptyOrder
+type OrderValues = { name: string; phone: string; payment: string };
+
+function describe(order: OrderValues): string {
+  return order.name + ", " + order.phone + ", " + order.comment + ", " + order.payment;
+}
+
+const copy: OrderValues = { ...emptyOrder, name: "Али" };
+console.log(describe(copy));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>Али, +992, , cash</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Оператори <code>typeof</code> дар мавқеи навъ навъи тағйирёбандаро мегирад: <code>type X = typeof emptyOrder</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>type OrderValues = typeof emptyOrder;</code> — баъд аз ин <code>comment</code> ва <code>payment</code>-и дақиқ худашон пайдо мешаванд.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://zod.dev/" target="_blank" rel="noopener">zod.dev — Intro</a> · <a href="https://zod.dev/basics" target="_blank" rel="noopener">zod.dev — Basics (parse, safeParse, z.infer)</a> · <a href="https://zod.dev/error-formatting" target="_blank" rel="noopener">zod.dev — Formatting errors</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="rhf">
+      <h2 data-toc="React Hook Form"><span class="num">03</span> React Hook Form: шакл бе кори дастии такрорӣ</h2>
+
+      <p>Агар шаклро бо даст нависед, барои ҳар майдон <code>useState</code>, <code>onChange</code>, <code>onBlur</code>, байрақчаҳои «ламс шуд», ҷамъоварии хатоҳо ва гузаронидани фокус лозим аст. <b>React Hook Form</b> (RHF) инро ба ҷои шумо мекунад ва бо ин ҳам шаклро барои ҳар ҳарф аз нав намекашад: майдонҳо идоранашаванда мемонанд, ва китобхона онҳоро тавассути <code>ref</code> мехонад. Он якҷоя бо Zod ба лоиҳа насб мешавад:</p>
+<pre class="code" data-title="Терминал">
+npm install react-hook-form zod @hookform/resolvers
+</pre>
+      <p>Дар лаҳзаи дарс ин <code>react-hook-form</code> 7.91, <code>zod</code> 4.6 ва <code>@hookform/resolvers</code> 6.0 аст. Бастаи <code>@hookform/resolvers</code> — пул байни RHF ва схема: функсияи <code>zodResolver(schema)</code> ба шакл мегӯяд «қиматҳоро бо ин схема санҷ».</p>
+
+<pre class="code" data-lang="tsx" data-title="Шакли ҳадди ақал бо RHF ва Zod">
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import { orderSchema, type OrderForm } from './orderSchema'
+
+export default function MiniForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm&lt;OrderForm&gt;({
+    resolver: zodResolver(orderSchema),
+    defaultValues: { name: '', phone: '+992', address: '', comment: '', payment: 'cash' },
+  })
+
+  async function onSubmit(values: OrderForm) {
+    // сюда попадают только значения, прошедшие схему
+    console.log(values)
+  }
+
+  return (
+    &lt;form noValidate onSubmit={handleSubmit(onSubmit)}&gt;
+      &lt;input {...register('name')} /&gt;
+      {errors.name &amp;&amp; &lt;p role="alert"&gt;{errors.name.message}&lt;/p&gt;}
+      &lt;button disabled={isSubmitting}&gt;Отправить&lt;/button&gt;
+    &lt;/form&gt;
+  )
+}
+</pre>
+
+      <h3>API аз чӣ иборат аст</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Чӣ</th><th>Барои чӣ</th></tr></thead>
+          <tbody>
+            <tr><td><code>useForm&lt;OrderForm&gt;({ resolver, defaultValues })</code></td><td>Шаклро месозад. Дженерик навъи қиматҳоро медиҳад, <code>defaultValues</code> — қиматҳои ибтидоӣ (ҳамеша онҳоро барои ҳар майдон диҳед: ба ин тартиб майдон аз идоранашаванда ба идорашаванда «намекӯчад»)</td></tr>
+            <tr><td><code>{...register('name')}</code></td><td><code>name</code>, <code>onChange</code>, <code>onBlur</code> ва <code>ref</code>-ро барои майдон бармегардонад. Ном танҳо аз калидҳои <code>OrderForm</code> қабул мешавад</td></tr>
+            <tr><td><code>handleSubmit(onSubmit)</code></td><td>Фиристоданро қатъ мекунад, бо схема месанҷад. Агар ҳама дуруст бошад — <code>onSubmit</code>-и шуморо бо қиматҳои навъбандишуда даъват мекунад, вагарна <code>errors</code>-ро пур мекунад ва фокусро ба майдони аввалини нодуруст мегузаронад</td></tr>
+            <tr><td><code>formState</code></td><td><code>errors</code>, <code>isSubmitting</code> (то даме ки <code>onSubmit</code>-и async-и шумо кор мекунад), <code>isDirty</code>, <code>isValid</code></td></tr>
+            <tr><td><code>setError('root.server', { message })</code></td><td>Хатоеро, ки аз сервер омадааст, ба шакл мегузорад. Ҳамчун <code>errors.root?.server?.message</code> хонда мешавад</td></tr>
+            <tr><td><code>reset()</code></td><td>Шаклро ба <code>defaultValues</code> (ё қиматҳои нав) бармегардонад</td></tr>
+            <tr><td><code>mode: 'onTouched'</code></td><td>Санҷиши аввал — баъд аз рафтан аз майдон, баъд барои ҳар тағйирот. Ба таври пешфарз санҷиш ҳангоми фиристодан мегузарад</td></tr>
+            <tr><td><code>Controller</code></td><td>Пул барои компонентҳое, ки <code>value</code> ва <code>onChange</code> лозим доранд (интихоби худнавишт, китобхонаҳои UI-и беруна). Барои <code>input</code>-ҳои оддӣ лозим нест</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Бо <code>watch()</code> эҳтиёт шавед: он компонентро ба қиматҳо обуна мекунад ва боз барои ҳар ҳарф аз нав кашидан мекунад. Агар қимат танҳо ҳангоми фиристодан лозим бошад, он аллакай дар <code>onSubmit</code> ҳаст. Сабаби дуюми эҳтиёткорӣ низ ҳаст: <code>watch()</code> ҳолати пинҳони тағйирёбандаро нигоҳ медорад, бинобар ин React Compiler (дарси 6) чунин компонентҳоро мегузаронад, ва қоидаи линтери <code>react-hooks/incompatible-library</code> дар бораи онҳо огоҳ мекунад. Агар қиматро дар экран нишон додан лозим бошад, ҳуки <code>useWatch</code>-ро гиред. Ин яке аз сабабҳост, ки дар лоиҳаи асосии курс компилятор фаъол нест.</p>
+
+      <h3>TypeScript болои номҳои майдонҳо назорат мекунад</h3>
+      <p>Азбаски навъи шакл аз схема гирифта шудааст, хатои имло дар номи майдон дигар хомӯш намемонад. Компилятор чӣ мегӯяд, агар <code>register('nmae')</code> нависед ё фаромӯш кунед, ки хато метавонад набошад:</p>
+<pre class="code" data-title="Терминал — баромади tsc -b">
+src/MiniForm.tsx(12,30): error TS2345: Argument of type '"nmae"' is not assignable to parameter of type '"address" | "comment" | "name" | "payment" | "phone"'.
+src/MiniForm.tsx(13,24): error TS18048: 'errors.name' is possibly 'undefined'.
+</pre>
+      <p>Хатои дуюм муфид аст: <code>errors.name</code> танҳо вақте ҳаст, ки майдон нодуруст аст, бинобар ин <code>errors.name?.message</code>-ро хонед ё мавҷудиятро санҷед, чунон ки дар мисоли боло.</p>
+
+      <h3>Хатои сервер ва шакли «хомӯш»</h3>
+      <p>Схема шаклро дар клиент месанҷад, аммо сервер бештар медонад (тарабхона баста аст, рақам масдуд аст). Хатои серверро дар <code>try/catch</code> гирифта, тавассути <code>setError('root.server', …)</code> ба шакл мегузоранд. Мушкили маъмули дуюм: дар схема майдон ҳаст, аммо дар аломатгузорӣ нест (ё бо номи дигар аст). Он гоҳ <code>handleSubmit</code> <code>onSubmit</code>-ро даъват намекунад, ва хаторо нишон додан ба кас нест: шакл «хомӯш» аст. Барои ёфтани ин, ҳамчун далели дуюм коркардкунандаи фиристодани нодурустро диҳед: <code>handleSubmit(onSubmit, (errors) =&gt; console.log(errors))</code>. Шумо инро дар машқ иҷро мекунед.</p>
+
+      <div class="yt" data-id="WlR1p8DCdNY" data-title="React Hook Form Tutorial: Zod, Form State, Controller — канали webdecoded (бо забони англисӣ, зернависро фаъол кунед)"></div>
+      <p class="muted">Ролик бо забони англисӣ: пайвастагии RHF ва Zod, ҳолати шакл ва <code>Controller</code>. Номҳои функсияҳоро бо ҳуҷҷатгузории расмӣ муқоиса кунед: версияҳои китобхонаҳо зуд-зуд баромад мекунанд.</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>RHF — маъмури қабулгоҳи клиника аст. Шумо корти беморро дар варақаҳо пур мекунед (майдонҳо), ӯ то даме ки менависед, ҳар ҳарфро намехонад. Вақте ки шумо картро дароз кардед, ӯ онро бо қоидаҳо (схема) муқоиса мекунад, ва агар чизе нодуруст бошад, шуморо хомӯшона ба майдони аввалини нодуруст мебарад ва нишон медиҳад, ки чиро ислоҳ кардан лозим аст.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> <code>defaultValues</code> нест: майдонҳо бо <code>undefined</code> оғоз мешаванд, ва схема сатр интизор аст. <b>2.</b> <code>register('name')</code> бе кушодан: <code>{...register('name')}</code> нависед. <b>3.</b> <code>onChange</code>-и худи майдони <code>register</code> RHF-ро мепӯшонад: онро ба дохили <code>register('name', { onChange })</code> диҳед. <b>4.</b> Майдон дар схема ҳаст, дар шакл нест: шакл хомӯш мемонад, чунон ки дар боло навишта шуд. <b>5.</b> Мисолҳои кӯҳна бо <code>ref={register}</code> (RHF версияи 6) дар ҷавобҳои ЗС: дар версияи 7 ин кор намекунад. <b>6.</b> <code>onSubmit = (data: any)</code>-и навъбандишуда: навъро аз схема гиред.</p>
+      </div>
+
+      <article class="task" id="q-rhf">
+        <header><span class="task-num">ВАЗИФАИ 3.1</span><h4>Худро санҷед: React Hook Form</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Агар схема хато ёфта бошад, вақте ки корбар дар шакли бо <code>handleSubmit(onSubmit)</code> «Отправить»-ро пахш кард, чӣ мешавад?</p>
+          <ol class="options">
+            <li><code>onSubmit</code> даъват намешавад, <code>errors</code> пур мешаванд, фокус ба майдони аввалини нодуруст меравад</li>
+            <li><code>onSubmit</code> бо объекти холӣ даъват мешавад</li>
+            <li>Саҳифа аз нав бор мешавад</li>
+            <li>Шакл бо аломати «хато» ба сервер фиристода мешавад</li>
+          </ol>
+          <div class="explain"><p><code>onSubmit</code>-и шумо танҳо қиматҳои санҷидашударо мегирад. Ҳама чизи дигарро китобхона ба души худ мегирад.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Ба схема <code>email: z.email()</code> илова карданд, аммо майдонро дар аломатгузорӣ фаромӯш карданд. Корбар чиро мебинад?</p>
+          <ol class="options">
+            <li>Хатои сурхро дар назди майдони нав</li>
+            <li>Фармоиш бе email фиристода мешавад</li>
+            <li>Ҳеҷ чиз: шакл фиристода намешавад, ва хаторо нишон додан ба кас нест</li>
+            <li>Паёми TypeScript дар браузер</li>
+          </ol>
+          <div class="explain"><p>Барои майдони нонамоён ҷое нест, ки <code>errors.email</code>-ро нишон диҳем. Ислоҳ: далели дуюми <code>handleSubmit(onSubmit, onInvalid)</code> ва <code>console.log(errors)</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Кадом ду чиз кумак мекунанд, ки шакл дар RHF барои ҳар ҳарф аз нав кашида нашавад?</p>
+          <ol class="options">
+            <li>Даъват кардани <code>watch()</code> бе далелҳо дар бадани компонент</li>
+            <li>Майдонҳо идоранашаванда мемонанд: қиматҳо тавассути <code>ref</code> хонда мешаванд</li>
+            <li>Ҳар майдонро дар <code>useState</code>-и худаш нигоҳ доштан</li>
+            <li>Қиматҳоро дар <code>onSubmit</code> хондан, на тавассути <code>watch</code> пайгирӣ кардан</li>
+          </ol>
+          <div class="explain"><p>Сарфаи RHF ҳамин дар майдонҳои идоранашаванда аст. <code>watch()</code> ва <code>useState</code>-ҳои алоҳида рендерро барои ҳар аломат бармегардонанд.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t3-field">
+        <header><span class="task-num">ВАЗИФАИ 3.2</span><h4>Хатои имло дар номи майдон: компилятор мегирад</h4><span class="level easy">осон</span></header>
+        <p>Функсияи <code>register</code> танҳо номҳои майдонҳои шаклро қабул мекунад, мисли RHF. Дар код ду хатои имло ҳаст: компилятор онҳоро меёбад. Ҳарду ро ислоҳ кунед, то код оғоз шавад.</p>
+<pre class="code" data-run data-lang="ts">
+type OrderValues = { name: string; phone: string; address: string };
+
+function register(field: keyof OrderValues): { name: string } {
+  return { name: field };
+}
+
+const fields = [register("name"), register("phon"), register("adress")];
+console.log(fields.map((f) =&gt; f.name).join(", "));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>name, phone, address</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Компилятор номҳои ҷоизро дар матни хато нишон медиҳад: онҳоро бо он чӣ дар даъватҳо навишта шудааст, муқоиса кунед.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>register("phone")</code> ва <code>register("address")</code>.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react-hook-form.com/get-started" target="_blank" rel="noopener">react-hook-form.com — Get Started</a> · <a href="https://react-hook-form.com/docs/useform/handlesubmit" target="_blank" rel="noopener">handleSubmit</a> · <a href="https://react-hook-form.com/docs/useform/seterror" target="_blank" rel="noopener">setError</a> · <a href="https://github.com/react-hook-form/resolvers" target="_blank" rel="noopener">@hookform/resolvers</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="portal">
+      <h2 data-toc="Равзанаҳои модалӣ ва порталҳо"><span class="num">04</span> Равзанаҳои модалӣ ва порталҳо</h2>
+
+      <p><b>Равзанаи модалӣ</b> — блоке дар болои саҳифа, ки ҷавоб металабад: то даме ки он кушода аст, боқимондаи саҳифа «яхкарда» мешавад. Онро дар ҷое кашидан, ки шумо эълон кардаед (дар дохили корт ё сабад), хатарнок аст: волидайн баъзан <code>overflow: hidden</code>, <code>transform</code> ё <code>z-index</code>-и худро доранд, ва равзана бурида мешавад ё дар зери қабати дигар мемонад. Бинобар ин равзанаро ба охири <code>&lt;body&gt;</code> мебароранд. Дар React барои ин <b>портал</b> ҳаст.</p>
+
+<pre class="code" data-lang="tsx" data-title="createPortal(чиро, ба куҷо)">
+import { createPortal } from 'react-dom'
+
+function Hint({ children }: { children: ReactNode }) {
+  return createPortal(
+    &lt;div className="fixed inset-0 z-50"&gt;{children}&lt;/div&gt;,
+    document.body,
+  )
+}
+</pre>
+      <p>Далели аввал — чиро кашидан, дуюм — унсури воқеии DOM, ки онро ба он ҷо мегузоранд. Компонент дар ҳамон ҷое мемонад, ки шумо навиштаед: дар дарахти React он насли волидайни худ аст, ва дар DOM аломатгузории он дар <code>document.body</code> меистад.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 260" role="img" aria-label="Ду дарахт. Дарахти React: App дорои Cart, Cart дорои Modal аст. Дарахти DOM: body дорои div root бо аломатгузории App ва Cart аст, ва аломатгузории Modal дар body алоҳида, дар паҳлӯи root ҷойгир аст. Рӯйдод аз Modal аз рӯи дарахти React ба Cart ва App боло меравад, на аз рӯи DOM">
+          <text x="170" y="20" text-anchor="middle">Дарахти React</text>
+          <rect class="fill-y" x="100" y="34" width="140" height="38" rx="10" /><text x="170" y="58" text-anchor="middle">App</text>
+          <rect class="box" x="100" y="100" width="140" height="38" rx="10" /><text x="170" y="124" text-anchor="middle">Cart</text>
+          <rect class="fill-g" x="100" y="166" width="140" height="38" rx="10" /><text x="170" y="190" text-anchor="middle">Modal</text>
+          <path class="arr" d="M170 72 V94" /><path class="arr-head" d="M170 100 l-5 -10 h10 z" />
+          <path class="arr" d="M170 138 V160" /><path class="arr-head" d="M170 166 l-5 -10 h10 z" />
+          <path class="arr t-b" d="M250 185 H282 V119 H250" style="stroke: var(--blue)" /><path class="arr-head" d="M242 119 l10 -5 v10 z" style="fill: var(--blue)" /><text class="sub t-b" x="290" y="152">click боло меравад</text><text class="sub t-b" x="290" y="168">то Cart ва App</text>
+          <text x="560" y="20" text-anchor="middle">Дарахти DOM</text>
+          <rect class="box" x="440" y="34" width="240" height="38" rx="10" /><text x="560" y="58" text-anchor="middle">body</text>
+          <rect class="box b" x="460" y="92" width="200" height="96" rx="10" /><text class="mono" x="560" y="112" text-anchor="middle">div#root</text><text class="sub" x="560" y="138" text-anchor="middle">аломатгузории App ва Cart</text><text class="sub" x="560" y="158" text-anchor="middle">overflow, transform…</text>
+          <rect class="fill-g" x="460" y="204" width="200" height="40" rx="10" /><text class="mono" x="560" y="229" text-anchor="middle">div (аломатгузории Modal)</text>
+          <path class="arr" d="M560 72 V84" /><path class="arr-head" d="M560 92 l-5 -10 h10 z" /><path class="arr" d="M450 72 V224 H452" /><path class="arr-head" d="M460 224 l-10 -5 v10 z" />
+        </svg>
+        <figcaption>Портал ҷойи аломатгузориро дар DOM иваз мекунад, аммо ҷойи компонентро дар дарахти React иваз намекунад</figcaption>
+      </figure>
+
+      <h3>Рӯйдодҳо ва контекст аз рӯи дарахти React мераванд</h3>
+      <p>Ғайричашмдоштарин чиз дар порталҳо: <b>рӯйдод аз портал аз рӯи дарахти React боло меравад, на аз рӯи DOM</b>. Агар корт <code>onClick</code> дошта бошад, ва равзанаи портал дар дохили он бошад, клик ба тугмаи равзана ба <code>onClick</code>-и корт мерасад, ҳарчанд дар DOM равзана дар <code>body</code> меистад. Агар ин ба волидайн халал расонад, боло рафтанро дар равзана қатъ кунед: <code>event.stopPropagation()</code>. Контекст (дарси 8) низ тавассути портал мегузарад.</p>
+
+      <h3>Ба куҷо кашидан ва TypeScript чӣ мегӯяд</h3>
+      <p>Аз ҳама осонтар — <code>document.body</code>: он ҳамеша ҳаст. Метавон дар <code>index.html</code> контейнери <code>&lt;div id="modal-root"&gt;</code>-ро гузошт, аммо он гоҳ <code>document.getElementById</code> <code>HTMLElement | null</code>-ро бармегардонад, ва портал танҳо <code>Element</code> ё <code>DocumentFragment</code> қабул мекунад:</p>
+<pre class="code" data-title="Терминал — баромади tsc -b">
+src/Hint.tsx(3,33): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'DocumentFragment | Element'.
+  Type 'null' is not assignable to type 'DocumentFragment | Element'.
+</pre>
+      <p>Ва агар дар id хатои имло кунед ва компиляторро тавассути <code>as HTMLElement</code> давр занед, дар браузер ҳангоми кор хато мешавад:</p>
+<pre class="code" data-title="Терминал — консоли браузер">
+Uncaught Error: Target container is not a DOM element.
+</pre>
+      <p>Дар SPA бо Vite <code>document</code> ҳамеша ҳаст. Дар Next.js компонентҳо аввал дар сервер кашида мешаванд, ки дар он ҷо <code>document</code> нест: он ҷо порталҳоро баъд аз насбшавӣ пайваст мекунанд (ба ин дар дарси 16 бармегардем). Навъҳои қисмҳои дигари равзана: <code>children: ReactNode</code>, коркардкунандагони <code>KeyboardEvent&lt;HTMLDivElement&gt;</code> ва <code>MouseEvent&lt;HTMLDivElement&gt;</code>.</p>
+
+      <h3>Диалоги худӣ ё &lt;dialog&gt;-и дарунсохт</h3>
+      <p>Дар браузерҳо барчаспи <code>&lt;dialog&gt;</code> бо усули <code>showModal()</code> ҳаст: он худаш қабатро дар болои саҳифа, бастан бо Esc, торикшавии <code>::backdrop</code> ва манъи фокус ба саҳифаи зери худро медиҳад. Барои лоиҳаҳои нав ин варианти олӣ аст, ва донистани он арзанда аст. Дар курс мо равзанаро тавассути портал менависем: ба ин тартиб маълум мешавад, ки дастрасӣ (бахши 5) аз чӣ иборат аст, ва портал барои ишораҳо, менюҳои афтанда ва огоҳиҳо низ лозим аст. Минбаъд китобхонаҳои интерфейс (Radix, Headless UI) ҳамин мушкилотро бо компонентҳои тайёр ҳал мекунанд.</p>
+
+      <div class="yt" data-id="kB7EX-wbyWQ" data-title="Модальные окна в React, Portals, createPortal — канали Dara Frontend"></div>
+      <p class="muted">Ролик бо забони русӣ: портал чӣ тавр сохта шудааст ва бо он равзанаро чӣ тавр ҷамъ кардан мумкин. Фокус ва дастрасӣ дар он суст ёдовар шудаанд: мо онҳоро дар бахши 5 илова мекунем.</p>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Портал — мисли эълон дар девори чойхона аст. Фармоишро шумо дар назди мизи худ қабул кардед (ҷой дар дарахти React), аммо лавҳаи «Миз банд аст»-ро ба девори асосӣ дар назди даромадгоҳ мезананд (<code>body</code>), то ҳама онро бубинанд ва ягон миз онро напӯшонад. Агар меҳмон ба лавҳа пахш кунад, савол ба ҳар ҳол ба мизи шумо мерасад: рӯйдод аз рӯи дарахти React меравад.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Равзана дар дохили корт бо <code>overflow: hidden</code>: бурида шудааст. <b>2.</b> Клик дар равзана дар корти зери он кор мекунад (боло рафтан аз рӯи дарахти React). <b>3.</b> Бастан бо клик ба замина аз клики дар дохили равзана низ кор мекунад: <code>event.target === event.currentTarget</code>-ро муқоиса кунед. <b>4.</b> <code>document.getElementById('modal-root')</code> бе санҷиши <code>null</code>. <b>5.</b> Равзана ҳамеша насб шудааст ва бо услуб пинҳон аст: шакл дар дохил ҳолати кӯҳнаро нигоҳ медорад. <code>{open &amp;&amp; &lt;Modal /&gt;}</code>-ро кашед: ҳангоми бастан ҳолат тоза мешавад, ва фокус бармегардад (бахши 5).</p>
+      </div>
+
+      <article class="task" id="q-portal">
+        <header><span class="task-num">ВАЗИФАИ 4.1</span><h4>Худро санҷед: порталҳо</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Тугма дар дохили равзана, ки тавассути портал ба <code>document.body</code> бароварда шудааст, пахш шуд. Компоненти волидайн, ки портал аз он кашида мешавад, <code>onClick</code> дорад. Чӣ мешавад?</p>
+          <ol class="options">
+            <li>Волидайн дар бораи клик намефаҳмад: дар DOM равзана алоҳида меистад</li>
+            <li><code>onClick</code>-и волидайн кор мекунад: рӯйдод аз рӯи дарахти React боло меравад</li>
+            <li>Танҳо коркардкунандагони зотӣ кор мекунанд</li>
+            <li>React хато мепартояд</li>
+          </ol>
+          <div class="explain"><p>Бинобар ин портал <code>stopPropagation</code>-ро бекор намекунад, вақте ки волидайн ба клик дар равзана ниёз надорад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Портал чиро ҳал мекунад? Ду бандро интихоб кунед.</p>
+          <ol class="options">
+            <li>Бурида шудани равзана аз тарафи волидайн бо <code>overflow: hidden</code></li>
+            <li>Фокус худаш ба тугма бармегардад</li>
+            <li>Бастан бо Esc худаш пайдо мешавад</li>
+            <li>Пӯшида шудани равзана бо <code>z-index</code> ва <code>transform</code>-и бегонаи волидайн</li>
+          </ol>
+          <div class="explain"><p>Портал танҳо барои ҷойи аломатгузорӣ дар DOM ҷавобгар аст. Фокус, Esc ва aria-ро шумо худатон илова мекунед (ё аз <code>&lt;dialog&gt;</code> ва китобхонаҳои тайёр мегиред).</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Барои чӣ дар коркардкунандаи клик ба замина <code>event.target === event.currentTarget</code>-ро муқоиса мекунанд?</p>
+          <ol class="options">
+            <li>То равзана тезтар кушода шавад</li>
+            <li>То бастан бо Esc манъ карда шавад</li>
+            <li>То клик дар дохили равзана, ки то замина боло рафтааст, равзанаро набандад</li>
+            <li>То аз хатои TypeScript канорагирӣ шавад</li>
+          </ol>
+          <div class="explain"><p><code>target</code> — унсуре, ки ба он клик карданд, <code>currentTarget</code> — унсуре, ки коркардкунанда дорад. Онҳо танҳо ҳангоми клик айнан ба замина мувофиқ меоянд.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t4-portal">
+        <header><span class="task-num">ВАЗИФАИ 4.2</span><h4>Равзанаро ба body бароред</h4><span class="level mid">миёна</span></header>
+        <p>Равзана ҳоло дар дохили корт меистад. Онро тавассути <code>createPortal</code> ба <code>document.body</code> бароред ва боло рафтани кликро қатъ кунед, то корт кликро аз равзана нагирад. Стенд месанҷад, ки равзана дар куҷо меистад, ва тугмаро пахш мекунад.</p>
+        <div class="playground" data-mode="react" data-title="Портал ва боло рафтан">
+<pre class="code" data-lang="jsx">
+import { createPortal } from "react-dom";
+
+function Card() {
+  return (
+    &lt;div id="card" onClick={() =&gt; console.log("карточка получила клик")}&gt;
+      &lt;h3&gt;Navruz&lt;/h3&gt;
+      {/* TODO 1: оберните окно в createPortal(…, document.body) */}
+      {/* TODO 2: в onClick окна вызовите event.stopPropagation() */}
+      &lt;div id="win" role="dialog" aria-label="Заказ" onClick={() =&gt; {}}&gt;
+        &lt;button id="ok" onClick={() =&gt; console.log("кнопка нажата")}&gt;Понятно&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return &lt;Card /&gt;;
+}
+
+// стенд
+setTimeout(() =&gt; {
+  const win = document.getElementById("win");
+  console.log("окно прямо в body:", win.parentElement === document.body);
+}, 450);
+setTimeout(() =&gt; document.getElementById("ok").click(), 600);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>окно прямо в body: true
+кнопка нажата</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Портал JSX-и равзанаро печонад: <code>createPortal(&lt;div id="win" …&gt;…&lt;/div&gt;, document.body)</code>. Импортро фаромӯш накунед — он аллакай дар боло ҳаст.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>onClick={(event) =&gt; event.stopPropagation()}</code> дар <code>div#win</code>: тугма дар дохил паёми худро мебарорад, ва клик ба корт намерасад.</p></details>
+      </article>
+
+      <article class="task" id="t4-modal">
+        <header><span class="task-num">ВАЗИФАИ 4.3</span><h4>Бастан бо замина ва бо Esc</h4><span class="level hard">душвор</span></header>
+        <p><code>Modal</code>-ро анҷом диҳед: клик ба замина равзанаро мебандад, клик дар дохили равзана намебандад, Esc мебандад. Стенд ба равзана клик мекунад (ҳеҷ чиз набояд шавад), ба замина (бастан), аз нав мекушояд ва Esc-ро пахш мекунад.</p>
+        <div class="playground" data-mode="react" data-title="Бастани равзанаи модалӣ">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+import { createPortal } from "react-dom";
+
+function Modal({ onClose, children }) {
+  // TODO 1: handleKeyDown: если event.key === "Escape", вызвать onClose()
+  // TODO 2: handleBackdropClick: закрывать, только если event.target === event.currentTarget
+  return createPortal(
+    &lt;div id="backdrop" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)" }}&gt;
+      &lt;div id="content" role="dialog" aria-label="Заказ" style={{ background: "#fff", margin: "40px auto", padding: 16, width: 240 }}&gt;
+        {children}
+      &lt;/div&gt;
+    &lt;/div&gt;,
+    document.body
+  );
+}
+
+export default function App() {
+  const [open, setOpen] = useState(true);
+  console.log("окно:", open ? "открыто" : "закрыто");
+  return (
+    &lt;&gt;
+      &lt;button id="open" onClick={() =&gt; setOpen(true)}&gt;Открыть&lt;/button&gt;
+      {open &amp;&amp; (
+        &lt;Modal onClose={() =&gt; setOpen(false)}&gt;
+          &lt;p&gt;Заказ принят&lt;/p&gt;
+        &lt;/Modal&gt;
+      )}
+    &lt;/&gt;
+  );
+}
+
+// стенд
+setTimeout(() =&gt; document.getElementById("content").click(), 500);
+setTimeout(() =&gt; document.getElementById("backdrop").click(), 700);
+setTimeout(() =&gt; document.getElementById("open").click(), 900);
+setTimeout(() =&gt; {
+  document.getElementById("backdrop").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+}, 1100);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>окно: открыто
+окно: закрыто
+окно: открыто
+окно: закрыто</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Ҳарду коркардкунанда ба <code>div#backdrop</code> гузошта мешаванд: <code>onKeyDown={handleKeyDown}</code> ва <code>onClick={handleBackdropClick}</code>. Клик дар дохили равзана то замина боло меравад, бинобар ин санҷиши <code>target === currentTarget</code> лозим аст.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>function handleKeyDown(event) { if (event.key === "Escape") onClose(); }</code> ва <code>function handleBackdropClick(event) { if (event.target === event.currentTarget) onClose(); }</code></p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react.dev/reference/react-dom/createPortal" target="_blank" rel="noopener">react.dev — createPortal</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/dialog" target="_blank" rel="noopener">MDN — &lt;dialog&gt;</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="a11y">
+      <h2 data-toc="Дастрасӣ"><span class="num">05</span> Дастрасии асосӣ: фокус, Esc ва aria</h2>
+
+      <p>На ҳамаи корбарон бо муш кор мекунанд ва ба экран менигаранд. Касе бо клавишаи Tab мегузарад, касе саҳифаро бо хонандаи экран (VoiceOver, NVDA, TalkBack) гӯш мекунад, касе танҳо дар даст чой дорад ва Esc-ро барои бастани равзана пахш мекунад. Хабари хуш: дастрасии асосӣ — ин панҷ одат аст, ва онҳо шаклро барои ҳама қулайтар мекунанд.</p>
+
+      <h3>Одати 1. Ҳар як майдон нишона дорад</h3>
+      <p>Хонанда «Ном, майдони воридкунӣ»-ро танҳо дар сурате мехонад, ки майдон бо <code>&lt;label&gt;</code> пайваст бошад. Пайвастро <code>htmlFor</code> + <code>id</code> ё печонидан месозад. Дар компоненти такроршаванда <code>id</code>-ро аз <code>useId()</code> мегиранд, то ду майдон як <code>id</code> нагиранд.</p>
+
+      <h3>Одати 2. Хато бо майдон пайваст аст</h3>
+      <ul>
+        <li><code>aria-invalid="true"</code> дар майдони нодуруст: хонанда мегӯяд «қимати нораво»;</li>
+        <li><code>aria-describedby="id-и-хато"</code>: хонанда матни хаторо якҷоя бо майдон мехонад;</li>
+        <li><code>role="alert"</code> дар блоки хато, ки баъд аз амал пайдо мешавад: хонанда онро фавран, бе гузаштан ба он, садо медиҳад. Барои матне, ки ҳамеша дар саҳифа меистад, нақш лозим нест;</li>
+        <li>ранг ягона аломат нест: дар паҳлӯи чаҳорчӯбаи сурх матн ҳаст.</li>
+      </ul>
+<pre class="code" data-lang="tsx" data-title="Майдон бо нишона ва хато">
+const id = useId()
+const errorId = `${id}-error`
+
+&lt;label htmlFor={id}&gt;Имя&lt;/label&gt;
+&lt;input
+  id={id}
+  aria-invalid={error ? true : undefined}
+  aria-describedby={error ? errorId : undefined}
+/&gt;
+{error &amp;&amp; &lt;p id={errorId} role="alert"&gt;{error}&lt;/p&gt;}
+</pre>
+
+      <h3>Одати 3. Равзана худро диалог эълон мекунад</h3>
+      <p>Дар панели равзана <code>role="dialog"</code>, <code>aria-modal="true"</code> ва <code>aria-labelledby</code>-ро бо истинод ба сарлавҳаи равзана менависанд. Он гоҳ хонанда мегӯяд «Оформление заказа, диалог», ва мазмуни саҳифа дар зери он барои ӯ хомӯш мешавад.</p>
+
+      <h3>Одати 4. Фокус: ба дарун, давр задан, бозгашт</h3>
+      <ol class="steps">
+        <li><b>Ба дарун.</b> Ҳангоми кушодан фокусро ба равзана гузаронед (ба панел бо <code>tabIndex={-1}</code> ё ба майдони аввал). Вагарна корбари клавиатура «дар паси» равзана мемонад ва Tab-ро дар саҳифаи нонамоён мепахшад.</li>
+        <li><b>Давр задан.</b> Tab аз унсури охирини равзана ба аввал мебарад, Shift+Tab аз аввал — ба охирин (доми фокус, focus trap). Алтернативаи муосир — атрибути <code>inert</code> дар боқимондаи саҳифа: браузер худаш фокусро ба зери равзана намегузорад.</li>
+        <li><b>Бозгашт.</b> Ҳангоми бастан фокусро ба тугмае баргардонед, ки равзанаро кушод. Агар тугма аллакай нест (сабад баъд аз фармоиш тоза шуд), фокусро ба ҷойи бомаъно диҳед, масалан ба майдони ҷустуҷӯ.</li>
+      </ol>
+
+      <h3>Одати 5. Бастан бе муш ва бе ҳаракати замина</h3>
+      <p>Esc равзанаро мебандад, равзана тугмаи «Закрыть»-и намоён ва садодиҳандашаванда дорад (<code>aria-label</code>, агар дар он танҳо «×» бошад), ва то даме ки равзана кушода аст, замина ҳаракат намекунад (<code>document.body.style.overflow = 'hidden'</code> ва бозгашт ҳангоми бастан: ин системаи беруни воқеӣ аст, ва дар ин ҷо эффект бо тозакунӣ мувофиқ аст, мисли дарси 5).</p>
+
+<pre class="code" data-lang="tsx" data-title="Фокус ба дарун ва бозгашт: эффект аз Modal">
+useEffect(() =&gt; {
+  const opener =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null
+  dialogRef.current?.focus()
+  document.body.style.overflow = 'hidden'
+  return () =&gt; {
+    document.body.style.overflow = ''
+    if (opener?.isConnected) {
+      opener.focus()
+    }
+  }
+}, [])
+</pre>
+      <p>Массиви холии вобастагиҳо дар ин ҷо ҳалол аст: эффект чизи реактивиро намехонад. <code>opener</code>-ро бояд дар худи аввал дар хотир нигоҳ дошт: баъд <code>activeElement</code> аллакай дар дохили равзана мешавад. Санҷиши <code>isConnected</code> — барои ҳолате, ки тугма дар саҳифа аллакай нест.</p>
+
+      <h3>TypeScript: ref ба унсур</h3>
+      <p><code>useRef&lt;HTMLDivElement&gt;(null)</code> ref медиҳад, ки <code>current</code>-и он — унсур ё <code>null</code> аст (дар React 19 навъҳо инро инъикос мекунанд: <code>RefObject&lt;HTMLDivElement | null&gt;</code>). Барои <code>&lt;dialog&gt;</code> навъ <code>HTMLDialogElement</code>, барои <code>&lt;form&gt;</code> — <code>HTMLFormElement</code> аст. Ҷустуҷӯ дар дохили контейнер низ навъбандӣ мешавад: <code>container.querySelectorAll&lt;HTMLElement&gt;(selector)</code>. Ҳар дафъае ки <code>current</code> метавонад <code>null</code> бошад, TypeScript шуморо водор мекунад инро санҷед: <code>dialogRef.current?.focus()</code>.</p>
+
+      <h3>Чӣ тавр бе асбобҳо санҷидан</h3>
+      <ul>
+        <li>Мушро канор гузоред. Шаклро бо клавишаҳои Tab, Shift+Tab, Enter, Фосила, Esc гузаред: фокус ҳамеша намоён аст, равзана онро гум намекунад, Esc мебандад.</li>
+        <li>Хонандаро фаъол кунед (дар Mac — VoiceOver, Cmd+F5) ва гӯш кунед, ки майдон бо хато чӣ тавр хонда мешавад.</li>
+        <li>Дар Chrome DevTools: варақаи Accessibility ном ва нақши унсури интихобшударо нишон медиҳад, ва санҷиши Lighthouse (категорияи Accessibility) майдонҳои бе нишона ва контрасти сустро меёбад.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Монанд аз ҳаёт</b>
+        <p>Равзанаи модалӣ — мизи алоҳида дар чойхона аст, ки шуморо ба он нишонданд. То даме ки шумо дар паси он ҳастед, шумо дар толор намедавед (доми фокус). Шумо даромадед — пешхизмат фавран маҳз ба назди шумо омад (фокус ба дарун). Шумо хестед — ба ҷойи худ баргаштед, на ин ки дар толор гум шавед (фокус бозгашт). Ва ҳамеша метавон гуфт «ташаккур, бас аст» (Esc).</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул</b>
+        <p><b>1.</b> Нишона-«placeholder»: баъд аз воридкунӣ намоён нест, ва хонанда нишонаро нишона ҳисоб намекунад. <b>2.</b> <code>outline: none</code> бе ивазкунӣ: корбари клавиатура намебинад, ки фокус дар куҷост. <b>3.</b> Тугмаи «×» бе <code>aria-label</code>: хонанда «тугма, зарб» мехонад. <b>4.</b> Равзана кушода аст, ва фокус дар тугмаи зери он мондааст: Tab ба замина меравад. <b>5.</b> Ҳангоми бастан фокус ба аввали саҳифа гум шуд. <b>6.</b> <code>div</code> бо <code>onClick</code> ба ҷои <code>button</code>: ба он бо клавишаи Tab расидан мумкин нест. <b>7.</b> <code>role="alert"</code> дар ҳама матнҳо паси ҳам: хонанда бе таваққуф мегӯяд.</p>
+      </div>
+
+      <article class="task" id="q-a11y">
+        <header><span class="task-num">ВАЗИФАИ 5.1</span><h4>Худро санҷед: дастрасии равзана</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Равзанаро бо клавишаи Esc бастанд. Фокус ба куҷо бояд баргардад?</p>
+          <ol class="options">
+            <li>Ба аввали саҳифа</li>
+            <li>Ба унсуре, ки аз он равзанаро кушоданд</li>
+            <li>Ба майдони охирини шакл дар равзана</li>
+            <li>Ба ҳеҷ ҷо: фокус лозим нест</li>
+          </ol>
+          <div class="explain"><p>Вагарна корбари клавиатура ҷойи худро гум мекунад, ва ӯ бояд боз тамоми саҳифаро бо клавишаи Tab гузарад.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Чӣ хаторо бо майдон барои хонанда пайваст мекунад? Ду атрибутро интихоб кунед.</p>
+          <ol class="options">
+            <li><code>aria-describedby</code> дар майдон, ки ба <code>id</code>-и матни хато ишора мекунад</li>
+            <li><code>className="error"</code> дар матн</li>
+            <li><code>aria-invalid="true"</code> дар майдони нодуруст</li>
+            <li><code>placeholder</code> бо матни хато</li>
+          </ol>
+          <div class="explain"><p>Синф — барои чашм, ва хонанда атрибутҳо мехоҳад. <code>placeholder</code> ҳангоми воридкунӣ нопадид мешавад ва нишонаро иваз намекунад.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p><code>aria-modal="true"</code> якҷоя бо <code>role="dialog"</code> барои чӣ лозим аст?</p>
+          <ol class="options">
+            <li>То равзана мудаввар шавад</li>
+            <li>То равзана бо Esc худаш баста шавад</li>
+            <li>То фокус ба тугма баргардад</li>
+            <li>Ба технологияҳои ёрирасон хабар додан, ки боқимондаи саҳифа ҳоло дастнорас аст</li>
+          </ol>
+          <div class="explain"><p>Атрибут танҳо модалиро эълон мекунад. Esc, гузаронидани фокус ва домро шумо худатон менависед ё аз <code>&lt;dialog&gt;</code> мегиред.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t5-ref">
+        <header><span class="task-num">ВАЗИФАИ 5.2</span><h4>Фокус ба унсури аввал: ref метавонад null бошад</h4><span class="level mid">миёна</span></header>
+        <p>Функсия бояд фокусро ба унсури аввалини мувофиқи контейнер гузаронад ва <code>tagName</code>-и онро бармегардонад. Агар контейнер нест ё дар дохил чизе барои фокус нест, «ничего»-ро баргардонад. Компилятор кодро қабул намекунад: контейнер ва натиҷаи ҷустуҷӯ метавонанд <code>null</code> бошанд. Бе <code>!</code> ва <code>as</code> ислоҳ кунед.</p>
+<pre class="code" data-run data-lang="ts">
+const FOCUSABLE = "a[href], button:not([disabled]), input:not([disabled])";
+
+function focusFirst(container: HTMLElement | null): string {
+  const first = container.querySelector&lt;HTMLElement&gt;(FOCUSABLE);
+  first.focus();
+  return first.tagName;
+}
+
+const box = document.createElement("div");
+box.innerHTML = "&lt;p&gt;Заказ&lt;/p&gt;&lt;button&gt;Да&lt;/button&gt;&lt;input&gt;";
+document.body.append(box);
+
+console.log(focusFirst(box));
+console.log(focusFirst(null));
+console.log(focusFirst(document.createElement("div")));
+</pre>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>BUTTON
+ничего
+ничего</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Аввал <code>const first = container?.querySelector&lt;HTMLElement&gt;(FOCUSABLE);</code>, баъд санҷиши <code>if (!first) return "ничего";</code>.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>const first = container?.querySelector&lt;HTMLElement&gt;(FOCUSABLE);</code> <code>if (!first) return "ничего";</code> <code>first.focus(); return first.tagName;</code></p></details>
+      </article>
+
+      <article class="task" id="t5-dialog">
+        <header><span class="task-num">ВАЗИФАИ 5.3</span><h4>Фокус ба дарун ва бозгашт</h4><span class="level hard">душвор</span></header>
+        <p>Эффектро дар <code>Modal</code> анҷом диҳед: дар хотир нигоҳ доред, ки фокус дар куҷо буд, фокусро ба майдони <code>#first</code> гузаронед ва ҳангоми бастан онро баргардонед. Стенд фокусро ба тугма мегузорад, онро пахш мекунад, фокусро дар дохили равзана месанҷад, равзанаро бо клавишаи Esc мебандад (он аллакай коркард шудааст) ва боз фокусро месанҷад.</p>
+        <div class="playground" data-mode="react" data-title="Фокус дар равзанаи модалӣ">
+<pre class="code" data-lang="jsx">
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+function Modal({ onClose }) {
+  const firstRef = useRef(null);
+
+  // TODO: useEffect с пустым массивом зависимостей:
+  // 1) const opener = document.activeElement;
+  // 2) firstRef.current?.focus();
+  // 3) в cleanup: opener?.focus()
+
+  return createPortal(
+    &lt;div id="overlay" onKeyDown={(event) =&gt; { if (event.key === "Escape") onClose(); }}&gt;
+      &lt;div role="dialog" aria-modal="true" aria-label="Заказ"&gt;
+        &lt;input id="first" ref={firstRef} /&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;,
+    document.body
+  );
+}
+
+export default function App() {
+  const [open, setOpen] = useState(false);
+  return (
+    &lt;&gt;
+      &lt;button id="open" onClick={() =&gt; setOpen(true)}&gt;Заказать&lt;/button&gt;
+      {open &amp;&amp; &lt;Modal onClose={() =&gt; setOpen(false)} /&gt;}
+    &lt;/&gt;
+  );
+}
+
+// стенд
+const where = () =&gt; document.activeElement.id || document.activeElement.tagName;
+setTimeout(() =&gt; {
+  const button = document.getElementById("open");
+  button.focus();
+  button.click();
+}, 450);
+setTimeout(() =&gt; console.log("фокус в окне:", where()), 650);
+setTimeout(() =&gt; {
+  document.getElementById("first").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+}, 800);
+setTimeout(() =&gt; console.log("фокус после закрытия:", where()), 1000);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>фокус в окне: first
+фокус после закрытия: open</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Эффект ҳангоми пайдо шудани равзана оғоз мешавад (он танҳо вақте насб мешавад, ки кушода бошад). <code>document.activeElement</code>-ро бояд то даъвати <code>focus()</code> дар хотир нигоҳ дошт.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>useEffect(() =&gt; {</code> <code>const opener = document.activeElement;</code> <code>firstRef.current?.focus();</code> <code>return () =&gt; opener?.focus();</code> <code>}, []);</code> Барои лоиҳаи TypeScript: <code>opener instanceof HTMLElement</code> ба ҷои даъвати бевосита.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/dialog_role" target="_blank" rel="noopener">MDN — role dialog</a> · <a href="https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/" target="_blank" rel="noopener">W3C — Modal Dialog Pattern</a> · <a href="https://react.dev/reference/react/useId" target="_blank" rel="noopener">react.dev — useId</a> · <a href="https://react.dev/learn/manipulating-the-dom-with-refs" target="_blank" rel="noopener">react.dev — Manipulating the DOM with Refs</a></p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai-forms">
+      <h2 data-toc="ЗС: схема ва дастрасӣ"><span class="num">06</span> Блоки ЗС: схемаи Zod аз талабот ва санҷиши дастрасӣ</h2>
+
+      <p>Шакл — ҳудудест, ки агент дар он зуд кор мекунад ва хомӯшона хато мекунад. Ӯ майдонҳо ва схемаро осон менависад, аммо аксар вақт версияҳои китобхонаҳоро омехта мекунад, навъҳоро бо даст такрор мекунад, фокус ва нишонаҳоро фаромӯш мекунад, ва дар «шакли пардохт» метавонад рақами кортро талаб кунад. Ду вазифа, ки агент дар онҳо махсусан муфид аст: <b>талаботро ба схема табдил додан</b> ва <b>шакли тайёрро аз ҷиҳати дастрасӣ санҷидан</b>. Дар ҳарду натиҷаро шумо месанҷед.</p>
+
+      <div class="callout ai">
+        <b>Формулаи промпт: контекст → вазифа → маҳдудиятҳо → формат → санҷиш</b>
+        <p>Барои схема ба агент қоидаҳои дақиқ лозиманд: чӣ ҳатмист, кадом дарозиҳо ва форматҳо, кадом матнҳои хатоҳо. Бе онҳо ӯ худаш меандешад. Барои санҷиши дастрасӣ рӯйхати меъёрҳо ва хоҳиш лозим аст, ки нишон диҳад, <b>маҳз чӣ</b> дар код нодуруст аст, на «ҳама чиз хуб аст».</p>
+      </div>
+
+      <h3>Схема аз талабот</h3>
+<div class="prompt bad-prompt">сделай схему zod для формы заказа</div>
+<div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), прочитай AGENTS.md. Установлены zod 4 и react-hook-form 7 с @hookform/resolvers. Форма оформления заказа в «Дастархоне».
+Задача: напиши src/orderSchema.ts со схемой orderSchema и типом OrderForm.
+Требования к полям: name — строка, после обрезки пробелов не меньше 2 символов; phone — формат +992 и ровно 9 цифр; address — после обрезки не меньше 5 символов; comment — необязательный текст до 200 символов (пустая строка допустима); payment — только 'cash' или 'card'. Тексты ошибок на русском, короткие, без слова «invalid».
+Ограничения: только Zod 4 (z.email(), параметр error, а не message), тип только через z.infer, без any и as, без числовых преобразований и transform, без новых библиотек, номер банковской карты не запрашивать.
+Формат ответа: один файл с кодом и таблица «поле → правило → текст ошибки».
+Проверка: перечисли 3 значения, которые схема должна отклонить, и 3, которые должна принять; покажи, что вернёт safeParse для пустого объекта.</div>
+
+      <h3>Санҷиши дастрасӣ</h3>
+<div class="prompt bad-prompt">проверь, нормальная ли у меня форма</div>
+<div class="prompt good-prompt">Контекст: ниже код модального окна и формы заказа на React 19 + TypeScript (Modal.tsx, CheckoutForm.tsx, TextField.tsx). Пользователи работают с клавиатуры и экранными дикторами.
+Задача: проведи ревью доступности по списку: подписи у всех полей; связь ошибок с полями (aria-invalid, aria-describedby); роль и имя диалога (role, aria-modal, aria-labelledby); фокус внутрь при открытии, ловушка Tab, возврат фокуса при закрытии; закрытие по Esc; кнопка закрытия имеет доступное имя; тип и autoComplete у полей; цвет не единственный признак ошибки.
+Ограничения: не переписывай весь код: покажи только проблемные места; не предлагай новых библиотек; если пункт выполнен, напиши, на какой строке это видно.
+Формат ответа: таблица «пункт списка → выполнено или нет → строка кода → исправление».
+Проверка: для каждого найденного замечания напиши, как проверить исправление клавиатурой за одну минуту.</div>
+
+      <h3>Шаклҳои аз тарафи агент навишташударо чӣ тавр санҷидан</h3>
+      <ol class="steps">
+        <li><b>Версияҳои API.</b> <code>ref={register}</code> (RHF 6) нест, <code>yupResolver</code> дар ҷое, ки дар бораи Zod шартнома баста шуда буд, нест, <code>message:</code> ва <code>z.string().email()</code> дар Zod 4 бе сабаб нест. Ҳуҷҷатгузории версияеро кушоед, ки дар <code>package.json</code> меистад.</li>
+        <li><b>Навъ аз схема.</b> Дар код <code>z.infer</code> аст, на <code>type</code>-и дуюми дастинавишт. <code>any</code> дар <code>onSubmit(data: any)</code> ва <code>as OrderForm</code> болои маълумот нест.</li>
+        <li><b>Ҳар як майдони схема дар шакл ҳаст.</b> Вагарна шакл хомӯш мемонад (бахши 3). Санҷиш: шакли холиро фиристед, ҳама хатоҳо бояд намоён бошанд.</li>
+        <li><b>defaultValues</b> барои ҳамаи майдонҳо дода шудаанд, дар <code>form</code> <code>noValidate</code> истодааст, агар схема месанҷад.</li>
+        <li><b>Аз нав кашидани нолозим.</b> <code>watch()</code> болои тамоми шакл бе сабаб нест, ҳолат дар паҳлӯи RHF нест, ки қиматҳоро такрор мекунад.</li>
+        <li><b>Равзана.</b> <code>role="dialog"</code>, ном, Esc, фокус ба дарун ва бозгашт, портал дар <code>document.body</code> ҳаст; равзана ба таври шартӣ кашида мешавад, на бо услуб пинҳон мешавад.</li>
+        <li><b>Бехатарӣ.</b> Санҷиш дар сервер низ ҳаст; нархро сервер ҳисоб мекунад, на шакл; матни хатоҳо ҳамчун матни оддии JSX нишон дода мешавад, на тавассути <code>dangerouslySetInnerHTML</code>; маълумоти шакл ва парол дар <code>console.log</code> ва <code>localStorage</code> навишта намешавад; рақамҳои кортро шакл ҷамъ намекунад (пардохт — тавассути провайдер).</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул ҳангоми кор бо агент</b>
+        <p><b>1.</b> Схемаро бе қиматҳои санҷишӣ қабул кардан: қоидаҳои «гӯё чунинанд» санҷида нашудаанд. <b>2.</b> Хоҳиши «санҷиш илова кун» бе рӯйхати қоидаҳо: агент ҳадди ақали дарозиҳо ва форматҳоро аз рӯи завқи худ меандешад. <b>3.</b> Ба ҷавоби «дастрасӣ дар тартиб аст» бе санҷиши Tab ва Esc бовар кардан: агент экранро намебинад. <b>4.</b> <code>autoFocus</code>-ро дар шакл ҳама ҷо мондан: фокус меҷаҳад. <b>5.</b> Аз ҷавоб санҷиши «танҳо дар клиент»-ро нусха кардан, ки дар он ба сервер «бовар мекунанд».</p>
+      </div>
+
+      <article class="task" id="q-ai-forms">
+        <header><span class="task-num">ВАЗИФАИ 6.1</span><h4>Худро санҷед: баррасии шакли агент</h4><span class="level mid">миёна</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Агент <code>type OrderForm = { name: string; phone: string }</code>-ро дар паҳлӯи схема навишт, ки дар он аллакай <code>address</code> ҳаст. Ин чӣ маъно дорад?</p>
+          <ol class="options">
+            <li>Ҳеҷ чиз: ҳамин тавр бояд бошад</li>
+            <li>Навъ аз схема боэътимодтар аст</li>
+            <li>Навъ ва схема аз ҳам ҷудо шудаанд: <code>z.infer&lt;typeof orderSchema&gt;</code>-ро гирифтан лозим аст</li>
+            <li>Схемаро хориҷ кардан лозим аст</li>
+          </ol>
+          <div class="explain"><p>Ду тавсифи як чиз дер ё зуд аз ҳам ҷудо мешаванд. Сарчашма як аст: схема.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Кадом ду ибора дар промпт баррасии дастрасиро беҳтар мекунанд?</p>
+          <ol class="options">
+            <li>«Бигӯ, ҳама чиз дар тартиб аст?»</li>
+            <li>«Барои ҳар банди рӯйхат бинависед, ки дар кадом сатри код ин намоён аст»</li>
+            <li>«Тамоми шаклро ба китобхонаи дигар аз нав нависед»</li>
+            <li>«Барои ҳар эзоҳ бинависед, ки ислоҳро бо клавиатура чӣ тавр санҷидан лозим аст»</li>
+          </ol>
+          <div class="explain"><p>Бандҳои мушаххас ва пайвастагӣ ба сатрҳо ҷавобро санҷишпазир мекунанд. Ва санҷиш бо клавиатура намегузорад, ки шумо ба агент бе санҷиш бовар кунед.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t6-review">
+        <header><span class="task-num">ВАЗИФАИ 6.2</span><h4>Майдони аз тарафи агент навишташударо ислоҳ кунед</h4><span class="level mid">миёна</span></header>
+        <p>Дар майдони ном нишона нест, ва хато — танҳо матни сурх дар паҳлӯ аст. Ислоҳ кунед: нишонаи <code>label</code> «Имя» бо майдон пайваст аст, дар майдон <code>aria-invalid="true"</code> ва <code>aria-describedby</code> ҳаст, блоки хато бо <code>id="name-error"</code> ва <code>role="alert"</code>. Стенд атрибутҳоро месанҷад ва натиҷаро мебарорад.</p>
+        <div class="playground" data-mode="react" data-title="Майдони шакл аз агент">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  return (
+    &lt;form&gt;
+      &lt;input id="name" placeholder="Имя" /&gt;
+      &lt;span style={{ color: "red" }}&gt;Введите имя: минимум 2 буквы&lt;/span&gt;
+    &lt;/form&gt;
+  );
+}
+
+// стенд
+setTimeout(() =&gt; {
+  const input = document.getElementById("name");
+  const label = document.querySelector('label[for="name"]');
+  const hint = document.getElementById(input.getAttribute("aria-describedby") || "-");
+  console.log("подпись:", label ? label.textContent : "нет");
+  console.log("aria-invalid:", input.getAttribute("aria-invalid"));
+  console.log("описание:", hint ? hint.textContent : "нет");
+  console.log("роль ошибки:", hint ? hint.getAttribute("role") : "нет");
+}, 450);
+</pre>
+        </div>
+        <div class="expected"><b>Натиҷаи интизоршаванда</b><pre>подпись: Имя
+aria-invalid: true
+описание: Введите имя: минимум 2 буквы
+роль ошибки: alert</pre></div>
+        <details class="hint"><summary>Ишора 1</summary><p>Дар React нишона чунин пайваст мешавад: <code>&lt;label htmlFor="name"&gt;Имя&lt;/label&gt;</code>. Барои <code>aria-describedby</code> дар матни хато <code>id</code> лозим аст.</p></details>
+        <details class="hint"><summary>Ишора 2</summary><p><code>&lt;input id="name" aria-invalid="true" aria-describedby="name-error" /&gt;</code> ва <code>&lt;span id="name-error" role="alert"&gt;…&lt;/span&gt;</code>. Дар шакли воқеӣ <code>id</code>-ро аз <code>useId()</code> мегиранд, ва <code>aria-invalid</code>-ро танҳо ҳангоми хато мегузоранд.</p></details>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://zod.dev/v4" target="_blank" rel="noopener">zod.dev — What's new in Zod 4</a> · <a href="https://www.w3.org/WAI/tutorials/forms/" target="_blank" rel="noopener">W3C WAI — Forms Tutorial</a></p>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Машқ: фармоиш додан"><span class="num">07</span> Машқ: «Дастархон» фармоишро дар равзанаи модалӣ расмӣ мекунад</h2>
+
+      <p>Лоиҳаи 1-ро идома медиҳем. Баъд аз дарси 5 феҳрист аз API-и таълимӣ бор мешавад, ва сабад бо <code>useReducer</code> зиндагӣ мекунад. Ҳоло дар сабад тугмаи «Оформить заказ» пайдо мешавад: он равзанаро бо шакл мекушояд (портал, фокус, Esc), шакл бо схемаи Zod санҷида мешавад, бо React Hook Form идора мешавад ва фармоишро ба сервер мефиристад. Сервер ҳамаро аз нав месанҷад ва маблағро худаш ҳисоб мекунад. Кодҳои боқимонда (феҳрист, филтрҳо, сабад)-ро аз нав наменависем: дар <code>App.tsx</code> танҳо иловаҳо мекунем.</p>
+
+      <h3>Чӣ ҳосил мешавад</h3>
+<div class="ftree"><b>server/</b>
+├─ <b>api.mjs</b> <i>+ POST /api/orders: санҷиш, маблағ дар сервер, 201 ё 400</i>
+<b>src/</b>
+├─ <b>orderSchema.ts</b> <i>нав: схемаи Zod ва навъи OrderForm</i>
+├─ <b>api.ts</b> <i>+ postOrder</i>
+├─ <b>App.tsx</b> <i>+ ҳолати равзана, тугмаи «Оформить заказ», иловаҳо</i>
+└─ <b>components/</b>
+   ├─ <b>Modal.tsx</b> <i>нав: портал, role=dialog, Esc, фокус, доми Tab</i>
+   ├─ <b>TextField.tsx</b> <i>нав: нишона, aria-invalid, aria-describedby</i>
+   └─ <b>CheckoutForm.tsx</b> <i>нав: React Hook Form + zodResolver</i></div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Роҳи фармоиш: тугмаи «Оформить заказ» дар App равзанаи Modal-ро тавассути портал дар body мекушояд, дар дохили Modal шакли CheckoutForm қиматҳоро бо схемаи Zod месанҷад, postOrder POST-ро ба /api/orders мефиристад, сервер аз нав месанҷад ва бо 201 ва рақами фармоиш ё бо 400 ва паёме ҷавоб медиҳад, ки тавассути setError ба шакл меафтад">
+          <rect class="fill-y" x="10" y="20" width="150" height="56" rx="12" /><text x="85" y="44" text-anchor="middle">App</text><text class="sub mono" x="85" y="62" text-anchor="middle">checkoutOpen</text>
+          <rect class="fill-g" x="230" y="20" width="170" height="56" rx="12" /><text x="315" y="44" text-anchor="middle">Modal</text><text class="sub mono" x="315" y="62" text-anchor="middle">портал ба body</text>
+          <rect class="box b" x="470" y="20" width="240" height="56" rx="12" /><text x="590" y="44" text-anchor="middle">CheckoutForm</text><text class="sub mono" x="590" y="62" text-anchor="middle">useForm + zodResolver</text>
+          <path class="arr" d="M160 48 H222" /><path class="arr-head" d="M230 48 l-10 -5 v10 z" />
+          <path class="arr" d="M400 48 H462" /><path class="arr-head" d="M470 48 l-10 -5 v10 z" />
+          <rect class="box" x="470" y="150" width="240" height="56" rx="12" /><text x="590" y="174" text-anchor="middle">postOrder</text><text class="sub mono" x="590" y="192" text-anchor="middle">POST /api/orders</text>
+          <rect class="fill-g" x="230" y="150" width="170" height="56" rx="12" /><text x="315" y="174" text-anchor="middle">server/api.mjs</text><text class="sub" x="315" y="192" text-anchor="middle">санҷиш + маблағ</text>
+          <rect class="box o" x="10" y="150" width="150" height="56" rx="12" /><text x="85" y="174" text-anchor="middle">201 / 400</text><text class="sub" x="85" y="192" text-anchor="middle">рақам ё сабаб</text>
+          <path class="arr" d="M590 76 V142" /><path class="arr-head" d="M590 150 l-5 -10 h10 z" /><text class="sub t-b" x="600" y="116">схема гузашт</text>
+          <path class="arr" d="M470 178 H408" /><path class="arr-head" d="M400 178 l10 -5 v10 z" />
+          <path class="arr" d="M230 178 H168" /><path class="arr-head" d="M160 178 l10 -5 v10 z" />
+        </svg>
+        <figcaption>Роҳи фармоиш: шакл қиматҳоро месанҷад, сервер боз як бор месанҷад, хатои сервер ба шакл бармегардад</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Мо аз дарсҳои гузашта чиро фарз мекунем</b>
+        <p>Дар <code>App.tsx</code> <code>cart</code> ва функсия ё қимати <code>dispatch</code> барои амалҳои сабад ҳаст (баъд аз дарси 5 ин <code>useReducer(cartReducer, [])</code> аст, баъд аз дарси 6 сабад дар <code>useLocalStorage</code> меистад, ва <code>dispatch</code> — функсияест болои он: барои мо фарқият нест), ref-и <code>searchRef</code> ва сутуни <code>&lt;aside&gt;</code> бо бахши «Корзина» (<code>CartSummary</code>). Дар <code>src/cart.ts</code> <code>cartTotal</code> ҳаст, дар <code>src/api.ts</code> <code>isRecord</code> ва <code>errorMessage</code> ҳаст: баъд аз дарси 5 <code>isRecord</code> дар дохили файл бе <code>export</code> эълон шудааст (барои машқ ин кифоя аст), баъд аз дарси 6 он содир мешавад. Агар шумо чизе дигар дошта бошед (баъд аз ВХ-4, ВХ-5 ё дарси 6), танҳо иловаҳои поёнро интиқол диҳед ва қисмҳои бегонаро даст назанед: шакл ва равзана аз кодҳои боқимонда вобаста нестанд.</p>
+      </div>
+
+      <h3>Қадамҳо</h3>
+      <ol class="steps">
+        <li><b>Оғозро санҷед ва main-ро ҷамъ кунед.</b> Папкаи корӣ тоза аст, ҳама чиз мегузарад. Машқҳои дарсҳои 5 ва 6 (шохаҳои <code>feat/api</code> ва <code>feat/hooks</code>) аллакай ба <code>main</code> ворид шудаанд. Агар вазифаҳои хонагиро иҷро карда бошед (ВХ-5 дар шохаи <code>feat/api-menu</code>, ВХ-6 дар шохаи <code>feat/my-hooks</code>), онҳоро низ ворид кунед; агар не, дарс бе онҳо низ кор мекунад:
+<pre class="code" data-title="Терминал">
+git status
+npm run typecheck
+npm run lint
+git switch main
+git merge feat/api-menu
+git merge feat/my-hooks
+</pre>
+          Низоъҳо (аксар вақт дар <code>App.tsx</code> ва <code>api.ts</code>, агар ҳарду вазифа менюро тағйир дода бошанд) дастӣ ҳал кунед ва коди ҳарду шохаро нигоҳ доред; фармонро барои шохае, ки иҷро накардаед, гузаред. Баъд шохаи дарсро созед:
+<pre class="code" data-title="Терминал">
+git switch -c feat/order-form
+</pre>
+        </li>
+        <li><b>Бастаҳоро насб кунед.</b> Се вобастагӣ (версияҳо дар лаҳзаи дарс: 7.91, 4.6, 6.0):
+<pre class="code" data-title="Терминал">
+npm install react-hook-form zod @hookform/resolvers
+</pre>
+          Дар <code>package.json</code> дар <code>dependencies</code> сатрҳои <code>react-hook-form</code>, <code>zod</code> ва <code>@hookform/resolvers</code> пайдо мешаванд.</li>
+        <li><b>Схемаи фармоиш.</b> Ин ҳамон файл аст, ки дар бахши 2. Қоидаҳо як маротиба навишта шудаанд, навъ аз схема гирифта шудааст:
+<pre class="code" data-lang="ts" data-title="src/orderSchema.ts">
+import { z } from 'zod'
+
+export const PAYMENTS = ['cash', 'card'] as const
+
+export const orderSchema = z.object({
+  name: z.string().trim().min(2, 'Введите имя: не меньше 2 букв'),
+  phone: z.string().regex(/^\+992\d{9}$/, 'Телефон в формате +992901234567'),
+  address: z.string().trim().min(5, 'Укажите улицу и дом'),
+  comment: z.string().max(200, 'Не больше 200 символов'),
+  payment: z.enum(PAYMENTS, { error: 'Выберите способ оплаты' }),
+})
+
+export type OrderForm = z.infer&lt;typeof orderSchema&gt;
+</pre>
+        </li>
+        <li><b>Сервер фармоишҳоро қабул мекунад.</b> Ба <code>server/api.mjs</code> ду порча илова кунед. Аввалӣ: ҳисобкунаки рақамҳои фармоиш, якбора пеш аз <code>const server = createServer(…)</code>:
+<pre class="code" data-lang="js" data-title="server/api.mjs (пеш аз const server)">
+let nextOrderId = 1001
+</pre>
+          Дуюм: коркардкунандаи фармоиш. Сервер ба шакл бовар намекунад: ӯ майдонҳоро аз нав месанҷад, хӯрокҳоро дар менюи худ меҷӯяд ва <b>маблағро худаш ҳисоб мекунад</b> (вагарна нархро дар дархост қалбакӣ кардан мумкин аст):
+<pre class="code" data-lang="js" data-title="server/api.mjs (пеш аз сатри const menuMatch гузоред)">
+  if (path === '/api/orders' &amp;&amp; req.method === 'POST') {
+    let raw = ''
+    for await (const chunk of req) raw += chunk
+    let order
+    try {
+      order = JSON.parse(raw)
+    } catch {
+      return send(400, { message: 'Тело запроса не JSON' })
+    }
+    const validPhone =
+      typeof order?.phone === 'string' &amp;&amp; /^\+992\d{9}$/.test(order.phone)
+    const validText =
+      typeof order?.name === 'string' &amp;&amp;
+      order.name.trim().length &gt;= 2 &amp;&amp;
+      typeof order?.address === 'string' &amp;&amp;
+      order.address.trim().length &gt;= 5
+    const validItems =
+      Array.isArray(order?.items) &amp;&amp;
+      order.items.length &gt; 0 &amp;&amp;
+      order.items.every(
+        (i) =&gt;
+          Number.isInteger(i?.itemId) &amp;&amp; Number.isInteger(i?.qty) &amp;&amp; i.qty &gt; 0,
+      )
+    if (!validPhone || !validText || !validItems) {
+      return send(400, { message: 'Проверьте имя, телефон, адрес и корзину' })
+    }
+    // цену считаем на сервере: клиенту верить нельзя
+    let total = 0
+    for (const { itemId, qty } of order.items) {
+      const dish = menu.find((m) =&gt; m.id === itemId)
+      if (!dish) {
+        return send(400, { message: `Блюда №${itemId} нет в меню` })
+      }
+      const restaurant = restaurants.find((r) =&gt; r.id === dish.restaurantId)
+      if (!restaurant?.open) {
+        return send(400, {
+          message: `${restaurant?.name ?? 'Ресторан'} сейчас закрыт`,
+        })
+      }
+      total += dish.price * qty
+    }
+    return send(201, { id: nextOrderId++, total })
+  }
+</pre>
+          <code>npm run api</code>-ро қатъ кунед (Ctrl+C) ва аз нав оғоз кунед: сервер код танҳо ҳангоми оғоз мехонад. Ҷавобро бе браузер санҷед (дар тирезаи сеюми терминал):
+<pre class="code" data-title="Терминал">
+curl -s -X POST localhost:3001/api/orders -H "Content-Type: application/json" -d '{"name":"Али","phone":"+992901234567","address":"пр. Рудаки, 45","items":[{"itemId":1,"qty":2}]}'
+</pre>
+<pre class="code" data-title="Терминал — ҷавоб">
+{"id":1001,"total":90}
+</pre>
+          Хӯроки №1 45 сомонӣ аст, ду хӯрок 90 медиҳад. Агар <code>"itemId":1</code>-ро ба <code>"itemId":5</code> иваз кунед (шашлик аз тарабхонаи Rohat, он баста аст), ҷавоб <code>{"message":"Rohat сейчас закрыт"}</code> мешавад.</li>
+        <li><b>Дархост дар клиент.</b> Дар аввали <code>src/api.ts</code> воридкунии навъро илова кунед, ва ба охири файл — функсияро. Ҷавоб ҳамчун <code>unknown</code> хонда мешавад ва санҷида мешавад (дарси 5); матни хато аз ҷавоби сервер гирифта мешавад, ва агар сервер на JSON ҷавоб диҳад (масалан, 502 аз прокси Vite), «Сервер ответил 502» нишон дода мешавад:
+<pre class="code" data-lang="ts" data-title="src/api.ts (сатри аввали файл)">
+import type { OrderForm } from './orderSchema'
+</pre>
+<pre class="code" data-lang="ts" data-title="src/api.ts (ба охир илова кунед)">
+export type OrderItem = { itemId: number; qty: number }
+
+export async function postOrder(
+  order: OrderForm,
+  items: OrderItem[],
+): Promise&lt;{ id: number; total: number }&gt; {
+  const response = await fetch('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...order, items }),
+  })
+  const data: unknown = await response.json().catch(() =&gt; null)
+  if (!response.ok) {
+    const message =
+      isRecord(data) &amp;&amp; typeof data.message === 'string'
+        ? data.message
+        : `Сервер ответил ${response.status}`
+    throw new Error(message)
+  }
+  if (
+    !isRecord(data) ||
+    typeof data.id !== 'number' ||
+    typeof data.total !== 'number'
+  ) {
+    throw new Error('Сервер прислал данные в неожиданном формате')
+  }
+  return { id: data.id, total: data.total }
+}
+</pre>
+        </li>
+        <li><b>Майдон бо нишона ва хато.</b> <code>TextField</code> <code>input</code>-ро мепечонад: нишона тавассути <code>htmlFor</code>, пайвастагӣ бо хато тавассути <code>aria-describedby</code>, <code>id</code> аз <code>useId</code>. Ин React 19 аст: <code>ref</code> дар байни props меистад, бинобар ин <code>{...register('name')}</code> бе <code>forwardRef</code> кор мекунад:
+<pre class="code" data-lang="tsx" data-title="src/components/TextField.tsx">
+import { useId, type ComponentProps } from 'react'
+
+type TextFieldProps = ComponentProps&lt;'input'&gt; &amp; {
+  label: string
+  error?: string
+}
+
+export default function TextField({
+  label,
+  error,
+  ...inputProps
+}: TextFieldProps) {
+  const id = useId()
+  const errorId = `${id}-error`
+  return (
+    &lt;div className="mb-3"&gt;
+      &lt;label htmlFor={id} className="mb-1 block text-sm font-semibold"&gt;
+        {label}
+      &lt;/label&gt;
+      &lt;input
+        id={id}
+        className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 aria-invalid:border-red-500"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        {...inputProps}
+      /&gt;
+      {error &amp;&amp; (
+        &lt;p id={errorId} role="alert" className="mt-1 text-sm text-red-700"&gt;
+          {error}
+        &lt;/p&gt;
+      )}
+    &lt;/div&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Равзанаи модалӣ.</b> Ҳама чизи бахшҳои 4 ва 5 дар як компонент: портал, диалог бо ном, Esc, клик ба замина, фокус ба дарун ва бозгашт, доми Tab, манъи ҳаракати замина. Ба ягона эффект диққат диҳед: массиви холии вобастагиҳо ҳалол аст, системаи беруна — DOM:
+<pre class="code" data-lang="tsx" data-title="src/components/Modal.tsx">
+import {
+  useEffect,
+  useId,
+  useRef,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from 'react'
+import { createPortal } from 'react-dom'
+
+type ModalProps = {
+  title: string
+  onClose: () =&gt; void
+  children: ReactNode
+}
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+
+export default function Modal({ title, onClose, children }: ModalProps) {
+  const titleId = useId()
+  const dialogRef = useRef&lt;HTMLDivElement&gt;(null)
+
+  // Внешняя система — DOM: запоминаем, откуда открыли, фокус внутрь и запрет прокрутки фона
+  useEffect(() =&gt; {
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    dialogRef.current?.focus()
+    document.body.style.overflow = 'hidden'
+    return () =&gt; {
+      document.body.style.overflow = ''
+      if (opener?.isConnected) {
+        opener.focus()
+      }
+    }
+  }, [])
+
+  function handleKeyDown(event: KeyboardEvent&lt;HTMLDivElement&gt;) {
+    if (event.key === 'Escape') {
+      onClose()
+      return
+    }
+    if (event.key !== 'Tab' || dialogRef.current === null) {
+      return
+    }
+    const items = dialogRef.current.querySelectorAll&lt;HTMLElement&gt;(FOCUSABLE)
+    const first = items[0]
+    const last = items[items.length - 1]
+    if (first === undefined || last === undefined) {
+      return
+    }
+    if (event.shiftKey &amp;&amp; document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey &amp;&amp; document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  function handleBackdropClick(event: MouseEvent&lt;HTMLDivElement&gt;) {
+    if (event.target === event.currentTarget) {
+      onClose()
+    }
+  }
+
+  return createPortal(
+    &lt;div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={handleBackdropClick}
+      onKeyDown={handleKeyDown}
+    &gt;
+      &lt;div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="max-h-full w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl outline-none"
+      &gt;
+        &lt;div className="mb-3 flex items-start justify-between gap-3"&gt;
+          &lt;h2 id={titleId} className="text-xl font-bold"&gt;
+            {title}
+          &lt;/h2&gt;
+          &lt;button
+            className="h-8 w-8 rounded-full border border-stone-300 font-bold hover:bg-brand-50"
+            aria-label="Закрыть окно"
+            onClick={onClose}
+          &gt;
+            ×
+          &lt;/button&gt;
+        &lt;/div&gt;
+        {children}
+      &lt;/div&gt;
+    &lt;/div&gt;,
+    document.body,
+  )
+}
+</pre>
+        </li>
+        <li><b>Шакли фармоиш.</b> <code>useForm&lt;OrderForm&gt;</code> бо <code>zodResolver</code>, қиматҳои пешфарз барои ҳар майдон, хатои сервер тавассути <code>setError('root.server')</code>, тугма ғайрифаъол аст, то даме ки фиристодан давом дорад:
+<pre class="code" data-lang="tsx" data-title="src/components/CheckoutForm.tsx">
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import { errorMessage } from '../api'
+import { orderSchema, type OrderForm } from '../orderSchema'
+import TextField from './TextField'
+
+type CheckoutFormProps = {
+  total: number
+  onSubmit: (values: OrderForm) =&gt; Promise&lt;void&gt;
+}
+
+export default function CheckoutForm({ total, onSubmit }: CheckoutFormProps) {
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm&lt;OrderForm&gt;({
+    resolver: zodResolver(orderSchema),
+    defaultValues: {
+      name: '',
+      phone: '+992',
+      address: '',
+      comment: '',
+      payment: 'cash',
+    },
+  })
+
+  async function submit(values: OrderForm) {
+    try {
+      await onSubmit(values)
+    } catch (error) {
+      setError('root.server', { message: errorMessage(error) })
+    }
+  }
+
+  return (
+    &lt;form noValidate onSubmit={handleSubmit(submit)}&gt;
+      &lt;TextField
+        label="Имя"
+        autoComplete="name"
+        error={errors.name?.message}
+        {...register('name')}
+      /&gt;
+      &lt;TextField
+        label="Телефон"
+        type="tel"
+        autoComplete="tel"
+        error={errors.phone?.message}
+        {...register('phone')}
+      /&gt;
+      &lt;TextField
+        label="Адрес доставки"
+        autoComplete="street-address"
+        error={errors.address?.message}
+        {...register('address')}
+      /&gt;
+      &lt;div className="mb-3"&gt;
+        &lt;label
+          htmlFor="order-comment"
+          className="mb-1 block text-sm font-semibold"
+        &gt;
+          Комментарий курьеру
+        &lt;/label&gt;
+        &lt;textarea
+          id="order-comment"
+          rows={2}
+          className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2"
+          {...register('comment')}
+        /&gt;
+        {errors.comment &amp;&amp; (
+          &lt;p role="alert" className="mt-1 text-sm text-red-700"&gt;
+            {errors.comment.message}
+          &lt;/p&gt;
+        )}
+      &lt;/div&gt;
+      &lt;fieldset className="mb-3"&gt;
+        &lt;legend className="mb-1 text-sm font-semibold"&gt;Оплата&lt;/legend&gt;
+        &lt;label className="mr-4"&gt;
+          &lt;input type="radio" value="cash" {...register('payment')} /&gt; Наличными
+        &lt;/label&gt;
+        &lt;label&gt;
+          &lt;input type="radio" value="card" {...register('payment')} /&gt; Картой
+        &lt;/label&gt;
+        {errors.payment &amp;&amp; (
+          &lt;p role="alert" className="mt-1 text-sm text-red-700"&gt;
+            {errors.payment.message}
+          &lt;/p&gt;
+        )}
+      &lt;/fieldset&gt;
+      {errors.root?.server &amp;&amp; (
+        &lt;p
+          role="alert"
+          className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-800"
+        &gt;
+          {errors.root.server.message}
+        &lt;/p&gt;
+      )}
+      &lt;button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+      &gt;
+        {isSubmitting ? 'Отправляем…' : `Заказать на ${total} сомони`}
+      &lt;/button&gt;
+    &lt;/form&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Равзанаро дар App пайваст кунед.</b> Панҷ илова. <b>1.</b> Воридкуниҳо: <code>postOrder</code>-ро ба воридкунии шумо аз <code>./api</code> илова кунед, <code>cartTotal</code>-ро — ба воридкунӣ аз <code>./cart</code> (ё онро созед), ба ғайр аз ин компонентҳои <code>CheckoutForm</code>, <code>Modal</code> ва навъи <code>OrderForm</code>. Ду сатри аввал барои ҳолати баъд аз дарси 5 нишон дода шудаанд, баъд аз дарси 6 воридкунии шумо аз <code>./api</code> ба монанди <code>import { parseRestaurants, postOrder } from './api'</code> аст, ва аз <code>./cart</code> — ба монанди <code>import { cartTotal, isCartItems } from './cart'</code>:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — воридкуниҳо (илова ё пурра кунед)">
+import { errorMessage, fetchRestaurants, isAbortError, postOrder } from './api'
+import { cartTotal } from './cart'
+import CheckoutForm from './components/CheckoutForm'
+import Modal from './components/Modal'
+import type { OrderForm } from './orderSchema'
+</pre>
+          <b>2.</b> Ҳолат: ду сатр дар байни <code>useState</code> ва <code>useRef</code>-ҳои дигар дар аввали компонент (масалан, якбора баъд аз <code>const searchRef = …</code>). Равзана кушода аст ё не; рақами фармоиш, вақте ки сервер онро қабул кард:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — ҳолат">
+const [checkoutOpen, setCheckoutOpen] = useState(false)
+const [orderId, setOrderId] = useState&lt;number | null&gt;(null)
+</pre>
+          <b>3.</b> Ду функсия пеш аз <code>clearSearch</code>. Хатои <code>postOrder</code>-ро дар ин ҷо намегирем: онро шакл мегирад ва дар равзана нишон медиҳад. Баъд аз муваффақият сабад тоза мешавад, ва ҳангоми бастани равзана фокус ба майдони ҷустуҷӯ дода мешавад: тугмаи «Оформить заказ» ба ин лаҳза аллакай нест (сабад холӣ аст), ва фокусро ба куҷо баргардонидан нест:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — функсияҳо (пеш аз clearSearch)">
+  async function placeOrder(values: OrderForm) {
+    const items = cart.map((entry) =&gt; ({
+      itemId: entry.item.id,
+      qty: entry.qty,
+    }))
+    const result = await postOrder(values, items)
+    dispatch({ type: 'clear' })
+    setOrderId(result.id)
+  }
+
+  function closeCheckout() {
+    const placed = orderId !== null
+    setCheckoutOpen(false)
+    setOrderId(null)
+    if (placed) {
+      // кнопки «Оформить заказ» больше нет (корзина пуста): фокус отдаём поиску
+      searchRef.current?.focus()
+    }
+  }
+</pre>
+          <b>4.</b> Тугма дар бахши «Корзина», якбора баъд аз <code>&lt;/CartSummary&gt;</code>:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — тугма (дар Section «Корзина», якбора баъд аз CartSummary)">
+            {cart.length &gt; 0 &amp;&amp; (
+              &lt;button
+                className="mt-3 w-full rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700"
+                onClick={() =&gt; setCheckoutOpen(true)}
+              &gt;
+                Оформить заказ
+              &lt;/button&gt;
+            )}
+</pre>
+          <b>5.</b> Равзана пеш аз <code>&lt;/Layout&gt;</code>-и пӯшанда. Он ба таври шартӣ кашида мешавад: ҳангоми бастан шакл якҷоя бо ҳолати худ нест мешавад. Экрани муваффақият дар дохили ҳамон равзана меистад, ва <code>autoFocus</code> фокусро ба тугмаи «Закрыть» мегузаронад, вагарна фокус якҷоя бо шакли нопадидшуда гум мешуд:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — равзана (пеш аз Layout-и пӯшанда)">
+      {checkoutOpen &amp;&amp; (
+        &lt;Modal title="Оформление заказа" onClose={closeCheckout}&gt;
+          {orderId === null ? (
+            &lt;CheckoutForm total={cartTotal(cart)} onSubmit={placeOrder} /&gt;
+          ) : (
+            &lt;div role="status"&gt;
+              &lt;p className="mb-3"&gt;
+                Заказ №{orderId} принят. Ресторан скоро свяжется с вами.
+              &lt;/p&gt;
+              &lt;button
+                autoFocus
+                className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700"
+                onClick={closeCheckout}
+              &gt;
+                Закрыть
+              &lt;/button&gt;
+            &lt;/div&gt;
+          )}
+        &lt;/Modal&gt;
+      )}
+</pre>
+        </li>
+        <li><b>Оғоз кунед ва бинед.</b> Ду тирезаи терминал: <code>npm run api</code> ва <code>npm run dev</code>. Тарабхонаи кушодаро интихоб кунед (масалан, Navruz), хӯрок илова кунед, «Оформить заказ»-ро пахш кунед. Равзана кушода шуд, фокус дар дохил аст. «Заказать»-ро бо шакли холӣ пахш кунед: се хато (ном, телефон, суроға) ва фокус ба майдони аввалини нодуруст. Шаклро пур карда фиристед: тугма 600 мс «Отправляем…»-ро нишон медиҳад, баъд «Заказ №1001 принят», сабад тоза шуд. «Закрыть»: равзана рафт, фокус дар ҷустуҷӯ. Ҳоло бо клавиатура: Tab давр мезанад ва ба зери равзана намеравад, Shift+Tab аз майдони аввал ба унсури охирин мебарад, Esc мебандад, ва фокус ба «Оформить заказ» бармегардад.</li>
+        <li><b>Ба шабака нигаред.</b> DevTools, варақаи Network, филтри Fetch/XHR: дархости <code>orders</code> бо усули POST, дар Payload майдонҳои шакл ва <code>items</code> бе нархҳо намоёнанд: нархро сервер худаш ҳисоб мекунад. Ҷавоб 201 бо <code>{"id":…,"total":…}</code>. Дар Elements равзанаро ёбед: он бевосита дар <code>&lt;body&gt;</code>, дар паҳлӯи <code>&lt;div id="root"&gt;</code> меистад, на дар дохили сутуни сабад.</li>
+        <li><b>Қасдан вайрон кунед.</b> (а) Суроғаи дархостро дар <code>postOrder</code> ба <code>'/api/orders?fail=1'</code> тағйир диҳед: сервер бо 500 ҷавоб медиҳад, ва дар равзана болои тугма «Сервер временно недоступен» пайдо мешавад (матн аз ҷавоб гирифта мешавад ва тавассути <code>setError('root.server')</code> гузошта мешавад). Суроғаро баргардонед. (б) Баъд аз ислоҳи сервер API-ро аз нав оғоз накунед: фармоиш ба суроғае меравад, ки сервер намедонад, ва шакл «Такого адреса нет»-ро нишон медиҳад. (в) Ба схема майдони <code>email: z.email('Введите email')</code> ва ба <code>defaultValues</code> сатри <code>email: ''</code>-ро илова кунед, аммо майдонро дар шакл накашед. Шаклро пур кунед ва «Заказать»-ро пахш кунед: ҳеҷ чиз намешавад, хатоҳо намоён нестанд. Даъватро ба <code>handleSubmit(submit, (errors) =&gt; console.log(errors))</code> иваз кунед: дар консол <code>{email: {…}}</code> пайдо мешавад, ва дар дохил <code>message: 'Введите email'</code>. Шакли «хомӯш»-ро ҳамин тавр меёбанд. Ҳама чизро чун пештара баргардонед. (г) Аз эффект дар <code>Modal</code> сатри <code>opener.focus()</code>-ро (якҷоя бо санҷиш) хориҷ кунед: равзанаро бо Esc бибандед, Tab-ро пахш кунед ва бинед, ки фокус ба куҷо рафт. Сатрҳоро баргардонед. (д) Хатои имлои <code>register('nmae')</code>-ро роҳ диҳед ва <code>npm run typecheck</code>-ро иҷро кунед:
+<pre class="code" data-title="Терминал — tsc -b">
+src/components/CheckoutForm.tsx(41,24): error TS2345: Argument of type '"nmae"' is not assignable to parameter of type '"address" | "comment" | "name" | "payment" | "phone"'.
+</pre>
+          Номи майдонро баргардонед.</li>
+        <li><b>Санҷишҳо ва коммит.</b> Ҳар чор фармон бояд бигзарад:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+          Баъд коммит, ворид кардан ба <code>main</code> ва фиристодан:
+<pre class="code" data-title="Терминал">
+git add .
+git commit -m "add order form with zod validation"
+git switch main
+git merge feat/order-form
+git push
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Агар вайрон шуд</b>
+        <p><b>Шакли «Заказать» вокуниш намекунад:</b> дар схема майдоне ҳаст, ки дар аломатгузорӣ нест (бахши 3), ё дар <code>register</code> номи дигар аст. Ба <code>handleSubmit</code> ҳамчун далели дуюм <code>console.log</code>-ро диҳед. <b>«Такого адреса нет» баъд аз фиристодан:</b> API баъд аз ислоҳи <code>api.mjs</code> аз нав оғоз нашудааст. <b>«Сервер ответил 502»:</b> API қатъ шудааст. <b>Хатои воридкунии <code>zod</code> ё <code>react-hook-form</code>:</b> насб иҷро нашудааст (қадами 2) ё Vite-ро аз нав оғоз кардан лозим аст. <b>Равзана бо Esc баста намешавад:</b> фокус дар саҳифа дар зери равзана мондааст: дар <code>Modal</code> панел бояд <code>tabIndex={-1}</code> дошта бошад, ва дар эффект — даъвати <code>focus()</code>. <b>Tab ба зери равзана меравад:</b> <code>onKeyDown</code> бо дом илова нашудааст ё селектори <code>FOCUSABLE</code> бо унсурҳои шумо мувофиқ нест. <b>Равзана дар зери сарлавҳа ё бурида шудааст:</b> равзана на тавассути портал кашида мешавад ё <code>fixed</code> ва <code>z-50</code> надорад. <b>«Target container is not a DOM element»:</b> далели дуюми <code>createPortal</code> ба <code>null</code> баробар аст.</p>
+      </div>
+
+      <article class="task" id="t-build">
+        <header><span class="task-num">ВАЗИФАИ 7.1</span><h4>Рӯйхати санҷиш: шакли фармоиш кор мекунад</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-build">
+          <li>Кор дар шохаи <code>feat/order-form</code> мегузарад, машқҳои дарсҳои 5 ва 6 ба <code>main</code> ворид шудаанд</li>
+          <li><code>react-hook-form</code>, <code>zod</code>, <code>@hookform/resolvers</code> насб шудаанд; <code>src/orderSchema.ts</code> бо навъи <code>OrderForm</code> аз <code>z.infer</code> ҳаст</li>
+          <li>Сервер <code>POST /api/orders</code>-ро қабул мекунад, маблағро худаш ҳисоб мекунад; <code>curl</code> <code>{"id":1001,"total":90}</code>-ро баргардонд</li>
+          <li><code>postOrder</code> ҷавобро ҳамчун <code>unknown</code> мехонад, хатои сервер ба шакл мерасад; <code>any</code> ва <code>as</code> нест</li>
+          <li>Равзана бо тугмаи «Оформить заказ» кушода мешавад, дар <code>body</code> меистад (портал), панел <code>role="dialog"</code>, <code>aria-modal</code>, <code>aria-labelledby</code> дорад</li>
+          <li>Шакли холӣ се хаторо нишон медиҳад ва фокусро ба майдони аввалини нодуруст мегузорад; шакли дуруст фиристода мешавад, рақами фармоиш нишон дода мешавад, сабад холӣ аст</li>
+          <li>Esc ва клик ба замина равзанаро мебанданд; Tab давр мезанад; фокус ба тугма бармегардад (ва баъд аз фармоиши муваффақ ба ҷустуҷӯ меафтад)</li>
+          <li>Дар лоиҳа як эффекти нав (дар <code>Modal</code>) ҳаст, ва ман системаи берунии онро номбар карда метавонам: DOM</li>
+          <li><code>npm run format:check</code>, <code>typecheck</code>, <code>lint</code> ва <code>build</code> мегузаранд, коммит анҷом шудааст, <code>feat/order-form</code> ба <code>main</code> ворид шудааст</li>
+        </ul>
+      </article>
+
+      <article class="task" id="t-observe">
+        <header><span class="task-num">ВАЗИФАИ 7.2</span><h4>Рӯйхати санҷиш: мушоҳидаҳо ва вайронкуниҳо</h4><span class="level mid">миёна</span></header>
+        <ul class="checklist" id="cl-observe">
+          <li>Ман тамоми шаклро танҳо бо клавиатура гузаштам: Tab, Shift+Tab, Enter, Esc</li>
+          <li>Ман дар Network дархости POST-ро дидам ва боварӣ ҳосил кардам, ки дар он нарх нест</li>
+          <li>Ман равзанаро дар Elements ёфтам: он дар <code>body</code> меистад, на дар дохили сутуни сабад</li>
+          <li>Ман муваққатан <code>?fail=1</code>-ро истифода бурдам, хатои серверро дар шакл дидам ва суроғаро баргардондам</li>
+          <li>Ман майдонро ба схема бе майдон дар шакл илова кардам, шакли «хомӯш»-ро тавассути <code>console.log(errors)</code> гирифтам ва кодро баргардондам</li>
+          <li>Ман хатои имлоро дар <code>register</code> роҳ додам, хатои компиляторро хондам ва ислоҳ кардам</li>
+          <li>Ман ҳамаи <code>console.log</code>-ҳои муваққатиро пеш аз коммит хориҷ кардам</li>
+        </ul>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://react-hook-form.com/docs/useform" target="_blank" rel="noopener">react-hook-form.com — useForm</a> · <a href="https://zod.dev/api" target="_blank" rel="noopener">zod.dev — API</a> · <a href="https://react.dev/reference/react-dom/createPortal" target="_blank" rel="noopener">react.dev — createPortal</a></p>
+    </section>
+
+    <!-- ============ 08 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Вазифаи хонагӣ"><span class="num">08</span> Вазифаи хонагӣ: бақайдгирӣ, расондан ва аудити дастрасӣ</h2>
+
+      <p>Дар машқ шумо шакли фармоишро ҷамъ кардед. Дар вазифаи хонагӣ шакли дуюмро (бақайдгирӣ) бо ҳамон маҷмӯи усулҳо месозед ва ба шакли фармоиш қоидаи навро меомӯзонед: суроға танҳо ба курер лозим аст. Дар шохаи <code>feat/auth-form</code>, ки аз <code>main</code> сохта шудааст, кор кунед, дар охир шохаро ба GitHub фиристед ва истинодро ба репозиторийи <code>dastarkhon</code> супоред: муаллим ҳамин шохаро мекушояд.</p>
+
+      <h3>Чӣ бояд кард</h3>
+      <ol class="steps">
+        <li><b>Оғоз.</b> <code>git switch main</code>, <code>git switch -c feat/auth-form</code>. Машқи дарс (шакли фармоиш) ба <code>main</code> ворид шудааст.</li>
+        <li><b>Схемаи бақайдгирӣ.</b> <code>src/signupSchema.ts</code>-ро созед: <code>name</code> (баъд аз буридан на камтар аз 2 аломат), <code>email</code> (<code>z.email</code>), <code>city</code> (<code>z.enum</code> аз массиви <code>CITIES</code> бо <code>as const</code>: Душанбе, Худжанд, Бохтар, Куляб), <code>password</code> (на камтар аз 8 аломат ва ақаллан як рақам), <code>confirm</code>, <code>agree</code> (байрақча: бояд қайд карда шавад). Парол ва такрорро қоида дар сатҳи объект муқоиса мекунад: <code>.refine(санҷиш, { path: ['confirm'], error: 'Пароли не совпадают' })</code>. <code>signupSchema</code>, <code>CITIES</code> ва навъи <code>SignupForm</code>-ро тавассути <code>z.infer</code> содир кунед. Барои байрақча <code>z.boolean().refine((value) =&gt; value, { error: 'Нужно принять правила' })</code> мувофиқ аст: навъ <code>boolean</code> мемонад, ва <code>defaultValues</code> метавонад <code>false</code> бошад.</li>
+        <li><b>Шакли бақайдгирӣ.</b> Компоненти <code>SignupForm</code> (props: <code>onRegistered: (user: { name: string; email: string }) =&gt; void</code>) бо <code>useForm&lt;SignupForm&gt;</code> ва <code>zodResolver</code>, реҷаи <code>mode: 'onTouched'</code>. Майдонҳои ном, email ва паролро тавассути <code>TextField</code> аз машқ созед (дар паролҳо <code>type="password"</code> ва <code>autoComplete="new-password"</code>). Шаҳр — <code>select</code>, байрақча — <code>checkbox</code>: дар ҳарду бояд нишона, <code>aria-invalid</code> ва хатои пайваст бошад. «Фиристодан» таълимӣ аст: 600 мс интизор шавед (<code>await new Promise(…)</code>), <code>onRegistered</code>-ро даъват кунед. Маълумот ба ҷое намеравад: парол на дар консол, на дар <code>localStorage</code> навишта мешавад (бақайдгирии воқеиро дар дарси 19 месозем).</li>
+        <li><b>Пайвастшавӣ.</b> Дар <code>App</code> ҳолати <code>user: { name: string; email: string } | null</code>-ро илова кунед. То даме ки <code>user</code> ба <code>null</code> баробар аст, дар назди ҷустуҷӯ тугмаи «Регистрация» меистад, ки <code>Modal</code>-ро бо <code>SignupForm</code> мекушояд (ҳамон <code>Modal</code>, ки барои фармоиш). Баъд аз муваффақият равзана баста мешавад, ва ба ҷои тугма «Привет, ном» нишон дода мешавад. Тугма дар ин ҳол нопадид мешавад, бинобар ин фокусро баргардонидан ҷое нест: инро мисли машқ ҳал кунед ва интихоби худро дар <code>docs/forms.md</code> шарҳ диҳед.</li>
+        <li><b>Расондан ё худ гирифтан.</b> Ба <code>orderSchema</code> майдони <code>delivery</code>-ро илова кунед (<code>'courier'</code> ё <code>'pickup'</code>) ва суроғаро танҳо барои курер ҳатмӣ кунед: дар объект <code>address</code> танҳо <code>z.string().trim()</code> мешавад, ва қоидаи «на камтар аз 5 аломат» ба <code>.refine((value) =&gt; value.delivery === 'pickup' || value.address.length &gt;= 5,</code> <code>{ path: ['address'], error: 'Укажите улицу и дом' })</code> мегузарад. Дар <code>CheckoutForm</code> гурӯҳи радиотугмаҳои «Получение»-ро илова кунед (<code>fieldset</code> ва <code>legend</code>), ба таври пешфарз <code>courier</code>. Майдони суроғаро ҳангоми худ гирифтан нишон надиҳед (<code>watch('delivery')</code> дар ин ҷо ҷоиз аст: ба интихоб вокуниш лозим аст).</li>
+        <li><b>Ном аз профил ва сервер.</b> Агар корбар бақайдгирифта шуда бошад, <code>name</code> дар шакли фармоиш бо номи ӯ пур карда мешавад (<code>defaultValues</code>: prop-и нави ихтиёрии <code>defaultName?: string</code>). Серверро низ нав кунед: он <code>delivery</code>-ро қабул мекунад ва суроғаро танҳо ҳангоми <code>courier</code> талаб мекунад; қимати <code>delivery</code> берун аз ду ҷоиз бо ҷавоби 400 рад карда мешавад. Ин қоидаи «ба клиент бовар намекунем» аст: бо дархости <code>curl</code> бо <code>"delivery":"pickup"</code> бе суроға (бояд 201 бошад) ва бо <code>"delivery":"teleport"</code> (400) санҷед.</li>
+        <li><b>Аудити дастрасӣ.</b> Коди <code>Modal</code>, <code>TextField</code>, <code>CheckoutForm</code> ва <code>SignupForm</code>-ро бо промпти санҷиши дастрасӣ аз бахши 6 ба агент фиристед. Баъд ҳамаро худатон санҷед: гузаштани шакл танҳо бо клавиатура, Lighthouse (категорияи Accessibility) барои саҳифа бо равзанаи кушода. Дар <code>docs/forms.md</code> ҷадвали «эзоҳ → қабул ё рад → чаро» созед ва ба панҷ саволи поён <b>бо суханони худ</b> ҷавоб диҳед.</li>
+        <li><b>Санҷишҳо ва коммитҳо.</b> <code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> мегузаранд. Дар шоха на камтар аз се коммити бомаъно, шоха ба GitHub фиристода шудааст.</li>
+      </ol>
+
+      <h3>Панҷ савол барои docs/forms.md</h3>
+      <ol class="steps">
+        <li>Майдони идорашаванда аз идоранашаванда чӣ фарқ дорад? Кадомашро дар шаклҳои лоиҳа истифода бурдед ва чаро React Hook Form шаклро барои ҳар ҳарф аз нав намекашад?</li>
+        <li>Чаро навъи шакл аз схема гирифта мешавад (<code>z.infer</code>), на бо даст навишта мешавад? Агар шумо майдонро ба схема илова мекардед ва дар аломатгузорӣ фаромӯш мекардед, дар лоиҳаи шумо чӣ мешуд?</li>
+        <li>Портал чиро ҳал мекунад ва чиро ҳал намекунад? Рӯйдод аз равзана чӣ тавр ба волидайн мерасад ва инро чӣ тавр қатъ кардан мумкин?</li>
+        <li>Равзанаи модалӣ дар бораи фокус кадом се корро бояд кунад ва корбари клавиатура чиро мебинад, агар ягон аз онҳо набошад? Баъд аз бақайдгирии муваффақ ва фармоиш бо фокус чӣ кардед ва чаро?</li>
+        <li>Чаро сервер фармоишро аз нав месанҷад, ҳарчанд шакл онро аллакай бо схема санҷидааст? Бо дархостҳои <code>curl</code> чиро санҷидед?</li>
+      </ol>
+
+      <h3>Чӣ тавр месанҷанд</h3>
+      <ul>
+        <li><b>Схемаҳо ва навъҳо:</b> ҳарду схема бо паёмҳои русӣ, навъҳо танҳо тавассути <code>z.infer</code>, қоидаи паролҳо дар сатҳи объект бо <code>path: ['confirm']</code>, суроға аз <code>delivery</code> вобаста аст; <code>any</code> ва <code>as</code> болои маълумот нест.</li>
+        <li><b>Шаклҳо:</b> <code>useForm</code> бо <code>zodResolver</code>, <code>defaultValues</code> дар ҳар майдон, <code>noValidate</code>, хатоҳо дар паҳлӯи майдонҳо нишон дода шудаанд, хатои сервер дар шакл, дар тугма ҳолати фиристодан намоён аст; парол ҳеҷ ҷо сабт ва нигоҳ дошта намешавад.</li>
+        <li><b>Равзана ва дастрасӣ:</b> портал, <code>role</code> ва номи равзана, Esc, фокус ба дарун ва бозгашт, нишонаҳо ва <code>aria-describedby</code>; шакл танҳо бо клавиатура гузашта мешавад.</li>
+        <li><b>Сервер:</b> талабот ба суроға аз <code>delivery</code> вобаста аст, усули нодонисти гирифтан 400 медиҳад, маблағ дар сервер ҳисоб мешавад.</li>
+        <li><b>docs/forms.md:</b> ҷадвали эзоҳҳо ва панҷ ҷавоб бо суханони худӣ, бо истинодҳо ба коди шумо.</li>
+        <li><b>Раванд:</b> шоха фиристода шудааст, на камтар аз се коммит, <code>main</code> кори машқро дорад.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Хатоҳои маъмул дар вазифаи хонагӣ</b>
+        <p><b>1.</b> Такрори парол дар коркардкунанда санҷида мешавад, на дар схема. <b>2.</b> Қоидаи парол бе <code>path</code>: хато ба майдони «Паролро такрор кунед» намеафтад. <b>3.</b> Навъи шакл бо даст дар паҳлӯи схема навишта шудааст. <b>4.</b> Худ гирифтан интихоб шудааст, аммо суроға ба ҳар ҳол талаб мешавад (ё баръакс, барои курер суроға холӣ аст, ва фармоиш меравад). <b>5.</b> Сервер нав нашудааст: шакл худ гирифтанро мегузаронад, аммо сервер бо 400 ҷавоб медиҳад. <b>6.</b> Парол дар <code>console.log</code> бароварда мешавад. <b>7.</b> Дар <code>select</code> ва байрақча нишона ва хатои пайваст нест. <b>8.</b> Ҷавоби агент дар бораи дастрасӣ бе санҷиш ва ислоҳ ба <code>docs/forms.md</code> гузошта шудааст. <b>9.</b> Репозиторий хусусӣ аст ё истинод ба профил меравад, на ба репозиторий.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ВАЗИФАИ 8.1</span><h4>Рӯйхати санҷиши талаботи ВХ-7</h4><span class="level mid">миёна</span></header>
+        <p>Пеш аз супоридан бандҳоро санҷед.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Машқи дарс кор мекунад ва ба <code>main</code> ворид шудааст, ВХ дар шохаи <code>feat/auth-form</code> иҷро шудааст</li>
+          <li><code>signupSchema.ts</code> ҳамаи майдонҳоро, қоидаи паролҳоро тавассути <code>.refine</code> бо <code>path</code>, навъи <code>SignupForm</code>-ро аз <code>z.infer</code> дорад</li>
+          <li><code>SignupForm</code> бо RHF ва <code>zodResolver</code>, дар <code>select</code> ва байрақча нишона ва хатои пайваст ҳаст, парол ҳеҷ ҷо сабт ва нигоҳ дошта намешавад</li>
+          <li>Равзанаи бақайдгирӣ аз <code>App</code> кушода мешавад, баъд аз муваффақият «Привет, ном» нишон дода мешавад, фокус гум намешавад</li>
+          <li>Дар фармоиш интихоби «Курер / Худ гирифтан» ҳаст: суроға танҳо ба курер ҳатмист, ном аз профил гирифта мешавад</li>
+          <li>Сервер <code>delivery</code>-ро қабул мекунад; <code>curl</code> бо худ гирифтан бе суроға 201 медиҳад, ва бо усули нодонисто 400 медиҳад</li>
+          <li>Ҳарду шакл ва равзана танҳо бо клавиатура гузашта мешаванд, Lighthouse (Accessibility) санҷида шудааст</li>
+          <li><code>docs/forms.md</code> ҷадвали эзоҳҳо ва панҷ ҷавобро бо суханони худӣ дорад</li>
+          <li><code>npm run format:check</code>, <code>typecheck</code>, <code>lint</code>, <code>build</code> мегузаранд, дар шоха на камтар аз се коммит</li>
+          <li>Шохаи <code>feat/auth-form</code> ба GitHub фиристода шудааст, репозиторий оммавӣ аст: ман истинодро дар реҷаи инкогнито кушодам</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ВАЗИФАИ 8.2</span><h4>Супоридан: истинод ба репозиторийи GitHub</h4><span class="level mid">миёна</span></header>
+        <p>Истинодро ба намуди <code>https://github.com/ваш-логин/dastarkhon</code> гузоред. Онро дар реҷаи инкогнито кушоед: шохаи <code>feat/auth-form</code>, код ва <code>docs/forms.md</code> бояд намоён бошанд.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Муфассал хонед: <a href="https://zod.dev/api" target="_blank" rel="noopener">zod.dev — API (refine)</a> · <a href="https://react-hook-form.com/docs/useform/watch" target="_blank" rel="noopener">react-hook-form.com — watch</a> · <a href="https://developer.chrome.com/docs/lighthouse/accessibility/scoring" target="_blank" rel="noopener">Chrome — Lighthouse accessibility</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Хулоса"><span class="num">✓</span> Хулосаи дарс</h2>
+      <ul>
+        <li><b>Майдони идорашаванда</b>: <code>value</code> + <code>onChange</code>, қимат дар ҳолат; аз сатр оғоз кунед, на аз <code>undefined</code>. <b>Идоранашаванда</b>: қимат дар DOM, хондан ҳангоми фиристодан (<code>FormData</code>, <code>ref</code>), ибтидоӣ — <code>defaultValue</code>. Қиматҳои майдонҳо — сатр. Дар <code>onSubmit</code> ҳамеша <code>event.preventDefault()</code>; тугмаи «нафиристод» ба <code>type="button"</code> ниёз дорад.</li>
+        <li><b>Схемаи Zod</b> — сарчашмаи ягона: санҷиш (<code>safeParse</code>), паёмҳо, навъ (<code>z.infer&lt;typeof schema&gt;</code>). Навъҳои TypeScript дар браузер нопадид мешаванд, схема маълумоти воқеиро месанҷад. Қоидаҳо болои якчанд майдон — <code>.refine(…, { path, error })</code>. Паёмҳоро бо забони русӣ нависед.</li>
+        <li><b>React Hook Form</b>: <code>useForm&lt;T&gt;({ resolver: zodResolver(schema), defaultValues })</code>, <code>{...register('field')}</code>, <code>handleSubmit(onSubmit)</code>, <code>formState.errors / isSubmitting</code>, хатои сервер — <code>setError('root.server', …)</code>. Ҳар як майдони схема бояд дар шакл бошад, вагарна шакл «хомӯш» мемонад (тавассути <code>handleSubmit(onSubmit, onInvalid)</code> ҷустуҷӯ кунед). <code>watch()</code> танҳо дар ҷое, ки вокуниш ба воридкунӣ лозим аст.</li>
+        <li><b>Хато дар ду қабат</b>: шакл бо схема барои қулайӣ месанҷад, сервер аз нав барои бехатарӣ месанҷад ва пулро худаш ҳисоб мекунад. Маълумоти шакл ва паролро сабт намекунанд ва дар <code>localStorage</code> нигоҳ намедоранд.</li>
+        <li><b>Портал</b> <code>createPortal(чиро, document.body)</code> аломатгузориро ба <code>body</code> мебарад, то онро <code>overflow</code> набурад ва <code>z-index</code>-и бегона напӯшонад. Ҷойи дарахти React тағйир намеёбад: рӯйдодҳо ва контекст аз рӯи дарахти React мераванд. Равзанаро ба таври шартӣ кашед (<code>{open &amp;&amp; &lt;Modal /&gt;}</code>).</li>
+        <li><b>Равзанаи дастрас</b>: <code>role="dialog"</code>, <code>aria-modal</code>, <code>aria-labelledby</code>; фокус ба дарун, доми Tab, бозгашти фокус (бо санҷиши <code>isConnected</code>); Esc ва клик ба замина (<code>target === currentTarget</code>); тугмаи бастан бо <code>aria-label</code>; манъи ҳаракати замина бо тозакунии эффект. <code>&lt;dialog&gt;</code>-и дарунсохт бо <code>showModal()</code> ҳаст.</li>
+        <li><b>Майдони дастрас</b>: <code>label</code> (<code>htmlFor</code> + <code>useId</code>), <code>aria-invalid</code>, <code>aria-describedby</code>, <code>role="alert"</code> дар хатои пайдошаванда, на танҳо бо ранг, <code>autoComplete</code>, <code>type</code>. Санҷиш: клавиатура, хонанда, Lighthouse.</li>
+        <li><b>TypeScript</b>: навъи шакл аз <code>z.infer</code>, номи майдон дар <code>register</code>-ро компилятор месанҷад, <code>useRef&lt;HTMLDivElement&gt;(null)</code> ва <code>?.</code>, <code>HTMLElement | null</code>-ро ба <code>createPortal</code> додан мумкин нест, рӯйдодҳо — <code>FormEvent</code>, <code>ChangeEvent</code>, <code>KeyboardEvent</code>, <code>MouseEvent</code>.</li>
+        <li><b>Лоиҳаи 1 «Дастархон»</b>: сабад бо шакл дар равзана тавассути портал расмӣ карда мешавад, фармоишҳоро <code>POST /api/orders</code>-и API-и таълимӣ қабул мекунад, равзанаи бақайдгирӣ ҳаст. Минбаъд: Context барои мавзӯъ ва корбар (дарси 8) ва Redux Toolkit (дарси 9).</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ВАЗИФАИ 9.1</span><h4>Ман мавзӯъро дар ҳақиқат фаҳмидам</h4><span class="level easy">осон</span></header>
+        <p>Танҳо он чиро қайд кунед, ки бе ишора карда метавонед.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Фарқи байни майдони идорашаванда ва идоранашавандаро шарҳ дода метавонам ва шаклро тавассути <code>FormData</code> хонда метавонам</li>
+          <li>Қоидаҳои шаклро бо схемаи Zod тавсиф карда метавонам ва навъро тавассути <code>z.infer</code> гирифта метавонам</li>
+          <li>Шаклро бо React Hook Form ва <code>zodResolver</code> ҷамъ карда ва хатоҳоро дар паҳлӯи майдонҳо нишон дода метавонам</li>
+          <li>Хатои серверро дар шакл нишон дода метавонам ва шарҳ дода метавонам, ки чаро сервер маълумотро аз нав месанҷад</li>
+          <li>Шакли «хомӯш»-ро ёфта метавонам, вақте ки майдон дар схема ҳаст, ва дар аломатгузорӣ нест</li>
+          <li>Равзанаро бо портал намоиш дода ва шарҳ дода метавонам, ки рӯйдодҳо тавассути портал чӣ тавр мераванд</li>
+          <li>Равзанаро дастрас карда метавонам: нақш, ном, Esc, фокус ба дарун ва бозгашт, доми Tab</li>
+          <li>Майдонро бо нишона ва хато тавассути <code>label</code>, <code>aria-invalid</code>, <code>aria-describedby</code> пайваст карда метавонам</li>
+          <li>Шакл ва равзанаеро, ки агент навиштааст, аз рӯи рӯйхати бахши 6 санҷида метавонам</li>
+        </ul>
+      </article>
+    </section>

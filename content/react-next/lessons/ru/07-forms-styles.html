@@ -1,0 +1,1756 @@
+<style>
+  /* общие стили схем урока: работают в светлой и тёмной теме через переменные */
+  .dg { width: 100%; max-width: 720px; height: auto; display: block; margin: 0 auto; min-width: 560px; }
+  .diagram:has(.dg) { overflow-x: auto; }
+  .dg text { fill: var(--ink); font: 700 13px var(--font); }
+  .dg text.sub { fill: var(--ink-3); font-weight: 600; font-size: 12px; }
+  .dg text.mono { font-family: var(--mono); font-weight: 600; }
+  .dg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2; }
+  .dg .box.g { stroke: var(--accent); }
+  .dg .box.b { stroke: var(--blue); }
+  .dg .box.o { stroke: var(--accent-2); }
+  .dg .fill-g { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+  .dg .fill-y { fill: var(--gold-soft); stroke: var(--gold); stroke-width: 2; }
+  .dg .fill-r { fill: var(--red-soft); stroke: var(--red); stroke-width: 2; }
+  .dg .arr { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-linecap: round; }
+  .dg .arr-head { fill: var(--ink-3); }
+  .dg text.t-g { fill: var(--accent); }
+  .dg text.t-b { fill: var(--blue); }
+  .dg text.t-r { fill: var(--red); }
+  .ftree { margin: 14px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font: 600 14px/1.7 var(--mono, ui-monospace, monospace); overflow-x: auto; white-space: pre; }
+  .ftree b { color: var(--blue); }
+  .ftree i { color: var(--ink-3); font-style: normal; font-weight: 400; }
+</style>
+
+
+    <!-- ============ HERO ============ -->
+    <section class="hero">
+      <p class="kicker">Урок 7 · Хуки, формы, стили</p>
+      <h1>Формы, модалки и порталы</h1>
+      <p class="lead">К концу урока в «Дастархоне» появится кнопка «Оформить заказ»: она открывает модальное окно с формой, которая проверяется схемой Zod, управляется React Hook Form, отправляет заказ на учебный API и показывает понятные ошибки. Окно рисуется порталом, закрывается по Esc, не теряет фокус и озвучивается экранным диктором. Вы будете понимать, чем отличаются управляемые и неуправляемые поля, и получать тип формы из схемы, а не писать его второй раз.</p>
+      <ul class="goals">
+        <li>Различать управляемые и неуправляемые поля, читать значения через <code>state</code>, <code>FormData</code> и <code>ref</code>, правильно типизировать события формы</li>
+        <li>Описывать правила формы схемой Zod и получать тип значений через <code>z.infer</code>, не дублируя его вручную</li>
+        <li>Собирать форму на React Hook Form: <code>register</code>, <code>handleSubmit</code>, <code>formState</code>, <code>zodResolver</code>, серверная ошибка через <code>setError</code></li>
+        <li>Выводить модальное окно порталом <code>createPortal</code> и объяснять, как всплывают события через портал</li>
+        <li>Делать окно доступным: <code>role="dialog"</code>, <code>aria-modal</code>, <code>aria-labelledby</code>, фокус внутрь и обратно, ловушка Tab, закрытие по Esc</li>
+        <li>Связывать поле с подписью и ошибкой (<code>label</code>, <code>aria-invalid</code>, <code>aria-describedby</code>) и проверять форму с клавиатуры</li>
+      </ul>
+    </section>
+
+    <div class="callout tip">
+      <b>Как проходить этот урок</b>
+      <p>Нужны: проект <code>dastarkhon</code> после урока 5 (рестораны загружаются с учебного API, корзина на <code>useReducer</code>), терминал с двумя окнами (API и Vite), редактор и около 3,5 часов. Разделы 1–5 — теория: часть кода запускается в песочницах прямо на странице, а React Hook Form и Zod ставятся только в проект (в браузерной песочнице пакетов нет), поэтому там вы читаете код и проверяете себя тестами и типами. Раздел 6 — про ИИ-агента, раздел 7 — практика в проекте, раздел 8 — домашнее задание.</p>
+      <p>Предполагается, что вы знаете JavaScript, <code>useState</code>, события и <code>ref</code> (урок 5), типы и union (урок 2), редьюсер корзины (урок 4). Свои хуки из урока 6 для этого урока не нужны, но если они у вас есть (<code>useFetch</code>, <code>useLocalStorage</code>, <code>useDebounce</code>), вставки ниже с ними совместимы.</p>
+    </div>
+
+    <!-- ============ 01 ============ -->
+    <section class="topic" id="forms">
+      <h2 data-toc="Управляемые и неуправляемые"><span class="num">01</span> Управляемые и неуправляемые поля</h2>
+
+      <p>У каждого поля ввода есть значение, и кто-то должен быть его хозяином. Есть два варианта.</p>
+      <ul>
+        <li><b>Управляемое поле</b> (controlled): значение хранит React в состоянии. В поле вы пишете <code>value={name}</code> и <code>onChange</code>, который кладёт новое значение в <code>setName</code>. Любой символ проходит через React: можно сразу проверить, отформатировать или заблокировать.</li>
+        <li><b>Неуправляемое поле</b> (uncontrolled): значение хранит сам браузер (DOM). React ничего не знает, пока вы не спросите: при отправке формы (<code>FormData</code>) или через <code>ref</code>. Начальное значение задаёт <code>defaultValue</code>.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Слева управляемое поле: нажатие клавиши вызывает onChange, значение попадает в состояние React, React отдаёт его обратно в value поля. Справа неуправляемое поле: значение живёт в DOM, React читает его один раз при отправке формы через FormData или ref">
+          <text x="170" y="22" text-anchor="middle">Управляемое</text>
+          <rect class="fill-y" x="10" y="40" width="150" height="56" rx="12" /><text x="85" y="64" text-anchor="middle">input</text><text class="sub mono" x="85" y="82" text-anchor="middle">value={name}</text>
+          <rect class="fill-g" x="200" y="40" width="150" height="56" rx="12" /><text x="275" y="64" text-anchor="middle">state</text><text class="sub mono" x="275" y="82" text-anchor="middle">name, setName</text>
+          <path class="arr" d="M160 58 H192" /><path class="arr-head" d="M200 58 l-10 -5 v10 z" /><text class="sub t-b" x="168" y="50" text-anchor="middle">onChange</text>
+          <path class="arr" d="M275 96 V130 H85 V104" /><path class="arr-head" d="M85 96 l-5 10 h10 z" /><text class="sub t-g" x="180" y="148" text-anchor="middle">value при каждом рендере</text>
+          <text x="545" y="22" text-anchor="middle">Неуправляемое</text>
+          <rect class="fill-y" x="400" y="40" width="150" height="56" rx="12" /><text x="475" y="64" text-anchor="middle">input (DOM)</text><text class="sub mono" x="475" y="82" text-anchor="middle">defaultValue</text>
+          <rect class="box b" x="580" y="40" width="130" height="56" rx="12" /><text x="645" y="64" text-anchor="middle">onSubmit</text><text class="sub mono" x="645" y="82" text-anchor="middle">FormData / ref</text>
+          <path class="arr" d="M550 68 H572" /><path class="arr-head" d="M580 68 l-10 -5 v10 z" /><text class="sub t-b" x="565" y="114" text-anchor="middle">1 раз</text>
+          <text class="sub" x="10" y="190">Каждая клавиша = рендер: удобно для живой проверки</text>
+          <text class="sub" x="400" y="190">Нет рендеров до отправки: меньше работы</text>
+        </svg>
+        <figcaption>Где живёт значение поля: в состоянии React или в самом DOM</figcaption>
+      </figure>
+
+<pre class="code" data-lang="tsx" data-title="Управляемое поле: тип события в TypeScript">
+import { useState, type ChangeEvent } from 'react'
+
+export default function NameField() {
+  const [name, setName] = useState('')
+
+  function handleChange(event: ChangeEvent&lt;HTMLInputElement&gt;) {
+    setName(event.target.value)
+  }
+
+  return (
+    &lt;label&gt;
+      Имя
+      &lt;input value={name} onChange={handleChange} /&gt;
+    &lt;/label&gt;
+  )
+}
+</pre>
+
+<pre class="code" data-lang="tsx" data-title="Неуправляемая форма: читаем всё при отправке">
+import type { FormEvent } from 'react'
+
+export default function QuickOrder({ onOrder }: { onOrder: (phone: string) =&gt; void }) {
+  function handleSubmit(event: FormEvent&lt;HTMLFormElement&gt;) {
+    event.preventDefault() // без этого браузер перезагрузит страницу
+    const data = new FormData(event.currentTarget)
+    onOrder(String(data.get('phone')))
+  }
+
+  return (
+    &lt;form onSubmit={handleSubmit}&gt;
+      &lt;input name="phone" defaultValue="+992" /&gt;
+      &lt;button&gt;Перезвоните мне&lt;/button&gt;
+    &lt;/form&gt;
+  )
+}
+</pre>
+
+      <p>Обратите внимание: <code>data.get('phone')</code> возвращает <code>FormDataEntryValue | null</code> (строка, файл или <code>null</code>), поэтому его нужно привести к строке или проверить. Значения из полей — всегда строки: число из <code>type="number"</code> тоже приходит строкой, и его нужно преобразовать (<code>Number(value)</code>).</p>
+
+      <h3>Что выбрать</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>Управляемое</th><th>Неуправляемое</th></tr></thead>
+          <tbody>
+            <tr><td>Где значение</td><td>В состоянии React</td><td>В DOM</td></tr>
+            <tr><td>Когда читаем</td><td>В любой момент, сразу</td><td>При отправке или по <code>ref</code></td></tr>
+            <tr><td>Рендеры</td><td>На каждый символ</td><td>Нет</td></tr>
+            <tr><td>Подходит</td><td>Живой поиск, маска ввода, зависимые поля</td><td>Обычные формы с проверкой при отправке</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Поле поиска в «Дастархоне» управляемое: список фильтруется на каждый символ. А форма заказа будет неуправляемой «под капотом»: React Hook Form (раздел 3) читает значения через <code>ref</code>, поэтому форма не перерисовывается на каждую букву.</p>
+
+      <h3>Подпись, отправка и кнопки</h3>
+      <ul>
+        <li>У каждого поля есть <code>&lt;label&gt;</code>: оберните поле им или свяжите <code>htmlFor</code> с <code>id</code>. Для уникальных <code>id</code> в компоненте, который рисуется много раз, используйте хук <code>useId()</code>. Подсказка в <code>placeholder</code> подписью не является: она исчезает при вводе.</li>
+        <li>Кнопка внутри <code>&lt;form&gt;</code> без <code>type</code> по умолчанию отправляет форму. Кнопке «Закрыть» внутри формы нужен <code>type="button"</code>.</li>
+        <li>Флажок читают из <code>checked</code>, а не из <code>value</code>; для <code>select</code> значение — <code>event.target.value</code>.</li>
+        <li>В React 19 у <code>&lt;form&gt;</code> есть prop <code>action</code> для серверных функций: им мы займёмся в уроке 18 (Next.js). В SPA, как в «Дастархоне», форму обрабатывает <code>onSubmit</code>.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Управляемое поле — продавец на бозоре, который записывает каждое ваше слово в тетрадь и тут же зачитывает вам обратно. Неуправляемое — листок с заказом: вы заполняете его сами, а продавец читает его один раз, когда вы протянули его через прилавок.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> <code>value</code> без <code>onChange</code>: поле «не печатает». В консоли dev-режима:</p>
+<pre class="code" data-title="Терминал — консоль браузера (dev-режим)">
+You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`.
+</pre>
+        <p><b>2.</b> Начальное значение <code>undefined</code>, а потом строка: поле «переезжает» из неуправляемых в управляемые. Начинайте со строки: <code>useState('')</code>.</p>
+<pre class="code" data-title="Терминал — консоль браузера (dev-режим)">
+A component is changing an uncontrolled input to be controlled. This is likely caused by the value changing from undefined to a defined value, which should not happen. Decide between using a controlled or uncontrolled input element for the lifetime of the component. More info: https://react.dev/link/controlled-components
+</pre>
+        <p><b>3.</b> Нет <code>event.preventDefault()</code> в <code>onSubmit</code>: страница перезагружается и состояние пропадает. <b>4.</b> Одновременно <code>value</code> и <code>defaultValue</code> у одного поля. <b>5.</b> Число из поля складывают как строку: <code>"2" + "3"</code> даёт <code>"23"</code>.</p>
+      </div>
+
+      <article class="task" id="q-forms">
+        <header><span class="task-num">ЗАДАЧА 1.1</span><h4>Проверь себя: управляемые поля</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Поле записано как <code>&lt;input value={city} /&gt;</code> без <code>onChange</code>. Что произойдёт?</p>
+          <ol class="options">
+            <li>Поле будет работать как обычно</li>
+            <li>Поле станет только для чтения: React каждый раз вернёт <code>city</code>, а в консоли появится предупреждение</li>
+            <li>Значение будет сохраняться в <code>localStorage</code></li>
+            <li>Форма не отправится</li>
+          </ol>
+          <div class="explain"><p>У управляемого поля единственный источник значения — состояние. Без <code>onChange</code> состояние не меняется, и React возвращает прежнее значение после каждого нажатия.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>В каких случаях разумно выбрать управляемое поле? Выберите два.</p>
+          <ol class="options">
+            <li>Список ресторанов должен фильтроваться на каждый введённый символ</li>
+            <li>Форма из двух полей, которая проверяется только при отправке</li>
+            <li>Поле телефона должно форматироваться на лету, например <code>+992 90 123 45 67</code></li>
+            <li>Нужно получить значение один раз, когда пользователь нажал «Отправить»</li>
+          </ol>
+          <div class="explain"><p>Если значение нужно в момент ввода (фильтр, маска, зависимое поле), оно должно быть в состоянии. Если достаточно прочитать при отправке, хватит неуправляемого поля.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Что вернёт <code>new FormData(form).get('qty')</code> для поля <code>&lt;input name="qty" type="number" defaultValue="2" /&gt;</code>?</p>
+          <ol class="options">
+            <li>Число <code>2</code></li>
+            <li><code>true</code></li>
+            <li>Строку <code>"2"</code></li>
+            <li><code>undefined</code></li>
+          </ol>
+          <div class="explain"><p>Значения полей — строки (или файлы). Число нужно получить самому: <code>Number(...)</code>. Сервер и схема должны знать, что пришла строка.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t1-controlled">
+        <header><span class="task-num">ЗАДАЧА 1.2</span><h4>Поле имени не печатает</h4><span class="level easy">лёгкая</span></header>
+        <p>Поле имени управляется состоянием, но в него нельзя ничего ввести. Допишите обработчик. Стенд «печатает» в поле слово <code>Ali</code> через 450 мс.</p>
+        <div class="playground" data-mode="react" data-title="Управляемое поле">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+
+export default function App() {
+  const [name, setName] = useState("");
+  console.log("имя: [" + name + "]");
+
+  // TODO: добавьте в input onChange, который кладёт event.target.value в состояние
+  return (
+    &lt;label&gt;
+      Имя &lt;input id="name" value={name} /&gt;
+    &lt;/label&gt;
+  );
+}
+
+// стенд: «печатает» в поле, как это делает пользователь
+setTimeout(() =&gt; {
+  const input = document.getElementById("name");
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+  setValue.call(input, "Ali");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}, 450);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>имя: []
+имя: [Ali]</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Обработчик получает событие: <code>event.target.value</code> — то, что сейчас в поле.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;input id="name" value={name} onChange={(event) =&gt; setName(event.target.value)} /&gt;</code></p></details>
+      </article>
+
+      <article class="task" id="t1-formdata">
+        <header><span class="task-num">ЗАДАЧА 1.3</span><h4>Заказ из неуправляемой формы</h4><span class="level mid">средняя</span></header>
+        <p>В форме нет состояния. Допишите <code>handleSubmit</code>: отмените перезагрузку, прочитайте <code>name</code> и <code>phone</code> через <code>FormData</code> и вызовите <code>onOrder</code>. Стенд отправит форму через 450 мс.</p>
+        <div class="playground" data-mode="react" data-title="Неуправляемая форма">
+<pre class="code" data-lang="jsx">
+function OrderForm({ onOrder }) {
+  function handleSubmit(event) {
+    // TODO 1: event.preventDefault()
+    // TODO 2: const data = new FormData(event.currentTarget);
+    // TODO 3: onOrder({ name: String(data.get("name")), phone: String(data.get("phone")) });
+  }
+
+  return (
+    &lt;form id="order" onSubmit={handleSubmit}&gt;
+      &lt;input name="name" defaultValue="Ali" /&gt;
+      &lt;input name="phone" defaultValue="+992901234567" /&gt;
+      &lt;button&gt;Заказать&lt;/button&gt;
+    &lt;/form&gt;
+  );
+}
+
+export default function App() {
+  return &lt;OrderForm onOrder={(order) =&gt; console.log("заказ:", order.name, order.phone)} /&gt;;
+}
+
+// стенд: отправляет форму
+setTimeout(() =&gt; document.getElementById("order").requestSubmit(), 450);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>заказ: Ali +992901234567</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>У события есть <code>event.currentTarget</code>: это сама форма, её и передают в <code>new FormData(...)</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>event.preventDefault();</code> <code>const data = new FormData(event.currentTarget);</code> <code>onOrder({ name: String(data.get("name")), phone: String(data.get("phone")) });</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/reference/react-dom/components/input" target="_blank" rel="noopener">react.dev — &lt;input&gt;</a> · <a href="https://react.dev/reference/react-dom/components/form" target="_blank" rel="noopener">react.dev — &lt;form&gt;</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/API/FormData" target="_blank" rel="noopener">MDN — FormData</a></p>
+    </section>
+
+    <!-- ============ 02 ============ -->
+    <section class="topic" id="schema">
+      <h2 data-toc="Валидация и схема Zod"><span class="num">02</span> Валидация: от ручной проверки к схеме Zod</h2>
+
+      <p>Проверка формы отвечает на два вопроса: <b>что считать верным</b> и <b>когда показывать ошибку</b>. Начнём с того, как это выглядит без библиотек.</p>
+
+<pre class="code" data-lang="ts" data-title="Ручная проверка: тип и правила записаны отдельно">
+type OrderValues = {
+  name: string
+  phone: string
+  address: string
+}
+
+type Errors = Partial&lt;Record&lt;keyof OrderValues, string&gt;&gt;
+
+function validate(values: OrderValues): Errors {
+  const errors: Errors = {}
+  if (values.name.trim().length &lt; 2) {
+    errors.name = 'Введите имя: не меньше 2 букв'
+  }
+  if (!/^\+992\d{9}$/.test(values.phone)) {
+    errors.phone = 'Телефон в формате +992901234567'
+  }
+  if (values.address.trim().length &lt; 5) {
+    errors.address = 'Укажите улицу и дом'
+  }
+  return errors
+}
+</pre>
+      <p>Это работает, но видны две слабости. Во-первых, <b>тип и правила живут отдельно</b>: добавили поле в тип, забыли в <code>validate</code>, и TypeScript промолчит. Во-вторых, всё остальное (когда проверять, какие поля «тронуты», как фокусировать первое ошибочное, как отправлять) вам придётся писать самим. Вторую часть берёт React Hook Form (раздел 3), первую — схема.</p>
+
+      <h3>Когда показывать ошибку</h3>
+      <ul>
+        <li><b>При отправке</b>: самый спокойный вариант и значение по умолчанию. Пользователь не видит красного, пока не закончил.</li>
+        <li><b>После ухода с поля</b> (<code>onBlur</code>, в React Hook Form режим <code>onTouched</code>): ошибка появляется, когда поле «потрогали», а дальше исчезает сразу при исправлении.</li>
+        <li><b>На каждый символ</b>: только там, где это помогает (силу пароля, счётчик символов). Красная ошибка на первой же букве имени раздражает.</li>
+      </ul>
+
+      <h3>Схема как единый источник правды</h3>
+      <p><b>Zod</b> — библиотека, в которой правила описываются один раз в виде <b>схемы</b>. Схема умеет три вещи: проверить значение во время работы программы, выдать понятные ошибки и <b>дать TypeScript тип</b> проверенных данных. Типы TypeScript исчезают при сборке, а схема остаётся кодом и проверяет настоящие данные, пришедшие из формы или с сервера.</p>
+
+<pre class="code" data-lang="ts" data-title="src/orderSchema.ts">
+import { z } from 'zod'
+
+export const PAYMENTS = ['cash', 'card'] as const
+
+export const orderSchema = z.object({
+  name: z.string().trim().min(2, 'Введите имя: не меньше 2 букв'),
+  phone: z.string().regex(/^\+992\d{9}$/, 'Телефон в формате +992901234567'),
+  address: z.string().trim().min(5, 'Укажите улицу и дом'),
+  comment: z.string().max(200, 'Не больше 200 символов'),
+  payment: z.enum(PAYMENTS, { error: 'Выберите способ оплаты' }),
+})
+
+// тип получаем из схемы: второй раз его не пишем
+export type OrderForm = z.infer&lt;typeof orderSchema&gt;
+</pre>
+      <p><code>OrderForm</code> — это ровно <code>{ name: string; phone: string; address: string; comment: string; payment: 'cash' | 'card' }</code>. Изменили правило в схеме, и тип изменился сам. Прочитайте это как «тип значений, которые гарантированно прошли схему».</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 250" role="img" aria-label="Схема Zod orderSchema в центре даёт три результата: тип OrderForm через z.infer, проверку значений через zodResolver в React Hook Form и тексты ошибок для интерфейса. Позже та же схема проверяет данные на сервере">
+          <rect class="fill-y" x="250" y="90" width="220" height="64" rx="12" /><text x="360" y="118" text-anchor="middle">orderSchema</text><text class="sub mono" x="360" y="138" text-anchor="middle">z.object({ … })</text>
+          <rect class="box g" x="20" y="10" width="220" height="56" rx="12" /><text x="130" y="34" text-anchor="middle">Тип OrderForm</text><text class="sub mono" x="130" y="52" text-anchor="middle">z.infer&lt;typeof …&gt;</text>
+          <rect class="box b" x="480" y="10" width="220" height="56" rx="12" /><text x="590" y="34" text-anchor="middle">Проверка в форме</text><text class="sub mono" x="590" y="52" text-anchor="middle">zodResolver(schema)</text>
+          <rect class="box" x="20" y="178" width="220" height="56" rx="12" /><text x="130" y="202" text-anchor="middle">Тексты ошибок</text><text class="sub mono" x="130" y="220" text-anchor="middle">errors.name?.message</text>
+          <rect class="box o" x="480" y="178" width="220" height="56" rx="12" /><text x="590" y="202" text-anchor="middle">Сервер</text><text class="sub" x="590" y="220" text-anchor="middle">та же схема, урок 18</text>
+          <path class="arr" d="M300 90 L190 66" /><path class="arr-head" d="M182 64 l11 -1 l-3 10 z" />
+          <path class="arr" d="M420 90 L530 66" /><path class="arr-head" d="M538 64 l-11 -1 l3 10 z" />
+          <path class="arr" d="M300 154 L190 178" /><path class="arr-head" d="M182 180 l11 1 l-3 -10 z" />
+          <path class="arr" d="M420 154 L530 178" /><path class="arr-head" d="M538 180 l-11 1 l3 -10 z" />
+        </svg>
+        <figcaption>Одна схема кормит тип, проверку, тексты ошибок и (позже) сервер</figcaption>
+      </figure>
+
+      <h3>Как Zod отвечает на плохие данные</h3>
+      <p><code>schema.parse(data)</code> возвращает данные или выбрасывает ошибку, а <code>schema.safeParse(data)</code> ничего не выбрасывает и возвращает объект с полем <code>success</code>. Формам нужен второй вариант: ошибки — обычная ситуация, а не исключение.</p>
+<pre class="code" data-lang="ts" data-title="safeParse и z.flattenError">
+const result = orderSchema.safeParse({
+  name: 'А',
+  phone: '123',
+  address: 'пр. Рудаки, 45',
+  comment: '',
+  payment: 'cheque',
+})
+
+if (!result.success) {
+  console.log(z.flattenError(result.error).fieldErrors)
+}
+</pre>
+<pre class="code" data-title="Терминал — вывод (Zod 4.6)">
+{
+  name: [ 'Введите имя: не меньше 2 букв' ],
+  phone: [ 'Телефон в формате +992901234567' ],
+  payment: [ 'Выберите способ оплаты' ]
+}
+</pre>
+      <p>Запомните форму результата: <b>имя поля → список сообщений</b>. React Hook Form раскладывает ошибки так же, а вам остаётся показать <code>errors.name?.message</code>. Если поле пропущено совсем, Zod пожалуется стандартным текстом <code>Invalid input: expected string, received undefined</code>: пользователю он ничего не говорит, поэтому в форме у каждого поля есть значение по умолчанию.</p>
+
+      <h3>Несколько приёмов Zod</h3>
+      <ul>
+        <li><code>z.string().trim().min(2, 'текст')</code>: цепочка проверок, сообщение вторым аргументом. <code>trim()</code> ещё и обрезает пробелы в результате.</li>
+        <li><code>z.email('текст')</code>: проверка адреса (в Zod 4 это короткая запись; прежняя <code>z.string().email()</code> работает, но помечена устаревшей, как и параметр <code>message</code> вместо <code>error</code>).</li>
+        <li><code>z.enum([...] as const)</code>: одно из значений, тип получается union-ом из урока 2.</li>
+        <li><code>.refine(проверка, { path: ['confirm'], error: '...' })</code>: правило, которое смотрит на несколько полей сразу (пароль и повтор пароля). Вы используете его в домашнем задании.</li>
+        <li>Необязательное текстовое поле: пустое поле формы — это <code>''</code>, а не <code>undefined</code>, поэтому его описывают как <code>z.string()</code> без минимума, как <code>comment</code> выше.</li>
+      </ul>
+
+      <h3>TypeScript: тип из одного источника</h3>
+      <p>Приём «тип берётся из значения» работает и без Zod: <code>as const</code> и <code>typeof</code> вы уже видели в уроке 2 на <code>CUISINES</code>. <code>z.infer</code> — то же самое, только значением является схема. Потренируйтесь на простом примере в задачах ниже.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Схема — это приёмщик на складе в Душанбе: один человек с одним списком правил. Он проверяет каждую машину (значение), выписывает акт с причинами отказа (сообщения) и ставит штамп «принято» (тип). Если бы правила держали в голове и водитель, и кладовщик, и бухгалтер, они бы рано или поздно разошлись.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Тип формы написан руками рядом со схемой: при правке схемы тип «отстаёт». Берите <code>z.infer</code>. <b>2.</b> Валидация только на клиенте: форму обходят запросом напрямую, сервер обязан проверить всё заново (урок 18). <b>3.</b> Числа из полей: схема получает строку, а не число; для чисел нужно преобразование, и тогда тип на входе и на выходе у схемы разный. Пока оставляйте поля строками. <b>4.</b> Сообщения на английском по умолчанию: пишите свои, как <code>Invalid input: expected string, received undefined</code> пользователю ничего не говорит. <b>5.</b> Обязательное поле описано как <code>z.string()</code>: пустая строка проходит. Добавьте <code>.min(1, 'текст')</code> или более точное правило.</p>
+      </div>
+
+      <article class="task" id="q-schema">
+        <header><span class="task-num">ЗАДАЧА 2.1</span><h4>Проверь себя: схема и тип</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Зачем получать тип через <code>z.infer</code>, а не написать <code>type OrderForm = { … }</code> рядом со схемой?</p>
+          <ol class="options">
+            <li>Так код быстрее выполняется</li>
+            <li>Правила и тип нельзя рассинхронизировать: меняется схема, меняется и тип</li>
+            <li>Без этого Zod не работает</li>
+            <li>Рукописный тип нельзя использовать в компоненте</li>
+          </ol>
+          <div class="explain"><p>Два описания одного и того же рано или поздно расходятся. Схема — единственный источник: из неё и проверка, и тип.</p></div>
+        </div>
+        <div class="quiz" data-answer="1">
+          <p>Почему тип <code>OrderForm</code> сам по себе не защищает от неверных данных от пользователя?</p>
+          <ol class="options">
+            <li>Типы TypeScript существуют только при сборке: во время работы проверяет только схема</li>
+            <li>Потому что TypeScript ошибается</li>
+            <li>Потому что тип нельзя импортировать</li>
+            <li>Потому что тип работает только для чисел</li>
+          </ol>
+          <div class="explain"><p>В браузере от типов остаётся обычный JavaScript. Данные из формы или сети проверяются кодом: схемой Zod или руками.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Когда лучше показывать ошибку в обычной форме заказа?</p>
+          <ol class="options">
+            <li>На каждый введённый символ, чтобы человек сразу видел проблему</li>
+            <li>Только после перезагрузки страницы</li>
+            <li>При отправке и после ухода с поля, а после этого убирать при исправлении</li>
+            <li>Никогда: хватит одной общей надписи «Форма заполнена неверно»</li>
+          </ol>
+          <div class="explain"><p>Красное на первой букве пугает, а общая надпись не говорит, что исправлять. Ошибка при отправке или после ухода с поля — спокойный и понятный вариант.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t2-validate">
+        <header><span class="task-num">ЗАДАЧА 2.2</span><h4>Функция validate с типизированными ошибками</h4><span class="level mid">средняя</span></header>
+        <p>Допишите <code>validate</code>: она возвращает объект ошибок только для неверных полей. Правила: имя — не меньше 2 букв после обрезки пробелов, телефон — формат <code>+992</code> и 9 цифр. Сообщения возьмите из ожидаемого вывода. Тип <code>Errors</code> задан: ключ, которого нет в <code>OrderValues</code>, компилятор не примет.</p>
+<pre class="code" data-run data-lang="ts">
+type OrderValues = { name: string; phone: string };
+type Errors = Partial&lt;Record&lt;keyof OrderValues, string&gt;&gt;;
+
+function validate(values: OrderValues): Errors {
+  const errors: Errors = {};
+  // TODO: заполните errors.name и errors.phone по правилам из задания
+  return errors;
+}
+
+console.log(JSON.stringify(validate({ name: "А", phone: "123" })));
+console.log(JSON.stringify(validate({ name: " Али ", phone: "+992901234567" })));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>{"name":"Введите имя: не меньше 2 букв","phone":"Телефон в формате +992901234567"}
+{}</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p><code>values.name.trim().length &lt; 2</code> для имени; для телефона подойдёт регулярное выражение <code>/^\+992\d{9}$/</code> и метод <code>test</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>if (values.name.trim().length &lt; 2) errors.name = "Введите имя: не меньше 2 букв";</code> <code>if (!/^\+992\d{9}$/.test(values.phone)) errors.phone = "Телефон в формате +992901234567";</code></p></details>
+      </article>
+
+      <article class="task" id="t2-type">
+        <header><span class="task-num">ЗАДАЧА 2.3</span><h4>Тип из значения: уберите дубль</h4><span class="level mid">средняя</span></header>
+        <p>Тип <code>OrderValues</code> написан вручную и отстал от <code>emptyOrder</code>: в нём нет поля <code>comment</code>, а <code>payment</code> записан слишком широко. Компилятор сообщает об ошибке. Не дописывайте поля вручную: получите тип из значения (так же, как <code>z.infer</code> берёт его из схемы).</p>
+<pre class="code" data-run data-lang="ts">
+const PAYMENTS = ["cash", "card"] as const;
+type Payment = (typeof PAYMENTS)[number];
+
+const emptyOrder = {
+  name: "",
+  phone: "+992",
+  comment: "",
+  payment: "cash" as Payment,
+};
+
+// TODO: замените тип, написанный вручную, на тип, полученный из emptyOrder
+type OrderValues = { name: string; phone: string; payment: string };
+
+function describe(order: OrderValues): string {
+  return order.name + ", " + order.phone + ", " + order.comment + ", " + order.payment;
+}
+
+const copy: OrderValues = { ...emptyOrder, name: "Али" };
+console.log(describe(copy));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>Али, +992, , cash</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Оператор <code>typeof</code> в позиции типа берёт тип переменной: <code>type X = typeof emptyOrder</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>type OrderValues = typeof emptyOrder;</code> — после этого <code>comment</code> и точный <code>payment</code> появятся сами.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://zod.dev/" target="_blank" rel="noopener">zod.dev — Intro</a> · <a href="https://zod.dev/basics" target="_blank" rel="noopener">zod.dev — Basics (parse, safeParse, z.infer)</a> · <a href="https://zod.dev/error-formatting" target="_blank" rel="noopener">zod.dev — Formatting errors</a></p>
+    </section>
+
+    <!-- ============ 03 ============ -->
+    <section class="topic" id="rhf">
+      <h2 data-toc="React Hook Form"><span class="num">03</span> React Hook Form: форма без ручной рутины</h2>
+
+      <p>Если писать форму вручную, на каждое поле нужны <code>useState</code>, <code>onChange</code>, <code>onBlur</code>, флаги «тронуто», сбор ошибок и перенос фокуса. <b>React Hook Form</b> (RHF) делает это за вас и при этом не перерисовывает форму на каждую букву: поля остаются неуправляемыми, а библиотека читает их через <code>ref</code>. Она вместе с Zod ставится в проект:</p>
+<pre class="code" data-title="Терминал">
+npm install react-hook-form zod @hookform/resolvers
+</pre>
+      <p>На момент урока это <code>react-hook-form</code> 7.91, <code>zod</code> 4.6 и <code>@hookform/resolvers</code> 6.0. Пакет <code>@hookform/resolvers</code> — мост между RHF и схемой: функция <code>zodResolver(schema)</code> говорит форме «проверяй значения этой схемой».</p>
+
+<pre class="code" data-lang="tsx" data-title="Минимальная форма на RHF и Zod">
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import { orderSchema, type OrderForm } from './orderSchema'
+
+export default function MiniForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm&lt;OrderForm&gt;({
+    resolver: zodResolver(orderSchema),
+    defaultValues: { name: '', phone: '+992', address: '', comment: '', payment: 'cash' },
+  })
+
+  async function onSubmit(values: OrderForm) {
+    // сюда попадают только значения, прошедшие схему
+    console.log(values)
+  }
+
+  return (
+    &lt;form noValidate onSubmit={handleSubmit(onSubmit)}&gt;
+      &lt;input {...register('name')} /&gt;
+      {errors.name &amp;&amp; &lt;p role="alert"&gt;{errors.name.message}&lt;/p&gt;}
+      &lt;button disabled={isSubmitting}&gt;Отправить&lt;/button&gt;
+    &lt;/form&gt;
+  )
+}
+</pre>
+
+      <h3>Из чего состоит API</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Что</th><th>Зачем</th></tr></thead>
+          <tbody>
+            <tr><td><code>useForm&lt;OrderForm&gt;({ resolver, defaultValues })</code></td><td>Создаёт форму. Дженерик задаёт тип значений, <code>defaultValues</code> — начальные значения (всегда задавайте их для каждого поля: так поле не «переезжает» из неуправляемого в управляемое)</td></tr>
+            <tr><td><code>{...register('name')}</code></td><td>Возвращает <code>name</code>, <code>onChange</code>, <code>onBlur</code> и <code>ref</code> для поля. Имя принимается только из ключей <code>OrderForm</code></td></tr>
+            <tr><td><code>handleSubmit(onSubmit)</code></td><td>Останавливает отправку, проверяет схемой. Если всё верно — вызывает ваш <code>onSubmit</code> с типизированными значениями, иначе заполняет <code>errors</code> и переводит фокус на первое неверное поле</td></tr>
+            <tr><td><code>formState</code></td><td><code>errors</code>, <code>isSubmitting</code> (пока идёт ваш async-<code>onSubmit</code>), <code>isDirty</code>, <code>isValid</code></td></tr>
+            <tr><td><code>setError('root.server', { message })</code></td><td>Кладёт в форму ошибку, пришедшую с сервера. Читается как <code>errors.root?.server?.message</code></td></tr>
+            <tr><td><code>reset()</code></td><td>Возвращает форму к <code>defaultValues</code> (или новым значениям)</td></tr>
+            <tr><td><code>mode: 'onTouched'</code></td><td>Первая проверка — после ухода с поля, потом на каждое изменение. По умолчанию проверка идёт при отправке</td></tr>
+            <tr><td><code>Controller</code></td><td>Мост для компонентов, которым нужны <code>value</code> и <code>onChange</code> (самописный выбор, внешние UI-библиотеки). Для обычных <code>input</code> не нужен</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Осторожно с <code>watch()</code>: он подписывает компонент на значения и снова делает перерисовку на каждую букву. Если значение нужно только при отправке, оно уже есть в <code>onSubmit</code>. Есть и вторая причина быть осторожным: <code>watch()</code> хранит скрытое изменяемое состояние, поэтому React Compiler (урок 6) такие компоненты пропускает, а правило линтера <code>react-hooks/incompatible-library</code> предупреждает о них. Если значение нужно показывать на экране, берите хук <code>useWatch</code>. Это одна из причин, почему в основном проекте курса компилятор не включён.</p>
+
+      <h3>TypeScript следит за именами полей</h3>
+      <p>Раз тип формы взят из схемы, опечатка в имени поля перестаёт быть тихой. Вот что говорит компилятор, если написать <code>register('nmae')</code> или забыть, что ошибка может отсутствовать:</p>
+<pre class="code" data-title="Терминал — вывод tsc -b">
+src/MiniForm.tsx(12,30): error TS2345: Argument of type '"nmae"' is not assignable to parameter of type '"address" | "comment" | "name" | "payment" | "phone"'.
+src/MiniForm.tsx(13,24): error TS18048: 'errors.name' is possibly 'undefined'.
+</pre>
+      <p>Вторая ошибка полезна: <code>errors.name</code> есть только тогда, когда поле неверно, поэтому читайте <code>errors.name?.message</code> или проверяйте наличие, как в примере выше.</p>
+
+      <h3>Ошибка сервера и «молчащая» форма</h3>
+      <p>Схема проверяет форму на клиенте, но сервер знает больше (ресторан закрыт, номер заблокирован). Ошибку сервера ловят в <code>try/catch</code> вокруг запроса и кладут в форму через <code>setError('root.server', …)</code>. Вторая типичная беда: в схеме есть поле, а в разметке его нет (или оно названо иначе). Тогда <code>handleSubmit</code> не вызывает <code>onSubmit</code>, а ошибку показывать некому: форма «молчит». Чтобы поймать это, передайте вторым аргументом обработчик неверной отправки: <code>handleSubmit(onSubmit, (errors) =&gt; console.log(errors))</code>. Вы проделаете это в практике.</p>
+
+      <div class="yt" data-id="WlR1p8DCdNY" data-title="React Hook Form Tutorial: Zod, Form State, Controller — канал webdecoded (на английском, включите субтитры)"></div>
+      <p class="muted">Ролик на английском: связка RHF и Zod, состояние формы и <code>Controller</code>. Сверяйте имена функций с официальной документацией: версии библиотек выходят часто.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>RHF — администратор в приёмной клиники. Вы заполняете карточку на листках (поля), он не читает каждую букву, пока вы пишете. Когда вы протянули карточку, он сверяет её с правилами (схема), и если что-то не так, молча подводит вас к первому неверному полю и показывает, что исправить.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Нет <code>defaultValues</code>: поля стартуют с <code>undefined</code>, а схема ждёт строку. <b>2.</b> <code>register('name')</code> без распаковки: пишите <code>{...register('name')}</code>. <b>3.</b> Своё <code>onChange</code> у поля <code>register</code> перебивает RHF: передайте его внутрь <code>register('name', { onChange })</code>. <b>4.</b> Поле в схеме есть, в форме нет: форма молчит, как описано выше. <b>5.</b> Старые примеры с <code>ref={register}</code> (RHF версии 6) в ответах ИИ: в версии 7 это не работает. <b>6.</b> Типизированный <code>onSubmit = (data: any)</code>: тип берите из схемы.</p>
+      </div>
+
+      <article class="task" id="q-rhf">
+        <header><span class="task-num">ЗАДАЧА 3.1</span><h4>Проверь себя: React Hook Form</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="1">
+          <p>Что происходит, если схема нашла ошибку, когда пользователь нажал «Отправить» в форме с <code>handleSubmit(onSubmit)</code>?</p>
+          <ol class="options">
+            <li><code>onSubmit</code> не вызывается, <code>errors</code> заполняются, фокус идёт на первое неверное поле</li>
+            <li><code>onSubmit</code> вызывается с пустым объектом</li>
+            <li>Страница перезагружается</li>
+            <li>Форма отправляется на сервер с пометкой «ошибка»</li>
+          </ol>
+          <div class="explain"><p>Ваш <code>onSubmit</code> получает только проверенные значения. Всё остальное библиотека берёт на себя.</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>В схему добавили <code>email: z.email()</code>, а поле в разметке забыли. Что увидит пользователь?</p>
+          <ol class="options">
+            <li>Красную ошибку возле нового поля</li>
+            <li>Заказ отправится без email</li>
+            <li>Ничего: форма не отправляется, а ошибку показывать некому</li>
+            <li>Сообщение от TypeScript в браузере</li>
+          </ol>
+          <div class="explain"><p>Для невидимого поля нет места, где показать <code>errors.email</code>. Отладка: второй аргумент <code>handleSubmit(onSubmit, onInvalid)</code> и <code>console.log(errors)</code>.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Какие две вещи помогают форме на RHF не перерисовываться на каждую букву?</p>
+          <ol class="options">
+            <li>Вызвать <code>watch()</code> без аргументов в теле компонента</li>
+            <li>Поля остаются неуправляемыми: значения читаются через <code>ref</code></li>
+            <li>Хранить каждое поле в своём <code>useState</code></li>
+            <li>Читать значения в <code>onSubmit</code>, а не следить за ними через <code>watch</code></li>
+          </ol>
+          <div class="explain"><p>Экономия RHF — как раз в неуправляемых полях. <code>watch()</code> и отдельные <code>useState</code> возвращают рендер на каждый символ.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t3-field">
+        <header><span class="task-num">ЗАДАЧА 3.2</span><h4>Опечатка в имени поля: ловит компилятор</h4><span class="level easy">лёгкая</span></header>
+        <p>Функция <code>register</code> принимает только имена полей формы, как в RHF. В коде две опечатки: компилятор их находит. Исправьте обе, чтобы код запустился.</p>
+<pre class="code" data-run data-lang="ts">
+type OrderValues = { name: string; phone: string; address: string };
+
+function register(field: keyof OrderValues): { name: string } {
+  return { name: field };
+}
+
+const fields = [register("name"), register("phon"), register("adress")];
+console.log(fields.map((f) =&gt; f.name).join(", "));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>name, phone, address</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Компилятор показывает допустимые имена в тексте ошибки: сравните их с тем, что написано в вызовах.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>register("phone")</code> и <code>register("address")</code>.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react-hook-form.com/get-started" target="_blank" rel="noopener">react-hook-form.com — Get Started</a> · <a href="https://react-hook-form.com/docs/useform/handlesubmit" target="_blank" rel="noopener">handleSubmit</a> · <a href="https://react-hook-form.com/docs/useform/seterror" target="_blank" rel="noopener">setError</a> · <a href="https://github.com/react-hook-form/resolvers" target="_blank" rel="noopener">@hookform/resolvers</a></p>
+    </section>
+
+    <!-- ============ 04 ============ -->
+    <section class="topic" id="portal">
+      <h2 data-toc="Модалки и порталы"><span class="num">04</span> Модальные окна и порталы</h2>
+
+      <p><b>Модальное окно</b> — блок поверх страницы, который требует ответа: пока он открыт, остальная страница «заморожена». Рисовать его там, где вы его объявили (внутри карточки или корзины), опасно: у родителей бывают <code>overflow: hidden</code>, <code>transform</code> или собственный <code>z-index</code>, и окно обрежется или окажется под другим слоем. Поэтому окно выносят в конец <code>&lt;body&gt;</code>. В React для этого есть <b>портал</b>.</p>
+
+<pre class="code" data-lang="tsx" data-title="createPortal(что, куда)">
+import { createPortal } from 'react-dom'
+
+function Hint({ children }: { children: ReactNode }) {
+  return createPortal(
+    &lt;div className="fixed inset-0 z-50"&gt;{children}&lt;/div&gt;,
+    document.body,
+  )
+}
+</pre>
+      <p>Первый аргумент — что рисовать, второй — настоящий DOM-элемент, куда это поместить. Компонент остаётся там же, где вы его написали: в дереве React он потомок своего родителя, а в DOM его разметка лежит в <code>document.body</code>.</p>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 260" role="img" aria-label="Два дерева. Дерево React: App содержит Cart, Cart содержит Modal. Дерево DOM: body содержит div root с разметкой App и Cart, а разметка Modal лежит в body отдельно, рядом с root. Событие из Modal поднимается по дереву React к Cart и App, а не по DOM">
+          <text x="170" y="20" text-anchor="middle">Дерево React</text>
+          <rect class="fill-y" x="100" y="34" width="140" height="38" rx="10" /><text x="170" y="58" text-anchor="middle">App</text>
+          <rect class="box" x="100" y="100" width="140" height="38" rx="10" /><text x="170" y="124" text-anchor="middle">Cart</text>
+          <rect class="fill-g" x="100" y="166" width="140" height="38" rx="10" /><text x="170" y="190" text-anchor="middle">Modal</text>
+          <path class="arr" d="M170 72 V94" /><path class="arr-head" d="M170 100 l-5 -10 h10 z" />
+          <path class="arr" d="M170 138 V160" /><path class="arr-head" d="M170 166 l-5 -10 h10 z" />
+          <path class="arr t-b" d="M250 185 H282 V119 H250" style="stroke: var(--blue)" /><path class="arr-head" d="M242 119 l10 -5 v10 z" style="fill: var(--blue)" /><text class="sub t-b" x="290" y="152">click всплывает</text><text class="sub t-b" x="290" y="168">до Cart и App</text>
+          <text x="560" y="20" text-anchor="middle">Дерево DOM</text>
+          <rect class="box" x="440" y="34" width="240" height="38" rx="10" /><text x="560" y="58" text-anchor="middle">body</text>
+          <rect class="box b" x="460" y="92" width="200" height="96" rx="10" /><text class="mono" x="560" y="112" text-anchor="middle">div#root</text><text class="sub" x="560" y="138" text-anchor="middle">разметка App и Cart</text><text class="sub" x="560" y="158" text-anchor="middle">overflow, transform…</text>
+          <rect class="fill-g" x="460" y="204" width="200" height="40" rx="10" /><text class="mono" x="560" y="229" text-anchor="middle">div (разметка Modal)</text>
+          <path class="arr" d="M560 72 V84" /><path class="arr-head" d="M560 92 l-5 -10 h10 z" /><path class="arr" d="M450 72 V224 H452" /><path class="arr-head" d="M460 224 l-10 -5 v10 z" />
+        </svg>
+        <figcaption>Портал меняет, где разметка лежит в DOM, но не меняет место компонента в дереве React</figcaption>
+      </figure>
+
+      <h3>События и контекст идут по дереву React</h3>
+      <p>Самое неожиданное в порталах: <b>событие из портала всплывает по дереву React, а не по DOM</b>. Если у карточки есть <code>onClick</code>, а окно из портала внутри неё, клик по кнопке в окне дойдёт до <code>onClick</code> карточки, хотя в DOM окно лежит в <code>body</code>. Если родителю это мешает, остановите всплытие в окне: <code>event.stopPropagation()</code>. Контекст (урок 8) через портал тоже проходит.</p>
+
+      <h3>Куда рисовать и что говорит TypeScript</h3>
+      <p>Проще всего — <code>document.body</code>: он всегда есть. Можно завести контейнер <code>&lt;div id="modal-root"&gt;</code> в <code>index.html</code>, но тогда <code>document.getElementById</code> вернёт <code>HTMLElement | null</code>, а портал принимает только <code>Element</code> или <code>DocumentFragment</code>:</p>
+<pre class="code" data-title="Терминал — вывод tsc -b">
+src/Hint.tsx(3,33): error TS2345: Argument of type 'HTMLElement | null' is not assignable to parameter of type 'DocumentFragment | Element'.
+  Type 'null' is not assignable to type 'DocumentFragment | Element'.
+</pre>
+      <p>А если опечататься в id и обойти компилятор через <code>as HTMLElement</code>, в браузере будет ошибка во время работы:</p>
+<pre class="code" data-title="Терминал — консоль браузера">
+Uncaught Error: Target container is not a DOM element.
+</pre>
+      <p>В SPA с Vite <code>document</code> всегда есть. В Next.js компоненты сначала рисуются на сервере, где <code>document</code> нет: там порталы подключают после монтирования (вернёмся к этому в уроке 16). Типы остальных частей окна: <code>children: ReactNode</code>, обработчики <code>KeyboardEvent&lt;HTMLDivElement&gt;</code> и <code>MouseEvent&lt;HTMLDivElement&gt;</code>.</p>
+
+      <h3>Свой диалог или встроенный &lt;dialog&gt;</h3>
+      <p>В браузерах есть тег <code>&lt;dialog&gt;</code> с методом <code>showModal()</code>: он сам даёт слой поверх страницы, закрытие по Esc, затемнение <code>::backdrop</code> и запрет фокуса на странице под ним. Для новых проектов это отличный вариант, и стоит его знать. В курсе мы пишем окно через портал: так видно, из чего состоит доступность (раздел 5), а портал нужен и для подсказок, выпадающих меню и уведомлений. В дальнейшем библиотеки интерфейса (Radix, Headless UI) решают то же самое готовыми компонентами.</p>
+
+      <div class="yt" data-id="kB7EX-wbyWQ" data-title="Модальные окна в React, Portals, createPortal — канал Dara Frontend"></div>
+      <p class="muted">Ролик на русском: как устроен портал и как собрать на нём окно. Фокус и доступность в нём затронуты слабо: их мы добавим в разделе 5.</p>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Портал — как объявление на стене чойхоны. Заказ вы приняли за своим столом (место в дереве React), но табличку «Столик занят» вешают на главную стену у входа (<code>body</code>), чтобы её видели все и ни один стол её не загораживал. Если на табличку нажмёт гость, вопрос всё равно дойдёт до вашего стола: событие идёт по дереву React.</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Окно внутри карточки с <code>overflow: hidden</code>: оно обрезано. <b>2.</b> Клик в окне срабатывает на карточке под ним (всплытие по дереву React). <b>3.</b> Закрытие по клику на фон срабатывает и от клика внутри окна: сравнивайте <code>event.target === event.currentTarget</code>. <b>4.</b> <code>document.getElementById('modal-root')</code> без проверки на <code>null</code>. <b>5.</b> Окно всегда смонтировано и скрыто стилем: форма внутри сохраняет старое состояние. Рисуйте <code>{open &amp;&amp; &lt;Modal /&gt;}</code>: при закрытии состояние сбросится, а фокус вернётся (раздел 5).</p>
+      </div>
+
+      <article class="task" id="q-portal">
+        <header><span class="task-num">ЗАДАЧА 4.1</span><h4>Проверь себя: порталы</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Кнопка внутри окна, выведенного порталом в <code>document.body</code>, нажата. У компонента-родителя, из которого рисуется портал, есть <code>onClick</code>. Что будет?</p>
+          <ol class="options">
+            <li>Родитель не узнает о клике: в DOM окно лежит отдельно</li>
+            <li>Родительский <code>onClick</code> сработает: событие всплывает по дереву React</li>
+            <li>Сработают только нативные обработчики</li>
+            <li>React выбросит ошибку</li>
+          </ol>
+          <div class="explain"><p>Поэтому портал не отменяет <code>stopPropagation</code>, когда родителю клик в окне не нужен.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,4">
+          <p>Что решает портал? Выберите два пункта.</p>
+          <ol class="options">
+            <li>Обрезание окна родителем с <code>overflow: hidden</code></li>
+            <li>Фокус возвращается на кнопку сам</li>
+            <li>Закрытие по Esc появляется само</li>
+            <li>Перекрытие окна чужим <code>z-index</code> и <code>transform</code> у родителей</li>
+          </ol>
+          <div class="explain"><p>Портал отвечает только за место разметки в DOM. Фокус, Esc и aria вы добавляете сами (или берёте у <code>&lt;dialog&gt;</code> и готовых библиотек).</p></div>
+        </div>
+        <div class="quiz" data-answer="3">
+          <p>Зачем в обработчике клика по фону сравнивать <code>event.target === event.currentTarget</code>?</p>
+          <ol class="options">
+            <li>Чтобы окно открывалось быстрее</li>
+            <li>Чтобы запретить закрытие по Esc</li>
+            <li>Чтобы клик внутри окна, всплывший к фону, не закрывал окно</li>
+            <li>Чтобы избежать ошибки TypeScript</li>
+          </ol>
+          <div class="explain"><p><code>target</code> — элемент, по которому кликнули, <code>currentTarget</code> — тот, у кого висит обработчик. Совпадают они только при клике ровно по фону.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t4-portal">
+        <header><span class="task-num">ЗАДАЧА 4.2</span><h4>Вынесите окно в body</h4><span class="level mid">средняя</span></header>
+        <p>Окно сейчас лежит внутри карточки. Выведите его через <code>createPortal</code> в <code>document.body</code> и остановите всплытие клика, чтобы карточка не получала клик из окна. Стенд проверит, где лежит окно, и нажмёт кнопку.</p>
+        <div class="playground" data-mode="react" data-title="Портал и всплытие">
+<pre class="code" data-lang="jsx">
+import { createPortal } from "react-dom";
+
+function Card() {
+  return (
+    &lt;div id="card" onClick={() =&gt; console.log("карточка получила клик")}&gt;
+      &lt;h3&gt;Navruz&lt;/h3&gt;
+      {/* TODO 1: оберните окно в createPortal(…, document.body) */}
+      {/* TODO 2: в onClick окна вызовите event.stopPropagation() */}
+      &lt;div id="win" role="dialog" aria-label="Заказ" onClick={() =&gt; {}}&gt;
+        &lt;button id="ok" onClick={() =&gt; console.log("кнопка нажата")}&gt;Понятно&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}
+
+export default function App() {
+  return &lt;Card /&gt;;
+}
+
+// стенд
+setTimeout(() =&gt; {
+  const win = document.getElementById("win");
+  console.log("окно прямо в body:", win.parentElement === document.body);
+}, 450);
+setTimeout(() =&gt; document.getElementById("ok").click(), 600);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>окно прямо в body: true
+кнопка нажата</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Портал оборачивает JSX окна: <code>createPortal(&lt;div id="win" …&gt;…&lt;/div&gt;, document.body)</code>. Не забудьте импорт — он уже есть вверху.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>onClick={(event) =&gt; event.stopPropagation()}</code> у <code>div#win</code>: кнопка внутри успеет вывести своё сообщение, а до карточки клик не дойдёт.</p></details>
+      </article>
+
+      <article class="task" id="t4-modal">
+        <header><span class="task-num">ЗАДАЧА 4.3</span><h4>Закрытие по фону и по Esc</h4><span class="level hard">сложная</span></header>
+        <p>Допишите <code>Modal</code>: клик по фону закрывает окно, клик внутри окна не закрывает, Esc закрывает. Стенд кликает по окну (ничего не должно произойти), по фону (закрытие), снова открывает и нажимает Esc.</p>
+        <div class="playground" data-mode="react" data-title="Закрытие модального окна">
+<pre class="code" data-lang="jsx">
+import { useState } from "react";
+import { createPortal } from "react-dom";
+
+function Modal({ onClose, children }) {
+  // TODO 1: handleKeyDown: если event.key === "Escape", вызвать onClose()
+  // TODO 2: handleBackdropClick: закрывать, только если event.target === event.currentTarget
+  return createPortal(
+    &lt;div id="backdrop" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.4)" }}&gt;
+      &lt;div id="content" role="dialog" aria-label="Заказ" style={{ background: "#fff", margin: "40px auto", padding: 16, width: 240 }}&gt;
+        {children}
+      &lt;/div&gt;
+    &lt;/div&gt;,
+    document.body
+  );
+}
+
+export default function App() {
+  const [open, setOpen] = useState(true);
+  console.log("окно:", open ? "открыто" : "закрыто");
+  return (
+    &lt;&gt;
+      &lt;button id="open" onClick={() =&gt; setOpen(true)}&gt;Открыть&lt;/button&gt;
+      {open &amp;&amp; (
+        &lt;Modal onClose={() =&gt; setOpen(false)}&gt;
+          &lt;p&gt;Заказ принят&lt;/p&gt;
+        &lt;/Modal&gt;
+      )}
+    &lt;/&gt;
+  );
+}
+
+// стенд
+setTimeout(() =&gt; document.getElementById("content").click(), 500);
+setTimeout(() =&gt; document.getElementById("backdrop").click(), 700);
+setTimeout(() =&gt; document.getElementById("open").click(), 900);
+setTimeout(() =&gt; {
+  document.getElementById("backdrop").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+}, 1100);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>окно: открыто
+окно: закрыто
+окно: открыто
+окно: закрыто</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Оба обработчика вешаются на <code>div#backdrop</code>: <code>onKeyDown={handleKeyDown}</code> и <code>onClick={handleBackdropClick}</code>. Клик внутри окна всплывает до фона, поэтому нужна проверка <code>target === currentTarget</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>function handleKeyDown(event) { if (event.key === "Escape") onClose(); }</code> и <code>function handleBackdropClick(event) { if (event.target === event.currentTarget) onClose(); }</code></p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react.dev/reference/react-dom/createPortal" target="_blank" rel="noopener">react.dev — createPortal</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/dialog" target="_blank" rel="noopener">MDN — &lt;dialog&gt;</a></p>
+    </section>
+
+    <!-- ============ 05 ============ -->
+    <section class="topic" id="a11y">
+      <h2 data-toc="Доступность"><span class="num">05</span> Базовая доступность: фокус, Esc и aria</h2>
+
+      <p>Не все пользователи работают мышью и смотрят на экран. Кто-то переключается клавишей Tab, кто-то слушает страницу экранным диктором (VoiceOver, NVDA, TalkBack), кто-то просто держит в руке чай и нажимает Esc, чтобы закрыть окно. Хорошая новость: базовая доступность — это пять привычек, и они делают форму удобнее для всех.</p>
+
+      <h3>Привычка 1. У каждого поля есть подпись</h3>
+      <p>Диктор читает «Имя, поле ввода» только если поле связано с <code>&lt;label&gt;</code>. Связь делает <code>htmlFor</code> + <code>id</code> или обёртка. В повторяющемся компоненте <code>id</code> берут из <code>useId()</code>, чтобы два поля не получили один <code>id</code>.</p>
+
+      <h3>Привычка 2. Ошибка связана с полем</h3>
+      <ul>
+        <li><code>aria-invalid="true"</code> у неверного поля: диктор скажет «недопустимое значение»;</li>
+        <li><code>aria-describedby="id-ошибки"</code>: диктор прочитает текст ошибки вместе с полем;</li>
+        <li><code>role="alert"</code> у блока ошибки, который появляется после действия: диктор озвучит его сразу, без перехода на него. Для текста, который лежит на странице всегда, роль не нужна;</li>
+        <li>цвет — не единственный признак: рядом с красной рамкой есть текст.</li>
+      </ul>
+<pre class="code" data-lang="tsx" data-title="Поле с подписью и ошибкой">
+const id = useId()
+const errorId = `${id}-error`
+
+&lt;label htmlFor={id}&gt;Имя&lt;/label&gt;
+&lt;input
+  id={id}
+  aria-invalid={error ? true : undefined}
+  aria-describedby={error ? errorId : undefined}
+/&gt;
+{error &amp;&amp; &lt;p id={errorId} role="alert"&gt;{error}&lt;/p&gt;}
+</pre>
+
+      <h3>Привычка 3. Окно объявляет себя диалогом</h3>
+      <p>У панели окна пишут <code>role="dialog"</code>, <code>aria-modal="true"</code> и <code>aria-labelledby</code> со ссылкой на заголовок окна. Тогда диктор говорит «Оформление заказа, диалог», а содержимое страницы под ним для него отключается.</p>
+
+      <h3>Привычка 4. Фокус: внутрь, по кругу, обратно</h3>
+      <ol class="steps">
+        <li><b>Внутрь.</b> При открытии переведите фокус в окно (на панель с <code>tabIndex={-1}</code> или на первое поле). Иначе клавиатурный пользователь остаётся «позади» окна и жмёт Tab по невидимой странице.</li>
+        <li><b>По кругу.</b> Tab с последнего элемента окна ведёт на первый, Shift+Tab с первого — на последний (ловушка фокуса, focus trap). Современная альтернатива — атрибут <code>inert</code> на остальной странице: браузер сам не пускает фокус под окно.</li>
+        <li><b>Обратно.</b> При закрытии верните фокус на кнопку, которая окно открыла. Если кнопки уже нет (корзину очистили после заказа), отдайте фокус осмысленному месту, например полю поиска.</li>
+      </ol>
+
+      <h3>Привычка 5. Закрытие без мыши и без прокрутки фона</h3>
+      <p>Esc закрывает окно, у окна есть видимая и озвученная кнопка «Закрыть» (<code>aria-label</code>, если на ней только «×»), а пока окно открыто, фон не прокручивается (<code>document.body.style.overflow = 'hidden'</code> и возврат при закрытии: это настоящая внешняя система, и тут эффект с очисткой уместен, как в уроке 5).</p>
+
+<pre class="code" data-lang="tsx" data-title="Фокус внутрь и обратно: эффект из Modal">
+useEffect(() =&gt; {
+  const opener =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null
+  dialogRef.current?.focus()
+  document.body.style.overflow = 'hidden'
+  return () =&gt; {
+    document.body.style.overflow = ''
+    if (opener?.isConnected) {
+      opener.focus()
+    }
+  }
+}, [])
+</pre>
+      <p>Пустой массив зависимостей здесь честный: эффект ничего реактивного не читает. Запоминать <code>opener</code> нужно в самом начале: потом <code>activeElement</code> уже будет внутри окна. Проверка <code>isConnected</code> — на случай, когда кнопки уже нет на странице.</p>
+
+      <h3>TypeScript: ref на элемент</h3>
+      <p><code>useRef&lt;HTMLDivElement&gt;(null)</code> даёт ref, у которого <code>current</code> — элемент или <code>null</code> (в React 19 типы это отражают: <code>RefObject&lt;HTMLDivElement | null&gt;</code>). Для <code>&lt;dialog&gt;</code> тип <code>HTMLDialogElement</code>, для <code>&lt;form&gt;</code> — <code>HTMLFormElement</code>. Поиск внутри контейнера тоже типизируется: <code>container.querySelectorAll&lt;HTMLElement&gt;(selector)</code>. Каждый раз, когда <code>current</code> может быть <code>null</code>, TypeScript заставит проверить это: <code>dialogRef.current?.focus()</code>.</p>
+
+      <h3>Как проверить без инструментов</h3>
+      <ul>
+        <li>Отложите мышь. Пройдите форму клавишами Tab, Shift+Tab, Enter, Пробел, Esc: фокус всегда виден, окно не теряет его, Esc закрывает.</li>
+        <li>Включите диктор (на Mac — VoiceOver, Cmd+F5) и послушайте, как читается поле с ошибкой.</li>
+        <li>В Chrome DevTools: вкладка Accessibility показывает имя и роль выбранного элемента, а проверка Lighthouse (категория Accessibility) находит поля без подписей и слабый контраст.</li>
+      </ul>
+
+      <div class="callout analogy">
+        <b>Аналогия из жизни</b>
+        <p>Модальное окно — отдельный столик в чойхоне, за который вас усадили. Пока вы за ним, вы не бегаете по залу (ловушка фокуса). Вы вошли — официант сразу подошёл именно к вам (фокус внутрь). Вы встали — вернулись на своё место, а не потерялись в зале (фокус обратно). И всегда можно просто сказать «спасибо, хватит» (Esc).</p>
+      </div>
+
+      <div class="callout warn">
+        <b>Типичные ошибки</b>
+        <p><b>1.</b> Подпись-«placeholder»: после ввода её не видно, а диктор подпись не считает. <b>2.</b> <code>outline: none</code> без замены: клавиатурный пользователь не видит, где фокус. <b>3.</b> Кнопка «×» без <code>aria-label</code>: диктор читает «кнопка, умножение». <b>4.</b> Окно открыто, а фокус остался на кнопке под ним: Tab уходит в фон. <b>5.</b> При закрытии фокус пропал в начало страницы. <b>6.</b> <code>div</code> с <code>onClick</code> вместо <code>button</code>: до него нельзя добраться клавишей Tab. <b>7.</b> <code>role="alert"</code> у всех текстов подряд: диктор говорит без остановки.</p>
+      </div>
+
+      <article class="task" id="q-a11y">
+        <header><span class="task-num">ЗАДАЧА 5.1</span><h4>Проверь себя: доступность окна</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="2">
+          <p>Окно закрыли клавишей Esc. Куда должен вернуться фокус?</p>
+          <ol class="options">
+            <li>В начало страницы</li>
+            <li>На элемент, с которого окно открыли</li>
+            <li>На последнее поле формы в окне</li>
+            <li>Нигде: фокус не нужен</li>
+          </ol>
+          <div class="explain"><p>Иначе клавиатурный пользователь теряет место, и ему приходится снова проходить всю страницу клавишей Tab.</p></div>
+        </div>
+        <div class="quiz" data-answer="1,3">
+          <p>Что связывает ошибку с полем для диктора? Выберите два атрибута.</p>
+          <ol class="options">
+            <li><code>aria-describedby</code> на поле, указывающий на <code>id</code> текста ошибки</li>
+            <li><code>className="error"</code> у текста</li>
+            <li><code>aria-invalid="true"</code> у неверного поля</li>
+            <li><code>placeholder</code> с текстом ошибки</li>
+          </ol>
+          <div class="explain"><p>Класс — для глаз, а диктору нужны атрибуты. <code>placeholder</code> исчезает при вводе и не заменяет подпись.</p></div>
+        </div>
+        <div class="quiz" data-answer="4">
+          <p>Для чего нужен <code>aria-modal="true"</code> вместе с <code>role="dialog"</code>?</p>
+          <ol class="options">
+            <li>Чтобы окно стало круглым</li>
+            <li>Чтобы окно закрывалось по Esc само</li>
+            <li>Чтобы фокус вернулся на кнопку</li>
+            <li>Сообщить вспомогательным технологиям, что остальная страница сейчас недоступна</li>
+          </ol>
+          <div class="explain"><p>Атрибут только объявляет модальность. Esc, перенос фокуса и ловушку вы пишете сами или получаете от <code>&lt;dialog&gt;</code>.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t5-ref">
+        <header><span class="task-num">ЗАДАЧА 5.2</span><h4>Фокус на первый элемент: ref может быть null</h4><span class="level mid">средняя</span></header>
+        <p>Функция должна перевести фокус на первый подходящий элемент контейнера и вернуть его <code>tagName</code>. Если контейнера нет или внутри нечего фокусировать, вернуть «ничего». Компилятор не принимает код: контейнер и результат поиска могут быть <code>null</code>. Исправьте без <code>!</code> и <code>as</code>.</p>
+<pre class="code" data-run data-lang="ts">
+const FOCUSABLE = "a[href], button:not([disabled]), input:not([disabled])";
+
+function focusFirst(container: HTMLElement | null): string {
+  const first = container.querySelector&lt;HTMLElement&gt;(FOCUSABLE);
+  first.focus();
+  return first.tagName;
+}
+
+const box = document.createElement("div");
+box.innerHTML = "&lt;p&gt;Заказ&lt;/p&gt;&lt;button&gt;Да&lt;/button&gt;&lt;input&gt;";
+document.body.append(box);
+
+console.log(focusFirst(box));
+console.log(focusFirst(null));
+console.log(focusFirst(document.createElement("div")));
+</pre>
+        <div class="expected"><b>Ожидаемый результат</b><pre>BUTTON
+ничего
+ничего</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Сначала <code>const first = container?.querySelector&lt;HTMLElement&gt;(FOCUSABLE);</code>, затем проверка <code>if (!first) return "ничего";</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>const first = container?.querySelector&lt;HTMLElement&gt;(FOCUSABLE);</code> <code>if (!first) return "ничего";</code> <code>first.focus(); return first.tagName;</code></p></details>
+      </article>
+
+      <article class="task" id="t5-dialog">
+        <header><span class="task-num">ЗАДАЧА 5.3</span><h4>Фокус внутрь и обратно</h4><span class="level hard">сложная</span></header>
+        <p>Допишите эффект в <code>Modal</code>: запомнить, где был фокус, перевести фокус в поле <code>#first</code> и при закрытии вернуть его. Стенд ставит фокус на кнопку, нажимает её, проверяет фокус внутри окна, закрывает окно клавишей Esc (она уже обработана) и снова проверяет фокус.</p>
+        <div class="playground" data-mode="react" data-title="Фокус в модальном окне">
+<pre class="code" data-lang="jsx">
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+function Modal({ onClose }) {
+  const firstRef = useRef(null);
+
+  // TODO: useEffect с пустым массивом зависимостей:
+  // 1) const opener = document.activeElement;
+  // 2) firstRef.current?.focus();
+  // 3) в cleanup: opener?.focus()
+
+  return createPortal(
+    &lt;div id="overlay" onKeyDown={(event) =&gt; { if (event.key === "Escape") onClose(); }}&gt;
+      &lt;div role="dialog" aria-modal="true" aria-label="Заказ"&gt;
+        &lt;input id="first" ref={firstRef} /&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;,
+    document.body
+  );
+}
+
+export default function App() {
+  const [open, setOpen] = useState(false);
+  return (
+    &lt;&gt;
+      &lt;button id="open" onClick={() =&gt; setOpen(true)}&gt;Заказать&lt;/button&gt;
+      {open &amp;&amp; &lt;Modal onClose={() =&gt; setOpen(false)} /&gt;}
+    &lt;/&gt;
+  );
+}
+
+// стенд
+const where = () =&gt; document.activeElement.id || document.activeElement.tagName;
+setTimeout(() =&gt; {
+  const button = document.getElementById("open");
+  button.focus();
+  button.click();
+}, 450);
+setTimeout(() =&gt; console.log("фокус в окне:", where()), 650);
+setTimeout(() =&gt; {
+  document.getElementById("first").dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+}, 800);
+setTimeout(() =&gt; console.log("фокус после закрытия:", where()), 1000);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>фокус в окне: first
+фокус после закрытия: open</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>Эффект запускается при появлении окна (оно монтируется только когда открыто). Запомнить <code>document.activeElement</code> нужно до того, как вы вызвали <code>focus()</code>.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>useEffect(() =&gt; {</code> <code>const opener = document.activeElement;</code> <code>firstRef.current?.focus();</code> <code>return () =&gt; opener?.focus();</code> <code>}, []);</code> Для TypeScript-проекта: <code>opener instanceof HTMLElement</code> вместо голого вызова.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/dialog_role" target="_blank" rel="noopener">MDN — role dialog</a> · <a href="https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/" target="_blank" rel="noopener">W3C — Modal Dialog Pattern</a> · <a href="https://react.dev/reference/react/useId" target="_blank" rel="noopener">react.dev — useId</a> · <a href="https://react.dev/learn/manipulating-the-dom-with-refs" target="_blank" rel="noopener">react.dev — Manipulating the DOM with Refs</a></p>
+    </section>
+
+    <!-- ============ 06 · ИИ ============ -->
+    <section class="topic" id="ai-forms">
+      <h2 data-toc="ИИ: схема и доступность"><span class="num">06</span> ИИ-блок: схема Zod из требований и проверка доступности</h2>
+
+      <p>Форма — территория, где агент работает быстро и ошибается тихо. Он легко пишет поля и схему, но часто путает версии библиотек, дублирует типы руками, забывает фокус и подписи, а в «форме оплаты» может потребовать номер карты. Две задачи, в которых агент особенно полезен: <b>перевести требования в схему</b> и <b>проверить готовую форму на доступность</b>. В обеих результат проверяете вы.</p>
+
+      <div class="callout ai">
+        <b>Формула промпта: контекст → задача → ограничения → формат → проверка</b>
+        <p>Для схемы агенту нужны точные правила: что обязательно, какие длины и форматы, какие тексты ошибок. Без них он придумает свои. Для проверки доступности нужен список критериев и просьба показать, <b>что именно</b> в коде не так, а не «всё хорошо».</p>
+      </div>
+
+      <h3>Схема из требований</h3>
+      <div class="prompt bad-prompt">сделай схему zod для формы заказа</div>
+      <div class="prompt good-prompt">Контекст: проект Vite 8 + React 19 + TypeScript (strict), прочитай AGENTS.md. Установлены zod 4 и react-hook-form 7 с @hookform/resolvers. Форма оформления заказа в «Дастархоне».
+Задача: напиши src/orderSchema.ts со схемой orderSchema и типом OrderForm.
+Требования к полям: name — строка, после обрезки пробелов не меньше 2 символов; phone — формат +992 и ровно 9 цифр; address — после обрезки не меньше 5 символов; comment — необязательный текст до 200 символов (пустая строка допустима); payment — только 'cash' или 'card'. Тексты ошибок на русском, короткие, без слова «invalid».
+Ограничения: только Zod 4 (z.email(), параметр error, а не message), тип только через z.infer, без any и as, без числовых преобразований и transform, без новых библиотек, номер банковской карты не запрашивать.
+Формат ответа: один файл с кодом и таблица «поле → правило → текст ошибки».
+Проверка: перечисли 3 значения, которые схема должна отклонить, и 3, которые должна принять; покажи, что вернёт safeParse для пустого объекта.</div>
+
+      <h3>Проверка доступности</h3>
+      <div class="prompt bad-prompt">проверь, нормальная ли у меня форма</div>
+      <div class="prompt good-prompt">Контекст: ниже код модального окна и формы заказа на React 19 + TypeScript (Modal.tsx, CheckoutForm.tsx, TextField.tsx). Пользователи работают с клавиатуры и экранными дикторами.
+Задача: проведи ревью доступности по списку: подписи у всех полей; связь ошибок с полями (aria-invalid, aria-describedby); роль и имя диалога (role, aria-modal, aria-labelledby); фокус внутрь при открытии, ловушка Tab, возврат фокуса при закрытии; закрытие по Esc; кнопка закрытия имеет доступное имя; тип и autoComplete у полей; цвет не единственный признак ошибки.
+Ограничения: не переписывай весь код: покажи только проблемные места; не предлагай новых библиотек; если пункт выполнен, напиши, на какой строке это видно.
+Формат ответа: таблица «пункт списка → выполнено или нет → строка кода → исправление».
+Проверка: для каждого найденного замечания напиши, как проверить исправление клавиатурой за одну минуту.</div>
+
+      <h3>Как проверять формы, написанные агентом</h3>
+      <ol class="steps">
+        <li><b>Версии API.</b> Нет <code>ref={register}</code> (RHF 6), нет <code>yupResolver</code> там, где договорились о Zod, нет <code>message:</code> и <code>z.string().email()</code> в Zod 4 без причины. Открывайте документацию версии, которая стоит в <code>package.json</code>.</li>
+        <li><b>Тип из схемы.</b> В коде <code>z.infer</code>, а не второй рукописный <code>type</code>. Нет <code>any</code> в <code>onSubmit(data: any)</code> и <code>as OrderForm</code> на данных.</li>
+        <li><b>Каждое поле схемы есть в форме.</b> Иначе форма молчит (раздел 3). Проверка: отправьте пустую форму, все ошибки должны быть видны.</li>
+        <li><b>defaultValues</b> заданы для всех полей, у <code>form</code> стоит <code>noValidate</code>, если проверяет схема.</li>
+        <li><b>Лишние перерисовки.</b> Нет <code>watch()</code> на всю форму без причины, нет состояния рядом с RHF, которое дублирует значения.</li>
+        <li><b>Окно.</b> Есть <code>role="dialog"</code>, имя, Esc, фокус внутрь и обратно, портал в <code>document.body</code>; окно рисуется условно, а не прячется стилем.</li>
+        <li><b>Безопасность.</b> Валидация есть и на сервере; цену считает сервер, а не форма; текст ошибок выводится как обычный текст JSX, не через <code>dangerouslySetInnerHTML</code>; данные формы и пароль не пишутся в <code>console.log</code> и в <code>localStorage</code>; номера карт форма не собирает (платёж — через провайдера).</li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Типичные ошибки при работе с агентом</b>
+        <p><b>1.</b> Принять схему без тестовых значений: правила «вроде бы такие» не проверены. <b>2.</b> Просить «добавь валидацию» без списка правил: агент придумает минимальные длины и форматы по своему вкусу. <b>3.</b> Поверить ответу «доступность в порядке» без проверки Tab и Esc: агент не видит экран. <b>4.</b> Оставить в форме <code>autoFocus</code> везде: фокус прыгает. <b>5.</b> Скопировать из ответа проверку «только на клиенте», где серверу «доверяют».</p>
+      </div>
+
+      <article class="task" id="q-ai-forms">
+        <header><span class="task-num">ЗАДАЧА 6.1</span><h4>Проверь себя: ревью формы агента</h4><span class="level mid">средняя</span></header>
+        <div class="quiz" data-answer="3">
+          <p>Агент написал <code>type OrderForm = { name: string; phone: string }</code> рядом со схемой, в которой уже есть <code>address</code>. Что это значит?</p>
+          <ol class="options">
+            <li>Ничего: так и должно быть</li>
+            <li>Тип надёжнее схемы</li>
+            <li>Тип и схема разошлись: нужно взять <code>z.infer&lt;typeof orderSchema&gt;</code></li>
+            <li>Схему нужно удалить</li>
+          </ol>
+          <div class="explain"><p>Два описания одного и того же рано или поздно расходятся. Источник один: схема.</p></div>
+        </div>
+        <div class="quiz" data-answer="2,4">
+          <p>Какие две фразы в промпте улучшат ревью доступности?</p>
+          <ol class="options">
+            <li>«Скажи, всё ли в порядке»</li>
+            <li>«Для каждого пункта списка напиши, на какой строке кода это видно»</li>
+            <li>«Перепиши всю форму на другую библиотеку»</li>
+            <li>«Для каждого замечания напиши, как проверить исправление клавиатурой»</li>
+          </ol>
+          <div class="explain"><p>Конкретные пункты и привязка к строкам делают ответ проверяемым. А проверка клавиатурой не даёт вам поверить агенту на слово.</p></div>
+        </div>
+      </article>
+
+      <article class="task" id="t6-review">
+        <header><span class="task-num">ЗАДАЧА 6.2</span><h4>Исправьте поле, написанное агентом</h4><span class="level mid">средняя</span></header>
+        <p>В поле имени нет подписи, а ошибка — просто красный текст рядом. Исправьте: подпись <code>label</code> «Имя» связана с полем, у поля <code>aria-invalid="true"</code> и <code>aria-describedby</code>, блок ошибки с <code>id="name-error"</code> и <code>role="alert"</code>. Стенд проверит атрибуты и выведет результат.</p>
+        <div class="playground" data-mode="react" data-title="Поле формы от агента">
+<pre class="code" data-lang="jsx">
+export default function App() {
+  return (
+    &lt;form&gt;
+      &lt;input id="name" placeholder="Имя" /&gt;
+      &lt;span style={{ color: "red" }}&gt;Введите имя: минимум 2 буквы&lt;/span&gt;
+    &lt;/form&gt;
+  );
+}
+
+// стенд
+setTimeout(() =&gt; {
+  const input = document.getElementById("name");
+  const label = document.querySelector('label[for="name"]');
+  const hint = document.getElementById(input.getAttribute("aria-describedby") || "-");
+  console.log("подпись:", label ? label.textContent : "нет");
+  console.log("aria-invalid:", input.getAttribute("aria-invalid"));
+  console.log("описание:", hint ? hint.textContent : "нет");
+  console.log("роль ошибки:", hint ? hint.getAttribute("role") : "нет");
+}, 450);
+</pre>
+        </div>
+        <div class="expected"><b>Ожидаемый результат</b><pre>подпись: Имя
+aria-invalid: true
+описание: Введите имя: минимум 2 буквы
+роль ошибки: alert</pre></div>
+        <details class="hint"><summary>Подсказка 1</summary><p>В React подпись связывается так: <code>&lt;label htmlFor="name"&gt;Имя&lt;/label&gt;</code>. Для <code>aria-describedby</code> нужен <code>id</code> у текста ошибки.</p></details>
+        <details class="hint"><summary>Подсказка 2</summary><p><code>&lt;input id="name" aria-invalid="true" aria-describedby="name-error" /&gt;</code> и <code>&lt;span id="name-error" role="alert"&gt;…&lt;/span&gt;</code>. В настоящей форме <code>id</code> берут из <code>useId()</code>, а <code>aria-invalid</code> ставят только при ошибке.</p></details>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://zod.dev/v4" target="_blank" rel="noopener">zod.dev — What's new in Zod 4</a> · <a href="https://www.w3.org/WAI/tutorials/forms/" target="_blank" rel="noopener">W3C WAI — Forms Tutorial</a></p>
+    </section>
+
+    <!-- ============ 07 · Практика ============ -->
+    <section class="topic" id="practice">
+      <h2 data-toc="Практика: оформление заказа"><span class="num">07</span> Практика: «Дастархон» оформляет заказ в модальном окне</h2>
+
+      <p>Продолжаем проект 1. После урока 5 каталог грузится с учебного API, а корзина живёт на <code>useReducer</code>. Сейчас в корзине появится кнопка «Оформить заказ»: она открывает окно с формой (портал, фокус, Esc), форма проверяется схемой Zod, управляется React Hook Form и отправляет заказ на сервер. Сервер проверяет всё заново и сам считает сумму. Остальной код (каталог, фильтры, корзина) мы не переписываем: в <code>App.tsx</code> делаем только вставки.</p>
+
+      <h3>Что получится</h3>
+<div class="ftree"><b>server/</b>
+├─ <b>api.mjs</b> <i>+ POST /api/orders: проверка, сумма на сервере, 201 или 400</i>
+<b>src/</b>
+├─ <b>orderSchema.ts</b> <i>новое: схема Zod и тип OrderForm</i>
+├─ <b>api.ts</b> <i>+ postOrder</i>
+├─ <b>App.tsx</b> <i>+ состояние окна, кнопка «Оформить заказ», вставки</i>
+└─ <b>components/</b>
+   ├─ <b>Modal.tsx</b> <i>новое: портал, role=dialog, Esc, фокус, ловушка Tab</i>
+   ├─ <b>TextField.tsx</b> <i>новое: подпись, aria-invalid, aria-describedby</i>
+   └─ <b>CheckoutForm.tsx</b> <i>новое: React Hook Form + zodResolver</i></div>
+
+      <figure class="diagram">
+        <svg class="dg" viewBox="0 0 720 230" role="img" aria-label="Путь заказа: кнопка Оформить заказ в App открывает Modal через портал в body, внутри Modal форма CheckoutForm проверяет значения схемой Zod, postOrder отправляет POST на /api/orders, сервер проверяет заново и отвечает 201 с номером заказа или 400 с сообщением, которое попадает в форму через setError">
+          <rect class="fill-y" x="10" y="20" width="150" height="56" rx="12" /><text x="85" y="44" text-anchor="middle">App</text><text class="sub mono" x="85" y="62" text-anchor="middle">checkoutOpen</text>
+          <rect class="fill-g" x="230" y="20" width="170" height="56" rx="12" /><text x="315" y="44" text-anchor="middle">Modal</text><text class="sub mono" x="315" y="62" text-anchor="middle">портал в body</text>
+          <rect class="box b" x="470" y="20" width="240" height="56" rx="12" /><text x="590" y="44" text-anchor="middle">CheckoutForm</text><text class="sub mono" x="590" y="62" text-anchor="middle">useForm + zodResolver</text>
+          <path class="arr" d="M160 48 H222" /><path class="arr-head" d="M230 48 l-10 -5 v10 z" />
+          <path class="arr" d="M400 48 H462" /><path class="arr-head" d="M470 48 l-10 -5 v10 z" />
+          <rect class="box" x="470" y="150" width="240" height="56" rx="12" /><text x="590" y="174" text-anchor="middle">postOrder</text><text class="sub mono" x="590" y="192" text-anchor="middle">POST /api/orders</text>
+          <rect class="fill-g" x="230" y="150" width="170" height="56" rx="12" /><text x="315" y="174" text-anchor="middle">server/api.mjs</text><text class="sub" x="315" y="192" text-anchor="middle">проверка + сумма</text>
+          <rect class="box o" x="10" y="150" width="150" height="56" rx="12" /><text x="85" y="174" text-anchor="middle">201 / 400</text><text class="sub" x="85" y="192" text-anchor="middle">номер или причина</text>
+          <path class="arr" d="M590 76 V142" /><path class="arr-head" d="M590 150 l-5 -10 h10 z" /><text class="sub t-b" x="600" y="116">схема прошла</text>
+          <path class="arr" d="M470 178 H408" /><path class="arr-head" d="M400 178 l10 -5 v10 z" />
+          <path class="arr" d="M230 178 H168" /><path class="arr-head" d="M160 178 l10 -5 v10 z" />
+        </svg>
+        <figcaption>Путь заказа: форма проверяет значения, сервер проверяет ещё раз, ошибка сервера возвращается в форму</figcaption>
+      </figure>
+
+      <div class="callout tip">
+        <b>Что мы предполагаем от прошлых уроков</b>
+        <p>В <code>App.tsx</code> есть <code>cart</code> и функция или значение <code>dispatch</code> для действий корзины (после урока 5 это <code>useReducer(cartReducer, [])</code>, после урока 6 корзина лежит в <code>useLocalStorage</code>, а <code>dispatch</code> — функция над ним: для нас разницы нет), ref <code>searchRef</code> и колонка <code>&lt;aside&gt;</code> с секцией «Корзина» (<code>CartSummary</code>). В <code>src/cart.ts</code> есть <code>cartTotal</code>, в <code>src/api.ts</code> есть <code>isRecord</code> и <code>errorMessage</code>: после урока 5 <code>isRecord</code> объявлена внутри файла без <code>export</code> (для практики этого хватает), после урока 6 она экспортируется. Если у вас что-то иначе (после ДЗ-4, ДЗ-5 или урока 6), переносите только вставки ниже и не трогайте чужие куски: форма и окно от остального кода не зависят.</p>
+      </div>
+
+      <h3>Шаги</h3>
+      <ol class="steps">
+        <li><b>Проверьте старт и соберите main.</b> Рабочая папка чистая, всё проходит. Практики уроков 5 и 6 (ветки <code>feat/api</code> и <code>feat/hooks</code>) уже влиты в <code>main</code>. Если сделали домашние задания (ДЗ-5 в ветке <code>feat/api-menu</code>, ДЗ-6 в ветке <code>feat/my-hooks</code>), влейте и их; если нет, урок работает и без них:
+<pre class="code" data-title="Терминал">
+git status
+npm run typecheck
+npm run lint
+git switch main
+git merge feat/api-menu
+git merge feat/my-hooks
+</pre>
+          Конфликты (чаще всего в <code>App.tsx</code> и <code>api.ts</code>, если оба задания меняли меню), решите вручную, оставив код обеих веток; команду для ветки, которую не делали, пропустите. Затем создайте ветку урока:
+<pre class="code" data-title="Терминал">
+git switch -c feat/order-form
+</pre>
+        </li>
+        <li><b>Установите пакеты.</b> Три зависимости (версии на момент урока: 7.91, 4.6, 6.0):
+<pre class="code" data-title="Терминал">
+npm install react-hook-form zod @hookform/resolvers
+</pre>
+          В <code>package.json</code> в <code>dependencies</code> появятся строки <code>react-hook-form</code>, <code>zod</code> и <code>@hookform/resolvers</code>.</li>
+        <li><b>Схема заказа.</b> Это тот же файл, что в разделе 2. Правила написаны один раз, тип получен из схемы:
+<pre class="code" data-lang="ts" data-title="src/orderSchema.ts">
+import { z } from 'zod'
+
+export const PAYMENTS = ['cash', 'card'] as const
+
+export const orderSchema = z.object({
+  name: z.string().trim().min(2, 'Введите имя: не меньше 2 букв'),
+  phone: z.string().regex(/^\+992\d{9}$/, 'Телефон в формате +992901234567'),
+  address: z.string().trim().min(5, 'Укажите улицу и дом'),
+  comment: z.string().max(200, 'Не больше 200 символов'),
+  payment: z.enum(PAYMENTS, { error: 'Выберите способ оплаты' }),
+})
+
+export type OrderForm = z.infer&lt;typeof orderSchema&gt;
+</pre>
+        </li>
+        <li><b>Сервер принимает заказы.</b> Добавьте в <code>server/api.mjs</code> два куска. Первый: счётчик номеров заказов, сразу перед <code>const server = createServer(…)</code>:
+<pre class="code" data-lang="js" data-title="server/api.mjs (перед const server)">
+let nextOrderId = 1001
+</pre>
+          Второй: обработчик заказа. Сервер не верит форме: он проверяет поля заново, ищет блюда в своём меню и <b>сам считает сумму</b> (иначе цену в запросе можно подделать):
+<pre class="code" data-lang="js" data-title="server/api.mjs (вставьте перед строкой const menuMatch)">
+  if (path === '/api/orders' &amp;&amp; req.method === 'POST') {
+    let raw = ''
+    for await (const chunk of req) raw += chunk
+    let order
+    try {
+      order = JSON.parse(raw)
+    } catch {
+      return send(400, { message: 'Тело запроса не JSON' })
+    }
+    const validPhone =
+      typeof order?.phone === 'string' &amp;&amp; /^\+992\d{9}$/.test(order.phone)
+    const validText =
+      typeof order?.name === 'string' &amp;&amp;
+      order.name.trim().length &gt;= 2 &amp;&amp;
+      typeof order?.address === 'string' &amp;&amp;
+      order.address.trim().length &gt;= 5
+    const validItems =
+      Array.isArray(order?.items) &amp;&amp;
+      order.items.length &gt; 0 &amp;&amp;
+      order.items.every(
+        (i) =&gt;
+          Number.isInteger(i?.itemId) &amp;&amp; Number.isInteger(i?.qty) &amp;&amp; i.qty &gt; 0,
+      )
+    if (!validPhone || !validText || !validItems) {
+      return send(400, { message: 'Проверьте имя, телефон, адрес и корзину' })
+    }
+    // цену считаем на сервере: клиенту верить нельзя
+    let total = 0
+    for (const { itemId, qty } of order.items) {
+      const dish = menu.find((m) =&gt; m.id === itemId)
+      if (!dish) {
+        return send(400, { message: `Блюда №${itemId} нет в меню` })
+      }
+      const restaurant = restaurants.find((r) =&gt; r.id === dish.restaurantId)
+      if (!restaurant?.open) {
+        return send(400, {
+          message: `${restaurant?.name ?? 'Ресторан'} сейчас закрыт`,
+        })
+      }
+      total += dish.price * qty
+    }
+    return send(201, { id: nextOrderId++, total })
+  }
+</pre>
+          Остановите <code>npm run api</code> (Ctrl+C) и запустите снова: сервер читает код только при старте. Проверьте ответ без браузера (в третьем окне терминала):
+<pre class="code" data-title="Терминал">
+curl -s -X POST localhost:3001/api/orders -H "Content-Type: application/json" -d '{"name":"Али","phone":"+992901234567","address":"пр. Рудаки, 45","items":[{"itemId":1,"qty":2}]}'
+</pre>
+<pre class="code" data-title="Терминал — ответ">
+{"id":1001,"total":90}
+</pre>
+          Блюдо №1 стоит 45 сомони, два блюда дают 90. Если заменить <code>"itemId":1</code> на <code>"itemId":5</code> (шашлык из ресторана Rohat, он закрыт), ответ будет <code>{"message":"Rohat сейчас закрыт"}</code>.</li>
+        <li><b>Запрос на клиенте.</b> В начале <code>src/api.ts</code> добавьте импорт типа, а в конец файла — функцию. Ответ читается как <code>unknown</code> и проверяется (урок 5); текст ошибки берётся из ответа сервера, а если сервер ответил не JSON (например, 502 от прокси Vite), показывается «Сервер ответил 502»:
+<pre class="code" data-lang="ts" data-title="src/api.ts (первая строка файла)">
+import type { OrderForm } from './orderSchema'
+</pre>
+<pre class="code" data-lang="ts" data-title="src/api.ts (добавьте в конец)">
+export type OrderItem = { itemId: number; qty: number }
+
+export async function postOrder(
+  order: OrderForm,
+  items: OrderItem[],
+): Promise&lt;{ id: number; total: number }&gt; {
+  const response = await fetch('/api/orders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...order, items }),
+  })
+  const data: unknown = await response.json().catch(() =&gt; null)
+  if (!response.ok) {
+    const message =
+      isRecord(data) &amp;&amp; typeof data.message === 'string'
+        ? data.message
+        : `Сервер ответил ${response.status}`
+    throw new Error(message)
+  }
+  if (
+    !isRecord(data) ||
+    typeof data.id !== 'number' ||
+    typeof data.total !== 'number'
+  ) {
+    throw new Error('Сервер прислал данные в неожиданном формате')
+  }
+  return { id: data.id, total: data.total }
+}
+</pre>
+        </li>
+        <li><b>Поле с подписью и ошибкой.</b> <code>TextField</code> оборачивает <code>input</code>: подпись через <code>htmlFor</code>, связь с ошибкой через <code>aria-describedby</code>, <code>id</code> из <code>useId</code>. Это React 19: <code>ref</code> лежит среди props, поэтому <code>{...register('name')}</code> работает без <code>forwardRef</code>:
+<pre class="code" data-lang="tsx" data-title="src/components/TextField.tsx">
+import { useId, type ComponentProps } from 'react'
+
+type TextFieldProps = ComponentProps&lt;'input'&gt; &amp; {
+  label: string
+  error?: string
+}
+
+export default function TextField({
+  label,
+  error,
+  ...inputProps
+}: TextFieldProps) {
+  const id = useId()
+  const errorId = `${id}-error`
+  return (
+    &lt;div className="mb-3"&gt;
+      &lt;label htmlFor={id} className="mb-1 block text-sm font-semibold"&gt;
+        {label}
+      &lt;/label&gt;
+      &lt;input
+        id={id}
+        className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 aria-invalid:border-red-500"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        {...inputProps}
+      /&gt;
+      {error &amp;&amp; (
+        &lt;p id={errorId} role="alert" className="mt-1 text-sm text-red-700"&gt;
+          {error}
+        &lt;/p&gt;
+      )}
+    &lt;/div&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Модальное окно.</b> Всё из разделов 4 и 5 в одном компоненте: портал, диалог с именем, Esc, клик по фону, фокус внутрь и обратно, ловушка Tab, запрет прокрутки фона. Обратите внимание на единственный эффект: пустые зависимости честные, внешняя система — DOM:
+<pre class="code" data-lang="tsx" data-title="src/components/Modal.tsx">
+import {
+  useEffect,
+  useId,
+  useRef,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from 'react'
+import { createPortal } from 'react-dom'
+
+type ModalProps = {
+  title: string
+  onClose: () =&gt; void
+  children: ReactNode
+}
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+
+export default function Modal({ title, onClose, children }: ModalProps) {
+  const titleId = useId()
+  const dialogRef = useRef&lt;HTMLDivElement&gt;(null)
+
+  // Внешняя система — DOM: запоминаем, откуда открыли, фокус внутрь и запрет прокрутки фона
+  useEffect(() =&gt; {
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    dialogRef.current?.focus()
+    document.body.style.overflow = 'hidden'
+    return () =&gt; {
+      document.body.style.overflow = ''
+      if (opener?.isConnected) {
+        opener.focus()
+      }
+    }
+  }, [])
+
+  function handleKeyDown(event: KeyboardEvent&lt;HTMLDivElement&gt;) {
+    if (event.key === 'Escape') {
+      onClose()
+      return
+    }
+    if (event.key !== 'Tab' || dialogRef.current === null) {
+      return
+    }
+    const items = dialogRef.current.querySelectorAll&lt;HTMLElement&gt;(FOCUSABLE)
+    const first = items[0]
+    const last = items[items.length - 1]
+    if (first === undefined || last === undefined) {
+      return
+    }
+    if (event.shiftKey &amp;&amp; document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey &amp;&amp; document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
+  function handleBackdropClick(event: MouseEvent&lt;HTMLDivElement&gt;) {
+    if (event.target === event.currentTarget) {
+      onClose()
+    }
+  }
+
+  return createPortal(
+    &lt;div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={handleBackdropClick}
+      onKeyDown={handleKeyDown}
+    &gt;
+      &lt;div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="max-h-full w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl outline-none"
+      &gt;
+        &lt;div className="mb-3 flex items-start justify-between gap-3"&gt;
+          &lt;h2 id={titleId} className="text-xl font-bold"&gt;
+            {title}
+          &lt;/h2&gt;
+          &lt;button
+            className="h-8 w-8 rounded-full border border-stone-300 font-bold hover:bg-brand-50"
+            aria-label="Закрыть окно"
+            onClick={onClose}
+          &gt;
+            ×
+          &lt;/button&gt;
+        &lt;/div&gt;
+        {children}
+      &lt;/div&gt;
+    &lt;/div&gt;,
+    document.body,
+  )
+}
+</pre>
+        </li>
+        <li><b>Форма заказа.</b> <code>useForm&lt;OrderForm&gt;</code> с <code>zodResolver</code>, значения по умолчанию для каждого поля, ошибка сервера через <code>setError('root.server')</code>, кнопка неактивна, пока идёт отправка:
+<pre class="code" data-lang="tsx" data-title="src/components/CheckoutForm.tsx">
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import { errorMessage } from '../api'
+import { orderSchema, type OrderForm } from '../orderSchema'
+import TextField from './TextField'
+
+type CheckoutFormProps = {
+  total: number
+  onSubmit: (values: OrderForm) =&gt; Promise&lt;void&gt;
+}
+
+export default function CheckoutForm({ total, onSubmit }: CheckoutFormProps) {
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm&lt;OrderForm&gt;({
+    resolver: zodResolver(orderSchema),
+    defaultValues: {
+      name: '',
+      phone: '+992',
+      address: '',
+      comment: '',
+      payment: 'cash',
+    },
+  })
+
+  async function submit(values: OrderForm) {
+    try {
+      await onSubmit(values)
+    } catch (error) {
+      setError('root.server', { message: errorMessage(error) })
+    }
+  }
+
+  return (
+    &lt;form noValidate onSubmit={handleSubmit(submit)}&gt;
+      &lt;TextField
+        label="Имя"
+        autoComplete="name"
+        error={errors.name?.message}
+        {...register('name')}
+      /&gt;
+      &lt;TextField
+        label="Телефон"
+        type="tel"
+        autoComplete="tel"
+        error={errors.phone?.message}
+        {...register('phone')}
+      /&gt;
+      &lt;TextField
+        label="Адрес доставки"
+        autoComplete="street-address"
+        error={errors.address?.message}
+        {...register('address')}
+      /&gt;
+      &lt;div className="mb-3"&gt;
+        &lt;label
+          htmlFor="order-comment"
+          className="mb-1 block text-sm font-semibold"
+        &gt;
+          Комментарий курьеру
+        &lt;/label&gt;
+        &lt;textarea
+          id="order-comment"
+          rows={2}
+          className="w-full rounded-lg border border-stone-300 bg-white px-3 py-2"
+          {...register('comment')}
+        /&gt;
+        {errors.comment &amp;&amp; (
+          &lt;p role="alert" className="mt-1 text-sm text-red-700"&gt;
+            {errors.comment.message}
+          &lt;/p&gt;
+        )}
+      &lt;/div&gt;
+      &lt;fieldset className="mb-3"&gt;
+        &lt;legend className="mb-1 text-sm font-semibold"&gt;Оплата&lt;/legend&gt;
+        &lt;label className="mr-4"&gt;
+          &lt;input type="radio" value="cash" {...register('payment')} /&gt; Наличными
+        &lt;/label&gt;
+        &lt;label&gt;
+          &lt;input type="radio" value="card" {...register('payment')} /&gt; Картой
+        &lt;/label&gt;
+        {errors.payment &amp;&amp; (
+          &lt;p role="alert" className="mt-1 text-sm text-red-700"&gt;
+            {errors.payment.message}
+          &lt;/p&gt;
+        )}
+      &lt;/fieldset&gt;
+      {errors.root?.server &amp;&amp; (
+        &lt;p
+          role="alert"
+          className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-800"
+        &gt;
+          {errors.root.server.message}
+        &lt;/p&gt;
+      )}
+      &lt;button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+      &gt;
+        {isSubmitting ? 'Отправляем…' : `Заказать на ${total} сомони`}
+      &lt;/button&gt;
+    &lt;/form&gt;
+  )
+}
+</pre>
+        </li>
+        <li><b>Подключите окно в App.</b> Пять вставок. <b>1.</b> Импорты: <code>postOrder</code> добавьте в ваш импорт из <code>./api</code>, <code>cartTotal</code> — в импорт из <code>./cart</code> (или создайте его), плюс компоненты <code>CheckoutForm</code>, <code>Modal</code> и тип <code>OrderForm</code>. Две первые строки показаны для состояния после урока 5, после урока 6 ваш импорт из <code>./api</code> выглядит как <code>import { parseRestaurants, postOrder } from './api'</code>, а из <code>./cart</code> — как <code>import { cartTotal, isCartItems } from './cart'</code>:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — импорты (добавьте или дополните)">
+import { errorMessage, fetchRestaurants, isAbortError, postOrder } from './api'
+import { cartTotal } from './cart'
+import CheckoutForm from './components/CheckoutForm'
+import Modal from './components/Modal'
+import type { OrderForm } from './orderSchema'
+</pre>
+          <b>2.</b> Состояние: две строки среди остальных <code>useState</code> и <code>useRef</code> в начале компонента (например, сразу после <code>const searchRef = …</code>). Окно открыто или нет; номер заказа, когда сервер его принял:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — состояние">
+const [checkoutOpen, setCheckoutOpen] = useState(false)
+const [orderId, setOrderId] = useState&lt;number | null&gt;(null)
+</pre>
+          <b>3.</b> Две функции перед <code>clearSearch</code>. Ошибку <code>postOrder</code> не ловим здесь: её ловит форма и показывает в окне. После успеха корзина очищается, а при закрытии окна фокус отдаётся полю поиска: кнопки «Оформить заказ» к этому моменту уже нет (корзина пуста), и вернуть фокус некуда:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — функции (перед clearSearch)">
+  async function placeOrder(values: OrderForm) {
+    const items = cart.map((entry) =&gt; ({
+      itemId: entry.item.id,
+      qty: entry.qty,
+    }))
+    const result = await postOrder(values, items)
+    dispatch({ type: 'clear' })
+    setOrderId(result.id)
+  }
+
+  function closeCheckout() {
+    const placed = orderId !== null
+    setCheckoutOpen(false)
+    setOrderId(null)
+    if (placed) {
+      // кнопки «Оформить заказ» больше нет (корзина пуста): фокус отдаём поиску
+      searchRef.current?.focus()
+    }
+  }
+</pre>
+          <b>4.</b> Кнопка в секции «Корзина», сразу после <code>&lt;/CartSummary&gt;</code>:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — кнопка (в Section «Корзина», сразу после CartSummary)">
+            {cart.length &gt; 0 &amp;&amp; (
+              &lt;button
+                className="mt-3 w-full rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700"
+                onClick={() =&gt; setCheckoutOpen(true)}
+              &gt;
+                Оформить заказ
+              &lt;/button&gt;
+            )}
+</pre>
+          <b>5.</b> Окно перед закрывающим <code>&lt;/Layout&gt;</code>. Оно рисуется условно: при закрытии форма уничтожается вместе со своим состоянием. Экран успеха стоит внутри того же окна, а <code>autoFocus</code> переводит фокус на кнопку «Закрыть», иначе фокус пропал бы вместе с исчезнувшей формой:
+<pre class="code" data-lang="tsx" data-title="src/App.tsx — окно (перед закрывающим Layout)">
+      {checkoutOpen &amp;&amp; (
+        &lt;Modal title="Оформление заказа" onClose={closeCheckout}&gt;
+          {orderId === null ? (
+            &lt;CheckoutForm total={cartTotal(cart)} onSubmit={placeOrder} /&gt;
+          ) : (
+            &lt;div role="status"&gt;
+              &lt;p className="mb-3"&gt;
+                Заказ №{orderId} принят. Ресторан скоро свяжется с вами.
+              &lt;/p&gt;
+              &lt;button
+                autoFocus
+                className="rounded-lg bg-brand-600 px-4 py-2 font-semibold text-white hover:bg-brand-700"
+                onClick={closeCheckout}
+              &gt;
+                Закрыть
+              &lt;/button&gt;
+            &lt;/div&gt;
+          )}
+        &lt;/Modal&gt;
+      )}
+</pre>
+        </li>
+        <li><b>Запустите и посмотрите.</b> Два окна терминала: <code>npm run api</code> и <code>npm run dev</code>. Выберите открытый ресторан (например, Navruz), добавьте блюдо, нажмите «Оформить заказ». Окно открылось, фокус внутри. Нажмите «Заказать» с пустой формой: три ошибки (имя, телефон, адрес) и фокус на первом неверном поле. Заполните форму и отправьте: кнопка на 600 мс показывает «Отправляем…», затем «Заказ №1001 принят», корзина очищена. «Закрыть»: окно ушло, фокус в поиске. Теперь клавиатурой: Tab ходит по кругу и не уходит под окно, Shift+Tab с первого поля ведёт на последний элемент, Esc закрывает, и фокус возвращается на «Оформить заказ».</li>
+        <li><b>Посмотрите на сеть.</b> DevTools, вкладка Network, фильтр Fetch/XHR: запрос <code>orders</code> с методом POST, в Payload видны поля формы и <code>items</code> без цен: цену сервер считает сам. Ответ 201 с <code>{"id":…,"total":…}</code>. В Elements найдите окно: оно лежит прямо в <code>&lt;body&gt;</code>, рядом с <code>&lt;div id="root"&gt;</code>, а не внутри колонки с корзиной.</li>
+        <li><b>Сломайте нарочно.</b> (а) Измените адрес запроса в <code>postOrder</code> на <code>'/api/orders?fail=1'</code>: сервер ответит 500, и в окне над кнопкой появится «Сервер временно недоступен» (текст берётся из ответа и кладётся через <code>setError('root.server')</code>). Верните адрес. (б) Не перезапускайте API после правки сервера: заказ уйдёт на адрес, которого сервер не знает, и форма покажет «Такого адреса нет». (в) Добавьте в схему поле <code>email: z.email('Введите email')</code> и в <code>defaultValues</code> строку <code>email: ''</code>, но поля в форме не рисуйте. Заполните форму и нажмите «Заказать»: ничего не происходит, ошибок не видно. Замените вызов на <code>handleSubmit(submit, (errors) =&gt; console.log(errors))</code>: в консоли появится <code>{email: {…}}</code>, а внутри <code>message: 'Введите email'</code>. Вот как ищут «молчащую» форму. Верните всё как было. (г) Удалите из эффекта в <code>Modal</code> строку <code>opener.focus()</code> (вместе с проверкой): закройте окно по Esc, нажмите Tab и посмотрите, куда ушёл фокус. Верните строки. (д) Допустите опечатку <code>register('nmae')</code> и запустите <code>npm run typecheck</code>:
+<pre class="code" data-title="Терминал — tsc -b">
+src/components/CheckoutForm.tsx(41,24): error TS2345: Argument of type '"nmae"' is not assignable to parameter of type '"address" | "comment" | "name" | "payment" | "phone"'.
+</pre>
+          Верните имя поля.</li>
+        <li><b>Проверки и коммит.</b> Все четыре команды должны пройти:
+<pre class="code" data-title="Терминал">
+npm run format
+npm run typecheck
+npm run lint
+npm run build
+</pre>
+          Затем коммит, слияние в <code>main</code> и отправка:
+<pre class="code" data-title="Терминал">
+git add .
+git commit -m "add order form with zod validation"
+git switch main
+git merge feat/order-form
+git push
+</pre>
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <b>Если сломалось</b>
+        <p><b>Форма «Заказать» не реагирует:</b> в схеме есть поле, которого нет в разметке (раздел 3), или в <code>register</code> другое имя. Передайте <code>handleSubmit</code> вторым аргументом <code>console.log</code>. <b>«Такого адреса нет» после отправки:</b> API не перезапущен после правки <code>api.mjs</code>. <b>«Сервер ответил 502»:</b> API остановлен. <b>Ошибка импорта <code>zod</code> или <code>react-hook-form</code>:</b> не выполнена установка (шаг 2) или Vite нужно перезапустить. <b>Окно не закрывается по Esc:</b> фокус остался на странице под окном: в <code>Modal</code> у панели должен быть <code>tabIndex={-1}</code>, а в эффекте — вызов <code>focus()</code>. <b>Tab уходит под окно:</b> не добавлен <code>onKeyDown</code> с ловушкой или селектор <code>FOCUSABLE</code> не совпадает с вашими элементами. <b>Окно под шапкой или обрезано:</b> окно рисуется не через портал или у него нет <code>fixed</code> и <code>z-50</code>. <b>«Target container is not a DOM element»:</b> второй аргумент <code>createPortal</code> равен <code>null</code>. <b>Кнопка «Заказать» всегда неактивна:</b> после ошибки сервера <code>isSubmitting</code> не сбросился, если <code>onSubmit</code> не возвращает промис: <code>submit</code> должна быть <code>async</code> и ждать <code>onSubmit</code>.</p>
+      </div>
+
+      <article class="task" id="t-build">
+        <header><span class="task-num">ЗАДАЧА 7.1</span><h4>Чек-лист: форма заказа работает</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-build">
+          <li>Работа ведётся в ветке <code>feat/order-form</code>, практики уроков 5 и 6 влиты в <code>main</code></li>
+          <li>Установлены <code>react-hook-form</code>, <code>zod</code>, <code>@hookform/resolvers</code>; есть <code>src/orderSchema.ts</code> с типом <code>OrderForm</code> из <code>z.infer</code></li>
+          <li>Сервер принимает <code>POST /api/orders</code>, сам считает сумму; <code>curl</code> вернул <code>{"id":1001,"total":90}</code></li>
+          <li><code>postOrder</code> читает ответ как <code>unknown</code>, ошибка сервера доходит до формы; нет <code>any</code> и <code>as</code></li>
+          <li>Окно открывается кнопкой «Оформить заказ», лежит в <code>body</code> (портал), у панели есть <code>role="dialog"</code>, <code>aria-modal</code>, <code>aria-labelledby</code></li>
+          <li>Пустая форма показывает три ошибки и ставит фокус на первое неверное поле; верная форма отправляется, показывается номер заказа, корзина пуста</li>
+          <li>Esc и клик по фону закрывают окно; Tab ходит по кругу; фокус возвращается на кнопку (а после успешного заказа попадает в поиск)</li>
+          <li>В проекте один новый эффект (в <code>Modal</code>), и я могу назвать его внешнюю систему: DOM</li>
+          <li><code>npm run format:check</code>, <code>typecheck</code>, <code>lint</code> и <code>build</code> проходят, коммит сделан, <code>feat/order-form</code> влита в <code>main</code></li>
+        </ul>
+      </article>
+
+      <article class="task" id="t-observe">
+        <header><span class="task-num">ЗАДАЧА 7.2</span><h4>Чек-лист: наблюдения и поломки</h4><span class="level mid">средняя</span></header>
+        <ul class="checklist" id="cl-observe">
+          <li>Я прошёл всю форму только клавиатурой: Tab, Shift+Tab, Enter, Esc</li>
+          <li>Я увидел в Network запрос POST и убедился, что в нём нет цен</li>
+          <li>Я нашёл окно в Elements: оно лежит в <code>body</code>, а не внутри колонки с корзиной</li>
+          <li>Я временно использовал <code>?fail=1</code>, увидел ошибку сервера в форме и вернул адрес</li>
+          <li>Я добавил поле в схему без поля в форме, поймал «молчащую» форму через <code>console.log(errors)</code> и вернул код</li>
+          <li>Я вызвал опечатку в <code>register</code>, прочитал ошибку компилятора и исправил</li>
+          <li>Я удалил все временные <code>console.log</code> перед коммитом</li>
+        </ul>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://react-hook-form.com/docs/useform" target="_blank" rel="noopener">react-hook-form.com — useForm</a> · <a href="https://zod.dev/api" target="_blank" rel="noopener">zod.dev — API</a> · <a href="https://react.dev/reference/react-dom/createPortal" target="_blank" rel="noopener">react.dev — createPortal</a></p>
+    </section>
+
+    <!-- ============ 08 · Домашнее задание ============ -->
+    <section class="topic" id="homework">
+      <h2 data-toc="Домашнее задание"><span class="num">08</span> Домашнее задание: регистрация, доставка и аудит доступности</h2>
+
+      <p>В практике вы собрали форму заказа. В домашнем задании делаете вторую форму (регистрация) на том же наборе приёмов и учите форму заказа новому правилу: адрес нужен только курьеру. Работайте в ветке <code>feat/auth-form</code>, созданной от <code>main</code>, в конце отправьте ветку на GitHub и сдайте ссылку на репозиторий <code>dastarkhon</code>: ментор откроет эту ветку.</p>
+
+      <h3>Что сделать</h3>
+      <ol class="steps">
+        <li><b>Старт.</b> <code>git switch main</code>, <code>git switch -c feat/auth-form</code>. Практика урока (форма заказа) влита в <code>main</code>.</li>
+        <li><b>Схема регистрации.</b> Создайте <code>src/signupSchema.ts</code>: <code>name</code> (после обрезки не меньше 2 символов), <code>email</code> (<code>z.email</code>), <code>city</code> (<code>z.enum</code> из массива <code>CITIES</code> с <code>as const</code>: Душанбе, Худжанд, Бохтар, Куляб), <code>password</code> (не меньше 8 символов и хотя бы одна цифра), <code>confirm</code>, <code>agree</code> (флажок: должен быть отмечен). Пароль и повтор сравнивает правило на уровне объекта: <code>.refine(проверка, { path: ['confirm'], error: 'Пароли не совпадают' })</code>. Экспортируйте <code>signupSchema</code>, <code>CITIES</code> и тип <code>SignupForm</code> через <code>z.infer</code>. Для флажка подойдёт <code>z.boolean().refine((value) =&gt; value, { error: 'Нужно принять правила' })</code>: тип остаётся <code>boolean</code>, а <code>defaultValues</code> может быть <code>false</code>.</li>
+        <li><b>Форма регистрации.</b> Компонент <code>SignupForm</code> (props: <code>onRegistered: (user: { name: string; email: string }) =&gt; void</code>) на <code>useForm&lt;SignupForm&gt;</code> и <code>zodResolver</code>, режим <code>mode: 'onTouched'</code>. Поля имени, email и пароля делайте через <code>TextField</code> из практики (у паролей <code>type="password"</code> и <code>autoComplete="new-password"</code>). Город — <code>select</code>, флажок — <code>checkbox</code>: у обоих должны быть подпись, <code>aria-invalid</code> и связанная ошибка. «Отправка» учебная: подождите 600 мс (<code>await new Promise(…)</code>), вызовите <code>onRegistered</code>. Данные никуда не уходят: пароль не пишется ни в консоль, ни в <code>localStorage</code> (настоящую регистрацию делаем в уроке 19).</li>
+        <li><b>Подключение.</b> В <code>App</code> добавьте состояние <code>user: { name: string; email: string } | null</code>. Пока <code>user</code> равен <code>null</code>, возле поиска стоит кнопка «Регистрация», открывающая <code>Modal</code> с <code>SignupForm</code> (тот же <code>Modal</code>, что для заказа). После успеха окно закрывается, а вместо кнопки выводится «Привет, имя». Кнопка при этом исчезает, поэтому фокус вернуть некуда: решите это так, как в практике, и объясните выбор в <code>docs/forms.md</code>.</li>
+        <li><b>Доставка или самовывоз.</b> В <code>orderSchema</code> добавьте поле <code>delivery</code> (<code>'courier'</code> или <code>'pickup'</code>) и сделайте адрес обязательным только для курьера: в объекте <code>address</code> становится просто <code>z.string().trim()</code>, а правило «не меньше 5 символов» переезжает в <code>.refine((value) =&gt; value.delivery === 'pickup' || value.address.length &gt;= 5,</code> <code>{ path: ['address'], error: 'Укажите улицу и дом' })</code>. В <code>CheckoutForm</code> добавьте группу радиокнопок «Получение» (<code>fieldset</code> и <code>legend</code>), по умолчанию <code>courier</code>. Поле адреса при самовывозе не показывайте (<code>watch('delivery')</code> здесь уместен: нужно реагировать на выбор).</li>
+        <li><b>Имя из профиля и сервер.</b> Если пользователь зарегистрирован, <code>name</code> в форме заказа заполнено его именем (<code>defaultValues</code>: новый необязательный prop <code>defaultName?: string</code>). Обновите и сервер: он принимает <code>delivery</code> и требует адрес только при <code>courier</code>; значение <code>delivery</code> вне двух допустимых отклоняется ответом 400. Это правило «клиенту не верим»: проверьте <code>curl</code>-запросом с <code>"delivery":"pickup"</code> без адреса (должен быть 201) и с <code>"delivery":"teleport"</code> (400).</li>
+        <li><b>Аудит доступности.</b> Отправьте агенту код <code>Modal</code>, <code>TextField</code>, <code>CheckoutForm</code> и <code>SignupForm</code> с промптом проверки доступности из раздела 6. Затем проверьте всё сами: проход формы только клавиатурой, Lighthouse (категория Accessibility) для страницы с открытым окном. В <code>docs/forms.md</code> сделайте таблицу «замечание → принято или отклонено → почему» и ответьте <b>своими словами</b> на пять вопросов ниже.</li>
+        <li><b>Проверки и коммиты.</b> <code>npm run format:check</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, <code>npm run build</code> проходят. В ветке не меньше трёх осмысленных коммитов, ветка отправлена на GitHub.</li>
+      </ol>
+
+      <h3>Пять вопросов для docs/forms.md</h3>
+      <ol class="steps">
+        <li>Чем управляемое поле отличается от неуправляемого? Какое из них вы использовали в формах проекта и почему React Hook Form не перерисовывает форму на каждую букву?</li>
+        <li>Почему тип формы берётся из схемы (<code>z.infer</code>), а не пишется руками? Что бы случилось в вашем проекте, если бы вы добавили поле в схему и забыли его в разметке?</li>
+        <li>Что решает портал и что он не решает? Как событие из окна доходит до родителя и как это остановить?</li>
+        <li>Какие три вещи про фокус должно делать модальное окно и что увидит клавиатурный пользователь, если ни одной из них нет? Что вы сделали с фокусом после успешной регистрации и заказа и почему?</li>
+        <li>Почему сервер проверяет заказ заново, хотя форма уже проверила его схемой? Что вы проверили <code>curl</code>-запросами?</li>
+      </ol>
+
+      <h3>Как проверят</h3>
+      <ul>
+        <li><b>Схемы и типы:</b> обе схемы с русскими сообщениями, типы только через <code>z.infer</code>, правило паролей на уровне объекта с <code>path: ['confirm']</code>, адрес зависит от <code>delivery</code>; нет <code>any</code> и <code>as</code> на данных.</li>
+        <li><b>Формы:</b> <code>useForm</code> с <code>zodResolver</code>, <code>defaultValues</code> у каждого поля, <code>noValidate</code>, ошибки показаны рядом с полями, ошибка сервера в форме, у кнопки видно состояние отправки; пароль нигде не логируется и не сохраняется.</li>
+        <li><b>Окно и доступность:</b> портал, <code>role</code> и имя окна, Esc, фокус внутрь и обратно, подписи и <code>aria-describedby</code>; форма проходится только клавиатурой.</li>
+        <li><b>Сервер:</b> требования к адресу зависят от <code>delivery</code>, неизвестный способ получения даёт 400, сумма считается на сервере.</li>
+        <li><b>docs/forms.md:</b> таблица замечаний и пять ответов своими словами, со ссылками на ваш код.</li>
+        <li><b>Процесс:</b> ветка отправлена, коммитов не меньше трёх, <code>main</code> содержит работу практики.</li>
+      </ul>
+
+      <div class="callout warn">
+        <b>Типичные ошибки в домашнем задании</b>
+        <p><b>1.</b> Повтор пароля проверяется в обработчике, а не в схеме. <b>2.</b> Правило про пароль без <code>path</code>: ошибка не попадает на поле «Повторите пароль». <b>3.</b> Тип формы написан вручную рядом со схемой. <b>4.</b> Выбран самовывоз, а адрес всё равно требуется (или наоборот, для курьера адрес пустой, и заказ уходит). <b>5.</b> Сервер не обновлён: форма пропускает самовывоз, а сервер отвечает 400. <b>6.</b> Пароль выводится в <code>console.log</code>. <b>7.</b> У <code>select</code> и флажка нет подписей и связанных ошибок. <b>8.</b> Ответ агента про доступность вставлен в <code>docs/forms.md</code> без проверки и правок. <b>9.</b> Репозиторий приватный или ссылка ведёт на профиль, а не на репозиторий.</p>
+      </div>
+
+      <article class="task" id="hw-req">
+        <header><span class="task-num">ЗАДАЧА 8.1</span><h4>Чек-лист требований к ДЗ-7</h4><span class="level mid">средняя</span></header>
+        <p>Перед сдачей проверьте по пунктам.</p>
+        <ul class="checklist" id="cl-hw">
+          <li>Практика урока работает и влита в <code>main</code>, ДЗ сделано в ветке <code>feat/auth-form</code></li>
+          <li><code>signupSchema.ts</code> содержит все поля, правило паролей через <code>.refine</code> с <code>path</code>, тип <code>SignupForm</code> из <code>z.infer</code></li>
+          <li><code>SignupForm</code> на RHF и <code>zodResolver</code>, у <code>select</code> и флажка есть подпись и связанная ошибка, пароль нигде не логируется и не сохраняется</li>
+          <li>Окно регистрации открывается из <code>App</code>, после успеха показывается «Привет, имя», фокус не пропадает</li>
+          <li>В заказе есть выбор «Курьер / Самовывоз»: адрес обязателен только курьеру, имя берётся из профиля</li>
+          <li>Сервер принимает <code>delivery</code>; <code>curl</code> с самовывозом без адреса даёт 201, а с неизвестным способом даёт 400</li>
+          <li>Обе формы и окно проходятся только клавиатурой, Lighthouse (Accessibility) проверен</li>
+          <li><code>docs/forms.md</code> содержит таблицу замечаний и пять ответов своими словами</li>
+          <li><code>npm run format:check</code>, <code>typecheck</code>, <code>lint</code>, <code>build</code> проходят, в ветке не меньше трёх коммитов</li>
+          <li>Ветка <code>feat/auth-form</code> отправлена на GitHub, репозиторий публичный: я открыл ссылку в режиме инкогнито</li>
+        </ul>
+      </article>
+
+      <article class="task" id="hw-github">
+        <header><span class="task-num">ЗАДАЧА 8.2</span><h4>Сдача: ссылка на репозиторий GitHub</h4><span class="level mid">средняя</span></header>
+        <p>Вставьте ссылку вида <code>https://github.com/ваш-логин/dastarkhon</code>. Откройте её в режиме инкогнито: ветка <code>feat/auth-form</code>, код и <code>docs/forms.md</code> должны быть видны.</p>
+        <div class="submit-link" data-hosts="github.com" data-placeholder="https://github.com/ваш-логин/dastarkhon"></div>
+      </article>
+
+      <p class="muted">Читать подробнее: <a href="https://zod.dev/api" target="_blank" rel="noopener">zod.dev — API (refine)</a> · <a href="https://react-hook-form.com/docs/useform/watch" target="_blank" rel="noopener">react-hook-form.com — watch</a> · <a href="https://developer.chrome.com/docs/lighthouse/accessibility/scoring" target="_blank" rel="noopener">Chrome — Lighthouse accessibility</a></p>
+    </section>
+
+    <!-- ============ ИТОГИ ============ -->
+    <section class="topic summary" id="summary">
+      <h2 data-toc="Шпаргалка"><span class="num">✓</span> Шпаргалка урока</h2>
+      <ul>
+        <li><b>Управляемое поле</b>: <code>value</code> + <code>onChange</code>, значение в состоянии; начинайте со строки, не с <code>undefined</code>. <b>Неуправляемое</b>: значение в DOM, чтение при отправке (<code>FormData</code>, <code>ref</code>), начальное — <code>defaultValue</code>. Значения полей — строки. В <code>onSubmit</code> всегда <code>event.preventDefault()</code>; кнопке «не отправляй» нужен <code>type="button"</code>.</li>
+        <li><b>Схема Zod</b> — один источник: проверка (<code>safeParse</code>), сообщения, тип (<code>z.infer&lt;typeof schema&gt;</code>). Типы TypeScript в браузере исчезают, схема проверяет настоящие данные. Правила на несколько полей — <code>.refine(…, { path, error })</code>. Сообщения пишите по-русски.</li>
+        <li><b>React Hook Form</b>: <code>useForm&lt;T&gt;({ resolver: zodResolver(schema), defaultValues })</code>, <code>{...register('field')}</code>, <code>handleSubmit(onSubmit)</code>, <code>formState.errors / isSubmitting</code>, ошибка сервера — <code>setError('root.server', …)</code>. Каждое поле схемы должно быть в форме, иначе форма «молчит» (ищите через <code>handleSubmit(onSubmit, onInvalid)</code>). <code>watch()</code> только там, где нужна реакция на ввод.</li>
+        <li><b>Ошибка в два слоя</b>: форма проверяет схемой для удобства, сервер проверяет заново для безопасности и сам считает деньги. Данные формы и пароль не логируют и не хранят в <code>localStorage</code>.</li>
+        <li><b>Портал</b> <code>createPortal(что, document.body)</code> выносит разметку в <code>body</code>, чтобы её не обрезал <code>overflow</code> и не перекрыл чужой <code>z-index</code>. Место в дереве React не меняется: события и контекст идут по дереву React. Окно рисуйте условно (<code>{open &amp;&amp; &lt;Modal /&gt;}</code>).</li>
+        <li><b>Доступное окно</b>: <code>role="dialog"</code>, <code>aria-modal</code>, <code>aria-labelledby</code>; фокус внутрь, ловушка Tab, возврат фокуса (с проверкой <code>isConnected</code>); Esc и клик по фону (<code>target === currentTarget</code>); кнопка закрытия с <code>aria-label</code>; запрет прокрутки фона с очисткой эффекта. Есть встроенный <code>&lt;dialog&gt;</code> с <code>showModal()</code>.</li>
+        <li><b>Доступное поле</b>: <code>label</code> (<code>htmlFor</code> + <code>useId</code>), <code>aria-invalid</code>, <code>aria-describedby</code>, <code>role="alert"</code> у появляющейся ошибки, не одним цветом, <code>autoComplete</code>, <code>type</code>. Проверка: клавиатура, диктор, Lighthouse.</li>
+        <li><b>TypeScript</b>: тип формы из <code>z.infer</code>, имя поля в <code>register</code> проверяет компилятор, <code>useRef&lt;HTMLDivElement&gt;(null)</code> и <code>?.</code>, <code>HTMLElement | null</code> нельзя передать в <code>createPortal</code>, события — <code>FormEvent</code>, <code>ChangeEvent</code>, <code>KeyboardEvent</code>, <code>MouseEvent</code>.</li>
+        <li><b>Проект 1 «Дастархон»</b>: корзина оформляется формой в окне через портал, заказы принимает <code>POST /api/orders</code> учебного API, есть окно регистрации. Дальше: Context для темы и пользователя (урок 8) и Redux Toolkit (урок 9).</li>
+      </ul>
+
+      <article class="task" id="t-understood">
+        <header><span class="task-num">ЗАДАЧА 9.1</span><h4>Я действительно понял тему</h4><span class="level easy">лёгкая</span></header>
+        <p>Отметьте только то, что можете сделать без подсказок.</p>
+        <ul class="checklist" id="cl-understood">
+          <li>Могу объяснить разницу между управляемым и неуправляемым полем и прочитать форму через <code>FormData</code></li>
+          <li>Могу описать правила формы схемой Zod и получить тип через <code>z.infer</code></li>
+          <li>Могу собрать форму на React Hook Form с <code>zodResolver</code> и показать ошибки рядом с полями</li>
+          <li>Могу показать ошибку сервера в форме и объяснить, почему сервер проверяет данные заново</li>
+          <li>Могу найти «молчащую» форму, когда поле есть в схеме, а в разметке его нет</li>
+          <li>Могу вывести окно порталом и объяснить, как события идут через портал</li>
+          <li>Могу сделать окно доступным: роль, имя, Esc, фокус внутрь и обратно, ловушка Tab</li>
+          <li>Могу связать поле с подписью и ошибкой через <code>label</code>, <code>aria-invalid</code>, <code>aria-describedby</code></li>
+          <li>Могу проверить форму и окно, написанные агентом, по списку из раздела 6</li>
+        </ul>
+      </article>
+    </section>

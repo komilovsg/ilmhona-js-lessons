@@ -1113,7 +1113,7 @@ export const VC_LESSON_META: LessonMeta = {
 };
 
 /** React Pro + Next.js: slugs with content/react-next/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const RN_AVAILABLE = ['start', 'typescript', 'components', 'state', 'effects', 'custom-hooks'] as const;
+export const RN_AVAILABLE = ['start', 'typescript', 'components', 'state', 'effects', 'custom-hooks', 'forms-styles'] as const;
 
 /** React Pro + Next.js task levels, keyed by progress key `rn-<slug>`. */
 export const RN_LESSON_META: LessonMeta = {
@@ -1258,6 +1258,29 @@ export const RN_LESSON_META: LessonMeta = {
     'q-compiler': 'm',
     'q-ai': 'm',
     't8-agent': 'h',
+    't-build': 'm',
+    't-observe': 'm',
+    'hw-req': 'm',
+    'hw-github': 'm',
+    't-understood': 'e',
+  },
+  'rn-forms-styles': {
+    'q-forms': 'm',
+    't1-controlled': 'e',
+    't1-formdata': 'm',
+    'q-schema': 'm',
+    't2-validate': 'm',
+    't2-type': 'm',
+    'q-rhf': 'm',
+    't3-field': 'e',
+    'q-portal': 'm',
+    't4-portal': 'm',
+    't4-modal': 'h',
+    'q-a11y': 'm',
+    't5-ref': 'm',
+    't5-dialog': 'h',
+    'q-ai-forms': 'm',
+    't6-review': 'm',
     't-build': 'm',
     't-observe': 'm',
     'hw-req': 'm',
