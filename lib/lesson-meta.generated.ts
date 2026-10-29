@@ -1113,7 +1113,7 @@ export const VC_LESSON_META: LessonMeta = {
 };
 
 /** React Pro + Next.js: slugs with content/react-next/lessons/ru/NN-slug.html (plain slugs, course order). */
-export const RN_AVAILABLE = ['start', 'typescript', 'components', 'state', 'effects'] as const;
+export const RN_AVAILABLE = ['start', 'typescript', 'components', 'state', 'effects', 'custom-hooks'] as const;
 
 /** React Pro + Next.js task levels, keyed by progress key `rn-<slug>`. */
 export const RN_LESSON_META: LessonMeta = {
@@ -1233,6 +1233,31 @@ export const RN_LESSON_META: LessonMeta = {
     't5-fetch': 'h',
     'q-ai-effects': 'm',
     't6-review': 'h',
+    't-build': 'm',
+    't-observe': 'm',
+    'hw-req': 'm',
+    'hw-github': 'm',
+    't-understood': 'e',
+  },
+  'rn-custom-hooks': {
+    'q-hooks': 'e',
+    't1-toggle': 'm',
+    'q-generics': 'm',
+    't2-first': 'e',
+    't2-byid': 'm',
+    't2-result': 'h',
+    'q-usefetch': 'm',
+    't3-usefetch': 'h',
+    'q-storage': 'm',
+    't4-readjson': 'm',
+    't4-debounce': 'm',
+    'q-memo': 'm',
+    't5-memo': 'm',
+    't5-usememo': 'h',
+    'q-profiler': 'm',
+    'q-compiler': 'm',
+    'q-ai': 'm',
+    't8-agent': 'h',
     't-build': 'm',
     't-observe': 'm',
     'hw-req': 'm',
